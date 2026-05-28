@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "skills": {
+    "jwt-security": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "jwt-security/SKILL.md",
+      "computedHash": "07d22bb08ad8ac8ffcb90885bb04c04ec7e6f5498eb63580ca6072a4c1694c80"
+    },
+    "neon-postgres": {
+      "source": "neondatabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/neon-postgres/SKILL.md",
+      "computedHash": "3c53df29c959dc0a7f724ff8620063b20fabd2b1fa702ec97e3f17e6a23d5a1c"
+    },
+    "nestjs-best-practices": {
+      "source": "kadajett/agent-nestjs-skills",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1b6f82e889d19d305e38e35594de08eca0242321f353cafa4cf5e61dd3aa1a73"
+    },
+    "nestjs-expert": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nestjs-expert/SKILL.md",
+      "computedHash": "0775f4ba14e4f372b894cc86feb0bf58a51b2038bc98b3ff18f2021565cea494"
+    },
+    "pnpm": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pnpm/SKILL.md",
+      "computedHash": "318f9fca2441a3e06fedc336e195dd18be5dbe901064e4fa71b76b40b096ab3a"
+    },
+    "postgres-best-practices": {
+      "source": "neondatabase/postgres-skills",
+      "sourceType": "github",
+      "skillPath": "skills/postgres-best-practices/SKILL.md",
+      "computedHash": "76ad432ee02cdc525f24fe8a483b17de8a730c56118380852b60ce0159948a88"
+    },
+    "prisma-database-setup": {
+      "source": "prisma/skills",
+      "sourceType": "github",
+      "skillPath": "prisma-database-setup/SKILL.md",
+      "computedHash": "46d2dc2f9c968722376bbb6a1a1389c82bd7cceb5973ac1486c54890514b8959"
+    },
+    "prisma-expert": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/prisma-expert/SKILL.md",
+      "computedHash": "1b551d34e027322ed0b7d62dc0ca1140b8f29a7958575b279f4811b1c9cd3b88"
+    },
+    "prisma-postgres": {
+      "source": "prisma/skills",
+      "sourceType": "github",
+      "skillPath": "prisma-postgres/SKILL.md",
+      "computedHash": "d090d1206fb6a2dd9f7b9f658d851ccd653132512c53c6e0a164110d9ee80005"
+    },
+    "prisma-postgres-setup": {
+      "source": "prisma/skills",
+      "sourceType": "github",
+      "skillPath": "prisma-postgres-setup/SKILL.md",
+      "computedHash": "5dbcf5a488d7cb7136340b86dcf781d6d92cf793f92c105ef644ac31ccac4d3b"
+    },
+    "testing-patterns": {
+      "source": "vudovn/antigravity-kit",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/testing-patterns/SKILL.md",
+      "computedHash": "d0f94c8cbaf1d039a6418612c7415830ef1a19dd58775aea01bff73f26ead42d"
+    },
+    "typescript-best-practices": {
+      "source": "ofershap/typescript-best-practices",
+      "sourceType": "github",
+      "skillPath": "skills/typescript-best-practices/SKILL.md",
+      "computedHash": "4fed665a7697c420edd8e2afa18cf4ba8c86a6fe93924fc7f45cf769c693b6a7"
+    },
+    "typescript-expert": {
+      "source": "personamanagmentlayer/pcl",
+      "sourceType": "github",
+      "skillPath": "stdlib/languages/typescript-expert/SKILL.md",
+      "computedHash": "f8a2d5004c2e2100d5c6fe5390027b59fbc4664764ae9dc5d98ff342071d3e49"
+    }
+  }
+}
