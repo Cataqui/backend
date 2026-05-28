@@ -104,6 +104,7 @@ Always optimize for:
 - Database: **PostgreSQL on Neon**
 - File/media storage: **Cloudflare R2** or S3-compatible storage
 - Edge/security layer: **Cloudflare DNS/CDN/WAF/Turnstile**
+- Test framework: **Vitest**
 
 ### Package Manager Rules
 
@@ -166,9 +167,9 @@ Example:
 
 ```json
 {
-  "post_id": "...",
-  "created_at": "...",
-  "whatsapp_url": "..."
+	"post_id": "...",
+	"created_at": "...",
+	"whatsapp_url": "..."
 }
 ```
 
@@ -311,28 +312,33 @@ Prefer:
 
 ### Interface Naming
 
-Interfaces must be prefixed with `I`.
+Only `interface` declarations may use the `I` prefix.
+
+Never use the `I` prefix on `type` aliases, classes, or enums.
 
 Examples:
 
 ```ts
+// Good — interface
 IAccessTokenPayload;
-IFeedCursorPayload;
-IPostContactMetadata;
-```
 
-This rule applies only to `interface` declarations, not type aliases or classes.
+// Bad — type alias with I prefix
+type IErrorCode = ...;
+
+// Good — type alias without I prefix
+type ErrorCode = ...;
+```
 
 ### Constants
 
 Avoid magic numbers and repeated domain strings.
 
+Prefer TypeScript `enum` over `const` objects for error codes, status values, and domain constants. Enums provide both the value and the type in one declaration, are easy to switch over, and don't require a separate type extraction.
+
 Create named constants for:
 
 - limits
 - expiration windows
-- status values
-- error codes
 - header names
 - cookie names
 - event names
@@ -357,7 +363,7 @@ Good:
 
 ```ts
 export const ObjectUtils = {
-  filterUndefined,
+	filterUndefined,
 } as const;
 ```
 
@@ -405,8 +411,8 @@ Example:
 
 ```json
 {
-  "error_code": "POST_NOT_FOUND",
-  "message": "The requested post was not found."
+	"error_code": "POST_NOT_FOUND",
+	"message": "The requested post was not found."
 }
 ```
 
@@ -447,6 +453,24 @@ Files that may not require dedicated tests:
 - trivial module wiring with no logic
 
 When unsure, write the test.
+
+### Vitest Configuration
+
+Test runner: **Vitest** with `globals: true`.
+
+Test files must be colocated with source: `src/**/*.spec.ts`.
+
+Coverage provider: **v8** with minimum 90% thresholds for lines, functions, branches, and statements.
+
+Module wiring files (`*.module.ts`, `app.module.ts`, `main.ts`, barrel `index.ts` files) are excluded from coverage thresholds.
+
+Run commands:
+
+```bash
+pnpm test          # run all tests
+pnpm test:watch    # watch mode
+pnpm test:cov      # run with coverage
+```
 
 ### Test-Driven Workflow
 

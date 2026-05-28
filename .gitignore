@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+coverage/
+generated/
+.idea/
+.vscode/
+*.js.map
+*.ts.map
+.DS_Store
+
+# Only pnpm lockfile is accepted
+package-lock.json
+yarn.lock
+bun.lock
+bun.lockb
+
+# AI
+.opencode

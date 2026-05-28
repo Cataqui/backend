@@ -1,0 +1,115 @@
+# Licensor
+
+Cataquí Inc. and its affiliates
+
+# Business Source License 1.1
+
+## License
+
+The Licensor grants you a non-exclusive, worldwide, royalty-free right to use,
+copy, modify, create derivative works of, and distribute the Licensed Work,
+subject to the Additional Use Grant and the terms below.
+
+## Licensor
+
+Cataquí Inc.
+contact@cataqui.com
+
+## Licensed Work
+
+"Cataquí API" — the real-time opportunity layer of the city: a backend API
+for hyperlocal feeds, quick jobs, side hustles, informal work, and short-term
+task discovery.
+
+The Licensed Work is:
+
+- The software codebase in this repository, including all source files,
+  configuration, and associated documentation.
+- Any updates, modifications, or derivative works created from this codebase.
+
+## Additional Use Grant
+
+You may use, copy, modify, and distribute the Licensed Work only if your use
+does not compete with the Licensor's business offerings.
+
+Specifically, you may **not** use the Licensed Work to provide, operate, or
+host a competing platform that replicates the core functionality of Cataquí,
+including but not limited to:
+
+- A marketplace or platform for short-term, local, informal work or gigs
+- A hyperlocal feed for job or task discovery
+- A two-sided marketplace connecting workers and task posters
+
+Any use that does not compete with the Licensor's business is permitted,
+including internal tooling, educational use, research, and non-competing
+commercial applications.
+
+## Trademark and Brand Protection
+
+All rights to the "Cataquí" name, brand, logo, domain names (including
+cataqui.com and related domains), trade dress, and associated branding
+elements remain the exclusive property of the Licensor.
+
+This license does not grant any right to use the "Cataquí" name, brand,
+logo, or domain names in connection with the Licensed Work or any
+derivative works without the Licensor's prior written consent.
+
+Any distribution of the Licensed Work or derivative works must clearly
+disclaim affiliation with, sponsorship by, or endorsement by the Licensor.
+
+## Domain Name Restriction
+
+You may not register, acquire, or use any domain name that contains
+"cataqui" or any confusingly similar variant in connection with the
+Licensed Work or any derived offering without the Licensor's prior
+written consent.
+
+## Change Date
+
+The Change Date is **2126-01-01** (one hundred years from the initial
+publication date). After this date, the Licensed Work will be governed
+by the Change License specified below.
+
+## Change License
+
+GNU General Public License v2.0 or later
+(https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
+
+## Additional Terms
+
+1. **No Other Rights**: This license does not imply any rights other than
+   those expressly granted.
+
+2. **Disclaimer of Warranty**: THE LICENSED WORK IS PROVIDED "AS IS",
+   WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+3. **Limitation of Liability**: IN NO EVENT SHALL THE LICENSOR BE LIABLE
+   FOR ANY DAMAGES ARISING FROM THE USE OF THE LICENSED WORK.
+
+4. **Export Control**: You may not use or export the Licensed Work in
+   violation of applicable export control laws.
+
+## How to Apply
+
+To apply the Business Source License to your work, attach the following
+notice to the repository root and ensure a copy of this license file is
+included:
+
+```
+Licensed under the Business Source License 1.1.
+See LICENSE file for full license text.
+```
+
+---
+
+## Why Business Source License?
+
+Cataquí uses BUSL 1.1 for the following reasons:
+
+1. **Source Availability**: The code is fully visible and auditable.
+2. **Protection from Direct Competition**: Competitors cannot freely
+   replicate the service while it is under active development.
+3. **Community-Friendly**: Non-competing use, internal tooling, education,
+   and research are all permitted.
+4. **Guaranteed Open Source Future**: After the Change Date (2126), the
+   code converts to GPL v2, ensuring it eventually becomes open source.
