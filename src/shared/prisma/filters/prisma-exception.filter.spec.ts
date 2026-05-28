@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "../errors/error-code.enum";
+import { ErrorCode } from "../../errors/error-code.enum";
 
 vi.mock("../../../generated/prisma/client.js", () => {
 	class PrismaClientKnownRequestError extends Error {
@@ -22,7 +22,7 @@ vi.mock("../../../generated/prisma/client.js", () => {
 	};
 });
 
-import { Prisma } from "../../../generated/prisma/client.js";
+import { Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaExceptionFilter } from "./prisma-exception.filter";
 
 function createMockHost(code: string) {

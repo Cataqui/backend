@@ -1,7 +1,7 @@
 import { Controller, Get, Version, Res, HttpStatus } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
-import { PrismaService } from "../../prisma/prisma.service";
+import { PrismaService } from "../../shared/prisma/prisma.service";
 import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";

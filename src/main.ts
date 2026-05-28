@@ -3,9 +3,9 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { ValidationPipe, Logger, VersioningType } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
-import { HttpExceptionFilter } from "./common/errors/http-exception.filter";
-import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
-import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { HttpExceptionFilter } from "./shared/errors/filters/http-exception.filter";
+import { PrismaExceptionFilter } from "./shared/prisma/filters/prisma-exception.filter";
+import { LoggingInterceptor } from "./shared/interceptors/logging.interceptor";
 
 async function bootstrap(): Promise<void> {
 	const logger = new Logger("Bootstrap");

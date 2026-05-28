@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "./error-code.enum";
-import { ErrorOutputDto } from "./error-output.dto";
+import { ErrorCode } from "../error-code.enum";
+import { ErrorOutputDto } from "../error-output.dto";
 import { HttpExceptionFilter } from "./http-exception.filter";
 
 function createMockHost(exception: unknown) {

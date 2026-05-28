@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from "@nestjs/common";
-import { Prisma } from "../../../generated/prisma/client.js";
-import { ErrorCode } from "../errors/error-code.enum";
-import { ErrorOutputDto } from "../errors/error-output.dto";
+import { Prisma } from "../../../../generated/prisma/client.js";
+import { ErrorCode } from "../../errors/error-code.enum.js";
+import { ErrorOutputDto } from "../../errors/error-output.dto.js";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
