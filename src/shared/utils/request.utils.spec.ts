@@ -39,4 +39,36 @@ describe("RequestUtils", () => {
 			expect(result).toBe("/api/v1/feed?cursor=abc&limit=20");
 		});
 	});
+
+	describe("resolveRequestLocale", () => {
+		it("should return the first locale from Accept-Language", () => {
+			const result = RequestUtils.resolveRequestLocale("es-MX,es;q=0.9,en;q=0.8");
+			expect(result).toBe("es-MX");
+		});
+
+		it("should return the single locale when no quality values", () => {
+			const result = RequestUtils.resolveRequestLocale("pt-BR");
+			expect(result).toBe("pt-BR");
+		});
+
+		it("should return default locale when header is undefined", () => {
+			const result = RequestUtils.resolveRequestLocale(undefined);
+			expect(result).toBe("en-US");
+		});
+
+		it("should return default locale when header is empty string", () => {
+			const result = RequestUtils.resolveRequestLocale("");
+			expect(result).toBe("en-US");
+		});
+
+		it("should handle multiple locales with spaces", () => {
+			const result = RequestUtils.resolveRequestLocale("fr-CA, fr;q=0.9");
+			expect(result).toBe("fr-CA");
+		});
+
+		it("should trim whitespace from locale tags", () => {
+			const result = RequestUtils.resolveRequestLocale("  de-DE  , en;q=0.9");
+			expect(result).toBe("de-DE");
+		});
+	});
 });

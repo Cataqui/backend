@@ -4,6 +4,7 @@ import { JobService } from "./services/job.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";
+import { RequestLocale } from "../../shared/locale/request-locale.decorator";
 
 @ApiTags("jobs")
 @Controller("job")
@@ -14,7 +15,7 @@ export class JobController {
 	@Version("1")
 	@HttpCode(HttpStatus.CREATED)
 	@ApiCreateJobDocs()
-	async create(@Body() dto: CreateJobRequestDto): Promise<JobOutputDto> {
-		return this._jobService.createJob(dto);
+	async create(@Body() dto: CreateJobRequestDto, @RequestLocale() locale: string): Promise<JobOutputDto> {
+		return this._jobService.createJob(dto, locale);
 	}
 }

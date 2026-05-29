@@ -35,8 +35,6 @@ interface MockJobWithCategory {
 	category: { id: string; name: string; slug: string };
 }
 
-const mockCategory = { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() };
-
 const mockJob: MockJobWithCategory = {
 	id: "cm3x-job-1",
 	title: "Help unload truck",
@@ -92,7 +90,7 @@ describe("JobService", () => {
 		} as unknown as JobRepository;
 
 		jobCategoryRepository = {
-			findById: vi.fn().mockResolvedValue(mockCategory),
+			findByIdWithLocalizedName: vi.fn().mockResolvedValue({ id: "cm3x-cat-1", slug: "moving-help", displayName: "Moving Help" }),
 		} as unknown as JobCategoryRepository;
 
 		const module = await Test.createTestingModule({
@@ -104,7 +102,7 @@ describe("JobService", () => {
 
 	describe("createJob", () => {
 		it("should create a job and return JobOutputDto", async () => {
-			const result = await service.createJob(createValidDto());
+			const result = await service.createJob(createValidDto(), "en-US");
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 			expect(result.jobId).toBe("cm3x-job-1");
@@ -113,15 +111,15 @@ describe("JobService", () => {
 		});
 
 		it("should throw CategoryNotFoundError when category does not exist", async () => {
-			(jobCategoryRepository.findById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-			await expect(service.createJob(createValidDto())).rejects.toThrow(CategoryNotFoundError);
+			await expect(service.createJob(createValidDto(), "en-US")).rejects.toThrow(CategoryNotFoundError);
 		});
 
 		it("should set default expiration to 30 days when expiresAt is not provided", async () => {
 			const before = Date.now();
 
-			await service.createJob(createValidDto());
+			await service.createJob(createValidDto(), "en-US");
 
 			const after = Date.now();
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
@@ -137,21 +135,21 @@ describe("JobService", () => {
 		it("should use provided expiresAt when given", async () => {
 			const dto = createValidDto({ expiresAt: "2026-12-01T00:00:00.000Z" });
 
-			await service.createJob(dto);
+			await service.createJob(dto, "en-US");
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect((createCall?.expiresAt as Date).toISOString()).toBe("2026-12-01T00:00:00.000Z");
 		});
 
 		it("should set status to ACTIVE", async () => {
-			await service.createJob(createValidDto());
+			await service.createJob(createValidDto(), "en-US");
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect(createCall?.status).toBe(JobStatus.ACTIVE);
 		});
 
 		it("should pass all values to the repository", async () => {
-			await service.createJob(createValidDto());
+			await service.createJob(createValidDto(), "en-US");
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -194,13 +192,37 @@ describe("JobService", () => {
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
-			await service.createJob(dto);
+			await service.createJob(dto, "en-US");
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
 			expect(createData).toBeDefined();
 			expect(createData).toHaveProperty("street", null);
 			expect(createData).toHaveProperty("neighborhood", null);
+		});
+
+		it("should use translated category name when translation exists", async () => {
+			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "cm3x-cat-1",
+				slug: "moving-help",
+				displayName: "Ayuda con mudanza",
+			});
+
+			const result = await service.createJob(createValidDto(), "es-MX");
+
+			expect(result.category.name).toBe("Ayuda con mudanza");
+		});
+
+		it("should fall back to base category name when no translation exists", async () => {
+			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "cm3x-cat-1",
+				slug: "moving-help",
+				displayName: "Moving Help",
+			});
+
+			const result = await service.createJob(createValidDto(), "fr-FR");
+
+			expect(result.category.name).toBe("Moving Help");
 		});
 	});
 });

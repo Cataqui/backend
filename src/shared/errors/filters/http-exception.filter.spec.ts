@@ -55,12 +55,24 @@ describe("HttpExceptionFilter", () => {
 		expect(statusMock).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
 
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
-		expect(body).toHaveProperty("error_code", ErrorCode.INTERNAL_ERROR);
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty("message", "Something went wrong");
 		expect(body).toHaveProperty("status", HttpStatus.BAD_REQUEST);
 		expect(body).toHaveProperty("request_id", expect.any(String));
 		expect(body).toHaveProperty("timestamp", expect.any(String));
 		expect(body).toHaveProperty("endpoint", "/api/v1/test");
+	});
+
+	it("should handle HttpException with array message (validation errors)", () => {
+		const exception = new HttpException({ message: ["field is required", "field must be a string"] }, HttpStatus.BAD_REQUEST);
+
+		const { sendMock, statusMock } = createMockHost(exception);
+
+		expect(statusMock).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+
+		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
+		expect(body).toHaveProperty("message", "field is required; field must be a string");
 	});
 
 	it("should handle HttpException with object response containing error_code", () => {
@@ -84,7 +96,7 @@ describe("HttpExceptionFilter", () => {
 		expect(statusMock).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
 
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
-		expect(body).toHaveProperty("error_code", ErrorCode.INTERNAL_ERROR);
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty("message", "field is required; field must be a string");
 	});
 
@@ -124,7 +136,7 @@ describe("HttpExceptionFilter", () => {
 		const { sendMock } = createMockHost(exception);
 
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
-		expect(body).toHaveProperty("error_code", ErrorCode.INTERNAL_ERROR);
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty("message", "some error");
 	});
 
@@ -146,7 +158,7 @@ describe("HttpExceptionFilter", () => {
 		const { sendMock } = createMockHost(exception);
 
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
-		expect(body).toHaveProperty("error_code", ErrorCode.INTERNAL_ERROR);
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty("message", "An unexpected error occurred");
 	});
 

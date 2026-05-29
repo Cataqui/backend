@@ -26,6 +26,7 @@ export default [
 	},
 	{
 		rules: {
+			"@typescript-eslint/explicit-module-boundary-types": "error",
 			"@typescript-eslint/no-explicit-any": "error",
 			"@typescript-eslint/no-floating-promises": "warn",
 			"@typescript-eslint/no-unsafe-argument": "warn",

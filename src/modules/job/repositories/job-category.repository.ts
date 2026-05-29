@@ -5,7 +5,23 @@ import { PrismaService } from "../../../shared/prisma/prisma.service";
 export class JobCategoryRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findById(params: { id: string }) {
-		return this._prisma.jobCategory.findUnique({ where: { id: params.id } });
+	async findByIdWithLocalizedName(params: { id: string; locale: string }): Promise<{ id: string; slug: string; displayName: string } | null> {
+		const result = await this._prisma.jobCategory.findUnique({
+			where: { id: params.id },
+			include: {
+				translations: {
+					where: { locale: params.locale },
+					take: 1,
+				},
+			},
+		});
+
+		if (!result) return null;
+
+		return {
+			id: result.id,
+			slug: result.slug,
+			displayName: result.translations[0]?.name ?? result.name,
+		};
 	}
 }

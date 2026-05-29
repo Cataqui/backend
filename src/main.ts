@@ -33,6 +33,12 @@ async function bootstrap(): Promise<void> {
 		.setTitle("Cataquí API")
 		.setDescription("Cataquí is the real-time opportunity layer of the city: " + "a hyperlocal feed for quick jobs, side hustles, informal work, and short-term tasks.")
 		.setVersion("1.0")
+		.addGlobalParameters({
+			name: "accept-language",
+			in: "header",
+			required: false,
+			schema: { type: "string", default: "en-US", example: "en-US" },
+		})
 		.build();
 
 	const document = SwaggerModule.createDocument(app, swaggerConfig);

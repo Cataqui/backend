@@ -6,7 +6,7 @@ import type { Prisma } from "../../../../generated/prisma/client.js";
 export class JobRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async create(params: { data: Prisma.JobUncheckedCreateInput }) {
+	async create(params: { data: Prisma.JobUncheckedCreateInput }): Promise<Prisma.JobGetPayload<{ include: { category: true } }>> {
 		const job = await this._prisma.job.create({
 			data: {
 				...params.data,

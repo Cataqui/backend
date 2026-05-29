@@ -19,7 +19,7 @@ function createValidDto(): CreateJobRequestDto {
 		contact,
 		location,
 		type: JobType.SINGLE,
-		categoryId: "cm3x-cat-id",
+		categoryId: "550e8400-e29b-41d4-a716-446655440000",
 		payment,
 	};
 	return Object.assign(new CreateJobRequestDto(), dtoData);
@@ -84,7 +84,7 @@ describe("CreateJobRequestDto", () => {
 				contact,
 				location,
 				type: JobType.SINGLE,
-				categoryId: "cm3x-cat-id",
+				categoryId: "550e8400-e29b-41d4-a716-446655440000",
 				payment,
 				expiresAt: "2026-06-28T00:00:00Z",
 			};
@@ -105,6 +105,16 @@ describe("CreateJobRequestDto", () => {
 			expect(errors[0]?.property).toBe("type");
 		});
 
+		it("should fail with non-UUID categoryId", async () => {
+			const dto = createValidDto();
+			(dto as { categoryId: string }).categoryId = "not-a-uuid";
+
+			const errors = await validate(dto);
+
+			expect(errors).toHaveLength(1);
+			expect(errors[0]?.property).toBe("categoryId");
+		});
+
 		it("should fail with invalid expires_at", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
@@ -118,7 +128,7 @@ describe("CreateJobRequestDto", () => {
 				contact,
 				location,
 				type: JobType.SINGLE,
-				categoryId: "cm3x-cat-id",
+				categoryId: "550e8400-e29b-41d4-a716-446655440000",
 				payment,
 				expiresAt: "not-a-date",
 			};
@@ -143,7 +153,7 @@ describe("CreateJobRequestDto", () => {
 				contact,
 				location,
 				type: JobType.SINGLE,
-				categoryId: "cm3x-cat-id",
+				categoryId: "550e8400-e29b-41d4-a716-446655440000",
 				payment,
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);

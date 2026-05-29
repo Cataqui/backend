@@ -58,6 +58,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			return { errorCode: ErrorCode.ROUTE_NOT_FOUND, message: "The requested endpoint was not found." };
 		}
 
+		if (status === HttpStatus.BAD_REQUEST) {
+			return { errorCode: ErrorCode.INVALID_REQUEST, message };
+		}
+
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message };
 	}
 
@@ -87,6 +91,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			}
 
 			return { errorCode: ErrorCode.NOT_FOUND, message: this._resolveMessage(rawMessage) };
+		}
+
+		if (status === HttpStatus.BAD_REQUEST) {
+			return { errorCode: ErrorCode.INVALID_REQUEST, message: this._resolveMessage(resp["message"]) };
 		}
 
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message: this._resolveMessage(resp["message"]) };

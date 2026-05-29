@@ -66,14 +66,14 @@ describe("JobController", () => {
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
-			const result = await controller.create(dto);
+			const result = await controller.create(dto, "en-US");
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 			expect(result.title).toBe("Help unload truck");
 			expect(result.status).toBe(JobStatus.ACTIVE);
 		});
 
-		it("should pass the DTO directly to jobService.createJob", async () => {
+		it("should pass the DTO and locale to jobService.createJob", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
@@ -91,12 +91,12 @@ describe("JobController", () => {
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
-			await controller.create(dto);
+			await controller.create(dto, "en-US");
 
-			expect(jobService.createJob).toHaveBeenCalledWith(dto);
+			expect(jobService.createJob).toHaveBeenCalledWith(dto, "en-US");
 		});
 
-		it("should forward expiresAt as a string to the service", async () => {
+		it("should forward expiresAt and locale to the service", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
@@ -115,9 +115,9 @@ describe("JobController", () => {
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
-			await controller.create(dto);
+			await controller.create(dto, "en-US");
 
-			expect(jobService.createJob).toHaveBeenCalledWith(dto);
+			expect(jobService.createJob).toHaveBeenCalledWith(dto, "en-US");
 		});
 	});
 });

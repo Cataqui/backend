@@ -16,8 +16,8 @@ export class JobService {
 		private readonly _jobCategoryRepository: JobCategoryRepository,
 	) {}
 
-	async createJob(dto: CreateJobRequestDto): Promise<JobOutputDto> {
-		const category = await this._jobCategoryRepository.findById({ id: dto.categoryId });
+	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
+		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
 		if (!category) throw new CategoryNotFoundError(dto.categoryId);
 
 		const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : new Date(Date.now() + DateUtils.daysToMs(DEFAULT_EXPIRATION_DAYS));
@@ -43,6 +43,6 @@ export class JobService {
 			},
 		});
 
-		return JobOutputDto.fromDatabase(job);
+		return JobOutputDto.fromDatabase(job, category.displayName);
 	}
 }

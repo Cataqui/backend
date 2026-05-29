@@ -8,6 +8,7 @@ describe("ErrorCode", () => {
 			"INTERNAL_ERROR",
 			"RATE_LIMITED",
 			"ROUTE_NOT_FOUND",
+			"INVALID_REQUEST",
 			"POST_NOT_FOUND",
 			"POST_EXPIRED",
 			"POST_ALREADY_REPORTED",
@@ -28,7 +29,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 10 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(10);
+	it("should have exactly 11 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(11);
 	});
 });

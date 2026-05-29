@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { IsString, Length, IsOptional, IsEnum, ValidateNested, IsDateString } from "class-validator";
+import { IsString, Length, IsOptional, IsEnum, ValidateNested, IsDateString, IsUUID } from "class-validator";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobPaymentInputDto } from "./create-job-payment-input.dto";
@@ -37,8 +37,8 @@ export class CreateJobRequestDto {
 	readonly type!: JobType;
 
 	@Expose({ name: "category_id" })
-	@ApiProperty({ name: "category_id", description: "Job category ID", example: "cm3x..." })
-	@IsString()
+	@ApiProperty({ name: "category_id", description: "Job category UUID", example: "afdfd9b2-203d-4528-8a1c-82b6b139039b" })
+	@IsUUID()
 	readonly categoryId!: string;
 
 	@Expose({ name: "payment" })
