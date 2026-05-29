@@ -41,6 +41,9 @@ importers:
       class-validator:
         specifier: ^0.14.1
         version: 0.14.4
+      libphonenumber-js:
+        specifier: ^1.13.3
+        version: 1.13.3
       pg:
         specifier: ^8.13.0
         version: 8.21.0

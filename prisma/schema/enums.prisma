@@ -1,0 +1,19 @@
+enum JobStatus {
+  ACTIVE
+  EXPIRED
+  CLOSED
+}
+
+enum JobType {
+  SINGLE
+  EMPLOYMENT
+  CONTRACTOR
+}
+
+enum JobPaymentRecurrence {
+  SINGLE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}

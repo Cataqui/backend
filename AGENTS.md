@@ -226,12 +226,14 @@ Services:
 - orchestrate business logic
 - validate domain rules
 - coordinate repositories/providers
+- never access Prisma directly — all data access must go through repositories
 
 Repositories:
 
 - contain database access
 - hide Prisma details from controllers
 - expose intention-revealing methods
+- are the only layer that calls Prisma directly
 
 DTOs:
 
