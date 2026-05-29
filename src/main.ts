@@ -6,6 +6,7 @@ import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./shared/errors/filters/http-exception.filter";
 import { PrismaExceptionFilter } from "./shared/prisma/filters/prisma-exception.filter";
 import { LoggingInterceptor } from "./shared/interceptors/logging.interceptor";
+import { ResponseInterceptor } from "./shared/interceptors/response.interceptor";
 
 async function bootstrap(): Promise<void> {
 	const logger = new Logger("Bootstrap");
@@ -26,7 +27,7 @@ async function bootstrap(): Promise<void> {
 	);
 
 	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
-	app.useGlobalInterceptors(new LoggingInterceptor());
+	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
 
 	const swaggerConfig = new DocumentBuilder()
 		.setTitle("Cataquí API")

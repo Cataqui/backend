@@ -1,5 +1,6 @@
 import { Controller, Get, Version, Res, HttpStatus } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
 import { PrismaService } from "../../shared/prisma/prisma.service";
 import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./dto/health-check-output.dto";
@@ -18,6 +19,7 @@ export class HealthController {
 
 	@Get()
 	@Version("1")
+	@SkipEnvelope()
 	@ApiOperation({ summary: "Health check endpoint" })
 	@ApiResponse({
 		status: HttpStatus.OK,

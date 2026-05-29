@@ -1,8 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from "@nestjs/common";
+import { instanceToPlain } from "class-transformer";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { ErrorOutputDto } from "../../errors/error-output.dto.js";
+import { RequestUtils } from "../../utils/request.utils.js";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
@@ -58,8 +60,8 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
 		const userMessage = mapping?.message ?? "An unexpected database error occurred.";
 
-		const body = new ErrorOutputDto(errorCode, userMessage);
+		const body = new ErrorOutputDto(errorCode, userMessage, status, RequestUtils.resolveRequestId(request), new Date().toISOString(), RequestUtils.resolveEndpoint(request));
 
-		response.status(status).send(body);
+		response.status(status).send(instanceToPlain(body));
 	}
 }

@@ -355,13 +355,17 @@ Every line must exist for the current task.
 
 ### Utility Functions
 
-Do not export bare standalone utility functions.
+Do not export bare standalone utility functions and do not inline function logic directly inside the namespace object.
 
-Group utilities under a namespace object or class.
+Define each function as a standalone declaration first, then group them under an exported namespace.
 
 Good:
 
 ```ts
+function filterUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+	return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 export const ObjectUtils = {
 	filterUndefined,
 } as const;
@@ -371,6 +375,14 @@ Bad:
 
 ```ts
 export function filterUndefined() {}
+```
+
+Also bad — inline inside namespace:
+
+```ts
+export const ObjectUtils = {
+	filterUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> { ... },
+} as const;
 ```
 
 ---
