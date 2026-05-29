@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobStatus } from "../../../generated/prisma/client.js";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -15,6 +16,13 @@ export class JobService {
 		private readonly _jobRepository: JobRepository,
 		private readonly _jobCategoryRepository: JobCategoryRepository,
 	) {}
+
+	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
+		const result = await this._jobRepository.findByIdLocalized({ id: params.jobId, locale: params.locale });
+		if (!result) throw new JobNotFoundError(params.jobId);
+
+		return JobOutputDto.fromDatabase(result, result.categoryDisplayName);
+	}
 
 	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });

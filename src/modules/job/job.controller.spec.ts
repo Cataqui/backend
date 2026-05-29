@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobPaymentInputDto } from "./dto/create-job-payment-input.dto";
@@ -37,6 +38,7 @@ describe("JobController", () => {
 	beforeEach(async () => {
 		jobService = {
 			createJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
+			getJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
 		} as unknown as JobService;
 
 		const module = await Test.createTestingModule({
@@ -118,6 +120,24 @@ describe("JobController", () => {
 			await controller.create(dto, "en-US");
 
 			expect(jobService.createJob).toHaveBeenCalledWith(dto, "en-US");
+		});
+	});
+
+	describe("findOne", () => {
+		it("should return JobOutputDto on success", async () => {
+			const params = Object.assign(new GetJobRequestParamsDto(), { jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b" });
+			const result = await controller.getJob(params, "en-US");
+
+			expect(result).toBeInstanceOf(JobOutputDto);
+			expect(result.title).toBe("Help unload truck");
+			expect(result.status).toBe(JobStatus.ACTIVE);
+		});
+
+		it("should pass jobId and locale to jobService.getJob", async () => {
+			const params = Object.assign(new GetJobRequestParamsDto(), { jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b" });
+			await controller.getJob(params, "pt-BR");
+
+			expect(jobService.getJob).toHaveBeenCalledWith({ jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b", locale: "pt-BR" });
 		});
 	});
 });

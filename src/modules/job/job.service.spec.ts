@@ -5,12 +5,13 @@ import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobStatus, JobType, JobPaymentRecurrence } from "../../../generated/prisma/client.js";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { JobNotFoundError } from "./errors/job-not-found.error";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobPaymentInputDto } from "./dto/create-job-payment-input.dto";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
 interface MockJobWithCategory {
 	id: string;
@@ -32,7 +33,8 @@ interface MockJobWithCategory {
 	categoryId: string;
 	createdAt: Date;
 	updatedAt: Date;
-	category: { id: string; name: string; slug: string };
+	category: { id: string; name: string; slug: string; createdAt: Date; updatedAt: Date };
+	categoryDisplayName: string;
 }
 
 const mockJob: MockJobWithCategory = {
@@ -55,7 +57,8 @@ const mockJob: MockJobWithCategory = {
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
 	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-	category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" },
+	category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date("2026-05-28T10:00:00.000Z"), updatedAt: new Date("2026-05-28T10:00:00.000Z") },
+	categoryDisplayName: "Moving Help",
 };
 
 function createValidDto(overrides?: Partial<{ expiresAt: string | undefined }>): CreateJobRequestDto {
@@ -87,6 +90,7 @@ describe("JobService", () => {
 	beforeEach(async () => {
 		jobRepository = {
 			create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
+			findByIdLocalized: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
 		} as unknown as JobRepository;
 
 		jobCategoryRepository = {
@@ -223,6 +227,37 @@ describe("JobService", () => {
 			const result = await service.createJob(createValidDto(), "fr-FR");
 
 			expect(result.category.name).toBe("Moving Help");
+		});
+	});
+
+	describe("getJob", () => {
+		it("should return JobOutputDto when job exists", async () => {
+			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+
+			expect(result).toBeInstanceOf(JobOutputDto);
+			expect(result.jobId).toBe("cm3x-job-1");
+			expect(result.title).toBe("Help unload truck");
+			expect(result.status).toBe(JobStatus.ACTIVE);
+		});
+
+		it("should throw JobNotFoundError when job does not exist", async () => {
+			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+			await expect(service.getJob({ jobId: "nonexistent", locale: "en-US" })).rejects.toThrow(JobNotFoundError);
+		});
+
+		it("should use categoryDisplayName from repository for localized name", async () => {
+			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mockJob, categoryDisplayName: "Ayuda con mudanza" });
+
+			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "es-MX" });
+
+			expect(result.category.name).toBe("Ayuda con mudanza");
+		});
+
+		it("should pass jobId and locale to findByIdLocalized", async () => {
+			await service.getJob({ jobId: "cm3x-job-1", locale: "pt-BR" });
+
+			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({ id: "cm3x-job-1", locale: "pt-BR" });
 		});
 	});
 });
