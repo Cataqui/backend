@@ -6,13 +6,13 @@ describe("PaginatedSuccessResponseDto", () => {
 	describe("constructor", () => {
 		it("should assign data, pagination, requestId, timestamp, endpoint", () => {
 			const pagination = new PaginationOutputDto(true, "cursor-val");
-			const dto = new PaginatedSuccessResponseDto([{ id: 1 }, { id: 2 }], pagination, "req-123", "2026-05-28T10:00:00.000Z", "/api/v1/feed");
+			const dto = new PaginatedSuccessResponseDto([{ id: 1 }, { id: 2 }], pagination, "req-123", "2026-05-28T10:00:00.000Z", "/v1/feed");
 
 			expect(dto.data).toHaveLength(2);
 			expect(dto.pagination).toBe(pagination);
 			expect(dto.requestId).toBe("req-123");
 			expect(dto.timestamp).toBe("2026-05-28T10:00:00.000Z");
-			expect(dto.endpoint).toBe("/api/v1/feed");
+			expect(dto.endpoint).toBe("/v1/feed");
 		});
 
 		it("should handle empty data array", () => {
@@ -26,14 +26,14 @@ describe("PaginatedSuccessResponseDto", () => {
 	describe("serialization", () => {
 		it("should serialize to data, pagination, request_id, timestamp, endpoint", () => {
 			const pagination = new PaginationOutputDto(true, "cursor-val");
-			const dto = new PaginatedSuccessResponseDto([{ id: 1 }], pagination, "req-abc", "2026-05-28T10:00:00.000Z", "/api/v1/feed");
+			const dto = new PaginatedSuccessResponseDto([{ id: 1 }], pagination, "req-abc", "2026-05-28T10:00:00.000Z", "/v1/feed");
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("data");
 			expect(plain).toHaveProperty("pagination");
 			expect(plain).toHaveProperty("request_id", "req-abc");
 			expect(plain).toHaveProperty("timestamp", "2026-05-28T10:00:00.000Z");
-			expect(plain).toHaveProperty("endpoint", "/api/v1/feed");
+			expect(plain).toHaveProperty("endpoint", "/v1/feed");
 		});
 
 		it("should serialize pagination with snake_case keys", () => {

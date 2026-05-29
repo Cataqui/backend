@@ -154,7 +154,7 @@ Do not use GraphQL unless explicitly requested.
 All user-facing routes must be versioned:
 
 ```txt
-/api/v1/...
+/v1/...
 ```
 
 ### Wire Format
@@ -198,13 +198,13 @@ Infinite feeds must use cursor pagination, not offset pagination.
 Good:
 
 ```txt
-GET /api/v1/feed?cursor=...&limit=20
+GET /v1/feed?cursor=...&limit=20
 ```
 
 Avoid:
 
 ```txt
-GET /api/v1/feed?page=10
+GET /v1/feed?page=10
 ```
 
 ---

@@ -4,12 +4,12 @@ import { SuccessResponseDto } from "./success-response.dto";
 describe("SuccessResponseDto", () => {
 	describe("constructor", () => {
 		it("should assign data, requestId, timestamp, endpoint", () => {
-			const dto = new SuccessResponseDto({ id: 1 }, "req-123", "2026-05-28T10:00:00.000Z", "/api/v1/test");
+			const dto = new SuccessResponseDto({ id: 1 }, "req-123", "2026-05-28T10:00:00.000Z", "/v1/test");
 
 			expect(dto.data).toEqual({ id: 1 });
 			expect(dto.requestId).toBe("req-123");
 			expect(dto.timestamp).toBe("2026-05-28T10:00:00.000Z");
-			expect(dto.endpoint).toBe("/api/v1/test");
+			expect(dto.endpoint).toBe("/v1/test");
 		});
 
 		it("should accept primitive data types", () => {
@@ -26,13 +26,13 @@ describe("SuccessResponseDto", () => {
 
 	describe("serialization", () => {
 		it("should serialize to data, request_id, timestamp, endpoint", () => {
-			const dto = new SuccessResponseDto({ someField: "value" }, "req-abc", "2026-05-28T10:00:00.000Z", "/api/v1/posts/123");
+			const dto = new SuccessResponseDto({ someField: "value" }, "req-abc", "2026-05-28T10:00:00.000Z", "/v1/posts/123");
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("data");
 			expect(plain).toHaveProperty("request_id", "req-abc");
 			expect(plain).toHaveProperty("timestamp", "2026-05-28T10:00:00.000Z");
-			expect(plain).toHaveProperty("endpoint", "/api/v1/posts/123");
+			expect(plain).toHaveProperty("endpoint", "/v1/posts/123");
 		});
 
 		it("should rename requestId to request_id", () => {

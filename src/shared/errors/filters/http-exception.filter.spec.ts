@@ -8,7 +8,7 @@ function createMockHost(exception: unknown, requestId?: string) {
 	const response = { status: statusMock.mockReturnValue({ send: sendMock }) };
 	const request = {
 		method: "GET",
-		url: "/api/v1/test",
+		url: "/v1/test",
 		headers: requestId ? { "x-request-id": requestId } : {},
 	};
 
@@ -43,7 +43,7 @@ describe("HttpExceptionFilter", () => {
 		expect(body).toHaveProperty("status", HttpStatus.NOT_FOUND);
 		expect(body).toHaveProperty("request_id", expect.any(String));
 		expect(body).toHaveProperty("timestamp", expect.any(String));
-		expect(body).toHaveProperty("endpoint", "/api/v1/test");
+		expect(body).toHaveProperty("endpoint", "/v1/test");
 		expect(body).not.toHaveProperty("errorCode");
 	});
 
@@ -60,7 +60,7 @@ describe("HttpExceptionFilter", () => {
 		expect(body).toHaveProperty("status", HttpStatus.BAD_REQUEST);
 		expect(body).toHaveProperty("request_id", expect.any(String));
 		expect(body).toHaveProperty("timestamp", expect.any(String));
-		expect(body).toHaveProperty("endpoint", "/api/v1/test");
+		expect(body).toHaveProperty("endpoint", "/v1/test");
 	});
 
 	it("should handle HttpException with array message (validation errors)", () => {
@@ -191,7 +191,7 @@ describe("HttpExceptionFilter", () => {
 
 	describe("route not found", () => {
 		it("should return ROUTE_NOT_FOUND when ExceptionMessage starts with Cannot and status is 404", () => {
-			const exception = new HttpException({ message: "Cannot GET /api/v1/nonexistent", statusCode: 404, error: "Not Found" }, HttpStatus.NOT_FOUND);
+			const exception = new HttpException({ message: "Cannot GET /v1/nonexistent", statusCode: 404, error: "Not Found" }, HttpStatus.NOT_FOUND);
 
 			const { sendMock, statusMock } = createMockHost(exception);
 
@@ -213,7 +213,7 @@ describe("HttpExceptionFilter", () => {
 		});
 
 		it("should return ROUTE_NOT_FOUND with string response starting with Cannot", () => {
-			const exception = new HttpException("Cannot GET /api/v1/unknown", HttpStatus.NOT_FOUND);
+			const exception = new HttpException("Cannot GET /v1/unknown", HttpStatus.NOT_FOUND);
 
 			const { sendMock } = createMockHost(exception);
 

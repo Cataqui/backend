@@ -9,7 +9,7 @@ import { SKIP_ENVELOPE_KEY } from "../decorators/skip-envelope.decorator";
 function createMockContext(requestOverrides: Partial<FastifyRequest> = {}, handler?: () => void): ExecutionContext {
 	const request = {
 		headers: {},
-		url: "/api/v1/test",
+		url: "/v1/test",
 		...requestOverrides,
 	} as FastifyRequest;
 
@@ -33,7 +33,7 @@ function createMockHandler(data: unknown): CallHandler {
 describe("ResponseInterceptor", () => {
 	describe("single resource", () => {
 		it("should wrap plain object in envelope with data, request_id, timestamp, endpoint", async () => {
-			const context = createMockContext({ url: "/api/v1/posts/123" });
+			const context = createMockContext({ url: "/v1/posts/123" });
 			const handler = createMockHandler({ id: 1, title: "Test" });
 			const interceptor = new ResponseInterceptor();
 
@@ -42,7 +42,7 @@ describe("ResponseInterceptor", () => {
 			expect(result).toHaveProperty("data", { id: 1, title: "Test" });
 			expect(result).toHaveProperty("request_id", expect.any(String));
 			expect(result).toHaveProperty("timestamp", expect.any(String));
-			expect(result).toHaveProperty("endpoint", "/api/v1/posts/123");
+			expect(result).toHaveProperty("endpoint", "/v1/posts/123");
 			expect(result).not.toHaveProperty("pagination");
 		});
 
@@ -130,7 +130,7 @@ describe("ResponseInterceptor", () => {
 
 	describe("paginated response", () => {
 		it("should unwrap PaginatedResponseDto into data and pagination", async () => {
-			const context = createMockContext({ url: "/api/v1/feed" });
+			const context = createMockContext({ url: "/v1/feed" });
 			const pagination = new PaginationOutputDto(true, "next-cursor");
 			const paginatedData = new PaginatedResponseDto([{ id: 1 }, { id: 2 }], pagination);
 			const handler = createMockHandler(paginatedData);
@@ -143,7 +143,7 @@ describe("ResponseInterceptor", () => {
 			expect(result).toHaveProperty("pagination");
 			expect(result).toHaveProperty("request_id", expect.any(String));
 			expect(result).toHaveProperty("timestamp", expect.any(String));
-			expect(result).toHaveProperty("endpoint", "/api/v1/feed");
+			expect(result).toHaveProperty("endpoint", "/v1/feed");
 		});
 
 		it("should serialize pagination with snake_case keys", async () => {
@@ -166,7 +166,7 @@ describe("ResponseInterceptor", () => {
 			const handlerFn = (): void => {};
 			Reflect.defineMetadata(SKIP_ENVELOPE_KEY, true, handlerFn);
 
-			const context = createMockContext({ url: "/api/v1/health" }, handlerFn);
+			const context = createMockContext({ url: "/v1/health" }, handlerFn);
 			const handler = createMockHandler({ status: "ok", details: { database: { status: "up" } } });
 			const interceptor = new ResponseInterceptor();
 

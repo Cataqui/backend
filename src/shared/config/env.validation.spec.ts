@@ -6,7 +6,6 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "production",
 				PORT: "4000",
-				API_PREFIX: "api",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
@@ -15,7 +14,6 @@ describe("IEnvSchema", () => {
 			if (result.success) {
 				expect(result.data.NODE_ENV).toBe("production");
 				expect(result.data.PORT).toBe(4000);
-				expect(result.data.API_PREFIX).toBe("api");
 				expect(result.data.DATABASE_POOLER_URL).toBe("postgresql://user:pass@localhost:5432/db");
 				expect(result.data.DATABASE_DIRECT_URL).toBe("postgresql://user:pass@localhost:5432/db");
 			}
@@ -44,18 +42,6 @@ describe("IEnvSchema", () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.PORT).toBe(3000);
-			}
-		});
-
-		it("should default API_PREFIX to 'api'", () => {
-			const result = IEnvSchema.safeParse({
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
-			});
-
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.API_PREFIX).toBe("api");
 			}
 		});
 

@@ -44,7 +44,7 @@ export class ErrorOutputDto {
 	@Expose()
 	@ApiProperty({
 		description: "The requested endpoint path",
-		example: "/api/v1/posts/abc123",
+		example: "/v1/posts/abc123",
 	})
 	readonly endpoint: string;
 

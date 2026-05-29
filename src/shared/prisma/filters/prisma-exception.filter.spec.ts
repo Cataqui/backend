@@ -9,7 +9,7 @@ function createMockHost(exception: Prisma.PrismaClientKnownRequestError, request
 	const response = { status: statusMock.mockReturnValue({ send: sendMock }) };
 	const request = {
 		method: "GET",
-		url: "/api/v1/posts",
+		url: "/v1/posts",
 		headers: requestId ? { "x-request-id": requestId } : {},
 	};
 
@@ -48,7 +48,7 @@ describe("PrismaExceptionFilter", () => {
 			expect(body).toHaveProperty("status", HttpStatus.NOT_FOUND);
 			expect(body).toHaveProperty("request_id", expect.any(String));
 			expect(body).toHaveProperty("timestamp", expect.any(String));
-			expect(body).toHaveProperty("endpoint", "/api/v1/posts");
+			expect(body).toHaveProperty("endpoint", "/v1/posts");
 		});
 	});
 
@@ -96,7 +96,7 @@ describe("PrismaExceptionFilter", () => {
 			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
 			expect(body).toHaveProperty("request_id", expect.any(String));
 			expect(body).toHaveProperty("timestamp", expect.any(String));
-			expect(body).toHaveProperty("endpoint", "/api/v1/posts");
+			expect(body).toHaveProperty("endpoint", "/v1/posts");
 		});
 
 		it("should pass through X-Request-ID header value", () => {

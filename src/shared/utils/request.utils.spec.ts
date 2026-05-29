@@ -1,7 +1,7 @@
 import type { FastifyRequest } from "fastify";
 import { RequestUtils } from "./request.utils";
 
-function createMockRequest(headers: Record<string, string | undefined>, url = "/api/v1/test"): FastifyRequest {
+function createMockRequest(headers: Record<string, string | undefined>, url = "/v1/test"): FastifyRequest {
 	return { headers, url } as FastifyRequest;
 }
 
@@ -28,15 +28,15 @@ describe("RequestUtils", () => {
 
 	describe("resolveEndpoint", () => {
 		it("should return request.url", () => {
-			const request = createMockRequest({}, "/api/v1/posts/abc123");
+			const request = createMockRequest({}, "/v1/posts/abc123");
 			const result = RequestUtils.resolveEndpoint(request);
-			expect(result).toBe("/api/v1/posts/abc123");
+			expect(result).toBe("/v1/posts/abc123");
 		});
 
 		it("should return request.url with query string", () => {
-			const request = createMockRequest({}, "/api/v1/feed?cursor=abc&limit=20");
+			const request = createMockRequest({}, "/v1/feed?cursor=abc&limit=20");
 			const result = RequestUtils.resolveEndpoint(request);
-			expect(result).toBe("/api/v1/feed?cursor=abc&limit=20");
+			expect(result).toBe("/v1/feed?cursor=abc&limit=20");
 		});
 	});
 

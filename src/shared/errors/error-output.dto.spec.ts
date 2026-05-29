@@ -5,14 +5,14 @@ import { ErrorOutputDto } from "./error-output.dto";
 describe("ErrorOutputDto", () => {
 	describe("constructor", () => {
 		it("should assign all fields", () => {
-			const dto = new ErrorOutputDto(ErrorCode.POST_NOT_FOUND, "The requested post was not found", 404, "req-123", "2026-05-28T10:00:00.000Z", "/api/v1/posts/123");
+			const dto = new ErrorOutputDto(ErrorCode.POST_NOT_FOUND, "The requested post was not found", 404, "req-123", "2026-05-28T10:00:00.000Z", "/v1/posts/123");
 
 			expect(dto.errorCode).toBe(ErrorCode.POST_NOT_FOUND);
 			expect(dto.message).toBe("The requested post was not found");
 			expect(dto.status).toBe(404);
 			expect(dto.requestId).toBe("req-123");
 			expect(dto.timestamp).toBe("2026-05-28T10:00:00.000Z");
-			expect(dto.endpoint).toBe("/api/v1/posts/123");
+			expect(dto.endpoint).toBe("/v1/posts/123");
 		});
 	});
 
@@ -56,10 +56,10 @@ describe("ErrorOutputDto", () => {
 		});
 
 		it("should serialize endpoint as-is", () => {
-			const dto = new ErrorOutputDto(ErrorCode.NOT_FOUND, "Not found", 404, "req-1", "ts", "/api/v1/posts/123");
+			const dto = new ErrorOutputDto(ErrorCode.NOT_FOUND, "Not found", 404, "req-1", "ts", "/v1/posts/123");
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
-			expect(plain).toHaveProperty("endpoint", "/api/v1/posts/123");
+			expect(plain).toHaveProperty("endpoint", "/v1/posts/123");
 		});
 
 		it("should not include any camelCase keys", () => {

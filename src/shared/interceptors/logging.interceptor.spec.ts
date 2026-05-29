@@ -10,7 +10,7 @@ describe("LoggingInterceptor", () => {
 
 	beforeEach(() => {
 		interceptor = new LoggingInterceptor();
-		mockRequest = { method: "GET", url: "/api/v1/posts" };
+		mockRequest = { method: "GET", url: "/v1/posts" };
 		mockResponse = { statusCode: 200 };
 
 		mockExecutionContext = {
@@ -33,7 +33,7 @@ describe("LoggingInterceptor", () => {
 		expect(loggerSpy).toHaveBeenCalledTimes(1);
 		const logMessage = loggerSpy.mock.calls[0]![0] as string;
 		expect(logMessage).toContain("GET");
-		expect(logMessage).toContain("/api/v1/posts");
+		expect(logMessage).toContain("/v1/posts");
 		expect(logMessage).toContain("200");
 	});
 
@@ -66,7 +66,7 @@ describe("LoggingInterceptor", () => {
 		const logger = interceptor["_logger"];
 		const loggerSpy = vi.spyOn(logger, "log");
 		mockRequest.method = "POST";
-		mockRequest.url = "/api/v1/reports";
+		mockRequest.url = "/v1/reports";
 		mockResponse.statusCode = 201;
 
 		const mockCallHandler: CallHandler = {
@@ -77,7 +77,7 @@ describe("LoggingInterceptor", () => {
 
 		const logMessage = loggerSpy.mock.calls[0]![0] as string;
 		expect(logMessage).toContain("POST");
-		expect(logMessage).toContain("/api/v1/reports");
+		expect(logMessage).toContain("/v1/reports");
 		expect(logMessage).toContain("201");
 	});
 });
