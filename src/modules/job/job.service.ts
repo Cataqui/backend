@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { JobRepository } from "../repositories/job.repository";
-import { JobCategoryRepository } from "../repositories/job-category.repository";
-import { CategoryNotFoundError } from "../errors/category-not-found.error";
-import { JobStatus } from "../../../../generated/prisma/client.js";
-import { JobOutputDto } from "../dto/job-output.dto";
-import { CreateJobRequestDto } from "../dto/create-job-request.dto";
-import { DateUtils } from "../../../shared/utils/date.utils";
+import { JobRepository } from "./repositories/job.repository";
+import { JobCategoryRepository } from "./repositories/job-category.repository";
+import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { JobStatus } from "../../../generated/prisma/client.js";
+import { JobOutputDto } from "./dto/job-output.dto";
+import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { DateUtils } from "../../shared/utils/date.utils";
 
 const DEFAULT_EXPIRATION_DAYS = 30;
 

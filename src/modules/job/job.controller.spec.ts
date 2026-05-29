@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
 import { JobController } from "./job.controller";
-import { JobService } from "./services/job.service";
+import { JobService } from "./job.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";

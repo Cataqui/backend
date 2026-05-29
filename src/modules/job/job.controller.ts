@@ -1,6 +1,6 @@
 import { Controller, Post, Version, Body, HttpCode, HttpStatus } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { JobService } from "./services/job.service";
+import { JobService } from "./job.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";

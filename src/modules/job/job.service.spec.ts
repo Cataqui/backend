@@ -1,14 +1,14 @@
 import { Test } from "@nestjs/testing";
 import { JobService } from "./job.service";
-import { JobRepository } from "../repositories/job.repository";
-import { JobCategoryRepository } from "../repositories/job-category.repository";
-import { JobOutputDto } from "../dto/job-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence } from "../../../../generated/prisma/client.js";
-import { CategoryNotFoundError } from "../errors/category-not-found.error";
-import { CreateJobRequestDto } from "../dto/create-job-request.dto";
-import { CreateJobContactInputDto } from "../dto/create-job-contact-input.dto";
-import { CreateJobLocationInputDto } from "../dto/create-job-location-input.dto";
-import { CreateJobPaymentInputDto } from "../dto/create-job-payment-input.dto";
+import { JobRepository } from "./repositories/job.repository";
+import { JobCategoryRepository } from "./repositories/job-category.repository";
+import { JobOutputDto } from "./dto/job-output.dto";
+import { JobStatus, JobType, JobPaymentRecurrence } from "../../../generated/prisma/client.js";
+import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
+import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
+import { CreateJobPaymentInputDto } from "./dto/create-job-payment-input.dto";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 
