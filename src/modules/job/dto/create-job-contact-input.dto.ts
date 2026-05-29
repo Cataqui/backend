@@ -7,7 +7,7 @@ export class CreateJobContactInputDto {
 	@ApiProperty({ name: "name", description: "Contact person's name", example: "João Silva" })
 	@IsString()
 	@Length(2, 100)
-	readonly name: string;
+	readonly name!: string;
 
 	@Expose({ name: "whatsapp_number" })
 	@ApiProperty({
@@ -16,10 +16,5 @@ export class CreateJobContactInputDto {
 		example: "+5511999999999",
 	})
 	@IsPhoneNumber()
-	readonly whatsappNumber: string;
-
-	constructor(params: { name: string; whatsappNumber: string }) {
-		this.name = params.name;
-		this.whatsappNumber = params.whatsappNumber;
-	}
+	readonly whatsappNumber!: string;
 }

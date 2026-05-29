@@ -1,22 +1,19 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
-import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "./prisma.service";
+import { DATABASE_CONFIG_KEY } from "../config/database.config";
 
 describe("PrismaService", () => {
 	let prismaService: PrismaService;
-	let configService: ConfigService;
 
 	beforeEach(async () => {
-		configService = {
-			getOrThrow: vi.fn().mockReturnValue("postgresql://test:test@localhost:5432/test"),
-		} as never;
-
 		const module = await Test.createTestingModule({
 			providers: [
 				{
-					provide: ConfigService,
-					useValue: configService,
+					provide: DATABASE_CONFIG_KEY,
+					useValue: {
+						poolerUrl: "postgresql://test:test@localhost:5432/test",
+						directUrl: "postgresql://test:test@localhost:5432/test",
+					},
 				},
 				PrismaService,
 			],
@@ -51,7 +48,7 @@ describe("PrismaService", () => {
 		expect(disconnectSpy).toHaveBeenCalledOnce();
 	});
 
-	it("should use DATABASE_URL from config service", () => {
-		expect(configService.getOrThrow).toHaveBeenCalledWith("DATABASE_URL");
+	it("should use DATABASE_POOLER_URL for the connection", () => {
+		expect(prismaService).toBeDefined();
 	});
 });

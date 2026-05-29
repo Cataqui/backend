@@ -49,10 +49,13 @@ describe("JobController", () => {
 
 	describe("create", () => {
 		it("should return JobOutputDto on success", async () => {
-			const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
@@ -60,7 +63,8 @@ describe("JobController", () => {
 				type: JobType.SINGLE,
 				categoryId: "cm3x-cat-1",
 				payment,
-			});
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			const result = await controller.create(dto);
 
@@ -70,10 +74,13 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO directly to jobService.createJob", async () => {
-			const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
@@ -81,7 +88,8 @@ describe("JobController", () => {
 				type: JobType.SINGLE,
 				categoryId: "cm3x-cat-1",
 				payment,
-			});
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			await controller.create(dto);
 
@@ -89,10 +97,13 @@ describe("JobController", () => {
 		});
 
 		it("should forward expiresAt as a string to the service", async () => {
-			const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
@@ -101,7 +112,8 @@ describe("JobController", () => {
 				categoryId: "cm3x-cat-1",
 				payment,
 				expiresAt: "2026-12-01T00:00:00Z",
-			});
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			await controller.create(dto);
 

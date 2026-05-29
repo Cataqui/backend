@@ -21,24 +21,16 @@ export class CreateJobLocationInputDto {
 	@ApiProperty({ name: "city", description: "City name", example: "São Paulo" })
 	@IsString()
 	@Length(2, 100)
-	readonly city: string;
+	readonly city!: string;
 
 	@Expose({ name: "state" })
 	@ApiProperty({ name: "state", description: "State code (2 chars)", example: "SP" })
 	@IsString()
 	@Length(2, 2)
-	readonly state: string;
+	readonly state!: string;
 
 	@Expose({ name: "country" })
 	@ApiProperty({ name: "country", description: "Country code (ISO 3166-1 alpha-2)", example: "BR" })
 	@IsISO31661Alpha2()
-	readonly country: string;
-
-	constructor(params: { city: string; state: string; country: string; street?: string; neighborhood?: string }) {
-		this.city = params.city;
-		this.state = params.state;
-		this.country = params.country;
-		this.street = params.street;
-		this.neighborhood = params.neighborhood;
-	}
+	readonly country!: string;
 }

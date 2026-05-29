@@ -61,11 +61,14 @@ const mockJob: MockJobWithCategory = {
 };
 
 function createValidDto(overrides?: Partial<{ expiresAt: string | undefined }>): CreateJobRequestDto {
-	const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-	const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" });
-	const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+	const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+	const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
 
-	return new CreateJobRequestDto({
+	const dtoData: Partial<CreateJobRequestDto> = {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact,
@@ -74,7 +77,8 @@ function createValidDto(overrides?: Partial<{ expiresAt: string | undefined }>):
 		categoryId: "cm3x-cat-1",
 		payment,
 		...(overrides?.expiresAt !== undefined ? { expiresAt: overrides.expiresAt } : {}),
-	});
+	};
+	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
 
 describe("JobService", () => {
@@ -173,10 +177,22 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street and neighborhood when not provided", async () => {
-			const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({ title: "Test", description: "Test description for the job.", contact, location, type: JobType.SINGLE, categoryId: "cm3x-cat-1", payment });
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
+				title: "Test",
+				description: "Test description for the job.",
+				contact,
+				location,
+				type: JobType.SINGLE,
+				categoryId: "cm3x-cat-1",
+				payment,
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			await service.createJob(dto);
 

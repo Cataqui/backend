@@ -1,7 +1,9 @@
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
 import { IEnvSchema } from "./env.validation";
+import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
 
+@Global()
 @Module({
 	imports: [
 		NestConfigModule.forRoot({
@@ -19,5 +21,12 @@ import { IEnvSchema } from "./env.validation";
 			},
 		}),
 	],
+	providers: [
+		{
+			provide: DATABASE_CONFIG_KEY,
+			useFactory: databaseConfig,
+		},
+	],
+	exports: [DATABASE_CONFIG_KEY],
 })
 export class ConfigModule {}

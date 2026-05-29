@@ -4,21 +4,24 @@ import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 describe("CreateJobLocationInputDto", () => {
 	describe("validation", () => {
 		it("should pass with valid location data", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(0);
 		});
 
 		it("should pass with optional street and neighborhood omitted", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(0);
 		});
 
 		it("should fail with city shorter than 2 chars", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "S", state: "SP", country: "BR" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "S", state: "SP", country: "BR" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(1);
@@ -26,7 +29,8 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with state not exactly 2 chars", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "São Paulo", state: "SPA", country: "BR" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SPA", country: "BR" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(1);
@@ -34,7 +38,8 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with country not exactly 2 chars", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BRA" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BRA" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(1);
@@ -42,7 +47,8 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with invalid 2-letter country code", async () => {
-			const dto = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "XX" });
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "XX" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(1);

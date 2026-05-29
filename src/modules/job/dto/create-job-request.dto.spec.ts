@@ -6,11 +6,14 @@ import { CreateJobPaymentInputDto } from "./create-job-payment-input.dto";
 import { JobType, JobPaymentRecurrence } from "../../../../generated/prisma/client.js";
 
 function createValidDto(): CreateJobRequestDto {
-	const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-	const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" });
-	const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+	const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+	const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
 
-	return new CreateJobRequestDto({
+	const dtoData: Partial<CreateJobRequestDto> = {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact,
@@ -18,7 +21,8 @@ function createValidDto(): CreateJobRequestDto {
 		type: JobType.SINGLE,
 		categoryId: "cm3x-cat-id",
 		payment,
-	});
+	};
+	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
 
 describe("CreateJobRequestDto", () => {
@@ -68,10 +72,13 @@ describe("CreateJobRequestDto", () => {
 		});
 
 		it("should pass with valid expires_at", async () => {
-			const contact = new CreateJobContactInputDto({ name: "João Silva", whatsappNumber: "+5511999999999" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
@@ -80,7 +87,8 @@ describe("CreateJobRequestDto", () => {
 				categoryId: "cm3x-cat-id",
 				payment,
 				expiresAt: "2026-06-28T00:00:00Z",
-			});
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			const errors = await validate(dto);
 
@@ -98,8 +106,23 @@ describe("CreateJobRequestDto", () => {
 		});
 
 		it("should fail with invalid expires_at", async () => {
-			const dto = createValidDto();
-			(dto as { expiresAt: string }).expiresAt = "not-a-date";
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
+				title: "Help unload truck",
+				description: "Need someone to help unload a delivery truck.",
+				contact,
+				location,
+				type: JobType.SINGLE,
+				categoryId: "cm3x-cat-id",
+				payment,
+				expiresAt: "not-a-date",
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			const errors = await validate(dto);
 
@@ -108,10 +131,13 @@ describe("CreateJobRequestDto", () => {
 		});
 
 		it("should validate nested contact errors", async () => {
-			const contact = new CreateJobContactInputDto({ name: "", whatsappNumber: "" });
-			const location = new CreateJobLocationInputDto({ city: "São Paulo", state: "SP", country: "BR" });
-			const payment = new CreateJobPaymentInputDto({ amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" });
-			const dto = new CreateJobRequestDto({
+			const contactData: Partial<CreateJobContactInputDto> = { name: "", whatsappNumber: "" };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
@@ -119,7 +145,8 @@ describe("CreateJobRequestDto", () => {
 				type: JobType.SINGLE,
 				categoryId: "cm3x-cat-id",
 				payment,
-			});
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
 			const errors = await validate(dto);
 

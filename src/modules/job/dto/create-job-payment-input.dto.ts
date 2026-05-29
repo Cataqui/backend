@@ -8,7 +8,7 @@ export class CreateJobPaymentInputDto {
 	@ApiProperty({ name: "amount", description: "Payment amount", example: 150.0 })
 	@IsNumber()
 	@IsPositive()
-	readonly amount: number;
+	readonly amount!: number;
 
 	@Expose({ name: "recurrence" })
 	@ApiProperty({
@@ -18,16 +18,10 @@ export class CreateJobPaymentInputDto {
 		example: JobPaymentRecurrence.DAILY,
 	})
 	@IsEnum(JobPaymentRecurrence)
-	readonly recurrence: JobPaymentRecurrence;
+	readonly recurrence!: JobPaymentRecurrence;
 
 	@Expose({ name: "currency" })
 	@ApiProperty({ name: "currency", description: "Currency code (ISO 4217)", example: "BRL" })
 	@IsISO4217CurrencyCode()
-	readonly currency: string;
-
-	constructor(params: { amount: number; recurrence: JobPaymentRecurrence; currency: string }) {
-		this.amount = params.amount;
-		this.recurrence = params.recurrence;
-		this.currency = params.currency;
-	}
+	readonly currency!: string;
 }
