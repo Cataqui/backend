@@ -3,10 +3,10 @@ import { CreateJobRequestDto } from "./create-job-request.dto";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobPaymentInputDto } from "./create-job-payment-input.dto";
-import { JobType, JobPaymentRecurrence } from "../../../../generated/prisma/client.js";
+import { JobType, JobPaymentRecurrence, ContactMethod } from "../../../../generated/prisma/client.js";
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
@@ -85,7 +85,7 @@ describe("CreateJobRequestDto", () => {
 		});
 
 		it("should validate nested contact errors", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "", whatsappNumber: "" };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "", phoneNumber: "", method: undefined as unknown as ContactMethod };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);

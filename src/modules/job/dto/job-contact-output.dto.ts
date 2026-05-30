@@ -1,30 +1,32 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
+import { ContactMethod } from "../../../../generated/prisma/client.js";
 
 export class JobContactOutputDto {
 	@Expose({ name: "name" })
 	@ApiProperty({ name: "name", description: "Contact person's name", example: "João Silva" })
 	readonly name: string;
 
-	@Expose({ name: "whatsapp_number" })
+	@Expose({ name: "phone_number" })
 	@ApiProperty({
-		name: "whatsapp_number",
-		description: "WhatsApp number with country code",
+		name: "phone_number",
+		description: "Phone number with country code",
 		example: "+5511999999999",
 	})
-	readonly whatsappNumber: string;
+	readonly phoneNumber: string;
 
-	@Expose({ name: "whatsapp_url" })
+	@Expose({ name: "contact_method" })
 	@ApiProperty({
-		name: "whatsapp_url",
-		description: "WhatsApp deep link URL",
-		example: "https://wa.me/5511999999999",
+		name: "contact_method",
+		enum: ContactMethod,
+		description: "Preferred contact method",
+		example: ContactMethod.WHATSAPP,
 	})
-	readonly whatsappUrl: string;
+	readonly method: ContactMethod;
 
-	constructor(params: { contactName: string; contactWhatsapp: string }) {
+	constructor(params: { contactName: string; contactPhoneNumber: string; contactMethod: ContactMethod }) {
 		this.name = params.contactName;
-		this.whatsappNumber = params.contactWhatsapp;
-		this.whatsappUrl = `https://wa.me/${params.contactWhatsapp.replace("+", "")}`;
+		this.phoneNumber = params.contactPhoneNumber;
+		this.method = params.contactMethod;
 	}
 }

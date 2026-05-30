@@ -3,7 +3,7 @@ import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobOutputDto } from "./dto/job-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence } from "../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentRecurrence, ContactMethod } from "../../../generated/prisma/client.js";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -18,7 +18,8 @@ interface MockJobWithCategory {
 	title: string;
 	description: string;
 	contactName: string;
-	contactWhatsapp: string;
+	contactPhoneNumber: string;
+	contactMethod: string;
 	street: string | null;
 	neighborhood: string | null;
 	city: string;
@@ -41,7 +42,8 @@ const mockJob: MockJobWithCategory = {
 	title: "Help unload truck",
 	description: "Need someone to help unload a delivery truck.",
 	contactName: "João Silva",
-	contactWhatsapp: "+5511999999999",
+	contactPhoneNumber: "+5511999999999",
+	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -60,7 +62,7 @@ const mockJob: MockJobWithCategory = {
 };
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
@@ -135,7 +137,8 @@ describe("JobService", () => {
 				description: "Need someone to help unload a delivery truck.",
 				status: JobStatus.ACTIVE,
 				contactName: "João Silva",
-				contactWhatsapp: "+5511999999999",
+				contactPhoneNumber: "+5511999999999",
+				contactMethod: "WHATSAPP",
 				street: "Rua das Flores, 123",
 				neighborhood: "Centro",
 				city: "São Paulo",
@@ -150,7 +153,7 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street and neighborhood when not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);

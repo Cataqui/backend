@@ -12,14 +12,14 @@ import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
 import { PaymentOutputDto } from "./dto/payment-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence } from "../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentRecurrence, ContactMethod } from "../../../generated/prisma/client.js";
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
 		jobId: "cm3x-job-1",
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
-		contact: new JobContactOutputDto({ contactName: "João Silva", contactWhatsapp: "+5511999999999" }),
+		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: ContactMethod.WHATSAPP }),
 		location: new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" }),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
 		payment: new PaymentOutputDto({ paymentAmount: 150.0, paymentRecurrence: JobPaymentRecurrence.SINGLE, paymentCurrency: "BRL" }),
@@ -50,7 +50,7 @@ describe("JobController", () => {
 
 	describe("create", () => {
 		it("should return JobOutputDto on success", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
@@ -75,7 +75,7 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);

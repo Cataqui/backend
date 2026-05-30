@@ -16,3 +16,8 @@ enum JobPaymentRecurrence {
   MONTHLY
   YEARLY
 }
+
+enum ContactMethod {
+  WHATSAPP
+  PHONE_CALL
+}

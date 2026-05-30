@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
 import { JobOutputDto } from "./job-output.dto";
-import { JobStatus, JobType } from "../../../../generated/prisma/client.js";
+import { JobStatus, JobType, ContactMethod } from "../../../../generated/prisma/client.js";
 
 function createMockDatabaseJob() {
 	return {
@@ -8,7 +8,8 @@ function createMockDatabaseJob() {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contactName: "João Silva",
-		contactWhatsapp: "+5511999999999",
+		contactPhoneNumber: "+5511999999999",
+		contactMethod: ContactMethod.WHATSAPP,
 		street: "Rua das Flores, 123",
 		neighborhood: "Centro",
 		city: "São Paulo",
@@ -43,8 +44,8 @@ describe("JobOutputDto", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
 
 			expect(dto.contact.name).toBe("João Silva");
-			expect(dto.contact.whatsappNumber).toBe("+5511999999999");
-			expect(dto.contact.whatsappUrl).toBe("https://wa.me/5511999999999");
+			expect(dto.contact.phoneNumber).toBe("+5511999999999");
+			expect(dto.contact.method).toBe(ContactMethod.WHATSAPP);
 		});
 
 		it("should construct nested location DTO", () => {
@@ -106,8 +107,8 @@ describe("JobOutputDto", () => {
 			const contact = plain["contact"] as Record<string, unknown>;
 
 			expect(contact).toHaveProperty("name", "João Silva");
-			expect(contact).toHaveProperty("whatsapp_number", "+5511999999999");
-			expect(contact).toHaveProperty("whatsapp_url", "https://wa.me/5511999999999");
+			expect(contact).toHaveProperty("phone_number", "+5511999999999");
+			expect(contact).toHaveProperty("contact_method", "WHATSAPP");
 		});
 
 		it("should serialize nested category with category_id", () => {
