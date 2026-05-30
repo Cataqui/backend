@@ -34,7 +34,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 16 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(16);
+	it("should have exactly 17 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(17);
 	});
 });

@@ -12,6 +12,7 @@ import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig, type IGlobalThrottleC
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 async function buildApp(overrideConfig?: IGlobalThrottleConfig): Promise<NestFastifyApplication> {
 	const testBuilder = Test.createTestingModule({

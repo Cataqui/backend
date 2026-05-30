@@ -17,6 +17,7 @@ import { ErrorOutputDto } from "../src/shared/errors/error-output.dto";
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 const TEST_CONFIG: IRequestSizeConfig = {
 	bodyLimitBytes: 2048,

@@ -5,6 +5,9 @@ export default defineConfig({
 	test: {
 		globals: true,
 		include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
+		env: {
+			CORS_ORIGINS: "http://localhost:3000",
+		},
 		coverage: {
 			provider: "v8",
 			include: ["src/**/*.ts"],

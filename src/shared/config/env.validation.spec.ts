@@ -8,6 +8,7 @@ describe("IEnvSchema", () => {
 				PORT: "4000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				CORS_ORIGINS: "http://localhost:3000",
 			});
 
 			expect(result.success).toBe(true);
@@ -23,6 +24,7 @@ describe("IEnvSchema", () => {
 	describe("defaults", () => {
 		it("should default NODE_ENV to 'development'", () => {
 			const result = IEnvSchema.safeParse({
+				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
@@ -35,6 +37,7 @@ describe("IEnvSchema", () => {
 
 		it("should default PORT to 3000", () => {
 			const result = IEnvSchema.safeParse({
+				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
@@ -48,6 +51,7 @@ describe("IEnvSchema", () => {
 		it("should coerce PORT from string to number", () => {
 			const result = IEnvSchema.safeParse({
 				PORT: "8080",
+				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
@@ -101,6 +105,40 @@ describe("IEnvSchema", () => {
 		it("should fail when PORT is not a valid number", () => {
 			const result = IEnvSchema.safeParse({
 				PORT: "not-a-number",
+				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe("CORS_ORIGINS", () => {
+		it("should accept a valid CORS_ORIGINS string", () => {
+			const result = IEnvSchema.safeParse({
+				CORS_ORIGINS: "https://cataqui.com,https://app.cataqui.com",
+				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+			});
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.CORS_ORIGINS).toBe("https://cataqui.com,https://app.cataqui.com");
+			}
+		});
+
+		it("should fail when CORS_ORIGINS is missing", () => {
+			const result = IEnvSchema.safeParse({
+				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should fail when CORS_ORIGINS is empty", () => {
+			const result = IEnvSchema.safeParse({
+				CORS_ORIGINS: "",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
