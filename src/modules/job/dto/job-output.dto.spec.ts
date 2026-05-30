@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
 import { JobOutputDto } from "./job-output.dto";
-import { JobStatus, JobType, ContactMethod } from "../../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentType, ContactMethod } from "../../../../generated/prisma/client.js";
 
 function createMockDatabaseJob() {
 	return {
@@ -17,7 +17,10 @@ function createMockDatabaseJob() {
 		country: "BR",
 		status: "ACTIVE" as const,
 		type: "SINGLE" as const,
-		paymentAmount: { toNumber: (): number => 150.0 },
+		paymentType: "FIXED" as const,
+		paymentMinAmount: { toNumber: (): number => 150.0 },
+		paymentMaxAmount: null,
+		paymentNote: null,
 		paymentRecurrence: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		categoryId: "cm3x-cat-1",
@@ -79,7 +82,10 @@ describe("JobOutputDto", () => {
 		it("should construct nested payment DTO", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
 
-			expect(dto.payment.amount).toBe(150.0);
+			expect(dto.payment.type).toBe(JobPaymentType.FIXED);
+			expect(dto.payment.minAmount).toBe(150.0);
+			expect(dto.payment.maxAmount).toBeUndefined();
+			expect(dto.payment.note).toBeUndefined();
 			expect(dto.payment.recurrence).toBe("SINGLE");
 			expect(dto.payment.currency).toBe("BRL");
 		});
@@ -95,7 +101,7 @@ describe("JobOutputDto", () => {
 	describe("serialization", () => {
 		it("should serialize job_id as snake_case", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("job_id", "cm3x-1234-abcd");
 			expect(plain).not.toHaveProperty("jobId");
@@ -103,7 +109,7 @@ describe("JobOutputDto", () => {
 
 		it("should serialize nested contact with snake_case keys", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const contact = plain["contact"] as Record<string, unknown>;
 
 			expect(contact).toHaveProperty("name", "João Silva");
@@ -113,7 +119,7 @@ describe("JobOutputDto", () => {
 
 		it("should serialize nested category with category_id", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const category = plain["category"] as Record<string, unknown>;
 
 			expect(category).toHaveProperty("category_id", "cm3x-cat-1");
@@ -123,17 +129,20 @@ describe("JobOutputDto", () => {
 
 		it("should serialize nested payment with expected keys", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const payment = plain["payment"] as Record<string, unknown>;
 
-			expect(payment).toHaveProperty("amount", 150.0);
+			expect(payment).toHaveProperty("type", "FIXED");
+			expect(payment).toHaveProperty("min_amount", 150.0);
 			expect(payment).toHaveProperty("recurrence", "SINGLE");
 			expect(payment).toHaveProperty("currency", "BRL");
+			expect(payment).not.toHaveProperty("max_amount");
+			expect(payment).not.toHaveProperty("note");
 		});
 
 		it("should serialize dates as ISO strings", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("created_at", "2026-05-28T10:00:00.000Z");
 			expect(plain).toHaveProperty("updated_at", "2026-05-28T10:00:00.000Z");

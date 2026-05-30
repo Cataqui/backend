@@ -3,13 +3,13 @@ import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobOutputDto } from "./dto/job-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence, ContactMethod } from "../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentRecurrence, JobPaymentType, ContactMethod } from "../../../generated/prisma/client.js";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
-import { CreateJobPaymentInputDto } from "./dto/create-job-payment-input.dto";
+import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -27,7 +27,10 @@ interface MockJobWithCategory {
 	country: string;
 	status: string;
 	type: string;
-	paymentAmount: { toNumber(): number };
+	paymentType: string;
+	paymentMinAmount: { toNumber(): number } | null;
+	paymentMaxAmount: { toNumber(): number } | null;
+	paymentNote: string | null;
 	paymentRecurrence: string;
 	paymentCurrency: string;
 	categoryId: string;
@@ -51,7 +54,10 @@ const mockJob: MockJobWithCategory = {
 	country: "BR",
 	status: "ACTIVE",
 	type: "SINGLE",
-	paymentAmount: { toNumber: (): number => 150.0 },
+	paymentType: "FIXED",
+	paymentMinAmount: { toNumber: (): number => 150.0 },
+	paymentMaxAmount: null,
+	paymentNote: null,
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
 	categoryId: "cm3x-cat-1",
@@ -66,8 +72,8 @@ function createValidDto(): CreateJobRequestDto {
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-	const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
-	const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 
 	const dtoData: Partial<CreateJobRequestDto> = {
 		title: "Help unload truck",
@@ -145,7 +151,10 @@ describe("JobService", () => {
 				state: "SP",
 				country: "BR",
 				type: JobType.SINGLE,
-				paymentAmount: 150.0,
+				paymentType: JobPaymentType.FIXED,
+				paymentMinAmount: 150.0,
+				paymentMaxAmount: null,
+				paymentNote: null,
 				paymentRecurrence: JobPaymentRecurrence.SINGLE,
 				paymentCurrency: "BRL",
 				categoryId: "cm3x-cat-1",
@@ -157,8 +166,8 @@ describe("JobService", () => {
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
-			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Test",
 				description: "Test description for the job.",

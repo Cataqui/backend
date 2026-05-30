@@ -6,13 +6,13 @@ import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
-import { CreateJobPaymentInputDto } from "./dto/create-job-payment-input.dto";
+import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
 import { PaymentOutputDto } from "./dto/payment-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence, ContactMethod } from "../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentRecurrence, JobPaymentType, ContactMethod } from "../../../generated/prisma/client.js";
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
@@ -22,7 +22,14 @@ function createMockJobOutputDto(): JobOutputDto {
 		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: ContactMethod.WHATSAPP }),
 		location: new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" }),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
-		payment: new PaymentOutputDto({ paymentAmount: 150.0, paymentRecurrence: JobPaymentRecurrence.SINGLE, paymentCurrency: "BRL" }),
+		payment: new PaymentOutputDto({
+			paymentType: JobPaymentType.FIXED,
+			paymentMinAmount: 150.0,
+			paymentMaxAmount: null,
+			paymentNote: null,
+			paymentRecurrence: JobPaymentRecurrence.SINGLE,
+			paymentCurrency: "BRL",
+		}),
 		status: JobStatus.ACTIVE,
 		type: JobType.SINGLE,
 		createdAt: "2026-05-28T10:00:00.000Z",
@@ -54,8 +61,8 @@ describe("JobController", () => {
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
-			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
@@ -79,8 +86,8 @@ describe("JobController", () => {
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
-			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",

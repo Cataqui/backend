@@ -6,7 +6,10 @@ function createMockDatabaseJob() {
 		id: "cm3x-1234-abcd",
 		title: "Help unload truck",
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
-		paymentAmount: { toNumber: (): number => 150.0 },
+		paymentType: "FIXED" as const,
+		paymentMinAmount: { toNumber: (): number => 150.0 },
+		paymentMaxAmount: null,
+		paymentNote: null,
 		paymentRecurrence: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		neighborhood: "Centro",
@@ -28,7 +31,10 @@ describe("FeedItemOutputDto", () => {
 		it("should construct nested payment DTO", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
 
-			expect(dto.payment.amount).toBe(150.0);
+			expect(dto.payment.type).toBe("FIXED");
+			expect(dto.payment.minAmount).toBe(150.0);
+			expect(dto.payment.maxAmount).toBeUndefined();
+			expect(dto.payment.note).toBeUndefined();
 			expect(dto.payment.recurrence).toBe("SINGLE");
 			expect(dto.payment.currency).toBe("BRL");
 		});
@@ -45,7 +51,7 @@ describe("FeedItemOutputDto", () => {
 	describe("serialization", () => {
 		it("should serialize job_id as snake_case", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("job_id", "cm3x-1234-abcd");
 			expect(plain).not.toHaveProperty("jobId");
@@ -53,24 +59,27 @@ describe("FeedItemOutputDto", () => {
 
 		it("should serialize created_at as snake_case", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("created_at", "2026-05-28T10:00:00.000Z");
 		});
 
 		it("should serialize nested payment with snake_case keys", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const payment = plain["payment"] as Record<string, unknown>;
 
-			expect(payment).toHaveProperty("amount", 150.0);
+			expect(payment).toHaveProperty("type", "FIXED");
+			expect(payment).toHaveProperty("min_amount", 150.0);
 			expect(payment).toHaveProperty("recurrence", "SINGLE");
 			expect(payment).toHaveProperty("currency", "BRL");
+			expect(payment).not.toHaveProperty("max_amount");
+			expect(payment).not.toHaveProperty("note");
 		});
 
 		it("should serialize nested location with snake_case keys", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const location = plain["location"] as Record<string, unknown>;
 
 			expect(location).toHaveProperty("neighborhood", "Centro");

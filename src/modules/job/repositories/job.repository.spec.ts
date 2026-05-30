@@ -28,7 +28,10 @@ interface MockJobWithCategory {
 	country: string;
 	status: string;
 	type: string;
-	paymentAmount: { toNumber(): number };
+	paymentType: string;
+	paymentMinAmount: { toNumber(): number } | null;
+	paymentMaxAmount: { toNumber(): number } | null;
+	paymentNote: string | null;
 	paymentRecurrence: string;
 	paymentCurrency: string;
 	categoryId: string;
@@ -51,7 +54,10 @@ const mockJob: MockJobWithCategory = {
 	country: "BR",
 	status: "ACTIVE",
 	type: "SINGLE",
-	paymentAmount: { toNumber: (): number => 150.0 },
+	paymentType: "FIXED",
+	paymentMinAmount: { toNumber: (): number => 150.0 },
+	paymentMaxAmount: null,
+	paymentNote: null,
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
 	categoryId: "cm3x-cat-1",
@@ -80,7 +86,10 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	state: "SP",
 	country: "BR",
 	type: "SINGLE",
-	paymentAmount: 150.0,
+	paymentType: "FIXED",
+	paymentMinAmount: 150.0,
+	paymentMaxAmount: null,
+	paymentNote: null,
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
 	categoryId: "cm3x-cat-1",
@@ -123,7 +132,10 @@ describe("JobRepository", () => {
 					state: "SP",
 					country: "BR",
 					type: "SINGLE",
-					paymentAmount: 150.0,
+					paymentType: "FIXED",
+					paymentMinAmount: 150.0,
+					paymentMaxAmount: null,
+					paymentNote: null,
 					paymentRecurrence: "SINGLE",
 					paymentCurrency: "BRL",
 					categoryId: "cm3x-cat-1",

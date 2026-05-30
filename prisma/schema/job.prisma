@@ -12,7 +12,10 @@ model Job {
   country           String            @db.VarChar(2)
   status            JobStatus
   type              JobType
-  paymentAmount     Decimal           @map("payment_amount") @db.Decimal(10, 2)
+  paymentType       JobPaymentType    @map("payment_type")
+  paymentMinAmount  Decimal?          @map("payment_min_amount") @db.Decimal(10, 2)
+  paymentMaxAmount  Decimal?          @map("payment_max_amount") @db.Decimal(10, 2)
+  paymentNote       String?           @map("payment_note") @db.Text
   paymentRecurrence JobPaymentRecurrence @map("payment_recurrence")
   paymentCurrency   String            @map("payment_currency") @db.VarChar(3)
   categoryId        String            @map("category_id") @db.Uuid

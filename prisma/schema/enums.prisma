@@ -17,6 +17,13 @@ enum JobPaymentRecurrence {
   YEARLY
 }
 
+enum JobPaymentType {
+  FIXED
+  RANGE
+  FLEXIBLE
+  OTHER
+}
+
 enum ContactMethod {
   WHATSAPP
   PHONE_CALL

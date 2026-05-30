@@ -3,7 +3,8 @@ import { Expose, Type } from "class-transformer";
 import { IsString, Length, IsEnum, ValidateNested, IsUUID } from "class-validator";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
-import { CreateJobPaymentInputDto } from "./create-job-payment-input.dto";
+import { JobPaymentInputDto } from "./job-payment-input.dto";
+import { IsValidJobPayment } from "../decorators/is-valid-job-payment.decorator";
 import { JobType } from "../../../../generated/prisma/client.js";
 
 export class CreateJobRequestDto {
@@ -42,8 +43,9 @@ export class CreateJobRequestDto {
 	readonly categoryId!: string;
 
 	@Expose({ name: "payment" })
-	@ApiProperty({ name: "payment", description: "Payment details", type: CreateJobPaymentInputDto })
+	@ApiProperty({ name: "payment", description: "Payment details", type: JobPaymentInputDto })
+	@IsValidJobPayment()
 	@ValidateNested()
-	@Type(() => CreateJobPaymentInputDto)
-	readonly payment!: CreateJobPaymentInputDto;
+	@Type(() => JobPaymentInputDto)
+	readonly payment!: JobPaymentInputDto;
 }

@@ -2,7 +2,7 @@ import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { FeedPaymentOutputDto } from "./feed-payment-output.dto";
 import { FeedLocationOutputDto } from "./feed-location-output.dto";
-import type { JobPaymentRecurrence } from "../../../../generated/prisma/client.js";
+import type { JobPaymentRecurrence, JobPaymentType } from "../../../../generated/prisma/client.js";
 
 @ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto)
 export class FeedItemOutputDto {
@@ -40,7 +40,10 @@ export class FeedItemOutputDto {
 		id: string;
 		title: string;
 		createdAt: Date;
-		paymentAmount: { toNumber(): number } | number;
+		paymentType: JobPaymentType;
+		paymentMinAmount: { toNumber(): number } | number | null;
+		paymentMaxAmount: { toNumber(): number } | number | null;
+		paymentNote: string | null;
 		paymentRecurrence: JobPaymentRecurrence;
 		paymentCurrency: string;
 		neighborhood: string | null;
@@ -52,7 +55,10 @@ export class FeedItemOutputDto {
 			title: job.title,
 			createdAt: job.createdAt.toISOString(),
 			payment: new FeedPaymentOutputDto({
-				paymentAmount: job.paymentAmount,
+				paymentType: job.paymentType,
+				paymentMinAmount: job.paymentMinAmount,
+				paymentMaxAmount: job.paymentMaxAmount,
+				paymentNote: job.paymentNote,
 				paymentRecurrence: job.paymentRecurrence,
 				paymentCurrency: job.paymentCurrency,
 			}),

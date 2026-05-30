@@ -10,7 +10,10 @@ function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; c
 		id: overrides.id,
 		title: overrides.title ?? "Help unload truck",
 		createdAt: overrides.createdAt,
-		paymentAmount: overrides.paymentAmount ?? { toNumber: () => 150.0 },
+		paymentType: overrides.paymentType ?? ("FIXED" as const),
+		paymentMinAmount: overrides.paymentMinAmount ?? { toNumber: () => 150.0 },
+		paymentMaxAmount: overrides.paymentMaxAmount ?? null,
+		paymentNote: overrides.paymentNote ?? null,
 		paymentRecurrence: overrides.paymentRecurrence ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
 		neighborhood: overrides.neighborhood ?? "Centro",
@@ -127,7 +130,8 @@ describe("FeedService", () => {
 
 			expect(result.data[0]!.jobId).toBe("job-1");
 			expect(result.data[0]!.title).toBe("Help unload truck");
-			expect(result.data[0]!.payment.amount).toBe(150.0);
+			expect(result.data[0]!.payment.type).toBe("FIXED");
+			expect(result.data[0]!.payment.minAmount).toBe(150.0);
 			expect(result.data[0]!.location.city).toBe("São Paulo");
 		});
 
