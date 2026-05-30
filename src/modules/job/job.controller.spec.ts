@@ -31,7 +31,7 @@ function createMockJobOutputDto(): JobOutputDto {
 			paymentCurrency: "BRL",
 		}),
 		status: JobStatus.ACTIVE,
-		type: JobType.SINGLE,
+		type: JobType.TASK,
 		createdAt: "2026-05-28T10:00:00.000Z",
 		updatedAt: "2026-05-28T10:00:00.000Z",
 	});
@@ -68,7 +68,7 @@ describe("JobController", () => {
 				description: "Need someone to help unload a delivery truck.",
 				contact,
 				location,
-				type: JobType.SINGLE,
+				type: JobType.TASK,
 				categoryId: "cm3x-cat-1",
 				payment,
 			};
@@ -93,7 +93,7 @@ describe("JobController", () => {
 				description: "Need someone to help unload a delivery truck.",
 				contact,
 				location,
-				type: JobType.SINGLE,
+				type: JobType.TASK,
 				categoryId: "cm3x-cat-1",
 				payment,
 			};

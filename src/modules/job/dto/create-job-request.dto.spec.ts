@@ -18,7 +18,7 @@ function createValidDto(): CreateJobRequestDto {
 		description: "Need someone to help unload a delivery truck.",
 		contact,
 		location,
-		type: JobType.SINGLE,
+		type: JobType.TASK,
 		categoryId: "550e8400-e29b-41d4-a716-446655440000",
 		payment,
 	};
@@ -96,7 +96,7 @@ describe("CreateJobRequestDto", () => {
 				description: "Need someone to help unload a delivery truck.",
 				contact,
 				location,
-				type: JobType.SINGLE,
+				type: JobType.TASK,
 				categoryId: "550e8400-e29b-41d4-a716-446655440000",
 				payment,
 			};
@@ -112,7 +112,7 @@ describe("CreateJobRequestDto", () => {
 		const baseDto = {
 			title: "Help unload truck",
 			description: "Need someone to help unload a delivery truck.",
-			type: JobType.SINGLE,
+			type: JobType.TASK,
 			categoryId: "550e8400-e29b-41d4-a716-446655440000",
 		};
 

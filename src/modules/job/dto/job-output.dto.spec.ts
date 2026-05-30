@@ -16,7 +16,7 @@ function createMockDatabaseJob() {
 		state: "SP",
 		country: "BR",
 		status: "ACTIVE" as const,
-		type: "SINGLE" as const,
+		type: "TASK" as const,
 		paymentType: "FIXED" as const,
 		paymentMinAmount: { toNumber: (): number => 150.0 },
 		paymentMaxAmount: null,
@@ -40,7 +40,7 @@ describe("JobOutputDto", () => {
 			expect(dto.title).toBe("Help unload truck");
 			expect(dto.description).toBe("Need someone to help unload a delivery truck.");
 			expect(dto.status).toBe(JobStatus.ACTIVE);
-			expect(dto.type).toBe(JobType.SINGLE);
+			expect(dto.type).toBe(JobType.TASK);
 		});
 
 		it("should construct nested contact DTO", () => {

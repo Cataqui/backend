@@ -4,13 +4,14 @@ enum JobStatus {
 }
 
 enum JobType {
-  SINGLE
+  TASK
   EMPLOYMENT
   CONTRACTOR
 }
 
 enum JobPaymentRecurrence {
   SINGLE
+  HOURLY
   DAILY
   WEEKLY
   MONTHLY

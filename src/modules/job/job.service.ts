@@ -3,7 +3,8 @@ import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobStatus } from "../../../generated/prisma/client.js";
+import { InvalidJobTypeRecurrenceError } from "./errors/invalid-job-type-recurrence.error";
+import { JobType, JobPaymentRecurrence, JobStatus } from "../../../generated/prisma/client.js";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 @Injectable()
@@ -21,6 +22,10 @@ export class JobService {
 	}
 
 	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
+		if (dto.type !== JobType.TASK && dto.payment.recurrence === JobPaymentRecurrence.SINGLE) {
+			throw new InvalidJobTypeRecurrenceError();
+		}
+
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
 		if (!category) throw new CategoryNotFoundError(dto.categoryId);
 

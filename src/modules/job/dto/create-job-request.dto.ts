@@ -33,7 +33,7 @@ export class CreateJobRequestDto {
 	readonly location!: CreateJobLocationInputDto;
 
 	@Expose({ name: "type" })
-	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: "SINGLE" })
+	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.TASK })
 	@IsEnum(JobType)
 	readonly type!: JobType;
 

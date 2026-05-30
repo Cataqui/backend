@@ -45,7 +45,7 @@ export class JobOutputDto {
 	readonly status: JobStatus;
 
 	@Expose({ name: "type" })
-	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.SINGLE })
+	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.TASK })
 	readonly type: JobType;
 
 	@Expose({ name: "created_at" })
