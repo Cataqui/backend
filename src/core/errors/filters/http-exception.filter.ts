@@ -3,7 +3,7 @@ import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logge
 import { instanceToPlain } from "class-transformer";
 import { ErrorCode } from "../error-code.enum";
 import { ErrorOutputDto } from "../error-output.dto";
-import { RequestUtils } from "../../utils/request.utils";
+import { RequestUtils } from "../../../shared/utils/request.utils";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {

@@ -2,8 +2,8 @@ import { Test } from "@nestjs/testing";
 import { type NestFastifyApplication, FastifyAdapter } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
 import { AppModule } from "../src/app.module";
-import { PrismaService } from "../src/shared/prisma/prisma.service";
-import { configureApp } from "../src/shared/utils/app.factory";
+import { PrismaService } from "../src/core/prisma/prisma.service";
+import { configureApp } from "../src/core/app.factory";
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
@@ -26,7 +26,7 @@ async function buildApp(): Promise<NestFastifyApplication> {
 
 	const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 
-	configureApp(app);
+	await configureApp(app);
 	await app.init();
 
 	return app;

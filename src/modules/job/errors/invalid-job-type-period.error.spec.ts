@@ -1,5 +1,5 @@
 import { InvalidJobTypePeriodError } from "./invalid-job-type-period.error";
-import { ErrorCode } from "../../../shared/errors/error-code.enum";
+import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { JobPaymentAmountPeriod, JobType } from "../../../../generated/prisma/client.js";
 
 describe("InvalidJobTypePeriodError", () => {

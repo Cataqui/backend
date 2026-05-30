@@ -3,7 +3,7 @@ import { instanceToPlain } from "class-transformer";
 import { IRequestSizeConfig } from "../config/request-size.config";
 import { ErrorCode } from "../errors/error-code.enum";
 import { ErrorOutputDto } from "../errors/error-output.dto";
-import { RequestUtils } from "../utils/request.utils";
+import { RequestUtils } from "../../shared/utils/request.utils";
 
 function _buildErrorResponse(errorCode: ErrorCode, message: string, status: number, request: FastifyRequest): Record<string, unknown> {
 	const dto = new ErrorOutputDto(errorCode, message, status, RequestUtils.resolveRequestId(request), new Date().toISOString(), RequestUtils.resolveEndpoint(request));

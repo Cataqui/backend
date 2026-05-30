@@ -1,15 +1,16 @@
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { ValidationPipe, VersioningType, Logger } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import { HttpExceptionFilter } from "../errors/filters/http-exception.filter";
-import { PrismaExceptionFilter } from "../prisma/filters/prisma-exception.filter";
-import { LoggingInterceptor } from "../interceptors/logging.interceptor";
-import { ResponseInterceptor } from "../interceptors/response.interceptor";
-import { requestSizeConfig } from "../config/request-size.config";
-import { registerRequestSizeHooks } from "../hooks/request-size.hook";
-import { CorsBlockedError } from "../errors/cors-blocked.error";
+import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
+import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
+import { LoggingInterceptor } from "./interceptors/logging.interceptor";
+import { ResponseInterceptor } from "./interceptors/response.interceptor";
+import { requestSizeConfig } from "./config/request-size.config";
+import { registerRequestSizeHooks } from "./hooks/request-size.hook";
+import helmet from "@fastify/helmet";
+import { CorsBlockedError } from "./errors/cors-blocked.error";
 
-export function configureApp(app: NestFastifyApplication): void {
+export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	const corsLogger = new Logger("CORS");
 
 	const sizeConfig = requestSizeConfig();
@@ -48,6 +49,7 @@ export function configureApp(app: NestFastifyApplication): void {
 	});
 
 	const fastifyInstance = app.getHttpAdapter().getInstance();
+	await fastifyInstance.register(helmet);
 	registerRequestSizeHooks(fastifyInstance, sizeConfig);
 
 	const swaggerConfig = new DocumentBuilder()

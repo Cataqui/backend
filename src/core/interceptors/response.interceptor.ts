@@ -3,11 +3,11 @@ import type { Observable } from "rxjs";
 import { map } from "rxjs";
 import { instanceToPlain } from "class-transformer";
 import type { FastifyRequest } from "fastify";
-import { RequestUtils } from "../utils/request.utils";
-import { SuccessResponseDto } from "../dto/success-response.dto";
-import { PaginatedSuccessResponseDto } from "../dto/paginated-success-response.dto";
-import { PaginatedResponseDto } from "../dto/paginated-response.dto";
-import { SKIP_ENVELOPE_KEY } from "../decorators/skip-envelope.decorator";
+import { RequestUtils } from "../../shared/utils/request.utils";
+import { SuccessResponseDto } from "../../shared/dto/success-response.dto";
+import { PaginatedSuccessResponseDto } from "../../shared/dto/paginated-success-response.dto";
+import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
+import { SKIP_ENVELOPE_KEY } from "../../shared/decorators/skip-envelope.decorator";
 
 @Injectable()
 export class ResponseInterceptor implements NestInterceptor {

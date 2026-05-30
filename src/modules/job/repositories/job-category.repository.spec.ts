@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
 import { JobCategoryRepository } from "./job-category.repository";
-import { PrismaService } from "../../../shared/prisma/prisma.service";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 
 const mockCategory = { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() };
 

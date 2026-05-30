@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { RequestUtils } from "./request.utils";
-import { InvalidLocaleException } from "../errors/invalid-locale.exception";
+import { InvalidLocaleException } from "../../core/errors/invalid-locale.exception";
 
 function createMockRequest(headers: Record<string, string | undefined>, url = "/v1/test"): FastifyRequest {
 	return { headers, url } as FastifyRequest;

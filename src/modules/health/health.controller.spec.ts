@@ -2,7 +2,7 @@
 import { Test } from "@nestjs/testing";
 import { HealthCheckService, TerminusModule } from "@nestjs/terminus";
 import { HealthController } from "./health.controller";
-import { PrismaService } from "../../shared/prisma/prisma.service";
+import { PrismaService } from "../../core/prisma/prisma.service";
 import { HealthCheckOutputDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";

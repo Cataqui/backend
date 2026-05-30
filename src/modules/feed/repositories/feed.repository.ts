@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../../shared/prisma/prisma.service";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 import { JobStatus, JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 

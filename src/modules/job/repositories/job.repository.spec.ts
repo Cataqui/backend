@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { JobRepository } from "./job.repository";
-import { PrismaService } from "../../../shared/prisma/prisma.service";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { Prisma } from "../../../../generated/prisma/client.js";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */

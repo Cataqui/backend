@@ -3,12 +3,12 @@ import { type NestFastifyApplication, FastifyAdapter } from "@nestjs/platform-fa
 import { ValidationPipe, VersioningType } from "@nestjs/common";
 import { HealthCheckService } from "@nestjs/terminus";
 import { AppModule } from "../src/app.module";
-import { PrismaService } from "../src/shared/prisma/prisma.service";
-import { PrismaExceptionFilter } from "../src/shared/prisma/filters/prisma-exception.filter";
-import { HttpExceptionFilter } from "../src/shared/errors/filters/http-exception.filter";
-import { LoggingInterceptor } from "../src/shared/interceptors/logging.interceptor";
-import { ResponseInterceptor } from "../src/shared/interceptors/response.interceptor";
-import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig, type IGlobalThrottleConfig } from "../src/shared/config/throttle.config";
+import { PrismaService } from "../src/core/prisma/prisma.service";
+import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
+import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
+import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
+import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
+import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig, type IGlobalThrottleConfig } from "../src/core/config/throttle.config";
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";

@@ -4,7 +4,7 @@ import { instanceToPlain } from "class-transformer";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { ErrorOutputDto } from "../../errors/error-output.dto.js";
-import { RequestUtils } from "../../utils/request.utils.js";
+import { RequestUtils } from "../../../shared/utils/request.utils";
 
 const PRISMA_ERROR_MAP: Record<
 	string,

@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
 import { InvalidCursorError } from "./invalid-cursor.error";
-import { ErrorCode } from "../../../shared/errors/error-code.enum";
+import { ErrorCode } from "../../../core/errors/error-code.enum";
 
 describe("InvalidCursorError", () => {
 	it("should have INVALID_CURSOR error code", () => {

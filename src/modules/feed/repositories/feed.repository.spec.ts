@@ -1,6 +1,6 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { FeedRepository } from "./feed.repository";
-import { PrismaService } from "../../../shared/prisma/prisma.service";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
 import { vi } from "vitest";

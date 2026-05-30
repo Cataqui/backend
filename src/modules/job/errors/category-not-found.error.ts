@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "../../../shared/errors/domain-error";
-import { ErrorCode } from "../../../shared/errors/error-code.enum";
+import { DomainError } from "../../../core/errors/domain-error";
+import { ErrorCode } from "../../../core/errors/error-code.enum";
 
 export class CategoryNotFoundError extends DomainError {
 	constructor(categoryId: string) {
