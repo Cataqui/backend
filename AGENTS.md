@@ -472,7 +472,7 @@ When unsure, write the test.
 
 Test runner: **Vitest** with `globals: true`.
 
-Test files must be colocated with source: `src/**/*.spec.ts`.
+Test files must be colocated with source: `src/**/*.spec.ts`. E2E tests may also be placed in `test/**/*.spec.ts`.
 
 Coverage provider: **v8** with minimum 90% thresholds for lines, functions, branches, and statements.
 
@@ -518,6 +518,49 @@ The regression test must:
 - be named after the scenario
 
 Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
+
+### One Assertion Per Test
+
+Every test must contain exactly one `expect` or assertion call. If a behavior requires multiple assertions, split it into multiple tests.
+
+**Incorrect (multiple assertions in one test):**
+
+```typescript
+it("should return a valid post", async () => {
+	const post = await service.findById("123");
+
+	expect(post).not.toBeNull();
+	expect(post.title).toBe("Help Wanted");
+	expect(post.status).toBe(JobStatus.ACTIVE);
+});
+```
+
+**Correct (one assertion per test):**
+
+```typescript
+it("should return a post when found", async () => {
+	const post = await service.findById("123");
+
+	expect(post).not.toBeNull();
+});
+
+it("should return the correct title", async () => {
+	const post = await service.findById("123");
+
+	expect(post.title).toBe("Help Wanted");
+});
+
+it("should return an active status", async () => {
+	const post = await service.findById("123");
+
+	expect(post.status).toBe(JobStatus.ACTIVE);
+});
+```
+
+This ensures that:
+- each test has a single, clear reason to fail
+- test names describe exactly what is being verified
+- failures are immediately obvious without reading assertion details
 
 ---
 
