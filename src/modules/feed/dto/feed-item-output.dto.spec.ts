@@ -10,7 +10,7 @@ function createMockDatabaseJob() {
 		paymentMinAmount: { toNumber: (): number => 150.0 },
 		paymentMaxAmount: null,
 		paymentNote: null,
-		paymentRecurrence: "SINGLE" as const,
+		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		neighborhood: "Centro",
 		city: "São Paulo",
@@ -35,7 +35,7 @@ describe("FeedItemOutputDto", () => {
 			expect(dto.payment.minAmount).toBe(150.0);
 			expect(dto.payment.maxAmount).toBeUndefined();
 			expect(dto.payment.note).toBeUndefined();
-			expect(dto.payment.recurrence).toBe("SINGLE");
+			expect(dto.payment.amountPeriod).toBe("SINGLE");
 			expect(dto.payment.currency).toBe("BRL");
 		});
 
@@ -71,7 +71,7 @@ describe("FeedItemOutputDto", () => {
 
 			expect(payment).toHaveProperty("type", "FIXED");
 			expect(payment).toHaveProperty("min_amount", 150.0);
-			expect(payment).toHaveProperty("recurrence", "SINGLE");
+			expect(payment).toHaveProperty("amount_period", "SINGLE");
 			expect(payment).toHaveProperty("currency", "BRL");
 			expect(payment).not.toHaveProperty("max_amount");
 			expect(payment).not.toHaveProperty("note");

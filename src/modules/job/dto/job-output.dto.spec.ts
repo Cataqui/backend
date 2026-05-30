@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
 import { JobOutputDto } from "./job-output.dto";
-import { JobStatus, JobType, JobPaymentType, ContactMethod } from "../../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentType, JobContactMethod } from "../../../../generated/prisma/client.js";
 
 function createMockDatabaseJob() {
 	return {
@@ -9,19 +9,19 @@ function createMockDatabaseJob() {
 		description: "Need someone to help unload a delivery truck.",
 		contactName: "João Silva",
 		contactPhoneNumber: "+5511999999999",
-		contactMethod: ContactMethod.WHATSAPP,
+		contactMethod: JobContactMethod.WHATSAPP,
 		street: "Rua das Flores, 123",
 		neighborhood: "Centro",
 		city: "São Paulo",
 		state: "SP",
 		country: "BR",
 		status: "ACTIVE" as const,
-		type: "TASK" as const,
+		type: "INDIVIDUAL" as const,
 		paymentType: "FIXED" as const,
 		paymentMinAmount: { toNumber: (): number => 150.0 },
 		paymentMaxAmount: null,
 		paymentNote: null,
-		paymentRecurrence: "SINGLE" as const,
+		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		categoryId: "cm3x-cat-1",
 		category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() },
@@ -40,7 +40,7 @@ describe("JobOutputDto", () => {
 			expect(dto.title).toBe("Help unload truck");
 			expect(dto.description).toBe("Need someone to help unload a delivery truck.");
 			expect(dto.status).toBe(JobStatus.ACTIVE);
-			expect(dto.type).toBe(JobType.TASK);
+			expect(dto.type).toBe(JobType.INDIVIDUAL);
 		});
 
 		it("should construct nested contact DTO", () => {
@@ -48,7 +48,7 @@ describe("JobOutputDto", () => {
 
 			expect(dto.contact.name).toBe("João Silva");
 			expect(dto.contact.phoneNumber).toBe("+5511999999999");
-			expect(dto.contact.method).toBe(ContactMethod.WHATSAPP);
+			expect(dto.contact.method).toBe(JobContactMethod.WHATSAPP);
 		});
 
 		it("should construct nested location DTO", () => {
@@ -86,7 +86,7 @@ describe("JobOutputDto", () => {
 			expect(dto.payment.minAmount).toBe(150.0);
 			expect(dto.payment.maxAmount).toBeUndefined();
 			expect(dto.payment.note).toBeUndefined();
-			expect(dto.payment.recurrence).toBe("SINGLE");
+			expect(dto.payment.amountPeriod).toBe("SINGLE");
 			expect(dto.payment.currency).toBe("BRL");
 		});
 
@@ -134,7 +134,7 @@ describe("JobOutputDto", () => {
 
 			expect(payment).toHaveProperty("type", "FIXED");
 			expect(payment).toHaveProperty("min_amount", 150.0);
-			expect(payment).toHaveProperty("recurrence", "SINGLE");
+			expect(payment).toHaveProperty("amount_period", "SINGLE");
 			expect(payment).toHaveProperty("currency", "BRL");
 			expect(payment).not.toHaveProperty("max_amount");
 			expect(payment).not.toHaveProperty("note");

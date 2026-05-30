@@ -9,41 +9,46 @@ import { JobType } from "../../../../generated/prisma/client.js";
 
 export class CreateJobRequestDto {
 	@Expose({ name: "title" })
-	@ApiProperty({ name: "title", description: "Job title", example: "Help unload truck" })
+	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck" })
 	@IsString()
 	@Length(3, 120)
 	readonly title!: string;
 
 	@Expose({ name: "description" })
-	@ApiProperty({ name: "description", description: "Detailed job description", example: "Need someone to help unload a delivery truck..." })
+	@ApiProperty({ name: "description", description: "Detailed description about the job", example: "Need someone to help unload a delivery truck..." })
 	@IsString()
 	@Length(10, 10000)
 	readonly description!: string;
 
 	@Expose({ name: "contact" })
-	@ApiProperty({ name: "contact", description: "Contact information", type: CreateJobContactInputDto })
+	@ApiProperty({ name: "contact", description: "Person to contact regarding the job offer", type: CreateJobContactInputDto })
 	@ValidateNested()
 	@Type(() => CreateJobContactInputDto)
 	readonly contact!: CreateJobContactInputDto;
 
 	@Expose({ name: "location" })
-	@ApiProperty({ name: "location", description: "Job location", type: CreateJobLocationInputDto })
+	@ApiProperty({ name: "location", description: "Where the job will be executed", type: CreateJobLocationInputDto })
 	@ValidateNested()
 	@Type(() => CreateJobLocationInputDto)
 	readonly location!: CreateJobLocationInputDto;
 
 	@Expose({ name: "type" })
-	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.TASK })
+	@ApiProperty({
+		name: "type",
+		enum: JobType,
+		description: "Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
+		example: JobType.INDIVIDUAL,
+	})
 	@IsEnum(JobType)
 	readonly type!: JobType;
 
 	@Expose({ name: "category_id" })
-	@ApiProperty({ name: "category_id", description: "Job category UUID", example: "afdfd9b2-203d-4528-8a1c-82b6b139039b" })
+	@ApiProperty({ name: "category_id", description: "The category of the job defined as UUI", example: "afdfd9b2-203d-4528-8a1c-82b6b139039b" })
 	@IsUUID()
 	readonly categoryId!: string;
 
 	@Expose({ name: "payment" })
-	@ApiProperty({ name: "payment", description: "Payment details", type: JobPaymentInputDto })
+	@ApiProperty({ name: "payment", description: "Details about how the job payment will be", type: JobPaymentInputDto })
 	@IsValidJobPayment()
 	@ValidateNested()
 	@Type(() => JobPaymentInputDto)

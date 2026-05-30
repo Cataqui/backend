@@ -7,7 +7,7 @@ export class JobCategoryOutputDto {
 	readonly categoryId: string;
 
 	@Expose({ name: "name" })
-	@ApiProperty({ name: "name", description: "Category display name", example: "Moving Help" })
+	@ApiProperty({ name: "name", description: "Localized Category display name", example: "Moving Help" })
 	readonly name: string;
 
 	@Expose({ name: "slug" })

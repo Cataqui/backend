@@ -11,27 +11,27 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
-import { PaymentOutputDto } from "./dto/payment-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence, JobPaymentType, ContactMethod } from "../../../generated/prisma/client.js";
+import { JobPaymentOutputDto } from "./dto/job-payment-output.dto";
+import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
 		jobId: "cm3x-job-1",
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
-		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: ContactMethod.WHATSAPP }),
+		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: JobContactMethod.WHATSAPP }),
 		location: new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" }),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
-		payment: new PaymentOutputDto({
+		payment: new JobPaymentOutputDto({
 			paymentType: JobPaymentType.FIXED,
 			paymentMinAmount: 150.0,
 			paymentMaxAmount: null,
 			paymentNote: null,
-			paymentRecurrence: JobPaymentRecurrence.SINGLE,
+			paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
 			paymentCurrency: "BRL",
 		}),
 		status: JobStatus.ACTIVE,
-		type: JobType.TASK,
+		type: JobType.INDIVIDUAL,
 		createdAt: "2026-05-28T10:00:00.000Z",
 		updatedAt: "2026-05-28T10:00:00.000Z",
 	});
@@ -57,18 +57,18 @@ describe("JobController", () => {
 
 	describe("create", () => {
 		it("should return JobOutputDto on success", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
 				location,
-				type: JobType.TASK,
+				type: JobType.INDIVIDUAL,
 				categoryId: "cm3x-cat-1",
 				payment,
 			};
@@ -82,18 +82,18 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				contact,
 				location,
-				type: JobType.TASK,
+				type: JobType.INDIVIDUAL,
 				categoryId: "cm3x-cat-1",
 				payment,
 			};

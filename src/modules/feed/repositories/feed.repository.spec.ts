@@ -105,7 +105,7 @@ describe("FeedRepository", () => {
 				paymentMinAmount: true,
 				paymentMaxAmount: true,
 				paymentNote: true,
-				paymentRecurrence: true,
+				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
 				city: true,

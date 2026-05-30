@@ -4,7 +4,7 @@ model Job {
   description       String            @db.Text
   contactName       String            @map("contact_name") @db.VarChar(100)
   contactPhoneNumber String            @map("contact_phone_number") @db.VarChar(20)
-  contactMethod      ContactMethod     @map("contact_method")
+  contactMethod      JobContactMethod     @map("contact_method")
   street            String?           @db.VarChar(200)
   neighborhood      String?           @db.VarChar(100)
   city              String            @db.VarChar(100)
@@ -16,7 +16,7 @@ model Job {
   paymentMinAmount  Decimal?          @map("payment_min_amount") @db.Decimal(10, 2)
   paymentMaxAmount  Decimal?          @map("payment_max_amount") @db.Decimal(10, 2)
   paymentNote       String?           @map("payment_note") @db.Text
-  paymentRecurrence JobPaymentRecurrence @map("payment_recurrence")
+  paymentAmountPeriod JobPaymentAmountPeriod @map("payment_amount_period")
   paymentCurrency   String            @map("payment_currency") @db.VarChar(3)
   categoryId        String            @map("category_id") @db.Uuid
   category          JobCategory       @relation(fields: [categoryId], references: [id])

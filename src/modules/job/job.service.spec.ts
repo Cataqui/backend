@@ -3,10 +3,10 @@ import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobOutputDto } from "./dto/job-output.dto";
-import { JobStatus, JobType, JobPaymentRecurrence, JobPaymentType, ContactMethod } from "../../../generated/prisma/client.js";
+import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { InvalidJobTypeRecurrenceError } from "./errors/invalid-job-type-recurrence.error";
+import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
@@ -32,7 +32,7 @@ interface MockJobWithCategory {
 	paymentMinAmount: { toNumber(): number } | null;
 	paymentMaxAmount: { toNumber(): number } | null;
 	paymentNote: string | null;
-	paymentRecurrence: string;
+	paymentAmountPeriod: string;
 	paymentCurrency: string;
 	categoryId: string;
 	createdAt: Date;
@@ -54,12 +54,12 @@ const mockJob: MockJobWithCategory = {
 	state: "SP",
 	country: "BR",
 	status: "ACTIVE",
-	type: "TASK",
+	type: "INDIVIDUAL",
 	paymentType: "FIXED",
 	paymentMinAmount: { toNumber: (): number => 150.0 },
 	paymentMaxAmount: null,
 	paymentNote: null,
-	paymentRecurrence: "SINGLE",
+	paymentAmountPeriod: "SINGLE",
 	paymentCurrency: "BRL",
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
@@ -69,11 +69,11 @@ const mockJob: MockJobWithCategory = {
 };
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 
 	const dtoData: Partial<CreateJobRequestDto> = {
@@ -81,7 +81,7 @@ function createValidDto(): CreateJobRequestDto {
 		description: "Need someone to help unload a delivery truck.",
 		contact,
 		location,
-		type: JobType.TASK,
+		type: JobType.INDIVIDUAL,
 		categoryId: "cm3x-cat-1",
 		payment,
 	};
@@ -89,7 +89,7 @@ function createValidDto(): CreateJobRequestDto {
 }
 
 function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
+	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
@@ -99,10 +99,10 @@ function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInpu
 		description: "Need someone to help unload a delivery truck.",
 		contact,
 		location,
-		type: overrides.type ?? JobType.TASK,
+		type: overrides.type ?? JobType.INDIVIDUAL,
 		categoryId: "cm3x-cat-1",
 		payment:
-			overrides.payment ?? Object.assign(new JobPaymentInputDto(), { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" }),
+			overrides.payment ?? Object.assign(new JobPaymentInputDto(), { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" }),
 	};
 	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
@@ -145,24 +145,24 @@ describe("JobService", () => {
 			await expect(service.createJob(createValidDto(), "en-US")).rejects.toThrow(CategoryNotFoundError);
 		});
 
-		it("should throw InvalidJobTypeRecurrenceError when EMPLOYMENT has SINGLE recurrence", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+		it("should throw InvalidJobTypePeriodError when EMPLOYMENT has SINGLE period", async () => {
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
-			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypeRecurrenceError);
+			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypePeriodError);
 		});
 
-		it("should throw InvalidJobTypeRecurrenceError when CONTRACTOR has SINGLE recurrence", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+		it("should throw InvalidJobTypePeriodError when CONTRACTOR has SINGLE period", async () => {
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.CONTRACTOR, payment });
 
-			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypeRecurrenceError);
+			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypePeriodError);
 		});
 
-		it("should not throw when EMPLOYMENT has non-SINGLE recurrence", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.DAILY, currency: "BRL" };
+		it("should not throw when EMPLOYMENT has non-SINGLE period", async () => {
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.DAILY, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
@@ -194,30 +194,30 @@ describe("JobService", () => {
 				city: "São Paulo",
 				state: "SP",
 				country: "BR",
-				type: JobType.TASK,
+				type: JobType.INDIVIDUAL,
 				paymentType: JobPaymentType.FIXED,
 				paymentMinAmount: 150.0,
 				paymentMaxAmount: null,
 				paymentNote: null,
-				paymentRecurrence: JobPaymentRecurrence.SINGLE,
+				paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
 				paymentCurrency: "BRL",
 				categoryId: "cm3x-cat-1",
 			});
 		});
 
 		it("should pass null for street and neighborhood when not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: ContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Test",
 				description: "Test description for the job.",
 				contact,
 				location,
-				type: JobType.TASK,
+				type: JobType.INDIVIDUAL,
 				categoryId: "cm3x-cat-1",
 				payment,
 			};

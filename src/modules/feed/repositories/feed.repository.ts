@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../shared/prisma/prisma.service";
-import { JobStatus, JobPaymentRecurrence, JobPaymentType } from "../../../../generated/prisma/client.js";
+import { JobStatus, JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 
 export interface FeedItemRaw {
@@ -11,7 +11,7 @@ export interface FeedItemRaw {
 	paymentMinAmount: { toNumber(): number } | null;
 	paymentMaxAmount: { toNumber(): number } | null;
 	paymentNote: string | null;
-	paymentRecurrence: JobPaymentRecurrence;
+	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
 	neighborhood: string | null;
 	city: string;
@@ -42,7 +42,7 @@ export class FeedRepository {
 				paymentMinAmount: true,
 				paymentMaxAmount: true,
 				paymentNote: true,
-				paymentRecurrence: true,
+				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
 				city: true,

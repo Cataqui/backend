@@ -8,7 +8,7 @@ function createMockPaymentData() {
 		paymentMinAmount: { toNumber: (): number => 150.0 },
 		paymentMaxAmount: null,
 		paymentNote: null,
-		paymentRecurrence: "SINGLE" as const,
+		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 	};
 }
@@ -22,7 +22,7 @@ describe("FeedPaymentOutputDto", () => {
 			expect(dto.minAmount).toBe(150.0);
 			expect(dto.maxAmount).toBeUndefined();
 			expect(dto.note).toBeUndefined();
-			expect(dto.recurrence).toBe("SINGLE");
+			expect(dto.amountPeriod).toBe("SINGLE");
 			expect(dto.currency).toBe("BRL");
 		});
 
@@ -32,7 +32,7 @@ describe("FeedPaymentOutputDto", () => {
 				paymentMinAmount: 100.0,
 				paymentMaxAmount: 200.0,
 				paymentNote: null,
-				paymentRecurrence: "DAILY" as const,
+				paymentAmountPeriod: "DAILY" as const,
 				paymentCurrency: "USD",
 			});
 
@@ -47,7 +47,7 @@ describe("FeedPaymentOutputDto", () => {
 				paymentMinAmount: null,
 				paymentMaxAmount: null,
 				paymentNote: "Profit share",
-				paymentRecurrence: "MONTHLY" as const,
+				paymentAmountPeriod: "MONTHLY" as const,
 				paymentCurrency: "BRL",
 			});
 
@@ -66,7 +66,7 @@ describe("FeedPaymentOutputDto", () => {
 			expect(plain).toEqual({
 				type: "FIXED",
 				min_amount: 150.0,
-				recurrence: "SINGLE",
+				amount_period: "SINGLE",
 				currency: "BRL",
 			});
 		});
@@ -77,7 +77,7 @@ describe("FeedPaymentOutputDto", () => {
 				paymentMinAmount: null,
 				paymentMaxAmount: null,
 				paymentNote: null,
-				paymentRecurrence: "SINGLE" as const,
+				paymentAmountPeriod: "SINGLE" as const,
 				paymentCurrency: "BRL",
 			});
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;

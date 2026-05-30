@@ -14,7 +14,7 @@ describe("ErrorCode", () => {
 			"INVALID_CURSOR",
 			"JOB_CATEGORY_NOT_FOUND",
 			"JOB_NOT_FOUND",
-			"INVALID_JOB_TYPE_RECURRENCE",
+			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
 		] as const;
 

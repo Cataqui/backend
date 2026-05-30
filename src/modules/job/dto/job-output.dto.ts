@@ -3,57 +3,62 @@ import { Expose, Type } from "class-transformer";
 import { JobContactOutputDto } from "./job-contact-output.dto";
 import { JobLocationOutputDto } from "./job-location-output.dto";
 import { JobCategoryOutputDto } from "./job-category-output.dto";
-import { PaymentOutputDto } from "./payment-output.dto";
+import { JobPaymentOutputDto } from "./job-payment-output.dto";
 import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
 
-@ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, PaymentOutputDto)
+@ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
 export class JobOutputDto {
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
 	readonly jobId: string;
 
 	@Expose({ name: "title" })
-	@ApiProperty({ name: "title", description: "Job title", example: "Help unload truck" })
+	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck" })
 	readonly title: string;
 
 	@Expose({ name: "description" })
-	@ApiProperty({ name: "description", description: "Detailed job description", example: "Need someone to help unload a delivery truck..." })
+	@ApiProperty({ name: "description", description: "Detailed description about the job", example: "Need someone to help unload a delivery truck..." })
 	readonly description: string;
 
 	@Expose({ name: "contact" })
-	@ApiProperty({ name: "contact", description: "Contact information", type: JobContactOutputDto })
+	@ApiProperty({ name: "contact", description: "Person to contact regarding the job offer", type: JobContactOutputDto })
 	@Type(() => JobContactOutputDto)
 	readonly contact: JobContactOutputDto;
 
 	@Expose({ name: "location" })
-	@ApiProperty({ name: "location", description: "Job location", type: JobLocationOutputDto })
+	@ApiProperty({ name: "location", description: "Where the job will be executed", type: JobLocationOutputDto })
 	@Type(() => JobLocationOutputDto)
 	readonly location: JobLocationOutputDto;
 
 	@Expose({ name: "category" })
-	@ApiProperty({ name: "category", description: "Job category", type: JobCategoryOutputDto })
+	@ApiProperty({ name: "category", description: "The category of the job defined as UUID", type: JobCategoryOutputDto })
 	@Type(() => JobCategoryOutputDto)
 	readonly category: JobCategoryOutputDto;
 
 	@Expose({ name: "payment" })
-	@ApiProperty({ name: "payment", description: "Payment details", type: PaymentOutputDto })
-	@Type(() => PaymentOutputDto)
-	readonly payment: PaymentOutputDto;
+	@ApiProperty({ name: "payment", description: "Details about how the job payment will be", type: JobPaymentOutputDto })
+	@Type(() => JobPaymentOutputDto)
+	readonly payment: JobPaymentOutputDto;
 
 	@Expose({ name: "status" })
-	@ApiProperty({ name: "status", enum: JobStatus, description: "Job status", example: JobStatus.ACTIVE })
+	@ApiProperty({ name: "status", enum: JobStatus, description: "Define if a job accepts new proposals", example: JobStatus.ACTIVE })
 	readonly status: JobStatus;
 
 	@Expose({ name: "type" })
-	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.TASK })
+	@ApiProperty({
+		name: "type",
+		enum: JobType,
+		description: "Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
+		example: JobType.INDIVIDUAL,
+	})
 	readonly type: JobType;
 
 	@Expose({ name: "created_at" })
-	@ApiProperty({ name: "created_at", description: "ISO 8601 creation timestamp", example: "2026-05-28T10:00:00.000Z" })
+	@ApiProperty({ name: "created_at", description: "ISO 8601 timestamp of job creation", example: "2026-05-28T10:00:00.000Z" })
 	readonly createdAt: string;
 
 	@Expose({ name: "updated_at" })
-	@ApiProperty({ name: "updated_at", description: "ISO 8601 last update timestamp", example: "2026-05-28T10:00:00.000Z" })
+	@ApiProperty({ name: "updated_at", description: "ISO 8601 timestamp of last job update", example: "2026-05-28T10:00:00.000Z" })
 	readonly updatedAt: string;
 
 	constructor(params: {
@@ -63,7 +68,7 @@ export class JobOutputDto {
 		contact: JobContactOutputDto;
 		location: JobLocationOutputDto;
 		category: JobCategoryOutputDto;
-		payment: PaymentOutputDto;
+		payment: JobPaymentOutputDto;
 		status: JobStatus;
 		type: JobType;
 		createdAt: string;
@@ -90,12 +95,12 @@ export class JobOutputDto {
 			contact: new JobContactOutputDto({ contactName: job.contactName, contactPhoneNumber: job.contactPhoneNumber, contactMethod: job.contactMethod }),
 			location: new JobLocationOutputDto({ street: job.street, neighborhood: job.neighborhood, city: job.city, state: job.state, country: job.country }),
 			category: new JobCategoryOutputDto({ categoryId: job.category.id, name: categoryDisplayName, slug: job.category.slug }),
-			payment: new PaymentOutputDto({
+			payment: new JobPaymentOutputDto({
 				paymentType: job.paymentType,
 				paymentMinAmount: job.paymentMinAmount,
 				paymentMaxAmount: job.paymentMaxAmount,
 				paymentNote: job.paymentNote,
-				paymentRecurrence: job.paymentRecurrence,
+				paymentAmountPeriod: job.paymentAmountPeriod,
 				paymentCurrency: job.paymentCurrency,
 			}),
 			status: job.status,

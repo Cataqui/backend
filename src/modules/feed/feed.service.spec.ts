@@ -14,7 +14,7 @@ function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; c
 		paymentMinAmount: overrides.paymentMinAmount ?? { toNumber: () => 150.0 },
 		paymentMaxAmount: overrides.paymentMaxAmount ?? null,
 		paymentNote: overrides.paymentNote ?? null,
-		paymentRecurrence: overrides.paymentRecurrence ?? ("SINGLE" as const),
+		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
 		neighborhood: overrides.neighborhood ?? "Centro",
 		city: overrides.city ?? "São Paulo",

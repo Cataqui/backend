@@ -5,18 +5,18 @@ export class FeedLocationOutputDto {
 	@Expose({ name: "neighborhood" })
 	@ApiProperty({
 		name: "neighborhood",
-		description: "Neighborhood or district",
+		description: "Neighborhood or district of the job",
 		example: "Centro",
 		required: false,
 	})
 	readonly neighborhood: string | null;
 
 	@Expose({ name: "city" })
-	@ApiProperty({ name: "city", description: "City name", example: "São Paulo" })
+	@ApiProperty({ name: "city", description: "City name of the job", example: "São Paulo" })
 	readonly city: string;
 
 	@Expose({ name: "state" })
-	@ApiProperty({ name: "state", description: "State code (2 chars)", example: "SP" })
+	@ApiProperty({ name: "state", description: "State code (2 chars) of the job", example: "SP" })
 	readonly state: string;
 
 	constructor(params: { neighborhood: string | null; city: string; state: string }) {

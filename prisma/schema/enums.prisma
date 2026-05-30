@@ -4,12 +4,12 @@ enum JobStatus {
 }
 
 enum JobType {
-  TASK
+  INDIVIDUAL
   EMPLOYMENT
   CONTRACTOR
 }
 
-enum JobPaymentRecurrence {
+enum JobPaymentAmountPeriod {
   SINGLE
   HOURLY
   DAILY
@@ -25,7 +25,7 @@ enum JobPaymentType {
   OTHER
 }
 
-enum ContactMethod {
+enum JobContactMethod {
   WHATSAPP
   PHONE_CALL
 }

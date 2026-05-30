@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { ContactMethod } from "../../../../generated/prisma/client.js";
+import { JobContactMethod } from "../../../../generated/prisma/client.js";
 
 export class JobContactOutputDto {
 	@Expose({ name: "name" })
@@ -18,13 +18,13 @@ export class JobContactOutputDto {
 	@Expose({ name: "contact_method" })
 	@ApiProperty({
 		name: "contact_method",
-		enum: ContactMethod,
+		enum: JobContactMethod,
 		description: "Preferred contact method",
-		example: ContactMethod.WHATSAPP,
+		example: JobContactMethod.WHATSAPP,
 	})
-	readonly method: ContactMethod;
+	readonly method: JobContactMethod;
 
-	constructor(params: { contactName: string; contactPhoneNumber: string; contactMethod: ContactMethod }) {
+	constructor(params: { contactName: string; contactPhoneNumber: string; contactMethod: JobContactMethod }) {
 		this.name = params.contactName;
 		this.phoneNumber = params.contactPhoneNumber;
 		this.method = params.contactMethod;
