@@ -49,7 +49,13 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	});
 
 	const fastifyInstance = app.getHttpAdapter().getInstance();
-	await fastifyInstance.register(helmet);
+	await fastifyInstance.register(helmet, {
+		hsts: {
+			maxAge: 31536000, // 1 Year
+			includeSubDomains: true,
+			preload: true,
+		},
+	});
 	registerRequestSizeHooks(fastifyInstance, sizeConfig);
 
 	const swaggerConfig = new DocumentBuilder()

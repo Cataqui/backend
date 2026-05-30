@@ -140,4 +140,33 @@ describe("Main (e2e)", () => {
 			await app.close();
 		});
 	});
+
+	describe("security headers", () => {
+		it("should set Strict-Transport-Security header (HSTS)", async () => {
+			const app = await buildApp();
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			expect(response.headers["strict-transport-security"]).toBe("max-age=31536000; includeSubDomains; preload");
+
+			await app.close();
+		});
+
+		it("should set X-Content-Type-Options header (helmet nosniff)", async () => {
+			const app = await buildApp();
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			expect(response.headers["x-content-type-options"]).toBe("nosniff");
+
+			await app.close();
+		});
+
+		it("should set X-Frame-Options header (helmet frame guard)", async () => {
+			const app = await buildApp();
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
+
+			await app.close();
+		});
+	});
 });
