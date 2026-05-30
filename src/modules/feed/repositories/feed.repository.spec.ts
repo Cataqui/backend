@@ -34,7 +34,7 @@ describe("FeedRepository", () => {
 	});
 
 	describe("getFeedItems", () => {
-		it("should query ACTIVE and non-expired jobs", async () => {
+		it("should query ACTIVE jobs", async () => {
 			mockFindMany.mockResolvedValue([]);
 
 			await repository.getFeedItems({ limit: 20 });
@@ -42,8 +42,7 @@ describe("FeedRepository", () => {
 			const where = getWhere(0);
 
 			expect(where["status"]).toBe("ACTIVE");
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			expect(where["expiresAt"]).toEqual({ gt: expect.any(Date) });
+			expect(where["expiresAt"]).toBeUndefined();
 		});
 
 		it("should order by createdAt DESC and id DESC", async () => {

@@ -19,7 +19,6 @@ function createMockDatabaseJob() {
 		paymentAmount: { toNumber: (): number => 150.0 },
 		paymentRecurrence: "SINGLE" as const,
 		paymentCurrency: "BRL",
-		expiresAt: new Date("2026-06-28T00:00:00.000Z"),
 		categoryId: "cm3x-cat-1",
 		category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() },
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
@@ -87,7 +86,6 @@ describe("JobOutputDto", () => {
 		it("should convert dates to ISO strings", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
 
-			expect(dto.expiresAt).toBe("2026-06-28T00:00:00.000Z");
 			expect(dto.createdAt).toBe("2026-05-28T10:00:00.000Z");
 			expect(dto.updatedAt).toBe("2026-05-28T10:00:00.000Z");
 		});
@@ -136,7 +134,6 @@ describe("JobOutputDto", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
-			expect(plain).toHaveProperty("expires_at", "2026-06-28T00:00:00.000Z");
 			expect(plain).toHaveProperty("created_at", "2026-05-28T10:00:00.000Z");
 			expect(plain).toHaveProperty("updated_at", "2026-05-28T10:00:00.000Z");
 		});

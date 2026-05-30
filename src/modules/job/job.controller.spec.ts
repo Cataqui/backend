@@ -25,7 +25,6 @@ function createMockJobOutputDto(): JobOutputDto {
 		payment: new PaymentOutputDto({ paymentAmount: 150.0, paymentRecurrence: JobPaymentRecurrence.SINGLE, paymentCurrency: "BRL" }),
 		status: JobStatus.ACTIVE,
 		type: JobType.SINGLE,
-		expiresAt: "2026-06-28T00:00:00.000Z",
 		createdAt: "2026-05-28T10:00:00.000Z",
 		updatedAt: "2026-05-28T10:00:00.000Z",
 	});
@@ -90,30 +89,6 @@ describe("JobController", () => {
 				type: JobType.SINGLE,
 				categoryId: "cm3x-cat-1",
 				payment,
-			};
-			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
-
-			await controller.create(dto, "en-US");
-
-			expect(jobService.createJob).toHaveBeenCalledWith(dto, "en-US");
-		});
-
-		it("should forward expiresAt and locale to the service", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
-			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<CreateJobPaymentInputDto> = { amount: 150.0, recurrence: JobPaymentRecurrence.SINGLE, currency: "BRL" };
-			const payment = Object.assign(new CreateJobPaymentInputDto(), paymentData);
-			const dtoData: Partial<CreateJobRequestDto> = {
-				title: "Help unload truck",
-				description: "Need someone to help unload a delivery truck.",
-				contact,
-				location,
-				type: JobType.SINGLE,
-				categoryId: "cm3x-cat-1",
-				payment,
-				expiresAt: "2026-12-01T00:00:00Z",
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 

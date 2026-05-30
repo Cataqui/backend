@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { IsString, Length, IsOptional, IsEnum, ValidateNested, IsDateString, IsUUID } from "class-validator";
+import { IsString, Length, IsEnum, ValidateNested, IsUUID } from "class-validator";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobPaymentInputDto } from "./create-job-payment-input.dto";
@@ -46,10 +46,4 @@ export class CreateJobRequestDto {
 	@ValidateNested()
 	@Type(() => CreateJobPaymentInputDto)
 	readonly payment!: CreateJobPaymentInputDto;
-
-	@Expose({ name: "expires_at" })
-	@ApiProperty({ name: "expires_at", description: "ISO 8601 expiration timestamp (defaults to 30 days)", example: "2026-06-28T00:00:00Z", required: false })
-	@IsOptional()
-	@IsDateString()
-	readonly expiresAt: string | undefined;
 }

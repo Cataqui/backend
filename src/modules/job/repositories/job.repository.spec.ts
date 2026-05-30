@@ -30,7 +30,6 @@ interface MockJobWithCategory {
 	paymentAmount: { toNumber(): number };
 	paymentRecurrence: string;
 	paymentCurrency: string;
-	expiresAt: Date;
 	categoryId: string;
 	createdAt: Date;
 	updatedAt: Date;
@@ -53,7 +52,6 @@ const mockJob: MockJobWithCategory = {
 	paymentAmount: { toNumber: (): number => 150.0 },
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
-	expiresAt: new Date("2026-06-28T00:00:00.000Z"),
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
 	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
@@ -82,7 +80,6 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	paymentAmount: 150.0,
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
-	expiresAt: new Date("2026-06-28T00:00:00.000Z"),
 	categoryId: "cm3x-cat-1",
 };
 
@@ -125,7 +122,6 @@ describe("JobRepository", () => {
 					paymentAmount: 150.0,
 					paymentRecurrence: "SINGLE",
 					paymentCurrency: "BRL",
-					expiresAt: new Date("2026-06-28T00:00:00.000Z"),
 					categoryId: "cm3x-cat-1",
 				},
 				include: { category: true },

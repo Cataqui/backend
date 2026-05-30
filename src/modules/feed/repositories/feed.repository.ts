@@ -23,7 +23,6 @@ export class FeedRepository {
 		const results = await this._prisma.job.findMany({
 			where: {
 				status: JobStatus.ACTIVE,
-				expiresAt: { gt: new Date() },
 				...(params.cursor
 					? {
 							OR: [{ createdAt: { lt: new Date(params.cursor.createdAt) } }, { createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } }],

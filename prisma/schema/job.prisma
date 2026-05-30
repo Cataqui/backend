@@ -14,7 +14,6 @@ model Job {
   paymentAmount     Decimal           @map("payment_amount") @db.Decimal(10, 2)
   paymentRecurrence JobPaymentRecurrence @map("payment_recurrence")
   paymentCurrency   String            @map("payment_currency") @db.VarChar(3)
-  expiresAt         DateTime          @map("expires_at")
   categoryId        String            @map("category_id") @db.Uuid
   category          JobCategory       @relation(fields: [categoryId], references: [id])
   createdAt         DateTime          @default(now()) @map("created_at")
@@ -23,6 +22,5 @@ model Job {
   @@index([city, state, country])
   @@index([categoryId])
   @@index([status])
-  @@index([expiresAt])
   @@map("jobs")
 }

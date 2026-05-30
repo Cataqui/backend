@@ -29,7 +29,6 @@ interface MockJobWithCategory {
 	paymentAmount: { toNumber(): number };
 	paymentRecurrence: string;
 	paymentCurrency: string;
-	expiresAt: Date;
 	categoryId: string;
 	createdAt: Date;
 	updatedAt: Date;
@@ -53,7 +52,6 @@ const mockJob: MockJobWithCategory = {
 	paymentAmount: { toNumber: (): number => 150.0 },
 	paymentRecurrence: "SINGLE",
 	paymentCurrency: "BRL",
-	expiresAt: new Date("2026-06-28T00:00:00.000Z"),
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
 	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
@@ -61,7 +59,7 @@ const mockJob: MockJobWithCategory = {
 	categoryDisplayName: "Moving Help",
 };
 
-function createValidDto(overrides?: Partial<{ expiresAt: string | undefined }>): CreateJobRequestDto {
+function createValidDto(): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", whatsappNumber: "+5511999999999" };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
@@ -77,7 +75,6 @@ function createValidDto(overrides?: Partial<{ expiresAt: string | undefined }>):
 		type: JobType.SINGLE,
 		categoryId: "cm3x-cat-1",
 		payment,
-		...(overrides?.expiresAt !== undefined ? { expiresAt: overrides.expiresAt } : {}),
 	};
 	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
@@ -120,31 +117,6 @@ describe("JobService", () => {
 			await expect(service.createJob(createValidDto(), "en-US")).rejects.toThrow(CategoryNotFoundError);
 		});
 
-		it("should set default expiration to 30 days when expiresAt is not provided", async () => {
-			const before = Date.now();
-
-			await service.createJob(createValidDto(), "en-US");
-
-			const after = Date.now();
-			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			const defaultExpiresAt = (createCall?.expiresAt as Date).getTime();
-
-			const expectedMin = before + 29 * 24 * 60 * 60 * 1000;
-			const expectedMax = after + 31 * 24 * 60 * 60 * 1000;
-
-			expect(defaultExpiresAt).toBeGreaterThan(expectedMin);
-			expect(defaultExpiresAt).toBeLessThan(expectedMax);
-		});
-
-		it("should use provided expiresAt when given", async () => {
-			const dto = createValidDto({ expiresAt: "2026-12-01T00:00:00.000Z" });
-
-			await service.createJob(dto, "en-US");
-
-			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect((createCall?.expiresAt as Date).toISOString()).toBe("2026-12-01T00:00:00.000Z");
-		});
-
 		it("should set status to ACTIVE", async () => {
 			await service.createJob(createValidDto(), "en-US");
 
@@ -173,7 +145,6 @@ describe("JobService", () => {
 				paymentAmount: 150.0,
 				paymentRecurrence: JobPaymentRecurrence.SINGLE,
 				paymentCurrency: "BRL",
-				expiresAt: expect.any(Date),
 				categoryId: "cm3x-cat-1",
 			});
 		});

@@ -6,10 +6,6 @@ import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobStatus } from "../../../generated/prisma/client.js";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { DateUtils } from "../../shared/utils/date.utils";
-
-const DEFAULT_EXPIRATION_DAYS = 30;
-
 @Injectable()
 export class JobService {
 	constructor(
@@ -28,8 +24,6 @@ export class JobService {
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
 		if (!category) throw new CategoryNotFoundError(dto.categoryId);
 
-		const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : new Date(Date.now() + DateUtils.daysToMs(DEFAULT_EXPIRATION_DAYS));
-
 		const job = await this._jobRepository.create({
 			data: {
 				title: dto.title,
@@ -46,7 +40,6 @@ export class JobService {
 				paymentAmount: dto.payment.amount,
 				paymentRecurrence: dto.payment.recurrence,
 				paymentCurrency: dto.payment.currency,
-				expiresAt,
 				categoryId: dto.categoryId,
 			},
 		});

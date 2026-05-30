@@ -48,10 +48,6 @@ export class JobOutputDto {
 	@ApiProperty({ name: "type", enum: JobType, description: "Job type", example: JobType.SINGLE })
 	readonly type: JobType;
 
-	@Expose({ name: "expires_at" })
-	@ApiProperty({ name: "expires_at", description: "ISO 8601 expiration timestamp", example: "2026-06-28T00:00:00.000Z" })
-	readonly expiresAt: string;
-
 	@Expose({ name: "created_at" })
 	@ApiProperty({ name: "created_at", description: "ISO 8601 creation timestamp", example: "2026-05-28T10:00:00.000Z" })
 	readonly createdAt: string;
@@ -70,7 +66,6 @@ export class JobOutputDto {
 		payment: PaymentOutputDto;
 		status: JobStatus;
 		type: JobType;
-		expiresAt: string;
 		createdAt: string;
 		updatedAt: string;
 	}) {
@@ -83,7 +78,6 @@ export class JobOutputDto {
 		this.payment = params.payment;
 		this.status = params.status;
 		this.type = params.type;
-		this.expiresAt = params.expiresAt;
 		this.createdAt = params.createdAt;
 		this.updatedAt = params.updatedAt;
 	}
@@ -99,7 +93,6 @@ export class JobOutputDto {
 			payment: new PaymentOutputDto({ paymentAmount: job.paymentAmount, paymentRecurrence: job.paymentRecurrence, paymentCurrency: job.paymentCurrency }),
 			status: job.status,
 			type: job.type,
-			expiresAt: job.expiresAt.toISOString(),
 			createdAt: job.createdAt.toISOString(),
 			updatedAt: job.updatedAt.toISOString(),
 		});

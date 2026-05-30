@@ -10,7 +10,6 @@ describe("ErrorCode", () => {
 			"ROUTE_NOT_FOUND",
 			"INVALID_REQUEST",
 			"POST_NOT_FOUND",
-			"POST_EXPIRED",
 			"POST_ALREADY_REPORTED",
 			"INVALID_CURSOR",
 			"JOB_CATEGORY_NOT_FOUND",
@@ -30,7 +29,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 13 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(13);
+	it("should have exactly 12 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(12);
 	});
 });
