@@ -62,6 +62,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			return { errorCode: ErrorCode.INVALID_REQUEST, message };
 		}
 
+		if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+			return { errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: "Request body exceeds the maximum allowed size." };
+		}
+
+		if (status === HttpStatus.URI_TOO_LONG) {
+			return { errorCode: ErrorCode.URI_TOO_LONG, message: "Request URL exceeds the maximum allowed length." };
+		}
+
+		if (Number(status) === 431) {
+			return { errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE, message: "Request header fields exceed the maximum allowed size." };
+		}
+
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message };
 	}
 
@@ -95,6 +107,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 		if (status === HttpStatus.BAD_REQUEST) {
 			return { errorCode: ErrorCode.INVALID_REQUEST, message: this._resolveMessage(resp["message"]) };
+		}
+
+		if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+			return { errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: this._resolveMessage(resp["message"]) };
+		}
+
+		if (status === HttpStatus.URI_TOO_LONG) {
+			return { errorCode: ErrorCode.URI_TOO_LONG, message: this._resolveMessage(resp["message"]) };
+		}
+
+		if (Number(status) === 431) {
+			return { errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE, message: this._resolveMessage(resp["message"]) };
 		}
 
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message: this._resolveMessage(resp["message"]) };

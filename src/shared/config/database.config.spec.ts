@@ -24,6 +24,10 @@ describe("databaseConfig", () => {
 		expect(config).toEqual({
 			poolerUrl: TEST_POOLER_URL,
 			directUrl: TEST_DIRECT_URL,
+			statementTimeoutMs: 5_000,
+			queryTimeoutMs: 6_000,
+			lockTimeoutMs: 1_000,
+			connectionTimeoutMs: 10_000,
 		});
 	});
 

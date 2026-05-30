@@ -1,19 +1,39 @@
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "./prisma.service";
-import { DATABASE_CONFIG_KEY } from "../config/database.config";
+import { DATABASE_CONFIG_KEY, databaseConfig } from "../config/database.config";
+
+let prismaNeonConfigs: Record<string, unknown>[] = [];
+
+const MockPrismaNeon = vi.hoisted(() => {
+	return class {
+		readonly provider = "postgres";
+		readonly adapterName = "neon";
+		readonly connect = vi.fn();
+
+		constructor(config: Record<string, unknown>) {
+			prismaNeonConfigs.push(config);
+		}
+	};
+});
+
+vi.mock("@prisma/adapter-neon", () => ({
+	PrismaNeon: MockPrismaNeon,
+}));
+
+const MOCK_CONFIG = databaseConfig();
 
 describe("PrismaService", () => {
 	let prismaService: PrismaService;
 
 	beforeEach(async () => {
+		prismaNeonConfigs = [];
+		vi.clearAllMocks();
+
 		const module = await Test.createTestingModule({
 			providers: [
 				{
 					provide: DATABASE_CONFIG_KEY,
-					useValue: {
-						poolerUrl: "postgresql://test:test@localhost:5432/test",
-						directUrl: "postgresql://test:test@localhost:5432/test",
-					},
+					useValue: MOCK_CONFIG,
 				},
 				PrismaService,
 			],
@@ -24,6 +44,36 @@ describe("PrismaService", () => {
 
 	it("should be defined", () => {
 		expect(prismaService).toBeDefined();
+	});
+
+	it("should pass poolerUrl as connectionString to PrismaNeon", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			connectionString: MOCK_CONFIG.poolerUrl,
+		});
+	});
+
+	it("should pass statement_timeout from config to PrismaNeon", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			statement_timeout: MOCK_CONFIG.statementTimeoutMs,
+		});
+	});
+
+	it("should pass query_timeout from config to PrismaNeon", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			query_timeout: MOCK_CONFIG.queryTimeoutMs,
+		});
+	});
+
+	it("should pass lock_timeout from config to PrismaNeon", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			lock_timeout: MOCK_CONFIG.lockTimeoutMs,
+		});
+	});
+
+	it("should pass connectionTimeoutMillis from config to PrismaNeon", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			connectionTimeoutMillis: MOCK_CONFIG.connectionTimeoutMs,
+		});
 	});
 
 	it("should call $connect on module init", async () => {
@@ -46,9 +96,5 @@ describe("PrismaService", () => {
 		await prismaService.onModuleDestroy();
 
 		expect(disconnectSpy).toHaveBeenCalledOnce();
-	});
-
-	it("should use DATABASE_POOLER_URL for the connection", () => {
-		expect(prismaService).toBeDefined();
 	});
 });

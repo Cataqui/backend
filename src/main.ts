@@ -7,14 +7,24 @@ import { HttpExceptionFilter } from "./shared/errors/filters/http-exception.filt
 import { PrismaExceptionFilter } from "./shared/prisma/filters/prisma-exception.filter";
 import { LoggingInterceptor } from "./shared/interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./shared/interceptors/response.interceptor";
+import { requestSizeConfig } from "./shared/config/request-size.config";
+import { registerRequestSizeHooks } from "./shared/hooks/request-size.hook";
 
 async function bootstrap(): Promise<void> {
 	const logger = new Logger("Bootstrap");
 
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+	const sizeConfig = requestSizeConfig();
+
+	const fastifyAdapter = new FastifyAdapter({
+		bodyLimit: sizeConfig.bodyLimitBytes,
+		requestTimeout: sizeConfig.requestTimeoutMs,
+		connectionTimeout: sizeConfig.connectionTimeoutMs,
+		keepAliveTimeout: sizeConfig.keepAliveTimeoutMs,
+	});
+
+	const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter);
 
 	app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
-
 	app.useGlobalPipes(
 		new ValidationPipe({
 			whitelist: true,
@@ -28,6 +38,9 @@ async function bootstrap(): Promise<void> {
 
 	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
 	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
+
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+	registerRequestSizeHooks(fastifyInstance, sizeConfig);
 
 	const swaggerConfig = new DocumentBuilder()
 		.setTitle("Cataquí API")

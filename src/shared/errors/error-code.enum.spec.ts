@@ -16,6 +16,9 @@ describe("ErrorCode", () => {
 			"JOB_NOT_FOUND",
 			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
+			"PAYLOAD_TOO_LARGE",
+			"URI_TOO_LONG",
+			"REQUEST_HEADER_FIELDS_TOO_LARGE",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -31,7 +34,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 13 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(13);
+	it("should have exactly 16 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(16);
 	});
 });

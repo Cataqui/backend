@@ -189,6 +189,84 @@ describe("HttpExceptionFilter", () => {
 		expect(body["timestamp"] as string).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 	});
 
+	describe("size limit errors", () => {
+		it("should return PAYLOAD_TOO_LARGE for string response with 413 status", () => {
+			const exception = new HttpException("Request body is too large", HttpStatus.PAYLOAD_TOO_LARGE);
+
+			const { sendMock, statusMock } = createMockHost(exception);
+
+			expect(statusMock).toHaveBeenCalledWith(HttpStatus.PAYLOAD_TOO_LARGE);
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.PAYLOAD_TOO_LARGE);
+			expect(body).toHaveProperty("message", "Request body exceeds the maximum allowed size.");
+			expect(body).toHaveProperty("status", HttpStatus.PAYLOAD_TOO_LARGE);
+		});
+
+		it("should return PAYLOAD_TOO_LARGE for object response without error_code with 413 status", () => {
+			const exception = new HttpException({ message: "body too big" }, HttpStatus.PAYLOAD_TOO_LARGE);
+
+			const { sendMock } = createMockHost(exception);
+
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.PAYLOAD_TOO_LARGE);
+			expect(body).toHaveProperty("message", "body too big");
+		});
+
+		it("should return URI_TOO_LONG for string response with 414 status", () => {
+			const exception = new HttpException("Request URL is too long", HttpStatus.URI_TOO_LONG);
+
+			const { sendMock, statusMock } = createMockHost(exception);
+
+			expect(statusMock).toHaveBeenCalledWith(HttpStatus.URI_TOO_LONG);
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.URI_TOO_LONG);
+			expect(body).toHaveProperty("message", "Request URL exceeds the maximum allowed length.");
+			expect(body).toHaveProperty("status", HttpStatus.URI_TOO_LONG);
+		});
+
+		it("should return URI_TOO_LONG for object response without error_code with 414 status", () => {
+			const exception = new HttpException({ message: "url too long" }, HttpStatus.URI_TOO_LONG);
+
+			const { sendMock } = createMockHost(exception);
+
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.URI_TOO_LONG);
+			expect(body).toHaveProperty("message", "url too long");
+		});
+
+		it("should return REQUEST_HEADER_FIELDS_TOO_LARGE for string response with 431 status", () => {
+			const exception = new HttpException("Request header fields too large", 431);
+
+			const { sendMock, statusMock } = createMockHost(exception);
+
+			expect(statusMock).toHaveBeenCalledWith(431);
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE);
+			expect(body).toHaveProperty("message", "Request header fields exceed the maximum allowed size.");
+			expect(body).toHaveProperty("status", 431);
+		});
+
+		it("should return REQUEST_HEADER_FIELDS_TOO_LARGE for object response without error_code with 431 status", () => {
+			const exception = new HttpException({ message: "headers too big" }, 431);
+
+			const { sendMock } = createMockHost(exception);
+
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE);
+			expect(body).toHaveProperty("message", "headers too big");
+		});
+
+		it("should pass through custom error_code from PayloadTooLargeError", () => {
+			const exception = new HttpException({ error_code: ErrorCode.PAYLOAD_TOO_LARGE, message: "custom body too large" }, HttpStatus.PAYLOAD_TOO_LARGE);
+
+			const { sendMock } = createMockHost(exception);
+
+			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			expect(body).toHaveProperty("error_code", ErrorCode.PAYLOAD_TOO_LARGE);
+			expect(body).toHaveProperty("message", "custom body too large");
+		});
+	});
+
 	describe("route not found", () => {
 		it("should return ROUTE_NOT_FOUND when ExceptionMessage starts with Cannot and status is 404", () => {
 			const exception = new HttpException({ message: "Cannot GET /v1/nonexistent", statusCode: 404, error: "Not Found" }, HttpStatus.NOT_FOUND);

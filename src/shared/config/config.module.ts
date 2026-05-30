@@ -3,6 +3,7 @@ import { ConfigModule as NestConfigModule } from "@nestjs/config";
 import { IEnvSchema } from "./env.validation";
 import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
 import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
+import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
 
 @Global()
 @Module({
@@ -10,7 +11,7 @@ import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.con
 		NestConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: ".env",
-			load: [globalThrottleConfig],
+			load: [globalThrottleConfig, requestSizeConfig],
 			validate: (config: Record<string, unknown>) => {
 				const result = IEnvSchema.safeParse(config);
 
@@ -32,7 +33,11 @@ import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.con
 			provide: GLOBAL_THROTTLE_CONFIG_KEY,
 			useFactory: globalThrottleConfig,
 		},
+		{
+			provide: REQUEST_SIZE_CONFIG_KEY,
+			useFactory: requestSizeConfig,
+		},
 	],
-	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY],
+	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY],
 })
 export class ConfigModule {}
