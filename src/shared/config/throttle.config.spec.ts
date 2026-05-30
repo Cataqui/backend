@@ -1,12 +1,12 @@
-import { THROTTLE_CONFIG_KEY, throttleConfig } from "./throttle.config";
+import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
 
-describe("throttleConfig", () => {
+describe("globalThrottleConfig", () => {
 	it("should have the correct config key", () => {
-		expect(THROTTLE_CONFIG_KEY).toBe("throttle");
+		expect(GLOBAL_THROTTLE_CONFIG_KEY).toBe("throttle");
 	});
 
 	it("should return ttl and limit matching defaults", () => {
-		const config = throttleConfig();
+		const config = globalThrottleConfig();
 
 		expect(config).toEqual({
 			ttl: 300_000,

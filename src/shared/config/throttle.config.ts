@@ -1,15 +1,15 @@
 import { registerAs } from "@nestjs/config";
 
-export const THROTTLE_CONFIG_KEY = "throttle";
+export const GLOBAL_THROTTLE_CONFIG_KEY = "throttle";
 
-export interface IThrottleConfig {
+export interface IGlobalThrottleConfig {
 	ttl: number;
 	limit: number;
 }
 
-export const throttleConfig = registerAs(
-	THROTTLE_CONFIG_KEY,
-	(): IThrottleConfig => ({
+export const globalThrottleConfig = registerAs(
+	GLOBAL_THROTTLE_CONFIG_KEY,
+	(): IGlobalThrottleConfig => ({
 		ttl: 300_000,
 		limit: 1_000,
 	}),

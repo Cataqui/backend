@@ -8,12 +8,12 @@ import { PrismaExceptionFilter } from "../src/shared/prisma/filters/prisma-excep
 import { HttpExceptionFilter } from "../src/shared/errors/filters/http-exception.filter";
 import { LoggingInterceptor } from "../src/shared/interceptors/logging.interceptor";
 import { ResponseInterceptor } from "../src/shared/interceptors/response.interceptor";
-import { THROTTLE_CONFIG_KEY, type IThrottleConfig } from "../src/shared/config/throttle.config";
+import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig, type IGlobalThrottleConfig } from "../src/shared/config/throttle.config";
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 
-async function buildApp(throttleConfig?: IThrottleConfig): Promise<NestFastifyApplication> {
+async function buildApp(overrideConfig?: IGlobalThrottleConfig): Promise<NestFastifyApplication> {
 	const testBuilder = Test.createTestingModule({
 		imports: [AppModule],
 	})
@@ -27,8 +27,8 @@ async function buildApp(throttleConfig?: IThrottleConfig): Promise<NestFastifyAp
 			}),
 		});
 
-	if (throttleConfig) {
-		testBuilder.overrideProvider(THROTTLE_CONFIG_KEY).useValue(throttleConfig);
+	if (overrideConfig) {
+		testBuilder.overrideProvider(GLOBAL_THROTTLE_CONFIG_KEY).useValue(overrideConfig);
 	}
 
 	const moduleRef = await testBuilder.compile();
@@ -74,6 +74,48 @@ describe("RateLimiter (e2e)", () => {
 			const response = await app.inject({ method: "GET", url: "/v1/health" });
 
 			expect(response.headers["x-ratelimit-limit"]).toBe("1000");
+
+			await app.close();
+		});
+
+		it("should match limit from globalThrottleConfig", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			expect(response.headers["x-ratelimit-limit"]).toBe(String(globalThrottleConfig().limit));
+
+			await app.close();
+		});
+
+		it("should return remaining limit - 1 after first request", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			expect(response.headers["x-ratelimit-remaining"]).toBe(String(globalThrottleConfig().limit - 1));
+
+			await app.close();
+		});
+
+		it("should return X-RateLimit-Reset close to globalThrottleConfig ttl in seconds", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			const resetSeconds = Number(response.headers["x-ratelimit-reset"]);
+			expect(resetSeconds).toBeGreaterThan(globalThrottleConfig().ttl / 1000 - 5);
+
+			await app.close();
+		});
+
+		it("should not exceed globalThrottleConfig ttl in X-RateLimit-Reset", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "GET", url: "/v1/health" });
+
+			const resetSeconds = Number(response.headers["x-ratelimit-reset"]);
+			expect(resetSeconds).toBeLessThanOrEqual(globalThrottleConfig().ttl / 1000);
 
 			await app.close();
 		});
