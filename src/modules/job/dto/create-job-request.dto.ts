@@ -9,13 +9,19 @@ import { JobType } from "../../../../generated/prisma/client.js";
 
 export class CreateJobRequestDto {
 	@Expose({ name: "title" })
-	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck" })
+	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck", minLength: 3, maxLength: 120 })
 	@IsString()
 	@Length(3, 120)
 	readonly title!: string;
 
 	@Expose({ name: "description" })
-	@ApiProperty({ name: "description", description: "Detailed description about the job", example: "Need someone to help unload a delivery truck..." })
+	@ApiProperty({
+		name: "description",
+		description: "Detailed description about the job",
+		example: "Need someone to help unload a delivery truck...",
+		maxLength: 10000,
+		minLength: 10,
+	})
 	@IsString()
 	@Length(10, 10000)
 	readonly description!: string;

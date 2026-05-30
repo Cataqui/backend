@@ -44,6 +44,8 @@ export class JobPaymentInputDto {
 		description: "Note related to the payment, e.g. how it will be done, or any additional details (required when type is OTHER)",
 		example: "Commission-based, percentage of sales",
 		required: false,
+		maxLength: 500,
+		minLength: 1,
 	})
 	@IsOptional()
 	@IsString()
