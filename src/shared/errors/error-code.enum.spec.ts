@@ -14,6 +14,7 @@ describe("ErrorCode", () => {
 			"POST_ALREADY_REPORTED",
 			"INVALID_CURSOR",
 			"JOB_CATEGORY_NOT_FOUND",
+			"INVALID_LOCALE",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -29,7 +30,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 12 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(12);
+	it("should have exactly 13 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(13);
 	});
 });

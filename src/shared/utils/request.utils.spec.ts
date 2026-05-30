@@ -1,5 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { RequestUtils } from "./request.utils";
+import { InvalidLocaleException } from "../errors/invalid-locale.exception";
 
 function createMockRequest(headers: Record<string, string | undefined>, url = "/v1/test"): FastifyRequest {
 	return { headers, url } as FastifyRequest;
@@ -69,6 +70,37 @@ describe("RequestUtils", () => {
 		it("should trim whitespace from locale tags", () => {
 			const result = RequestUtils.resolveRequestLocale("  de-DE  , en;q=0.9");
 			expect(result).toBe("de-DE");
+		});
+
+		it("should accept a single language code (en)", () => {
+			const result = RequestUtils.resolveRequestLocale("en");
+			expect(result).toBe("en");
+		});
+
+		it("should accept en-US", () => {
+			const result = RequestUtils.resolveRequestLocale("en-US");
+			expect(result).toBe("en-US");
+		});
+
+		it("should accept pt-BR", () => {
+			const result = RequestUtils.resolveRequestLocale("pt-BR");
+			expect(result).toBe("pt-BR");
+		});
+
+		it("should throw InvalidLocaleException for '!!!bad'", () => {
+			expect(() => RequestUtils.resolveRequestLocale("!!!bad")).toThrow(InvalidLocaleException);
+		});
+
+		it("should throw InvalidLocaleException for numeric string '1234'", () => {
+			expect(() => RequestUtils.resolveRequestLocale("1234")).toThrow(InvalidLocaleException);
+		});
+
+		it("should throw InvalidLocaleException for underscore separator 'en_US'", () => {
+			expect(() => RequestUtils.resolveRequestLocale("en_US")).toThrow(InvalidLocaleException);
+		});
+
+		it("should include the invalid value in the exception message", () => {
+			expect(() => RequestUtils.resolveRequestLocale("!!!bad")).toThrow("!!!bad");
 		});
 	});
 });
