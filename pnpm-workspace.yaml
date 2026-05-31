@@ -6,14 +6,10 @@ trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 525600
 trustPolicyExclude:
   - "tinyexec@1.2.2"
-onlyBuiltDependencies:
-  - "@nestjs/core"
-  - "@prisma/engines"
-  - esbuild
-  - prisma
-  - sharp
-  - unrs-resolver
 allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
   esbuild: true
   prisma: true
   sharp: true
