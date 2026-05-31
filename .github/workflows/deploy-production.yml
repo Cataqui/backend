@@ -26,6 +26,28 @@ jobs:
         with:
           node-version: 22
 
+      - run: pnpm install --frozen-lockfile
+
+      - name: Create Neon test branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: production-deploy-${{ github.run_id }}
+          parent_branch: production
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Test migrations on branch
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+
+      - name: Run database migrations
+        if: success()
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -44,3 +66,11 @@ jobs:
           DATABASE_POOLER_URL: ${{ secrets.DATABASE_POOLER_URL }}
           DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+
+      - name: Cleanup Neon test branch
+        if: always() && steps.neon-branch.outputs.branch_id != ''
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
