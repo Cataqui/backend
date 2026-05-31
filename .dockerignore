@@ -1,0 +1,41 @@
+# Build outputs (rebuilt inside Docker)
+dist/
+generated/
+coverage/
+
+# Dependencies (rebuilt inside Docker)
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Dev tooling
+.husky/
+.vscode/
+.opencode/
+.agents/
+skills-lock.json
+
+# Testing
+test/
+vitest.config.ts
+**/*.spec.ts
+**/*.e2e-spec.ts
+
+# Docker files (don't copy into image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI & meta
+commitlint.config.mjs
+LICENSE
+.editorconfig
+.prettierrc
+eslint.config.mjs

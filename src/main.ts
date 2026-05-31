@@ -21,9 +21,10 @@ async function bootstrap(): Promise<void> {
 	await configureApp(app);
 
 	const port = process.env["PORT"] ?? 3000;
-	await app.listen(port);
+	const host = process.env["HOST"] ?? "0.0.0.0";
+	await app.listen(port, host);
 
-	logger.log(`Server running on http://localhost:${port}`);
+	logger.log(`Server running on http://${host}:${port}`);
 	logger.log(`Swagger docs at http://localhost:${port}/docs`);
 }
 
