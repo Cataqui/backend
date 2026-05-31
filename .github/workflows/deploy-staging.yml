@@ -36,6 +36,10 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env staging
           secrets: |
-            DATABASE_POOLER_URL=${{ secrets.DATABASE_POOLER_URL }}
-            DATABASE_DIRECT_URL=${{ secrets.DATABASE_DIRECT_URL }}
-            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+            DATABASE_POOLER_URL
+            DATABASE_DIRECT_URL
+            CORS_ORIGINS
+        env:
+          DATABASE_POOLER_URL: ${{ secrets.DATABASE_POOLER_URL }}
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
