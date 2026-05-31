@@ -35,6 +35,7 @@ jobs:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: staging-deploy-${{ github.run_id }}
           parent_branch: staging
+          database: cataqui-staging
           api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Test migrations on branch
