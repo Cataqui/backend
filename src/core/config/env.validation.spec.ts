@@ -91,9 +91,21 @@ describe("IEnvSchema", () => {
 			expect(result.success).toBe(false);
 		});
 
-		it("should fail when NODE_ENV is not a valid enum value", () => {
+		it("should accept staging environment", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "staging",
+				CORS_ORIGINS: "http://localhost:3000",
+				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should fail when NODE_ENV is not a valid enum value", () => {
+			const result = IEnvSchema.safeParse({
+				NODE_ENV: "invalid",
+				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});

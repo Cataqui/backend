@@ -61,12 +61,6 @@
 					},
 				],
 			},
-			"migrations": [
-				{
-					"tag": "v1",
-					"new_sqlite_classes": ["ApiContainer"],
-				},
-			],
 			"routes": [{ "pattern": "staging.api.cataqui.com", "custom_domain": true }],
 			"vars": {
 				"NODE_ENV": "staging",
@@ -97,12 +91,6 @@
 					},
 				],
 			},
-			"migrations": [
-				{
-					"tag": "v1",
-					"new_sqlite_classes": ["ApiContainer"],
-				},
-			],
 			"routes": [{ "pattern": "api.cataqui.com", "custom_domain": true }],
 			"vars": {
 				"NODE_ENV": "production",
