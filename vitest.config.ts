@@ -6,6 +6,9 @@ export default defineConfig({
 		globals: true,
 		include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
 		env: {
+			NODE_ENV: "test",
+			DATABASE_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
+			DATABASE_DIRECT_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
 		},
 		coverage: {
