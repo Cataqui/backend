@@ -35,6 +35,11 @@
 		"SLEEP_AFTER": "5m",
 	},
 
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 0.1,
+	},
+
 	"env": {
 		"staging": {
 			"name": "cataqui-api-staging",
@@ -62,12 +67,14 @@
 					"new_sqlite_classes": ["ApiContainer"],
 				},
 			],
-			"routes": [
-				{ "pattern": "staging.api.cataqui.com", "custom_domain": true },
-			],
+			"routes": [{ "pattern": "staging.api.cataqui.com", "custom_domain": true }],
 			"vars": {
 				"NODE_ENV": "staging",
 				"SLEEP_AFTER": "5m",
+			},
+			"observability": {
+				"enabled": true,
+				"head_sampling_rate": 1.0,
 			},
 		},
 		"production": {
@@ -96,12 +103,14 @@
 					"new_sqlite_classes": ["ApiContainer"],
 				},
 			],
-			"routes": [
-				{ "pattern": "api.cataqui.com", "custom_domain": true },
-			],
+			"routes": [{ "pattern": "api.cataqui.com", "custom_domain": true }],
 			"vars": {
 				"NODE_ENV": "production",
 				"SLEEP_AFTER": "1h",
+			},
+			"observability": {
+				"enabled": true,
+				"head_sampling_rate": 0.05,
 			},
 		},
 	},
