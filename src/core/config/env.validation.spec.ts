@@ -22,21 +22,19 @@ describe("IEnvSchema", () => {
 	});
 
 	describe("defaults", () => {
-		it("should default NODE_ENV to 'development'", () => {
+		it("should require NODE_ENV", () => {
 			const result = IEnvSchema.safeParse({
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.NODE_ENV).toBe("development");
-			}
+			expect(result.success).toBe(false);
 		});
 
 		it("should default PORT to 3000", () => {
 			const result = IEnvSchema.safeParse({
+				NODE_ENV: "development",
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
@@ -50,6 +48,7 @@ describe("IEnvSchema", () => {
 
 		it("should coerce PORT from string to number", () => {
 			const result = IEnvSchema.safeParse({
+				NODE_ENV: "development",
 				PORT: "8080",
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
@@ -92,9 +91,21 @@ describe("IEnvSchema", () => {
 			expect(result.success).toBe(false);
 		});
 
-		it("should fail when NODE_ENV is not a valid enum value", () => {
+		it("should accept staging environment", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "staging",
+				CORS_ORIGINS: "http://localhost:3000",
+				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should fail when NODE_ENV is not a valid enum value", () => {
+			const result = IEnvSchema.safeParse({
+				NODE_ENV: "invalid",
+				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 			});
@@ -116,6 +127,7 @@ describe("IEnvSchema", () => {
 	describe("CORS_ORIGINS", () => {
 		it("should accept a valid CORS_ORIGINS string", () => {
 			const result = IEnvSchema.safeParse({
+				NODE_ENV: "development",
 				CORS_ORIGINS: "https://cataqui.com,https://app.cataqui.com",
 				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",

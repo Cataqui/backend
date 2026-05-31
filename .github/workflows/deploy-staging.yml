@@ -1,0 +1,77 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (Staging)
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.api.cataqui.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.4.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Create Neon test branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: staging-deploy-${{ github.run_id }}
+          parent_branch: staging
+          database: cataqui-staging
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Test migrations on branch
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+
+      - name: Run database migrations
+        if: success()
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env staging
+          environment: staging
+          secrets: |
+            DATABASE_POOLER_URL
+            DATABASE_DIRECT_URL
+            CORS_ORIGINS
+        env:
+          DATABASE_POOLER_URL: ${{ secrets.DATABASE_POOLER_URL }}
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+
+      - name: Cleanup Neon test branch
+        if: always() && steps.neon-branch.outputs.branch_id != ''
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}

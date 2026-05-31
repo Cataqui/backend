@@ -118,12 +118,16 @@ describe("Main (e2e)", () => {
 			await app.close();
 		});
 
-		it("should return 404 for root", async () => {
+		it("should return server status for root", async () => {
 			const app = await buildApp();
 
 			const response = await app.inject({ method: "GET", url: "/" });
 
-			expect(response.statusCode).toBe(404);
+			expect(response.statusCode).toBe(200);
+			const body = JSON.parse(response.body) as Record<string, unknown>;
+			expect(body["status"]).toBe("ok");
+			expect(body["message"]).toBe("Cataquí API server is running...");
+			expect(typeof body["environment"]).toBe("string");
 
 			await app.close();
 		});

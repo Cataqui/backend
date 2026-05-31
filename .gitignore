@@ -15,5 +15,11 @@ yarn.lock
 bun.lock
 bun.lockb
 
+# Cloudflare Worker
+worker/dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
+
 # AI
 .opencode

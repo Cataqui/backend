@@ -50,6 +50,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
 	const fastifyInstance = app.getHttpAdapter().getInstance();
 	await fastifyInstance.register(helmet, {
+		contentSecurityPolicy: true,
 		hsts: {
 			maxAge: 31536000, // 1 Year
 			includeSubDomains: true,
