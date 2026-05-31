@@ -1,0 +1,80 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "cataqui-api",
+	"main": "worker/index.ts",
+	"compatibility_date": "2025-12-18",
+	"compatibility_flags": ["nodejs_compat"],
+
+	"containers": [
+		{
+			"class_name": "ApiContainer",
+			"image": "./Dockerfile",
+			"max_instances": 10,
+			"instance_type": "basic",
+		},
+	],
+
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "API_CONTAINER",
+				"class_name": "ApiContainer",
+			},
+		],
+	},
+
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["ApiContainer"],
+		},
+	],
+
+	"vars": {
+		"NODE_ENV": "production",
+		"SLEEP_AFTER": "5m",
+	},
+
+	"secrets": {
+		"required": ["DATABASE_POOLER_URL", "DATABASE_DIRECT_URL", "CORS_ORIGINS"],
+	},
+
+	"env": {
+		"staging": {
+			"name": "cataqui-api-staging",
+			"containers": [
+				{
+					"class_name": "ApiContainer",
+					"image": "./Dockerfile",
+					"max_instances": 3,
+					"instance_type": "basic",
+				},
+			],
+			"routes": [
+				{ "pattern": "staging.api.cataqui.com", "custom_domain": true },
+			],
+			"vars": {
+				"NODE_ENV": "staging",
+				"SLEEP_AFTER": "5m",
+			},
+		},
+		"production": {
+			"name": "cataqui-api-production",
+			"containers": [
+				{
+					"class_name": "ApiContainer",
+					"image": "./Dockerfile",
+					"max_instances": 10,
+					"instance_type": "standard-1",
+				},
+			],
+			"routes": [
+				{ "pattern": "api.cataqui.com", "custom_domain": true },
+			],
+			"vars": {
+				"NODE_ENV": "production",
+				"SLEEP_AFTER": "1h",
+			},
+		},
+	},
+}

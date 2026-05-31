@@ -16,3 +16,5 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
   prisma: true
+  sharp: true
+  workerd: true
