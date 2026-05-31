@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to Cloudflare (Staging)
+    name: Deploy (Staging)
     runs-on: ubuntu-latest
     environment:
       name: staging
