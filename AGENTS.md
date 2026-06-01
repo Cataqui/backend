@@ -731,6 +731,7 @@ When acting as an AI coding agent in this repository:
 8. Do not hide failures.
 9. If something cannot be done safely, explain the tradeoff.
 10. Optimize for Cataquí’s core loop: post → discover → WhatsApp contact.
+11. Always update SKILL.md when doing a modification that affects how the API is used from external actors, so we always keep up to date.
 
 ---
 

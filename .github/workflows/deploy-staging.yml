@@ -3,6 +3,13 @@ name: Deploy Staging
 on:
   push:
     branches: [staging]
+    paths:
+      - 'src/**'
+      - 'worker/**'
+      - 'prisma/**'
+      - 'Dockerfile'
+      - 'wrangler.jsonc'
+      - 'pnpm-lock.yaml'
 
 concurrency:
   group: deploy-staging
