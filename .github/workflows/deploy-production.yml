@@ -3,6 +3,13 @@ name: Deploy Production
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'worker/**'
+      - 'prisma/**'
+      - 'Dockerfile'
+      - 'wrangler.jsonc'
+      - 'pnpm-lock.yaml'
 
 concurrency:
   group: deploy-production

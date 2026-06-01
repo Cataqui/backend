@@ -3,8 +3,24 @@ name: CI
 on:
   push:
     branches: [development, staging, main]
+    paths:
+      - 'src/**'
+      - 'worker/**'
+      - 'prisma/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'test/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [development, staging, main]
+    paths:
+      - 'src/**'
+      - 'worker/**'
+      - 'prisma/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'test/**'
+      - '.github/workflows/**'
 
 concurrency:
   group: ci-${{ github.ref }}
