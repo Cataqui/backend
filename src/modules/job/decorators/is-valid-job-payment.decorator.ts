@@ -6,6 +6,10 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 	isValid: boolean;
 	message: string;
 } {
+	if (payment === null || payment === undefined || typeof payment !== "object") {
+		return { isValid: false, message: "Invalid payment format" };
+	}
+
 	switch (payment.type) {
 		case JobPaymentType.FIXED: {
 			if (!payment.minAmount) return { isValid: false, message: "Fixed payment requires a minimum amount" };

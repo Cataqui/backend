@@ -68,7 +68,10 @@ describe("FeedRepository", () => {
 		it("should include cursor condition when cursor is provided", async () => {
 			mockFindMany.mockResolvedValue([]);
 
-			const cursor = CursorUtils.decodeCursor(CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" }), FeedSort.LATEST);
+			const cursor = CursorUtils.decodeCursor(
+				CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" }),
+				FeedSort.LATEST,
+			);
 
 			await repository.getFeedItems({ cursor, limit: 20 });
 
@@ -77,7 +80,7 @@ describe("FeedRepository", () => {
 
 			expect(orConditions).toBeDefined();
 			expect(orConditions[0]).toEqual({ createdAt: { lt: new Date("2026-05-28T10:00:00.000Z") } });
-			expect(orConditions[1]).toEqual({ createdAt: new Date("2026-05-28T10:00:00.000Z"), id: { lt: "abc-123" } });
+			expect(orConditions[1]).toEqual({ createdAt: new Date("2026-05-28T10:00:00.000Z"), id: { lt: "12345678-1234-1234-1234-1234567890ab" } });
 		});
 
 		it("should not include cursor condition when cursor is not provided", async () => {

@@ -4,7 +4,7 @@ import { IsIFeedPaginationCursor } from "./is-feed-pagination-cursor.decorator";
 import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" });
+const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
 
 class TestDto {
 	@IsIFeedPaginationCursor()

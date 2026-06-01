@@ -32,6 +32,30 @@ describe("CustomThrottlerGuard", () => {
 		guard = module.get<CustomThrottlerGuard>(CustomThrottlerGuard);
 	});
 
+	describe("getTracker", () => {
+		it("should return CF-Connecting-IP when present", async () => {
+			const req = {
+				headers: { "cf-connecting-ip": "189.45.200.10" },
+				ip: "131.0.1.1",
+			};
+
+			const tracker = await guard["getTracker"](req);
+
+			expect(tracker).toBe("189.45.200.10");
+		});
+
+		it("should fall back to req.ip when CF-Connecting-IP is absent", async () => {
+			const req = {
+				headers: {},
+				ip: "131.0.1.1",
+			};
+
+			const tracker = await guard["getTracker"](req);
+
+			expect(tracker).toBe("131.0.1.1");
+		});
+	});
+
 	describe("throwThrottlingException", () => {
 		it("should throw RateLimitedError", () => {
 			const mockContext = {} as ExecutionContext;

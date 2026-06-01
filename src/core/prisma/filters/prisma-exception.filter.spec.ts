@@ -1,4 +1,4 @@
-import { HttpStatus } from "@nestjs/common";
+import { HttpStatus, Logger } from "@nestjs/common";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { PrismaExceptionFilter } from "./prisma-exception.filter.js";
@@ -121,6 +121,44 @@ describe("PrismaExceptionFilter", () => {
 
 			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
 			expect(body["timestamp"] as string).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+		});
+	});
+
+	describe("metadata sanitization", () => {
+		it("should preserve safe target field in logged warning", () => {
+			const error = {
+				code: "P2002",
+				meta: {
+					target: ["email"],
+					sensitiveValue: "extremely_secret_password_123",
+				},
+				message: "Prisma error P2002",
+				stack: "Error stack",
+			} as unknown as Prisma.PrismaClientKnownRequestError;
+
+			const loggerWarnSpy = vi.spyOn(Logger.prototype, "warn");
+			createMockHost(error);
+
+			expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining('"target":["email"]'));
+			loggerWarnSpy.mockRestore();
+		});
+
+		it("should scrub sensitiveValue from logged warning", () => {
+			const error = {
+				code: "P2002",
+				meta: {
+					target: ["email"],
+					sensitiveValue: "extremely_secret_password_123",
+				},
+				message: "Prisma error P2002",
+				stack: "Error stack",
+			} as unknown as Prisma.PrismaClientKnownRequestError;
+
+			const loggerWarnSpy = vi.spyOn(Logger.prototype, "warn");
+			createMockHost(error);
+
+			expect(loggerWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining("extremely_secret_password_123"));
+			loggerWarnSpy.mockRestore();
 		});
 	});
 });
