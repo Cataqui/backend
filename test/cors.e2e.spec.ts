@@ -247,4 +247,56 @@ describe("CORS (e2e)", () => {
 			await app.close();
 		});
 	});
+
+	describe("origin list with spaces and trailing commas", () => {
+		beforeEach(() => {
+			process.env["CORS_ORIGINS"] = " http://allowed-origin.com, , http://second-allowed.com  ";
+		});
+
+		afterEach(() => {
+			process.env["CORS_ORIGINS"] = "http://allowed-origin.com";
+		});
+
+		it("should allow trimmed origin", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({
+				method: "GET",
+				url: "/v1/health",
+				headers: { origin: "http://allowed-origin.com" },
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			await app.close();
+		});
+
+		it("should allow second trimmed origin", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({
+				method: "GET",
+				url: "/v1/health",
+				headers: { origin: "http://second-allowed.com" },
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			await app.close();
+		});
+
+		it("should disallow empty origin", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({
+				method: "GET",
+				url: "/v1/health",
+				headers: { origin: "" },
+			});
+
+			expect(response.statusCode).toBe(403);
+
+			await app.close();
+		});
+	});
 });

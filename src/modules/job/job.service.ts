@@ -16,7 +16,7 @@ export class JobService {
 
 	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
 		const result = await this._jobRepository.findByIdLocalized({ id: params.jobId, locale: params.locale });
-		if (!result) throw new JobNotFoundError(params.jobId);
+		if (!result) throw new JobNotFoundError();
 
 		return JobOutputDto.fromDatabase(result, result.categoryDisplayName);
 	}
@@ -27,7 +27,7 @@ export class JobService {
 		}
 
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
-		if (!category) throw new CategoryNotFoundError(dto.categoryId);
+		if (!category) throw new CategoryNotFoundError();
 
 		const job = await this._jobRepository.create({
 			data: {

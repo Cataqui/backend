@@ -44,40 +44,15 @@ describe("CustomThrottlerGuard", () => {
 			expect(tracker).toBe("189.45.200.10");
 		});
 
-		it("should fall back to X-Forwarded-For when CF-Connecting-IP is absent", async () => {
-			const req = {
-				headers: { "x-forwarded-for": "189.45.200.10, 131.0.1.1" },
-				ip: "131.0.1.1",
-			};
-
-			const tracker = await guard["getTracker"](req);
-
-			expect(tracker).toBe("189.45.200.10");
-		});
-
-		it("should prefer CF-Connecting-IP over X-Forwarded-For", async () => {
-			const req = {
-				headers: {
-					"cf-connecting-ip": "189.45.200.10",
-					"x-forwarded-for": "203.0.113.50",
-				},
-				ip: "131.0.1.1",
-			};
-
-			const tracker = await guard["getTracker"](req);
-
-			expect(tracker).toBe("189.45.200.10");
-		});
-
-		it("should fall back to req.ip when both headers are absent", async () => {
+		it("should fall back to req.ip when CF-Connecting-IP is absent", async () => {
 			const req = {
 				headers: {},
-				ip: "127.0.0.1",
+				ip: "131.0.1.1",
 			};
 
 			const tracker = await guard["getTracker"](req);
 
-			expect(tracker).toBe("127.0.0.1");
+			expect(tracker).toBe("131.0.1.1");
 		});
 	});
 

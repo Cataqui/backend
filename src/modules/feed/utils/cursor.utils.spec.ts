@@ -1,6 +1,7 @@
 import { CursorUtils } from "./cursor.utils";
 import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 import { FeedSort } from "../enums/feed-sort.enum";
+import { InvalidCursorError } from "../errors/invalid-cursor.error";
 
 describe("CursorUtils", () => {
 	describe("encodeCursor", () => {
@@ -8,7 +9,7 @@ describe("CursorUtils", () => {
 			const result = CursorUtils.encodeCursor({
 				sort: FeedSort.LATEST,
 				createdAt: "2026-05-28T10:00:00.000Z",
-				jobId: "abc-123",
+				jobId: "12345678-1234-1234-1234-1234567890ab",
 			});
 
 			expect(typeof result).toBe("string");
@@ -21,22 +22,24 @@ describe("CursorUtils", () => {
 			const encoded = CursorUtils.encodeCursor({
 				sort: FeedSort.LATEST,
 				createdAt: "2026-05-28T10:00:00.000Z",
-				jobId: "abc-123",
+				jobId: "12345678-1234-1234-1234-1234567890ab",
 			});
 
 			const decoded = CursorUtils.decodeCursor(encoded, FeedSort.LATEST);
 
 			expect(decoded.createdAt).toBe("2026-05-28T10:00:00.000Z");
-			expect(decoded.jobId).toBe("abc-123");
+			expect(decoded.jobId).toBe("12345678-1234-1234-1234-1234567890ab");
 		});
 
 		it("should throw on malformed JSON", () => {
 			const notJson = Buffer.from("this is not json").toString("base64url");
-			expect(() => CursorUtils.decodeCursor(notJson, FeedSort.LATEST)).toThrow(SyntaxError);
+			expect(() => CursorUtils.decodeCursor(notJson, FeedSort.LATEST)).toThrow(InvalidCursorError);
 		});
 
 		it("should throw on unsupported version", () => {
-			const payload = Buffer.from(JSON.stringify({ version: 99, sort: "latest", createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" })).toString("base64url");
+			const payload = Buffer.from(JSON.stringify({ version: 99, sort: "latest", createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" })).toString(
+				"base64url",
+			);
 			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow("Cursor version '99' is not supported. Please use 1");
 		});
 
@@ -44,7 +47,7 @@ describe("CursorUtils", () => {
 			const encoded = CursorUtils.encodeCursor({
 				sort: FeedSort.LATEST,
 				createdAt: "2026-05-28T10:00:00.000Z",
-				jobId: "abc-123",
+				jobId: "12345678-1234-1234-1234-1234567890ab",
 			});
 
 			expect(() => CursorUtils.decodeCursor(encoded, "expiring" as FeedSort)).toThrow("does not match requested sort");
@@ -59,7 +62,7 @@ describe("CursorUtils", () => {
 			const original: Omit<IFeedPaginationCursor, "version"> = {
 				sort: FeedSort.LATEST,
 				createdAt: "2026-05-28T10:00:00.000Z",
-				jobId: "abc-123",
+				jobId: "12345678-1234-1234-1234-1234567890ab",
 			};
 
 			const encoded = CursorUtils.encodeCursor(original);

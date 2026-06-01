@@ -54,5 +54,21 @@ describe("JobPaymentInputDto", () => {
 			expect(errors.length).toBeGreaterThan(0);
 			expect(errors.some((e) => e.property === "currency")).toBe(true);
 		});
+
+		it("should fail when minAmount exceeds database decimal limit", async () => {
+			const data: Partial<JobPaymentInputDto> = { type: "FIXED", minAmount: 100000000.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const dto = Object.assign(new JobPaymentInputDto(), data);
+			const errors = await validate(dto);
+
+			expect(errors.length).toBeGreaterThan(0);
+		});
+
+		it("should fail when maxAmount exceeds database decimal limit", async () => {
+			const data: Partial<JobPaymentInputDto> = { type: "RANGE", minAmount: 150.0, maxAmount: 100000000.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const dto = Object.assign(new JobPaymentInputDto(), data);
+			const errors = await validate(dto);
+
+			expect(errors.length).toBeGreaterThan(0);
+		});
 	});
 });

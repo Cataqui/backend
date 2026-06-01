@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "api-security-best-practices": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-security-best-practices/SKILL.md",
+      "computedHash": "5a088c5b84b75ed44955e7a153b4af20b5a70b6430e86d0f0398b824cc9efb20"
+    },
     "cloudflare-deploy": {
       "source": "openai/skills",
       "sourceType": "github",

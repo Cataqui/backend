@@ -4,7 +4,7 @@ import { FeedRequestQueryDto } from "./feed-request-query.dto";
 import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" });
+const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
 
 describe("FeedRequestQueryDto", () => {
 	describe("validation", () => {
@@ -63,6 +63,14 @@ describe("FeedRequestQueryDto", () => {
 			const errors = await validate(dto);
 
 			expect(errors.length).toBe(0);
+		});
+
+		it("should fail when cursor exceeds 512 characters", async () => {
+			const longCursor = "a".repeat(513);
+			const dto = plainToInstance(FeedRequestQueryDto, { cursor: longCursor });
+			const errors = await validate(dto);
+
+			expect(errors.length).toBeGreaterThan(0);
 		});
 	});
 });

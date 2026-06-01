@@ -3,6 +3,7 @@ import { FeedService } from "./feed.service";
 import { FeedRepository, type FeedItemRaw } from "./repositories/feed.repository";
 import { CursorUtils } from "./utils/cursor.utils";
 import { FeedSort } from "./enums/feed-sort.enum";
+import { InvalidCursorError } from "./errors/invalid-cursor.error";
 import { vi, type Mock } from "vitest";
 
 function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
@@ -66,7 +67,7 @@ describe("FeedService", () => {
 			);
 			mockRepository.getFeedItems.mockResolvedValue(items);
 
-			const encodedCursor = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" });
+			const encodedCursor = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
 
 			const result = await service.getFeed({
 				cursor: encodedCursor,
@@ -74,7 +75,7 @@ describe("FeedService", () => {
 
 			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				expect.objectContaining({ cursor: expect.objectContaining({ createdAt: "2026-05-28T10:00:00.000Z", jobId: "abc-123" }) }),
+				expect.objectContaining({ cursor: expect.objectContaining({ createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" }) }),
 			);
 			expect(result.data).toHaveLength(5);
 		});
@@ -114,7 +115,7 @@ describe("FeedService", () => {
 		});
 
 		it("should throw on invalid cursor", async () => {
-			await expect(service.getFeed({ cursor: "invalid-cursor" })).rejects.toThrow(SyntaxError);
+			await expect(service.getFeed({ cursor: "invalid-cursor" })).rejects.toThrow(InvalidCursorError);
 		});
 
 		it("should map raw results to FeedItemOutputDto", async () => {

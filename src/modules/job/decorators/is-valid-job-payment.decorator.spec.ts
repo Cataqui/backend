@@ -169,4 +169,23 @@ describe("IsValidJobPaymentConstraint", () => {
 			expect(constraint.validate({ type: JobPaymentType.OTHER, note: null })).toBe(false);
 		});
 	});
+
+	describe("invalid input types", () => {
+		it("should fail validation when value is null", () => {
+			expect(constraint.validate(null)).toBe(false);
+		});
+
+		it("should return correct message when value is null", () => {
+			const msg = constraint.defaultMessage(createDefaultMessageArgs(null as never));
+			expect(msg).toBe("Invalid payment format");
+		});
+
+		it("should fail validation when value is undefined", () => {
+			expect(constraint.validate(undefined)).toBe(false);
+		});
+
+		it("should fail validation when value is not an object", () => {
+			expect(constraint.validate("not-an-object")).toBe(false);
+		});
+	});
 });

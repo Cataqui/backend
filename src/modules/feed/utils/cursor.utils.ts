@@ -17,7 +17,12 @@ function encodeCursor(params: Omit<IFeedPaginationCursor, "version">): string {
 
 function decodeCursor(cursor: string, expectedSort: FeedSort): IFeedPaginationCursor {
 	const decoded: string = Buffer.from(cursor, "base64url").toString("utf-8");
-	const payload: unknown = JSON.parse(decoded);
+	let payload: unknown;
+	try {
+		payload = JSON.parse(decoded);
+	} catch {
+		throw new InvalidCursorError("Cursor payload is not valid JSON.");
+	}
 
 	const parsedCursor = FeedPaginationCursorSchema.safeParse(payload);
 

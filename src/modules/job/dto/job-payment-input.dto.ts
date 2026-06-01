@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsNumber, IsPositive, IsEnum, IsOptional, IsString, Length, IsISO4217CurrencyCode } from "class-validator";
+import { IsNumber, IsPositive, IsEnum, IsOptional, IsString, Length, IsISO4217CurrencyCode, Max } from "class-validator";
 import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
 export class JobPaymentInputDto {
@@ -24,6 +24,7 @@ export class JobPaymentInputDto {
 	@IsOptional()
 	@IsNumber()
 	@IsPositive()
+	@Max(99999999.99)
 	readonly minAmount?: number;
 
 	@Expose({ name: "max_amount" })
@@ -36,6 +37,7 @@ export class JobPaymentInputDto {
 	@IsOptional()
 	@IsNumber()
 	@IsPositive()
+	@Max(99999999.99)
 	readonly maxAmount?: number;
 
 	@Expose({ name: "note" })

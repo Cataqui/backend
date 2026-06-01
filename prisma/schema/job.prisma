@@ -25,6 +25,6 @@ model Job {
 
   @@index([city, state, country])
   @@index([categoryId])
-  @@index([status])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("jobs")
 }

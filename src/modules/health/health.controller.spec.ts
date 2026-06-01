@@ -51,29 +51,59 @@ describe("HealthController", () => {
 		expect(mockReply.header).toHaveBeenCalledWith("Cache-Control", "no-cache, no-store, must-revalidate");
 	});
 
-	it("should return unhealthy output when a dependency is down", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
-			status: "error",
-			details: { database: { status: "down", message: "Can't connect to database" } },
-		} as never);
+	describe("when a dependency is down", () => {
+		beforeEach(() => {
+			vi.spyOn(healthCheckService, "check").mockResolvedValue({
+				status: "error",
+				details: { database: { status: "down", message: "Can't connect to database" } },
+			} as never);
+		});
 
-		const result = await controller.check(mockReply);
+		it("should return error status", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.status).toBe(HealthCheckStatus.ERROR);
+		});
 
-		expect(result.status).toBe(HealthCheckStatus.ERROR);
-		expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
-		expect(result.details["database"]?.message).toBe("Can't connect to database");
-		expect(mockReply.status).toHaveBeenCalledWith(503);
+		it("should return down status for database indicator", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
+		});
+
+		it("should return generic database connection failed message", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["database"]?.message).toBe("Database connection failed");
+		});
+
+		it("should set response status to 503", async () => {
+			await controller.check(mockReply);
+			expect(mockReply.status).toHaveBeenCalledWith(503);
+		});
 	});
 
-	it("should return error output when health check throws unexpectedly", async () => {
-		vi.spyOn(healthCheckService, "check").mockRejectedValue(new Error("Unexpected error"));
+	describe("when health check throws unexpectedly", () => {
+		beforeEach(() => {
+			vi.spyOn(healthCheckService, "check").mockRejectedValue(new Error("Unexpected error"));
+		});
 
-		const result = await controller.check(mockReply);
+		it("should return error status", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.status).toBe(HealthCheckStatus.ERROR);
+		});
 
-		expect(result.status).toBe(HealthCheckStatus.ERROR);
-		expect(result.details["error"]?.status).toBe(HealthIndicatorStatus.DOWN);
-		expect(result.details["error"]?.message).toBe("Unexpected error");
-		expect(mockReply.status).toHaveBeenCalledWith(503);
+		it("should return down status for error detail", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["error"]?.status).toBe(HealthIndicatorStatus.DOWN);
+		});
+
+		it("should return generic database connection failed message", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["error"]?.message).toBe("Database connection failed");
+		});
+
+		it("should set response status to 503", async () => {
+			await controller.check(mockReply);
+			expect(mockReply.status).toHaveBeenCalledWith(503);
+		});
 	});
 
 	it("should map multiple dependencies in details", async () => {
@@ -105,19 +135,30 @@ describe("HealthController", () => {
 		expect(mockReply.header).toHaveBeenCalledWith("Cache-Control", "no-cache, no-store, must-revalidate");
 	});
 
-	it("should fall back to error field when details is empty", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
-			status: "error",
-			info: {},
-			error: { database: { status: "down", message: "Timeout" } },
-			details: {},
-		} as never);
+	describe("when details is empty and fallback to error field is used", () => {
+		beforeEach(() => {
+			vi.spyOn(healthCheckService, "check").mockResolvedValue({
+				status: "error",
+				info: {},
+				error: { database: { status: "down", message: "Timeout" } },
+				details: {},
+			} as never);
+		});
 
-		const result = await controller.check(mockReply);
+		it("should return error status", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.status).toBe(HealthCheckStatus.ERROR);
+		});
 
-		expect(result.status).toBe(HealthCheckStatus.ERROR);
-		expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
-		expect(result.details["database"]?.message).toBe("Timeout");
+		it("should return down status for database indicator", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
+		});
+
+		it("should return generic database connection failed message", async () => {
+			const result = await controller.check(mockReply);
+			expect(result.details["database"]?.message).toBe("Database connection failed");
+		});
 	});
 
 	it("should handle empty details with no error field", async () => {

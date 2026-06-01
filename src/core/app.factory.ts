@@ -15,6 +15,12 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
 	const sizeConfig = requestSizeConfig();
 
+	const allowedOrigins =
+		process.env["CORS_ORIGINS"]
+			?.split(",")
+			.map((o) => o.trim())
+			.filter(Boolean) || [];
+
 	app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 
 	app.useGlobalPipes(
@@ -33,9 +39,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
 	app.enableCors({
 		origin: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
-			if (!origin) return callback(null, true);
-
-			const allowedOrigins = process.env["CORS_ORIGINS"]?.split(",") || [];
+			if (origin === undefined) return callback(null, true);
 
 			if (allowedOrigins.includes(origin)) callback(null, true);
 			else {
@@ -59,17 +63,19 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	});
 	registerRequestSizeHooks(fastifyInstance, sizeConfig);
 
-	const swaggerConfig = new DocumentBuilder()
-		.setTitle("Cataquí API")
-		.setVersion("1.0")
-		.addGlobalParameters({
-			name: "accept-language",
-			in: "header",
-			required: false,
-			schema: { type: "string", default: "en-US", example: "en-US" },
-		})
-		.build();
+	if (process.env["NODE_ENV"] !== "production") {
+		const swaggerConfig = new DocumentBuilder()
+			.setTitle("Cataquí API")
+			.setVersion("1.0")
+			.addGlobalParameters({
+				name: "accept-language",
+				in: "header",
+				required: false,
+				schema: { type: "string", default: "en-US", example: "en-US" },
+			})
+			.build();
 
-	const document = SwaggerModule.createDocument(app, swaggerConfig);
-	SwaggerModule.setup("docs", app, document);
+		const document = SwaggerModule.createDocument(app, swaggerConfig);
+		SwaggerModule.setup("docs", app, document);
+	}
 }

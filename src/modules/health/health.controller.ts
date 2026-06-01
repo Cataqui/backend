@@ -1,4 +1,4 @@
-import { Controller, Get, Version, Res, HttpStatus } from "@nestjs/common";
+import { Controller, Get, Version, Res, HttpStatus, Logger } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
@@ -11,6 +11,8 @@ import type { FastifyReply } from "fastify";
 @ApiTags("health")
 @Controller("health")
 export class HealthController {
+	private readonly _logger = new Logger(HealthController.name);
+
 	constructor(
 		private readonly _health: HealthCheckService,
 		private readonly _prismaHealth: PrismaHealthIndicator,
@@ -44,12 +46,21 @@ export class HealthController {
 			details = {};
 
 			for (const [key, val] of Object.entries(source)) {
-				details[key] = new HealthIndicatorDetailDto((val as { status: string })["status"] as HealthIndicatorStatus, (val as { message?: string })["message"]);
+				const status = (val as { status: string })["status"] as HealthIndicatorStatus;
+				let message = (val as { message?: string })["message"];
+
+				if (key === "database" && status !== HealthIndicatorStatus.UP) {
+					message = "Database connection failed";
+				}
+
+				details[key] = new HealthIndicatorDetailDto(status, message);
 			}
 		} catch (error) {
+			this._logger.error("Health check failed", error);
+
 			healthStatus = HealthCheckStatus.ERROR;
 			details = {
-				error: new HealthIndicatorDetailDto(HealthIndicatorStatus.DOWN, (error as Error).message),
+				error: new HealthIndicatorDetailDto(HealthIndicatorStatus.DOWN, "Database connection failed"),
 			};
 		}
 
