@@ -15,6 +15,7 @@ async function bootstrap(): Promise<void> {
 		requestTimeout: sizeConfig.requestTimeoutMs,
 		connectionTimeout: sizeConfig.connectionTimeoutMs,
 		keepAliveTimeout: sizeConfig.keepAliveTimeoutMs,
+		trustProxy: true,
 	});
 
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter);
