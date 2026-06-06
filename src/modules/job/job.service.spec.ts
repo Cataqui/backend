@@ -22,7 +22,7 @@ interface MockJobWithCategory {
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;
-	neighborhood: string | null;
+	neighborhood: string;
 	city: string;
 	state: string;
 	country: string;
@@ -205,10 +205,10 @@ describe("JobService", () => {
 			});
 		});
 
-		it("should pass null for street and neighborhood when not provided", async () => {
+		it("should pass null for street when not provided", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro" };
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -227,9 +227,7 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
-			expect(createData).toBeDefined();
 			expect(createData).toHaveProperty("street", null);
-			expect(createData).toHaveProperty("neighborhood", null);
 		});
 
 		it("should use translated category name when translation exists", async () => {

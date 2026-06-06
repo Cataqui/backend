@@ -22,7 +22,7 @@ interface MockJobWithCategory {
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;
-	neighborhood: string | null;
+	neighborhood: string;
 	city: string;
 	state: string;
 	country: string;
@@ -153,14 +153,13 @@ describe("JobRepository", () => {
 		});
 
 		it("should convert nullish street to null", async () => {
-			const params = { ...createParams, street: undefined as unknown as string | null, neighborhood: null as unknown as string | null };
+			const params = { ...createParams, street: undefined as unknown as string | null };
 			await repository.create({ data: params });
 
 			const callData = (prisma.job.create as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]?.data;
 
 			if (callData) {
 				expect(callData.street).toBeNull();
-				expect(callData.neighborhood).toBeNull();
 			}
 		});
 	});

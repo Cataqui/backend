@@ -11,16 +11,24 @@ describe("CreateJobLocationInputDto", () => {
 			expect(errors).toHaveLength(0);
 		});
 
-		it("should pass with optional street and neighborhood omitted", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+		it("should pass with optional street omitted", async () => {
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro" };
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
 			expect(errors).toHaveLength(0);
 		});
 
+		it("should fail when neighborhood is omitted", async () => {
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR" };
+			const dto = Object.assign(new CreateJobLocationInputDto(), data);
+			const errors = await validate(dto);
+
+			expect(errors[0]?.property).toBe("neighborhood");
+		});
+
 		it("should fail with city shorter than 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "S", state: "SP", country: "BR" };
+			const data: Partial<CreateJobLocationInputDto> = { city: "S", state: "SP", country: "BR", neighborhood: "Centro" };
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -29,7 +37,7 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with state not exactly 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SPA", country: "BR" };
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SPA", country: "BR", neighborhood: "Centro" };
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -38,7 +46,7 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with country not exactly 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BRA" };
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BRA", neighborhood: "Centro" };
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -47,7 +55,7 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with invalid 2-letter country code", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "XX" };
+			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "XX", neighborhood: "Centro" };
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 

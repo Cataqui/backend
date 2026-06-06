@@ -13,11 +13,10 @@ describe("JobLocationOutputDto", () => {
 			expect(dto.country).toBe("BR");
 		});
 
-		it("should accept null street and neighborhood", () => {
-			const dto = new JobLocationOutputDto({ street: null, neighborhood: null, city: "São Paulo", state: "SP", country: "BR" });
+		it("should accept null street", () => {
+			const dto = new JobLocationOutputDto({ street: null, neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" });
 
 			expect(dto.street).toBeNull();
-			expect(dto.neighborhood).toBeNull();
 		});
 	});
 

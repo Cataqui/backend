@@ -13,7 +13,7 @@ export interface FeedItemRaw {
 	paymentNote: string | null;
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
-	neighborhood: string | null;
+	neighborhood: string;
 	city: string;
 	state: string;
 }

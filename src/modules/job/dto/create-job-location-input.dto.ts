@@ -11,11 +11,10 @@ export class CreateJobLocationInputDto {
 	readonly street: string | undefined;
 
 	@Expose({ name: "neighborhood" })
-	@ApiProperty({ name: "neighborhood", description: "Neighborhood or district", example: "Centro", required: false })
-	@IsOptional()
+	@ApiProperty({ name: "neighborhood", description: "Neighborhood or district", example: "Centro" })
 	@IsString()
-	@Length(0, 100)
-	readonly neighborhood: string | undefined;
+	@Length(2, 100)
+	readonly neighborhood!: string;
 
 	@Expose({ name: "city" })
 	@ApiProperty({ name: "city", description: "City name", example: "São Paulo" })

@@ -38,7 +38,7 @@ export class JobService {
 				contactPhoneNumber: dto.contact.phoneNumber,
 				contactMethod: dto.contact.method,
 				street: dto.location.street ?? null,
-				neighborhood: dto.location.neighborhood ?? null,
+				neighborhood: dto.location.neighborhood,
 				city: dto.location.city,
 				state: dto.location.state,
 				country: dto.location.country,

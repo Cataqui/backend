@@ -11,9 +11,8 @@ export class JobLocationOutputDto {
 		name: "neighborhood",
 		description: "Neighborhood or district",
 		example: "Centro",
-		required: false,
 	})
-	readonly neighborhood: string | null;
+	readonly neighborhood: string;
 
 	@Expose({ name: "city" })
 	@ApiProperty({ name: "city", description: "City name", example: "São Paulo" })
@@ -27,7 +26,7 @@ export class JobLocationOutputDto {
 	@ApiProperty({ name: "country", description: "Country code (ISO 3166-1 alpha-2)", example: "BR" })
 	readonly country: string;
 
-	constructor(params: { street: string | null; neighborhood: string | null; city: string; state: string; country: string }) {
+	constructor(params: { street: string | null; neighborhood: string; city: string; state: string; country: string }) {
 		this.street = params.street;
 		this.neighborhood = params.neighborhood;
 		this.city = params.city;

@@ -6,7 +6,7 @@ model Job {
   contactPhoneNumber String            @map("contact_phone_number") @db.VarChar(20)
   contactMethod      JobContactMethod     @map("contact_method")
   street            String?           @db.VarChar(200)
-  neighborhood      String?           @db.VarChar(100)
+  neighborhood      String            @db.VarChar(100)
   city              String            @db.VarChar(100)
   state             String            @db.VarChar(2)
   country           String            @db.VarChar(2)

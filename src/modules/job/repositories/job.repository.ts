@@ -35,7 +35,6 @@ export class JobRepository {
 			data: {
 				...params.data,
 				street: params.data.street ?? null,
-				neighborhood: params.data.neighborhood ?? null,
 			},
 			include: { category: true },
 		});

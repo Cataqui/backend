@@ -46,7 +46,7 @@ export class FeedItemOutputDto {
 		paymentNote: string | null;
 		paymentAmountPeriod: JobPaymentAmountPeriod;
 		paymentCurrency: string;
-		neighborhood: string | null;
+		neighborhood: string;
 		city: string;
 		state: string;
 	}): FeedItemOutputDto {
