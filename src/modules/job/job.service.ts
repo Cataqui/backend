@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable } from "@nestjs/common";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
@@ -27,7 +27,7 @@ export class JobService {
 		}
 
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
-		if (!category) throw new CategoryNotFoundError();
+		if (!category) throw new CategoryNotFoundError(HttpStatus.BAD_REQUEST);
 
 		const job = await this._jobRepository.create({
 			data: {

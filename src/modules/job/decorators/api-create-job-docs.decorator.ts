@@ -14,11 +14,7 @@ export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
 		}),
 		ApiResponse({
 			status: HttpStatus.BAD_REQUEST,
-			description: "Invalid input (validation error)",
-		}),
-		ApiResponse({
-			status: HttpStatus.NOT_FOUND,
-			description: "Category not found",
+			description: "Invalid input, invalid job payment rules, or category_id does not match an existing category",
 		}),
 	);
 }
