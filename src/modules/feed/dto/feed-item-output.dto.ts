@@ -47,8 +47,6 @@ export class FeedItemOutputDto {
 		paymentAmountPeriod: JobPaymentAmountPeriod;
 		paymentCurrency: string;
 		neighborhood: string;
-		city: string;
-		state: string;
 	}): FeedItemOutputDto {
 		return new FeedItemOutputDto({
 			jobId: job.id,
@@ -64,8 +62,6 @@ export class FeedItemOutputDto {
 			}),
 			location: new FeedLocationOutputDto({
 				neighborhood: job.neighborhood,
-				city: job.city,
-				state: job.state,
 			}),
 		});
 	}

@@ -18,8 +18,6 @@ function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; c
 		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
 		neighborhood: overrides.neighborhood ?? "Centro",
-		city: overrides.city ?? "São Paulo",
-		state: overrides.state ?? "SP",
 	};
 }
 
@@ -133,7 +131,7 @@ describe("FeedService", () => {
 			expect(result.data[0]!.title).toBe("Help unload truck");
 			expect(result.data[0]!.payment.type).toBe("FIXED");
 			expect(result.data[0]!.payment.minAmount).toBe(150.0);
-			expect(result.data[0]!.location.city).toBe("São Paulo");
+			expect(result.data[0]!.location.neighborhood).toBe("Centro");
 		});
 
 		it("should return PaginatedResponseDto structure", async () => {

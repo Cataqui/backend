@@ -14,8 +14,6 @@ export interface FeedItemRaw {
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
 	neighborhood: string;
-	city: string;
-	state: string;
 }
 
 @Injectable()
@@ -45,8 +43,6 @@ export class FeedRepository {
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
-				city: true,
-				state: true,
 			},
 		});
 

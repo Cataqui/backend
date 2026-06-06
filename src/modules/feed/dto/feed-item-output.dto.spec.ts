@@ -13,8 +13,6 @@ function createMockDatabaseJob() {
 		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		neighborhood: "Centro",
-		city: "São Paulo",
-		state: "SP",
 	};
 }
 
@@ -43,8 +41,6 @@ describe("FeedItemOutputDto", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
 
 			expect(dto.location.neighborhood).toBe("Centro");
-			expect(dto.location.city).toBe("São Paulo");
-			expect(dto.location.state).toBe("SP");
 		});
 	});
 
@@ -83,8 +79,22 @@ describe("FeedItemOutputDto", () => {
 			const location = plain["location"] as Record<string, unknown>;
 
 			expect(location).toHaveProperty("neighborhood", "Centro");
-			expect(location).toHaveProperty("city", "São Paulo");
-			expect(location).toHaveProperty("state", "SP");
+		});
+
+		it("should not serialize city in nested location", () => {
+			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+			const location = plain["location"] as Record<string, unknown>;
+
+			expect(location).not.toHaveProperty("city");
+		});
+
+		it("should not serialize state in nested location", () => {
+			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+			const location = plain["location"] as Record<string, unknown>;
+
+			expect(location).not.toHaveProperty("state");
 		});
 	});
 });
