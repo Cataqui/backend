@@ -34,7 +34,7 @@ describe("IsIFeedPaginationCursor", () => {
 	});
 
 	it("should fail for valid base64url but invalid cursor shape", async () => {
-		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest" })).toString("base64url");
+		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
 		const dto = plainToInstance(TestDto, { cursor: badCursor });
 		const errors = await validate(dto);
 
@@ -42,7 +42,7 @@ describe("IsIFeedPaginationCursor", () => {
 	});
 
 	it("should fail for valid base64url JSON with wrong field types", async () => {
-		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest", createdAt: 123, jobId: "abc" })).toString("base64url");
+		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST", createdAt: 123, jobId: "abc" })).toString("base64url");
 		const dto = plainToInstance(TestDto, { cursor: badCursor });
 		const errors = await validate(dto);
 

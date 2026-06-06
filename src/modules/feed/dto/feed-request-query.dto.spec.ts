@@ -30,7 +30,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should fail when cursor is valid base64 but invalid cursor shape", async () => {
-			const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest" })).toString("base64url");
+			const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
 			const dto = plainToInstance(FeedRequestQueryDto, { cursor: badCursor });
 			const errors = await validate(dto);
 
@@ -38,7 +38,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should pass with valid optional sort", async () => {
-			const dto = plainToInstance(FeedRequestQueryDto, { sort: "latest" });
+			const dto = plainToInstance(FeedRequestQueryDto, { sort: "LATEST" });
 			const errors = await validate(dto);
 
 			expect(errors.length).toBe(0);
@@ -59,7 +59,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should pass with all valid fields", async () => {
-			const dto = plainToInstance(FeedRequestQueryDto, { cursor: VALID_CURSOR, sort: "latest" });
+			const dto = plainToInstance(FeedRequestQueryDto, { cursor: VALID_CURSOR, sort: "LATEST" });
 			const errors = await validate(dto);
 
 			expect(errors.length).toBe(0);

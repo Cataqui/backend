@@ -337,6 +337,8 @@ Avoid magic numbers and repeated domain strings.
 
 Prefer TypeScript `enum` over `const` objects for error codes, status values, and domain constants. Enums provide both the value and the type in one declaration, are easy to switch over, and don't require a separate type extraction.
 
+String enum values must always be UPPERCASE. Never use lowercase or snake_case string enum values.
+
 Create named constants for:
 
 - limits

@@ -30,9 +30,9 @@ describe("FeedController", () => {
 		it("should call service with cursor and sort params", async () => {
 			mockService.getFeed.mockResolvedValue(new PaginatedResponseDto([], new PaginationOutputDto(false, null)));
 
-			await controller.getFeed({ cursor: "abc", sort: "latest" as FeedSort });
+			await controller.getFeed({ cursor: "abc", sort: "LATEST" as FeedSort });
 
-			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: "abc", sort: "latest" });
+			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: "abc", sort: "LATEST" });
 		});
 
 		it("should call service with undefined values for missing params", async () => {

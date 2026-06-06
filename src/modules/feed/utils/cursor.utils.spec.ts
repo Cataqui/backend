@@ -37,7 +37,7 @@ describe("CursorUtils", () => {
 		});
 
 		it("should throw on unsupported version", () => {
-			const payload = Buffer.from(JSON.stringify({ version: 99, sort: "latest", createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" })).toString(
+			const payload = Buffer.from(JSON.stringify({ version: 99, sort: "LATEST", createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" })).toString(
 				"base64url",
 			);
 			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow("Cursor version '99' is not supported. Please use 1");
@@ -50,11 +50,11 @@ describe("CursorUtils", () => {
 				jobId: "12345678-1234-1234-1234-1234567890ab",
 			});
 
-			expect(() => CursorUtils.decodeCursor(encoded, "expiring" as FeedSort)).toThrow("does not match requested sort");
+			expect(() => CursorUtils.decodeCursor(encoded, "EXPIRING" as FeedSort)).toThrow("does not match requested sort");
 		});
 
 		it("should throw on missing fields", () => {
-			const payload = Buffer.from(JSON.stringify({ version: 1, sort: "latest" })).toString("base64url");
+			const payload = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
 			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow("Cursor is missing required fields or has invalid types.");
 		});
 
