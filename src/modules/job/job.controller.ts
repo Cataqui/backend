@@ -21,7 +21,7 @@ export class JobController {
 		return this._jobService.getJob({ jobId: params.jobId, locale });
 	}
 
-	@Post("create")
+	@Post()
 	@Version("1")
 	@HttpCode(HttpStatus.CREATED)
 	@ApiCreateJobDocs()

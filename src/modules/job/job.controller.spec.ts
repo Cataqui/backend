@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
+import { PATH_METADATA } from "@nestjs/common/constants";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -56,6 +57,10 @@ describe("JobController", () => {
 	});
 
 	describe("create", () => {
+		it("should expose the create action at the job collection route", () => {
+			expect(Reflect.getMetadata(PATH_METADATA, controller.create)).toBe("/");
+		});
+
 		it("should return JobOutputDto on success", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
