@@ -13,6 +13,8 @@ function createMockDatabaseJob() {
 		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		neighborhood: "Centro",
+		fuzzyLatitude: { toNumber: () => -23.55 },
+		fuzzyLongitude: { toNumber: () => -46.63 },
 	};
 }
 
@@ -40,7 +42,7 @@ describe("FeedItemOutputDto", () => {
 		it("should construct nested location DTO", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob());
 
-			expect(dto.location.neighborhood).toBe("Centro");
+			expect(dto.location).toMatchObject({ neighborhood: "Centro", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
 		});
 	});
 
@@ -78,7 +80,7 @@ describe("FeedItemOutputDto", () => {
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const location = plain["location"] as Record<string, unknown>;
 
-			expect(location).toHaveProperty("neighborhood", "Centro");
+			expect(location).toEqual({ neighborhood: "Centro", latitude: -23.55, longitude: -46.63, area_radius: 2000 });
 		});
 
 		it("should not serialize city in nested location", () => {

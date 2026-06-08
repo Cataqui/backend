@@ -93,7 +93,14 @@ export class JobOutputDto {
 			title: job.title,
 			description: job.description,
 			contact: new JobContactOutputDto({ contactName: job.contactName, contactPhoneNumber: job.contactPhoneNumber, contactMethod: job.contactMethod }),
-			location: new JobLocationOutputDto({ street: job.street, neighborhood: job.neighborhood, city: job.city, state: job.state, country: job.country }),
+			location: new JobLocationOutputDto({
+				neighborhood: job.neighborhood,
+				city: job.city,
+				state: job.state,
+				country: job.country,
+				latitude: job.fuzzyLatitude,
+				longitude: job.fuzzyLongitude,
+			}),
 			category: new JobCategoryOutputDto({ categoryId: job.category.id, name: categoryDisplayName, slug: job.category.slug }),
 			payment: new JobPaymentOutputDto({
 				paymentType: job.paymentType,

@@ -8,7 +8,15 @@ import { JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } fro
 function createValidDto(): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+	const locationData: Partial<CreateJobLocationInputDto> = {
+		city: "São Paulo",
+		state: "SP",
+		country: "BR",
+		street: "Rua das Flores, 123",
+		neighborhood: "Centro",
+		latitude: -23.55052,
+		longitude: -46.633308,
+	};
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -87,7 +95,14 @@ describe("CreateJobRequestDto", () => {
 		it("should validate nested contact errors", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "", phoneNumber: "", method: undefined as unknown as JobContactMethod };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro" };
+			const locationData: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -118,7 +133,15 @@ describe("CreateJobRequestDto", () => {
 
 		function buildDto(paymentData: Partial<JobPaymentInputDto>): CreateJobRequestDto {
 			const contact = Object.assign(new CreateJobContactInputDto(), { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP });
-			const location = Object.assign(new CreateJobLocationInputDto(), { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" });
+			const location = Object.assign(new CreateJobLocationInputDto(), {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				street: "Rua das Flores, 123",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			});
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			return Object.assign(new CreateJobRequestDto(), { ...baseDto, contact, location, payment });
 		}

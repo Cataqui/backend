@@ -10,6 +10,9 @@ model Job {
   city              String            @db.VarChar(100)
   state             String            @db.VarChar(2)
   country           String            @db.VarChar(2)
+  locationPoint     Unsupported("geometry(Point,4326)")? @map("location_point")
+  fuzzyLatitude     Decimal           @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude    Decimal           @map("fuzzy_longitude") @db.Decimal(9, 6)
   status            JobStatus
   type              JobType
   paymentType       JobPaymentType    @map("payment_type")

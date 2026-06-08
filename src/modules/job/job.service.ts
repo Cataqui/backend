@@ -7,6 +7,10 @@ import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.erro
 import { JobType, JobPaymentAmountPeriod, JobStatus } from "../../../generated/prisma/client.js";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { JobLocationConstants } from "./job-location.constants";
+import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
+
 @Injectable()
 export class JobService {
 	constructor(
@@ -29,7 +33,20 @@ export class JobService {
 		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
 		if (!category) throw new CategoryNotFoundError(HttpStatus.BAD_REQUEST);
 
+		const fuzzyLocation: ILocationCoordinate = dto.location.street?.trim()
+			? LocationUtils.fuzzLocationCoordinate({
+					latitude: dto.location.latitude,
+					longitude: dto.location.longitude,
+					minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
+					maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
+				})
+			: { latitude: dto.location.latitude, longitude: dto.location.longitude };
+
 		const job = await this._jobRepository.create({
+			locationPoint: {
+				latitude: dto.location.latitude,
+				longitude: dto.location.longitude,
+			},
 			data: {
 				title: dto.title,
 				description: dto.description,
@@ -42,6 +59,8 @@ export class JobService {
 				city: dto.location.city,
 				state: dto.location.state,
 				country: dto.location.country,
+				fuzzyLatitude: fuzzyLocation.latitude,
+				fuzzyLongitude: fuzzyLocation.longitude,
 				type: dto.type,
 				paymentType: dto.payment.type,
 				paymentMinAmount: dto.payment.minAmount ?? null,

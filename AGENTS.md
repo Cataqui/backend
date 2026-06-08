@@ -351,11 +351,71 @@ Create named constants for:
 
 Small one-off test descriptions, local validation messages, and obvious Swagger prose do not need constants unless repeated or domain-critical.
 
+### Constant File Structure
+
+Every constants file (`*.constants.ts`) must export its values through a single `*Constants` object (named after the domain), not as individual exports.
+
+Good:
+
+```ts
+const JOB_LOCATION_FUZZY_MIN_DISTANCE_METERS = 300;
+const JOB_LOCATION_FUZZY_MAX_DISTANCE_METERS = 500;
+
+export const JobLocationConstants = {
+	JOB_LOCATION_FUZZY_MIN_DISTANCE_METERS,
+	JOB_LOCATION_FUZZY_MAX_DISTANCE_METERS,
+} as const;
+```
+
+Bad:
+
+```ts
+export const JOB_LOCATION_FUZZY_MIN_DISTANCE_METERS = 300;
+export const JOB_LOCATION_FUZZY_MAX_DISTANCE_METERS = 500;
+```
+
+Consumers always import the constants object:
+
+```ts
+import { JobLocationConstants } from "./job-location.constants";
+
+JobLocationConstants.JOB_LOCATION_FUZZY_MIN_DISTANCE_METERS;
+```
+
 ### No Dead Code
 
 Do not leave unused code, commented-out blocks, unused imports, or speculative abstractions.
 
 Every line must exist for the current task.
+
+### Inline Object Types Over Single-Use Interfaces
+
+If an object parameter type is used in exactly one place (e.g., one function signature), define it inline rather than as a named interface.
+
+Good:
+
+```ts
+async findNearbyPosts(params: {
+	categoryId: string;
+	locationPoint: {
+		latitude: number;
+		longitude: number;
+	};
+}): Promise<Post[]> {}
+```
+
+Bad:
+
+```ts
+interface ILocationPointParams {
+	latitude: number;
+	longitude: number;
+}
+// used only once below
+async findNearbyPosts({ locationPoint, categoryId }: { locationPoint: ILocationPointParams; categoryId: string }) {}
+```
+
+This avoids unnecessary named types that add indirection without reuse.
 
 ### Utility Functions
 
@@ -464,7 +524,6 @@ Files that may not require dedicated tests:
 
 - pure type-only files
 - barrel exports
-- static constant-only files
 - generated files
 - trivial module wiring with no logic
 
@@ -521,6 +580,31 @@ The regression test must:
 
 Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
 
+### Property-Based / Fuzz Testing
+
+Use `fast-check` for property-based fuzz testing whenever a function accepts values from a meaningful domain.
+
+Prefer fuzzed inputs over a few raw example values for:
+
+- pure utilities
+- validators
+- parsers
+- serializers
+- math and range logic
+- security-sensitive logic
+- domain rules
+
+Property tests must define valid input domains explicitly and assert invariants that should hold for all generated values.
+
+Fixed example values are still allowed for:
+
+- regression tests for a known bug
+- exact edge cases that document intended behavior
+- DTO construction and test setup
+- mocks and spies
+- snapshots or serialization examples
+- tests where a single literal value is the behavior being specified
+
 ### One Assertion Per Test
 
 Every test must contain exactly one `expect` or assertion call. If a behavior requires multiple assertions, split it into multiple tests.
@@ -560,6 +644,7 @@ it("should return an active status", async () => {
 ```
 
 This ensures that:
+
 - each test has a single, clear reason to fail
 - test names describe exactly what is being verified
 - failures are immediately obvious without reading assertion details
@@ -733,7 +818,6 @@ When acting as an AI coding agent in this repository:
 8. Do not hide failures.
 9. If something cannot be done safely, explain the tradeoff.
 10. Optimize for Cataquí’s core loop: post → discover → WhatsApp contact.
-11. Always update SKILL.md when doing a modification that affects how the API is used from external actors, so we always keep up to date.
 
 ---
 

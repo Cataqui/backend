@@ -4,34 +4,46 @@ import { JobLocationOutputDto } from "./job-location-output.dto";
 describe("JobLocationOutputDto", () => {
 	describe("constructor", () => {
 		it("should set all location fields", () => {
-			const dto = new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" });
+			const dto = new JobLocationOutputDto({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63 });
 
-			expect(dto.street).toBe("Rua das Flores, 123");
-			expect(dto.neighborhood).toBe("Centro");
-			expect(dto.city).toBe("São Paulo");
-			expect(dto.state).toBe("SP");
-			expect(dto.country).toBe("BR");
+			expect(dto).toMatchObject({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
 		});
 
-		it("should accept null street", () => {
-			const dto = new JobLocationOutputDto({ street: null, neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" });
+		it("should convert Decimal-like coordinates to numbers", () => {
+			const dto = new JobLocationOutputDto({
+				neighborhood: "Centro",
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				latitude: { toNumber: () => -23.55 },
+				longitude: { toNumber: () => -46.63 },
+			});
 
-			expect(dto.street).toBeNull();
+			expect(dto.latitude).toBe(-23.55);
 		});
 	});
 
 	describe("serialization", () => {
 		it("should serialize all fields as snake_case", () => {
-			const dto = new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" });
+			const dto = new JobLocationOutputDto({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63 });
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toEqual({
-				street: "Rua das Flores, 123",
 				neighborhood: "Centro",
 				city: "São Paulo",
 				state: "SP",
 				country: "BR",
+				latitude: -23.55,
+				longitude: -46.63,
+				area_radius: 2000,
 			});
+		});
+
+		it("should not serialize street", () => {
+			const dto = new JobLocationOutputDto({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63 });
+			const plain = instanceToPlain(dto) as Record<string, unknown>;
+
+			expect(plain).not.toHaveProperty("street");
 		});
 	});
 });

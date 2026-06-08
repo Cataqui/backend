@@ -14,6 +14,8 @@ export interface FeedItemRaw {
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
 	neighborhood: string;
+	fuzzyLatitude: { toNumber(): number };
+	fuzzyLongitude: { toNumber(): number };
 }
 
 @Injectable()
@@ -43,6 +45,8 @@ export class FeedRepository {
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
 			},
 		});
 

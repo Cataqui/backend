@@ -21,7 +21,7 @@ function createMockJobOutputDto(): JobOutputDto {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: JobContactMethod.WHATSAPP }),
-		location: new JobLocationOutputDto({ street: "Rua das Flores, 123", neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR" }),
+		location: new JobLocationOutputDto({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63 }),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
 		payment: new JobPaymentOutputDto({
 			paymentType: JobPaymentType.FIXED,
@@ -64,7 +64,15 @@ describe("JobController", () => {
 		it("should return JobOutputDto on success", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+			const locationData: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				street: "Rua das Flores, 123",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -89,7 +97,14 @@ describe("JobController", () => {
 		it("should pass the DTO and locale to jobService.createJob", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro" };
+			const locationData: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);

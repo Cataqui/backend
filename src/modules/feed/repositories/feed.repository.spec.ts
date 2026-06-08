@@ -111,6 +111,8 @@ describe("FeedRepository", () => {
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
 			});
 		});
 	});

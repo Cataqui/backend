@@ -18,6 +18,8 @@ function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; c
 		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
 		neighborhood: overrides.neighborhood ?? "Centro",
+		fuzzyLatitude: overrides.fuzzyLatitude ?? { toNumber: () => -23.55 },
+		fuzzyLongitude: overrides.fuzzyLongitude ?? { toNumber: () => -46.63 },
 	};
 }
 

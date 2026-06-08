@@ -47,6 +47,8 @@ export class FeedItemOutputDto {
 		paymentAmountPeriod: JobPaymentAmountPeriod;
 		paymentCurrency: string;
 		neighborhood: string;
+		fuzzyLatitude: { toNumber(): number } | number;
+		fuzzyLongitude: { toNumber(): number } | number;
 	}): FeedItemOutputDto {
 		return new FeedItemOutputDto({
 			jobId: job.id,
@@ -62,6 +64,8 @@ export class FeedItemOutputDto {
 			}),
 			location: new FeedLocationOutputDto({
 				neighborhood: job.neighborhood,
+				latitude: job.fuzzyLatitude,
+				longitude: job.fuzzyLongitude,
 			}),
 		});
 	}

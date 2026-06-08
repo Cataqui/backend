@@ -26,6 +26,8 @@ interface MockJobWithCategory {
 	city: string;
 	state: string;
 	country: string;
+	fuzzyLatitude: number;
+	fuzzyLongitude: number;
 	status: string;
 	type: string;
 	paymentType: string;
@@ -52,6 +54,8 @@ const mockJob: MockJobWithCategory = {
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
+	fuzzyLatitude: -23.55,
+	fuzzyLongitude: -46.63,
 	status: "ACTIVE",
 	type: "INDIVIDUAL",
 	paymentType: "FIXED",
@@ -85,6 +89,8 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
+	fuzzyLatitude: -23.55,
+	fuzzyLongitude: -46.63,
 	type: "INDIVIDUAL",
 	paymentType: "FIXED",
 	paymentMinAmount: 150.0,
@@ -98,9 +104,12 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 describe("JobRepository", () => {
 	let repository: JobRepository;
 	let prisma: PrismaService;
+	let executeRaw: ReturnType<typeof vi.fn>;
 
 	beforeEach(async () => {
+		executeRaw = vi.fn().mockResolvedValue(1);
 		prisma = {
+			$transaction: vi.fn((callback: (tx: unknown) => unknown) => callback({ job: { create: prisma.job.create }, $executeRaw: executeRaw })),
 			job: {
 				create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 				findUnique: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
@@ -116,7 +125,7 @@ describe("JobRepository", () => {
 
 	describe("create", () => {
 		it("should call prisma.job.create with flattened data and include category", async () => {
-			await repository.create({ data: createParams });
+			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
 
 			expect(prisma.job.create).toHaveBeenCalledWith({
 				data: {
@@ -131,6 +140,8 @@ describe("JobRepository", () => {
 					city: "São Paulo",
 					state: "SP",
 					country: "BR",
+					fuzzyLatitude: -23.55,
+					fuzzyLongitude: -46.63,
 					type: "INDIVIDUAL",
 					paymentType: "FIXED",
 					paymentMinAmount: 150.0,
@@ -145,7 +156,7 @@ describe("JobRepository", () => {
 		});
 
 		it("should return the created job with category", async () => {
-			const result = await repository.create({ data: createParams });
+			const result = await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
 
 			expect(result).toEqual(mockJob);
 			expect(result.category).toBeDefined();
@@ -154,13 +165,25 @@ describe("JobRepository", () => {
 
 		it("should convert nullish street to null", async () => {
 			const params = { ...createParams, street: undefined as unknown as string | null };
-			await repository.create({ data: params });
+			await repository.create({ data: params, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
 
 			const callData = (prisma.job.create as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]?.data;
 
 			if (callData) {
 				expect(callData.street).toBeNull();
 			}
+		});
+
+		it("should wrap create and PostGIS point update in a transaction", async () => {
+			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+
+			expect(prisma.$transaction).toHaveBeenCalledOnce();
+		});
+
+		it("should update the real PostGIS location point after creating the job", async () => {
+			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+
+			expect(executeRaw).toHaveBeenCalledOnce();
 		});
 	});
 

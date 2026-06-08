@@ -30,13 +30,29 @@ export class JobRepository {
 		};
 	}
 
-	async create(params: { data: Prisma.JobUncheckedCreateInput }): Promise<Prisma.JobGetPayload<{ include: { category: true } }>> {
-		const job = await this._prisma.job.create({
-			data: {
-				...params.data,
-				street: params.data.street ?? null,
-			},
-			include: { category: true },
+	async create(params: {
+		data: Prisma.JobUncheckedCreateInput;
+		locationPoint: {
+			latitude: number;
+			longitude: number;
+		};
+	}): Promise<Prisma.JobGetPayload<{ include: { category: true } }>> {
+		const job = await this._prisma.$transaction(async (tx) => {
+			const createdJob = await tx.job.create({
+				data: {
+					...params.data,
+					street: params.data.street ?? null,
+				},
+				include: { category: true },
+			});
+
+			await tx.$executeRaw`
+				UPDATE "jobs"
+				SET "location_point" = ST_SetSRID(ST_MakePoint(${params.locationPoint.longitude}, ${params.locationPoint.latitude}), 4326)
+				WHERE "id" = ${createdJob.id}::uuid
+			`;
+
+			return createdJob;
 		});
 
 		return job;

@@ -11,6 +11,8 @@ import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
+import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { JobLocationConstants } from "./job-location.constants";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -26,6 +28,8 @@ interface MockJobWithCategory {
 	city: string;
 	state: string;
 	country: string;
+	fuzzyLatitude: number;
+	fuzzyLongitude: number;
 	status: string;
 	type: string;
 	paymentType: string;
@@ -53,6 +57,8 @@ const mockJob: MockJobWithCategory = {
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
+	fuzzyLatitude: -23.55,
+	fuzzyLongitude: -46.63,
 	status: "ACTIVE",
 	type: "INDIVIDUAL",
 	paymentType: "FIXED",
@@ -71,7 +77,15 @@ const mockJob: MockJobWithCategory = {
 function createValidDto(): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+	const locationData: Partial<CreateJobLocationInputDto> = {
+		city: "São Paulo",
+		state: "SP",
+		country: "BR",
+		street: "Rua das Flores, 123",
+		neighborhood: "Centro",
+		latitude: -23.55052,
+		longitude: -46.633308,
+	};
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -91,7 +105,15 @@ function createValidDto(): CreateJobRequestDto {
 function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-	const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", street: "Rua das Flores, 123", neighborhood: "Centro" };
+	const locationData: Partial<CreateJobLocationInputDto> = {
+		city: "São Paulo",
+		state: "SP",
+		country: "BR",
+		street: "Rua das Flores, 123",
+		neighborhood: "Centro",
+		latitude: -23.55052,
+		longitude: -46.633308,
+	};
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 
 	const dtoData: Partial<CreateJobRequestDto> = {
@@ -194,6 +216,8 @@ describe("JobService", () => {
 				city: "São Paulo",
 				state: "SP",
 				country: "BR",
+				fuzzyLatitude: expect.any(Number),
+				fuzzyLongitude: expect.any(Number),
 				type: JobType.INDIVIDUAL,
 				paymentType: JobPaymentType.FIXED,
 				paymentMinAmount: 150.0,
@@ -205,10 +229,50 @@ describe("JobService", () => {
 			});
 		});
 
+		it("should pass real coordinates as PostGIS location point to the repository", async () => {
+			await service.createJob(createValidDto(), "en-US");
+
+			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+
+			expect(createCall?.locationPoint).toEqual({ latitude: -23.55052, longitude: -46.633308 });
+		});
+
+		it("should fuzz coordinates when street is provided", async () => {
+			const randomSpy = vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.25);
+
+			await service.createJob(createValidDto(), "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			randomSpy.mockRestore();
+
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).not.toEqual({ latitude: -23.55052, longitude: -46.633308 });
+		});
+
+		it("should call location fuzzing with job coordinates and constants when street is provided", async () => {
+			const fuzzLocationCoordinateSpy = vi.spyOn(LocationUtils, "fuzzLocationCoordinate");
+
+			await service.createJob(createValidDto(), "en-US");
+
+			expect(fuzzLocationCoordinateSpy).toHaveBeenCalledWith({
+				latitude: -23.55052,
+				longitude: -46.633308,
+				minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
+				maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
+			});
+			fuzzLocationCoordinateSpy.mockRestore();
+		});
+
 		it("should pass null for street when not provided", async () => {
 			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const locationData: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro" };
+			const locationData: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
 			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
@@ -228,6 +292,59 @@ describe("JobService", () => {
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
 			expect(createData).toHaveProperty("street", null);
+		});
+
+		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
+			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const locationData: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
+			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
+			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
+			const dto = Object.assign(new CreateJobRequestDto(), {
+				title: "Test",
+				description: "Test description for the job.",
+				contact,
+				location,
+				type: JobType.INDIVIDUAL,
+				categoryId: "cm3x-cat-1",
+				payment,
+			});
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+
+			expect(createData?.fuzzyLatitude).toBe(-23.55052);
+		});
+
+		it("should use real coordinates as fuzzy coordinates when street is null", async () => {
+			const dto = createValidDto();
+			Object.assign(dto.location, { street: null });
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({ latitude: -23.55052, longitude: -46.633308 });
+		});
+
+		it("should use real coordinates as fuzzy coordinates when street is empty", async () => {
+			const dto = createValidDto();
+			Object.assign(dto.location, { street: "" });
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({ latitude: -23.55052, longitude: -46.633308 });
 		});
 
 		it("should use translated category name when translation exists", async () => {

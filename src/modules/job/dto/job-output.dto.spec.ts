@@ -15,6 +15,8 @@ function createMockDatabaseJob() {
 		city: "São Paulo",
 		state: "SP",
 		country: "BR",
+		fuzzyLatitude: { toNumber: () => -23.55 },
+		fuzzyLongitude: { toNumber: () => -46.63 },
 		status: "ACTIVE" as const,
 		type: "INDIVIDUAL" as const,
 		paymentType: "FIXED" as const,
@@ -54,9 +56,7 @@ describe("JobOutputDto", () => {
 		it("should construct nested location DTO", () => {
 			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
 
-			expect(dto.location.city).toBe("São Paulo");
-			expect(dto.location.state).toBe("SP");
-			expect(dto.location.country).toBe("BR");
+			expect(dto.location).toMatchObject({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
 		});
 
 		it("should construct nested category DTO", () => {
@@ -146,6 +146,30 @@ describe("JobOutputDto", () => {
 
 			expect(plain).toHaveProperty("created_at", "2026-05-28T10:00:00.000Z");
 			expect(plain).toHaveProperty("updated_at", "2026-05-28T10:00:00.000Z");
+		});
+
+		it("should serialize nested location with fuzzy coordinates and area radius", () => {
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+			const location = plain["location"] as Record<string, unknown>;
+
+			expect(location).toEqual({
+				neighborhood: "Centro",
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				latitude: -23.55,
+				longitude: -46.63,
+				area_radius: 2000,
+			});
+		});
+
+		it("should not serialize street in nested location", () => {
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+			const location = plain["location"] as Record<string, unknown>;
+
+			expect(location).not.toHaveProperty("street");
 		});
 	});
 });
