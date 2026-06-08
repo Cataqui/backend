@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { JobRepository } from "./job.repository";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { Prisma } from "../../../../generated/prisma/client.js";
+import { LocaleConstants } from "../../../shared/locale/locale.constants";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -42,6 +43,11 @@ interface MockJobWithCategory {
 	category: MockCategoryWithTranslations;
 }
 
+const mockTranslations = [
+	{ id: "t-en", name: "Moving Help", locale: LocaleConstants.DEFAULT_LOCALE },
+	{ id: "t-es", name: "Ayuda con mudanza", locale: "es-MX" },
+];
+
 const mockJob: MockJobWithCategory = {
 	id: "cm3x-1234",
 	title: "Help unload truck",
@@ -73,7 +79,7 @@ const mockJob: MockJobWithCategory = {
 		slug: "moving-help",
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
 		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-		translations: [{ id: "t1", name: "Ayuda con mudanza", locale: "es-MX" }],
+		translations: mockTranslations,
 	},
 };
 
@@ -160,7 +166,6 @@ describe("JobRepository", () => {
 
 			expect(result).toEqual(mockJob);
 			expect(result.category).toBeDefined();
-			expect(result.category.name).toBe("Moving Help");
 		});
 
 		it("should convert nullish street to null", async () => {
@@ -188,7 +193,7 @@ describe("JobRepository", () => {
 	});
 
 	describe("findByIdLocalized", () => {
-		it("should call prisma.job.findUnique with id and include category with translations", async () => {
+		it("should call prisma.job.findUnique with id and include category with translations for both locales", async () => {
 			await repository.findByIdLocalized({ id: "cm3x-1234", locale: "es-MX" });
 
 			expect(prisma.job.findUnique).toHaveBeenCalledWith({
@@ -197,8 +202,7 @@ describe("JobRepository", () => {
 					category: {
 						include: {
 							translations: {
-								where: { locale: "es-MX" },
-								take: 1,
+								where: { locale: { in: ["es-MX", LocaleConstants.DEFAULT_LOCALE] } },
 							},
 						},
 					},
@@ -211,14 +215,13 @@ describe("JobRepository", () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.category.id).toBe("cm3x-cat-1");
-			expect(result?.category.name).toBe("Moving Help");
 			expect(result?.categoryDisplayName).toBe("Ayuda con mudanza");
 		});
 
-		it("should fall back to base category name when no translation matches locale", async () => {
+		it("should fall back to default locale translation when no translation matches requested locale", async () => {
 			(prisma.job.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
 				...mockJob,
-				category: { ...mockJob.category, translations: [] },
+				category: { ...mockJob.category, translations: [mockTranslations[0]] },
 			});
 
 			const result = await repository.findByIdLocalized({ id: "cm3x-1234", locale: "fr-FR" });

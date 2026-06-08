@@ -41,7 +41,7 @@ interface MockJobWithCategory {
 	categoryId: string;
 	createdAt: Date;
 	updatedAt: Date;
-	category: { id: string; name: string; slug: string; createdAt: Date; updatedAt: Date };
+	category: { id: string; slug: string; createdAt: Date; updatedAt: Date };
 	categoryDisplayName: string;
 }
 
@@ -70,7 +70,7 @@ const mockJob: MockJobWithCategory = {
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
 	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-	category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date("2026-05-28T10:00:00.000Z"), updatedAt: new Date("2026-05-28T10:00:00.000Z") },
+	category: { id: "cm3x-cat-1", slug: "moving-help", createdAt: new Date("2026-05-28T10:00:00.000Z"), updatedAt: new Date("2026-05-28T10:00:00.000Z") },
 	categoryDisplayName: "Moving Help",
 };
 

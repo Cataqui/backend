@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { Prisma } from "../../../../generated/prisma/client.js";
+import { LocaleConstants } from "../../../shared/locale/locale.constants";
+import { LocaleUtils } from "../../../shared/locale/locale.utils";
 
 @Injectable()
 export class JobRepository {
@@ -13,8 +15,7 @@ export class JobRepository {
 				category: {
 					include: {
 						translations: {
-							where: { locale: params.locale },
-							take: 1,
+							where: { locale: { in: [params.locale, LocaleConstants.DEFAULT_LOCALE] } },
 						},
 					},
 				},
@@ -25,8 +26,8 @@ export class JobRepository {
 
 		return {
 			...job,
-			category: { id: job.category.id, name: job.category.name, slug: job.category.slug, createdAt: job.category.createdAt, updatedAt: job.category.updatedAt },
-			categoryDisplayName: job.category.translations[0]?.name ?? job.category.name,
+			category: { id: job.category.id, slug: job.category.slug, createdAt: job.category.createdAt, updatedAt: job.category.updatedAt },
+			categoryDisplayName: LocaleUtils.resolveLocalizedName(job.category.translations, params.locale) ?? "",
 		};
 	}
 

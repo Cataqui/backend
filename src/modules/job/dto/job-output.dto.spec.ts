@@ -26,7 +26,7 @@ function createMockDatabaseJob() {
 		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
 		categoryId: "cm3x-cat-1",
-		category: { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() },
+		category: { id: "cm3x-cat-1", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() },
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
 		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
 	};

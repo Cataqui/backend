@@ -2,17 +2,28 @@
 import { Test } from "@nestjs/testing";
 import { JobCategoryRepository } from "./job-category.repository";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import { LocaleConstants } from "../../../shared/locale/locale.constants";
 
-const mockCategory = { id: "cm3x-cat-1", name: "Moving Help", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() };
+const mockCategory = { id: "cm3x-cat-1", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() };
 
-const mockTranslation = {
-	id: "cm3x-trans-1",
-	categoryId: "cm3x-cat-1",
-	locale: "es-MX",
-	name: "Ayuda con mudanza",
-	createdAt: new Date("2026-05-28T10:00:00.000Z"),
-	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-};
+const mockTranslations = [
+	{
+		id: "cm3x-trans-en",
+		categoryId: "cm3x-cat-1",
+		locale: LocaleConstants.DEFAULT_LOCALE,
+		name: "Moving Help",
+		createdAt: new Date("2026-05-28T10:00:00.000Z"),
+		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
+	},
+	{
+		id: "cm3x-trans-es",
+		categoryId: "cm3x-cat-1",
+		locale: "es-MX",
+		name: "Ayuda con mudanza",
+		createdAt: new Date("2026-05-28T10:00:00.000Z"),
+		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
+	},
+];
 
 describe("JobCategoryRepository", () => {
 	let repository: JobCategoryRepository;
@@ -21,7 +32,7 @@ describe("JobCategoryRepository", () => {
 	beforeEach(async () => {
 		prisma = {
 			jobCategory: {
-				findUnique: vi.fn().mockResolvedValue({ ...mockCategory, translations: [mockTranslation] }),
+				findUnique: vi.fn().mockResolvedValue({ ...mockCategory, translations: mockTranslations }),
 			},
 		} as unknown as PrismaService;
 
@@ -33,7 +44,7 @@ describe("JobCategoryRepository", () => {
 	});
 
 	describe("findByIdWithLocalizedName", () => {
-		it("should return category with translated name when translation exists", async () => {
+		it("should return category with translated name when translation exists for requested locale", async () => {
 			const result = await repository.findByIdWithLocalizedName({ id: "cm3x-cat-1", locale: "es-MX" });
 
 			expect(result).toEqual({
@@ -43,8 +54,11 @@ describe("JobCategoryRepository", () => {
 			});
 		});
 
-		it("should return category with base name when no translation exists", async () => {
-			(prisma.jobCategory.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mockCategory, translations: [] });
+		it("should fall back to default locale translation when no translation exists for requested locale", async () => {
+			(prisma.jobCategory.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+				...mockCategory,
+				translations: [mockTranslations[0]],
+			});
 
 			const result = await repository.findByIdWithLocalizedName({ id: "cm3x-cat-1", locale: "fr-FR" });
 
@@ -52,6 +66,21 @@ describe("JobCategoryRepository", () => {
 				id: "cm3x-cat-1",
 				slug: "moving-help",
 				displayName: "Moving Help",
+			});
+		});
+
+		it("should fall back to first available translation when neither requested nor default locale exists", async () => {
+			(prisma.jobCategory.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+				...mockCategory,
+				translations: [{ ...mockTranslations[1], locale: "fr-FR" }],
+			});
+
+			const result = await repository.findByIdWithLocalizedName({ id: "cm3x-cat-1", locale: "pt-BR" });
+
+			expect(result).toEqual({
+				id: "cm3x-cat-1",
+				slug: "moving-help",
+				displayName: "Ayuda con mudanza",
 			});
 		});
 
@@ -63,7 +92,7 @@ describe("JobCategoryRepository", () => {
 			expect(result).toBeNull();
 		});
 
-		it("should call findUnique with translations filtered by locale", async () => {
+		it("should call findUnique with translations filtered by requested locale and default locale", async () => {
 			const findUniqueMock = prisma.jobCategory.findUnique as ReturnType<typeof vi.fn>;
 
 			await repository.findByIdWithLocalizedName({ id: "cm3x-cat-1", locale: "pt-BR" });
@@ -72,8 +101,7 @@ describe("JobCategoryRepository", () => {
 				where: { id: "cm3x-cat-1" },
 				include: {
 					translations: {
-						where: { locale: "pt-BR" },
-						take: 1,
+						where: { locale: { in: ["pt-BR", LocaleConstants.DEFAULT_LOCALE] } },
 					},
 				},
 			});
