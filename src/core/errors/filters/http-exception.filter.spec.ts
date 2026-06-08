@@ -100,6 +100,19 @@ describe("HttpExceptionFilter", () => {
 		expect(body).toHaveProperty("message", "field is required; field must be a string");
 	});
 
+	it("should preserve snake_case field names in validation error messages", () => {
+		const exception = new HttpException(
+			{ message: ["category_id must be a UUID", "contact.phone_number must be a valid phone number", "min_amount must be a positive number"] },
+			HttpStatus.BAD_REQUEST,
+		);
+
+		const { sendMock } = createMockHost(exception);
+
+		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
+		expect(body).toHaveProperty("message", "category_id must be a UUID; contact.phone_number must be a valid phone number; min_amount must be a positive number");
+	});
+
 	it("should handle non-HttpException Error", () => {
 		const { sendMock, statusMock } = createMockHost(new Error("unexpected failure"));
 

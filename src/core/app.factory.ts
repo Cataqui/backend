@@ -1,5 +1,6 @@
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { ValidationPipe, VersioningType, Logger } from "@nestjs/common";
+import { ValidationPipe, VersioningType, Logger, BadRequestException } from "@nestjs/common";
+import type { ValidationError } from "class-validator";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
 import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
@@ -7,6 +8,7 @@ import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
 import { requestSizeConfig } from "./config/request-size.config";
 import { registerRequestSizeHooks } from "./hooks/request-size.hook";
+import { ValidationErrorUtils } from "./validation/validation-error.utils";
 import helmet from "@fastify/helmet";
 import { CorsBlockedError } from "./errors/cors-blocked.error";
 
@@ -30,6 +32,10 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 			transform: true,
 			transformOptions: {
 				enableImplicitConversion: true,
+			},
+			exceptionFactory: (errors: ValidationError[]): BadRequestException => {
+				const messages = ValidationErrorUtils.formatValidationErrors(errors);
+				return new BadRequestException(messages);
 			},
 		}),
 	);

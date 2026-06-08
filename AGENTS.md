@@ -417,6 +417,28 @@ async findNearbyPosts({ locationPoint, categoryId }: { locationPoint: ILocationP
 
 This avoids unnecessary named types that add indirection without reuse.
 
+### Module-Private Functions
+
+Top-level functions that are only used within the same file (not exported via the namespace or directly) must be prefixed with `_`.
+
+This mirrors the private class member convention and makes it immediately clear which functions are internal implementation details.
+
+Good:
+
+```ts
+function _formatSingleError(error: ValidationError, parentPath?: string): string[] {
+	// ...
+}
+
+function formatValidationErrors(errors: ValidationError[]): string[] {
+	return errors.flatMap((error) => _formatSingleError(error));
+}
+
+export const ValidationErrorFormatter = {
+	formatValidationErrors,
+} as const;
+```
+
 ### Utility Functions
 
 Do not export bare standalone utility functions and do not inline function logic directly inside the namespace object.
