@@ -37,16 +37,20 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
 	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
 
-	app.enableCors({
-		origin: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
-			if (origin === undefined) return callback(null, true);
+	const isDevelopment = process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
 
-			if (allowedOrigins.includes(origin)) callback(null, true);
-			else {
-				corsLogger.warn(`CORS Violation Blocked: Unauthorized access attempt from origin [${origin}]`);
-				callback(new CorsBlockedError(), false);
-			}
-		},
+	app.enableCors({
+		origin: isDevelopment
+			? true
+			: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+					if (origin === undefined) return callback(null, true);
+
+					if (allowedOrigins.includes(origin)) callback(null, true);
+					else {
+						corsLogger.warn(`CORS Violation Blocked: Unauthorized access attempt from origin [${origin}]`);
+						callback(new CorsBlockedError(), false);
+					}
+				},
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],
