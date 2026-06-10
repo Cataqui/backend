@@ -726,6 +726,8 @@ Maintain `.env.example` with safe placeholder values.
 
 Do not put real Neon URLs, passwords, tokens, or production secrets in documentation or tests.
 
+> **When adding a new environment variable**, also add it to `worker/env.d.ts` and `worker/container.ts` so the Cloudflare Worker container has access to it. Forward it in the `envVars` object in `container.ts`.
+
 ---
 
 ## 12. Git & Change Discipline

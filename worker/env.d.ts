@@ -8,6 +8,8 @@ declare global {
 		DATABASE_POOLER_URL: string;
 		DATABASE_DIRECT_URL: string;
 		CORS_ORIGINS: string;
+		PROTOMAP_AUTH_SECRET: string;
+		PROTOMAP_URL: string;
 	}
 }
 
