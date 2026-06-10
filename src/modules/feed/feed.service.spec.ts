@@ -4,6 +4,7 @@ import { FeedRepository, type FeedItemRaw } from "./repositories/feed.repository
 import { CursorUtils } from "./utils/cursor.utils";
 import { FeedSort } from "./enums/feed-sort.enum";
 import { InvalidCursorError } from "./errors/invalid-cursor.error";
+import { MapService } from "../map/map.service";
 import { vi, type Mock } from "vitest";
 
 function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
@@ -27,6 +28,15 @@ const mockRepository = {
 	getFeedItems: vi.fn() as Mock,
 };
 
+const mockMapService = {
+	authenticate: vi.fn().mockResolvedValue({
+		queryParams: "v=1&sig=abc&exp=123",
+		expiresAt: "2026-01-01T00:00:00.000Z",
+		mapVersion: "br",
+		tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+	}),
+};
+
 const PAGE_SIZE = 20;
 
 describe("FeedService", () => {
@@ -34,7 +44,7 @@ describe("FeedService", () => {
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }],
+			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }, { provide: MapService, useValue: mockMapService }],
 		}).compile();
 
 		service = module.get<FeedService>(FeedService);
@@ -134,6 +144,34 @@ describe("FeedService", () => {
 			expect(result.data[0]!.payment.type).toBe("FIXED");
 			expect(result.data[0]!.payment.minAmount).toBe(150.0);
 			expect(result.data[0]!.location.neighborhood).toBe("Centro");
+		});
+
+		it("should call MapService.authenticate with BR region", async () => {
+			mockRepository.getFeedItems.mockResolvedValue([]);
+
+			await service.getFeed({});
+
+			expect(mockMapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+		});
+
+		it("should set mapAuth on all feed items location", async () => {
+			const mockAuth = {
+				queryParams: "v=1&sig=abc&exp=123",
+				expiresAt: "2026-01-01T00:00:00.000Z",
+				mapVersion: "br",
+				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+			};
+
+			const items = [
+				createMockFeedItemRaw({ id: "job-1", createdAt: new Date("2026-05-28T10:00:00.000Z") }),
+				createMockFeedItemRaw({ id: "job-2", createdAt: new Date("2026-05-27T10:00:00.000Z") }),
+			];
+			mockRepository.getFeedItems.mockResolvedValue(items);
+
+			const result = await service.getFeed({});
+
+			expect(result.data[0]!.location.mapAuth).toEqual(mockAuth);
+			expect(result.data[1]!.location.mapAuth).toEqual(mockAuth);
 		});
 
 		it("should return PaginatedResponseDto structure", async () => {

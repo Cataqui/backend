@@ -13,6 +13,7 @@ import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { JobLocationConstants } from "./job-location.constants";
+import { MapService } from "../map/map.service";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -133,6 +134,7 @@ describe("JobService", () => {
 	let service: JobService;
 	let jobRepository: JobRepository;
 	let jobCategoryRepository: JobCategoryRepository;
+	let mapService: MapService;
 
 	beforeEach(async () => {
 		jobRepository = {
@@ -144,8 +146,22 @@ describe("JobService", () => {
 			findByIdWithLocalizedName: vi.fn().mockResolvedValue({ id: "cm3x-cat-1", slug: "moving-help", displayName: "Moving Help" }),
 		} as unknown as JobCategoryRepository;
 
+		mapService = {
+			authenticate: vi.fn().mockResolvedValue({
+				queryParams: "v=1&sig=abc&exp=123",
+				expiresAt: "2026-01-01T00:00:00.000Z",
+				mapVersion: "br",
+				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+			}),
+		} as unknown as MapService;
+
 		const module = await Test.createTestingModule({
-			providers: [JobService, { provide: JobRepository, useValue: jobRepository }, { provide: JobCategoryRepository, useValue: jobCategoryRepository }],
+			providers: [
+				JobService,
+				{ provide: JobRepository, useValue: jobRepository },
+				{ provide: JobCategoryRepository, useValue: jobCategoryRepository },
+				{ provide: MapService, useValue: mapService },
+			],
 		}).compile();
 
 		service = module.get(JobService);
@@ -189,6 +205,18 @@ describe("JobService", () => {
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
 			await expect(service.createJob(dto, "en-US")).resolves.not.toThrow();
+		});
+
+		it("should call MapService.authenticate with BR region on create", async () => {
+			await service.createJob(createValidDto(), "en-US");
+
+			expect(mapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+		});
+
+		it("should set mapAuth on createJob output location", async () => {
+			const result = await service.createJob(createValidDto(), "en-US");
+
+			expect(result.location.mapAuth.mapVersion).toBe("br");
 		});
 
 		it("should set status to ACTIVE", async () => {
@@ -400,6 +428,18 @@ describe("JobService", () => {
 			await service.getJob({ jobId: "cm3x-job-1", locale: "pt-BR" });
 
 			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({ id: "cm3x-job-1", locale: "pt-BR" });
+		});
+
+		it("should call MapService.authenticate with BR region on getJob", async () => {
+			await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+
+			expect(mapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+		});
+
+		it("should set mapAuth on getJob output location", async () => {
+			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+
+			expect(result.location.mapAuth.mapVersion).toBe("br");
 		});
 	});
 });

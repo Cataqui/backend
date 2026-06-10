@@ -1,6 +1,14 @@
 import { instanceToPlain } from "class-transformer";
 import { JobOutputDto } from "./job-output.dto";
+import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
 import { JobStatus, JobType, JobPaymentType, JobContactMethod } from "../../../../generated/prisma/client.js";
+
+const mockMapAuth = new MapAuthOutputDto({
+	queryParams: "v=1&sig=abc&exp=1717891200",
+	expiresAt: "2026-06-10T12:00:00.000Z",
+	mapVersion: "br",
+	tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+});
 
 function createMockDatabaseJob() {
 	return {
@@ -36,7 +44,7 @@ describe("JobOutputDto", () => {
 	describe("fromDatabase", () => {
 		it("should assign all fields from a database job", () => {
 			const job = createMockDatabaseJob();
-			const dto = JobOutputDto.fromDatabase(job as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(job as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.jobId).toBe("cm3x-1234-abcd");
 			expect(dto.title).toBe("Help unload truck");
@@ -46,7 +54,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should construct nested contact DTO", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.contact.name).toBe("João Silva");
 			expect(dto.contact.phoneNumber).toBe("+5511999999999");
@@ -54,13 +62,13 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should construct nested location DTO", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.location).toMatchObject({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
 		});
 
 		it("should construct nested category DTO", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.category.categoryId).toBe("cm3x-cat-1");
 			expect(dto.category.name).toBe("Moving Help");
@@ -68,19 +76,19 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should use categoryDisplayName when provided", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Ayuda con mudanza");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Ayuda con mudanza", mockMapAuth);
 
 			expect(dto.category.name).toBe("Ayuda con mudanza");
 		});
 
 		it("should use categoryDisplayName as category name", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.category.name).toBe("Moving Help");
 		});
 
 		it("should construct nested payment DTO", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.payment.type).toBe(JobPaymentType.FIXED);
 			expect(dto.payment.minAmount).toBe(150.0);
@@ -91,7 +99,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should convert dates to ISO strings", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 
 			expect(dto.createdAt).toBe("2026-05-28T10:00:00.000Z");
 			expect(dto.updatedAt).toBe("2026-05-28T10:00:00.000Z");
@@ -100,7 +108,7 @@ describe("JobOutputDto", () => {
 
 	describe("serialization", () => {
 		it("should serialize job_id as snake_case", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("job_id", "cm3x-1234-abcd");
@@ -108,7 +116,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should serialize nested contact with snake_case keys", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const contact = plain["contact"] as Record<string, unknown>;
 
@@ -118,7 +126,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should serialize nested category with category_id", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const category = plain["category"] as Record<string, unknown>;
 
@@ -128,7 +136,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should serialize nested payment with expected keys", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const payment = plain["payment"] as Record<string, unknown>;
 
@@ -141,7 +149,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should serialize dates as ISO strings", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("created_at", "2026-05-28T10:00:00.000Z");
@@ -149,7 +157,7 @@ describe("JobOutputDto", () => {
 		});
 
 		it("should serialize nested location with fuzzy coordinates and area radius", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const location = plain["location"] as Record<string, unknown>;
 
@@ -161,11 +169,17 @@ describe("JobOutputDto", () => {
 				latitude: -23.55,
 				longitude: -46.63,
 				area_radius: 2000,
+				map_auth: {
+					query_params: "v=1&sig=abc&exp=1717891200",
+					expires_at: "2026-06-10T12:00:00.000Z",
+					map_version: "br",
+					tiles_url_template: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+				},
 			});
 		});
 
 		it("should not serialize street in nested location", () => {
-			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help");
+			const dto = JobOutputDto.fromDatabase(createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0], "Moving Help", mockMapAuth);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const location = plain["location"] as Record<string, unknown>;
 

@@ -2,9 +2,10 @@ import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { FeedPaymentOutputDto } from "./feed-payment-output.dto";
 import { FeedLocationOutputDto } from "./feed-location-output.dto";
+import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
 import type { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
-@ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto)
+@ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto, MapAuthOutputDto)
 export class FeedItemOutputDto {
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
@@ -36,20 +37,23 @@ export class FeedItemOutputDto {
 		this.location = params.location;
 	}
 
-	static fromDatabase(job: {
-		id: string;
-		title: string;
-		createdAt: Date;
-		paymentType: JobPaymentType;
-		paymentMinAmount: { toNumber(): number } | number | null;
-		paymentMaxAmount: { toNumber(): number } | number | null;
-		paymentNote: string | null;
-		paymentAmountPeriod: JobPaymentAmountPeriod;
-		paymentCurrency: string;
-		neighborhood: string;
-		fuzzyLatitude: { toNumber(): number } | number;
-		fuzzyLongitude: { toNumber(): number } | number;
-	}): FeedItemOutputDto {
+	static fromDatabase(
+		job: {
+			id: string;
+			title: string;
+			createdAt: Date;
+			paymentType: JobPaymentType;
+			paymentMinAmount: { toNumber(): number } | number | null;
+			paymentMaxAmount: { toNumber(): number } | number | null;
+			paymentNote: string | null;
+			paymentAmountPeriod: JobPaymentAmountPeriod;
+			paymentCurrency: string;
+			neighborhood: string;
+			fuzzyLatitude: { toNumber(): number } | number;
+			fuzzyLongitude: { toNumber(): number } | number;
+		},
+		mapAuth: MapAuthOutputDto,
+	): FeedItemOutputDto {
 		return new FeedItemOutputDto({
 			jobId: job.id,
 			title: job.title,
@@ -66,6 +70,7 @@ export class FeedItemOutputDto {
 				neighborhood: job.neighborhood,
 				latitude: job.fuzzyLatitude,
 				longitude: job.fuzzyLongitude,
+				mapAuth,
 			}),
 		});
 	}

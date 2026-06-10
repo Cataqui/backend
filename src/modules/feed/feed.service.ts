@@ -6,10 +6,14 @@ import { CursorUtils } from "./utils/cursor.utils";
 import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
 import type { FeedSort } from "./enums/feed-sort.enum";
 import { FEED_ITEMS_RESPONSE_LIMIT, DEFAULT_FEED_SORT } from "./feed.constants";
+import { MapService } from "../map/map.service";
 
 @Injectable()
 export class FeedService {
-	constructor(private readonly _feedRepository: FeedRepository) {}
+	constructor(
+		private readonly _feedRepository: FeedRepository,
+		private readonly _mapService: MapService,
+	) {}
 
 	async getFeed(params: { cursor?: string | undefined; sort?: FeedSort | undefined }): Promise<PaginatedResponseDto<FeedItemOutputDto>> {
 		const limit = FEED_ITEMS_RESPONSE_LIMIT;
@@ -33,7 +37,8 @@ export class FeedService {
 			});
 		}
 
-		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item));
+		const mapAuth = await this._mapService.authenticate({ region: "BR" });
+		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item, mapAuth));
 		return new PaginatedResponseDto(items, new PaginationOutputDto(hasMore, nextCursor));
 	}
 }

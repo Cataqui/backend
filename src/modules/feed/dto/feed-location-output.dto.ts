@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose } from "class-transformer";
+import { Expose, Type } from "class-transformer";
 import { JobLocationConstants } from "../../job/job-location.constants";
+import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
 
 export class FeedLocationOutputDto {
 	@Expose({ name: "neighborhood" })
@@ -35,11 +36,27 @@ export class FeedLocationOutputDto {
 	})
 	readonly areaRadius: number;
 
-	constructor(params: { neighborhood: string; latitude: { toNumber(): number } | number; longitude: { toNumber(): number } | number; areaRadius?: number | undefined }) {
+	@Expose({ name: "map_auth" })
+	@ApiProperty({
+		name: "map_auth",
+		description: "Map authentication credentials for displaying the location on a map.",
+		type: MapAuthOutputDto,
+	})
+	@Type(() => MapAuthOutputDto)
+	readonly mapAuth: MapAuthOutputDto;
+
+	constructor(params: {
+		neighborhood: string;
+		latitude: { toNumber(): number } | number;
+		longitude: { toNumber(): number } | number;
+		areaRadius?: number | undefined;
+		mapAuth: MapAuthOutputDto;
+	}) {
 		this.neighborhood = params.neighborhood;
 		this.latitude = this._toNumber(params.latitude);
 		this.longitude = this._toNumber(params.longitude);
 		this.areaRadius = params.areaRadius ?? JobLocationConstants.AREA_RADIUS_METERS;
+		this.mapAuth = params.mapAuth;
 	}
 
 	private _toNumber(value: { toNumber(): number } | number): number {

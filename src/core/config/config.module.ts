@@ -4,6 +4,7 @@ import { IEnvSchema } from "./env.validation";
 import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
 import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
 import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
+import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
 
 @Global()
 @Module({
@@ -11,7 +12,7 @@ import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.confi
 		NestConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: ".env",
-			load: [globalThrottleConfig, requestSizeConfig],
+			load: [globalThrottleConfig, requestSizeConfig, mapAuthConfig],
 			validate: (config: Record<string, unknown>) => {
 				const result = IEnvSchema.safeParse(config);
 
@@ -37,7 +38,11 @@ import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.confi
 			provide: REQUEST_SIZE_CONFIG_KEY,
 			useFactory: requestSizeConfig,
 		},
+		{
+			provide: MAP_AUTH_CONFIG_KEY,
+			useFactory: mapAuthConfig,
+		},
 	],
-	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY],
+	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY, MAP_AUTH_CONFIG_KEY],
 })
 export class ConfigModule {}

@@ -10,19 +10,22 @@ import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { JobLocationConstants } from "./job-location.constants";
 import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
+import { MapService } from "../map/map.service";
 
 @Injectable()
 export class JobService {
 	constructor(
 		private readonly _jobRepository: JobRepository,
 		private readonly _jobCategoryRepository: JobCategoryRepository,
+		private readonly _mapService: MapService,
 	) {}
 
 	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
 		const result = await this._jobRepository.findByIdLocalized({ id: params.jobId, locale: params.locale });
 		if (!result) throw new JobNotFoundError();
 
-		return JobOutputDto.fromDatabase(result, result.categoryDisplayName);
+		const mapAuth = await this._mapService.authenticate({ region: "BR" });
+		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapAuth);
 	}
 
 	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
@@ -72,6 +75,7 @@ export class JobService {
 			},
 		});
 
-		return JobOutputDto.fromDatabase(job, category.displayName);
+		const mapAuth = await this._mapService.authenticate({ region: "BR" });
+		return JobOutputDto.fromDatabase(job, category.displayName, mapAuth);
 	}
 }

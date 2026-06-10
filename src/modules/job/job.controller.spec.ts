@@ -13,6 +13,7 @@ import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
 import { JobPaymentOutputDto } from "./dto/job-payment-output.dto";
+import { MapAuthOutputDto } from "../map/dto/map-auth-output.dto";
 import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
 
 function createMockJobOutputDto(): JobOutputDto {
@@ -21,7 +22,20 @@ function createMockJobOutputDto(): JobOutputDto {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: JobContactMethod.WHATSAPP }),
-		location: new JobLocationOutputDto({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63 }),
+		location: new JobLocationOutputDto({
+			neighborhood: "Centro",
+			city: "São Paulo",
+			state: "SP",
+			country: "BR",
+			latitude: -23.55,
+			longitude: -46.63,
+			mapAuth: new MapAuthOutputDto({
+				queryParams: "v=1&sig=abc&exp=123",
+				expiresAt: "2026-01-01T00:00:00.000Z",
+				mapVersion: "br",
+				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+			}),
+		}),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
 		payment: new JobPaymentOutputDto({
 			paymentType: JobPaymentType.FIXED,

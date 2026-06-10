@@ -4,6 +4,7 @@ import { JobContactOutputDto } from "./job-contact-output.dto";
 import { JobLocationOutputDto } from "./job-location-output.dto";
 import { JobCategoryOutputDto } from "./job-category-output.dto";
 import { JobPaymentOutputDto } from "./job-payment-output.dto";
+import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
 import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
 
 @ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
@@ -87,7 +88,7 @@ export class JobOutputDto {
 		this.updatedAt = params.updatedAt;
 	}
 
-	static fromDatabase(job: Prisma.JobGetPayload<{ include: { category: true } }>, categoryDisplayName: string): JobOutputDto {
+	static fromDatabase(job: Prisma.JobGetPayload<{ include: { category: true } }>, categoryDisplayName: string, mapAuth: MapAuthOutputDto): JobOutputDto {
 		return new JobOutputDto({
 			jobId: job.id,
 			title: job.title,
@@ -100,6 +101,7 @@ export class JobOutputDto {
 				country: job.country,
 				latitude: job.fuzzyLatitude,
 				longitude: job.fuzzyLongitude,
+				mapAuth,
 			}),
 			category: new JobCategoryOutputDto({ categoryId: job.category.id, name: categoryDisplayName, slug: job.category.slug }),
 			payment: new JobPaymentOutputDto({

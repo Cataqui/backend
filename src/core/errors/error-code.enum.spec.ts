@@ -19,6 +19,7 @@ describe("ErrorCode", () => {
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
+			"MAP_REGION_NOT_FOUND",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -34,7 +35,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 17 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(17);
+	it("should have exactly 18 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(18);
 	});
 });
