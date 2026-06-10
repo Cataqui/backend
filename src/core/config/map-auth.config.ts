@@ -10,7 +10,7 @@ export interface IMapAuthConfig {
 export const mapAuthConfig = registerAs(
 	MAP_AUTH_CONFIG_KEY,
 	(): IMapAuthConfig => ({
-		authSecret: process.env["PROTOMAP_AUTH_SECRET"]!,
-		protomapUrl: process.env["PROTOMAP_URL"]!,
+		authSecret: process.env["PROTOMAP_AUTH_SECRET"] ?? "dev-default-secret",
+		protomapUrl: process.env["PROTOMAP_URL"] ?? "https://tiles.cataqui.com",
 	}),
 );
