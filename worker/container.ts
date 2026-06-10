@@ -19,7 +19,8 @@ export class ApiContainer extends Container {
 
 	onError(error: unknown) {
 		if (error instanceof Error && "exitCode" in error) {
-			console.error(`Container exited with code ${(error as { exitCode: number }).exitCode} — check app logs above for startup errors`);
+			const exitCode = (error as Error & { exitCode: number }).exitCode;
+			console.error(`Container exited with code ${exitCode}. Check "wrangler tail" or Cloudflare dashboard logs for the startup error.`);
 		} else {
 			console.error("Container errored:", error);
 		}

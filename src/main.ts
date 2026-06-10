@@ -30,7 +30,7 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap().catch((error: unknown) => {
-	const logger = new Logger("Bootstrap");
-	logger.error(error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : undefined);
+	const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+	process.stderr.write(`[FATAL] Application failed to start:\n${message}\n`);
 	process.exitCode = 1;
 });
