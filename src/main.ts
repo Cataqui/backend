@@ -29,4 +29,8 @@ async function bootstrap(): Promise<void> {
 	logger.log(`Swagger docs at http://localhost:${port}/docs`);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+	const logger = new Logger("Bootstrap");
+	logger.error(error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : undefined);
+	process.exitCode = 1;
+});

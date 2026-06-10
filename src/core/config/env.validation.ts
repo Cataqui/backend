@@ -6,8 +6,8 @@ export const IEnvSchema = z.object({
 	DATABASE_POOLER_URL: z.string().url(),
 	DATABASE_DIRECT_URL: z.string().url(),
 	CORS_ORIGINS: z.string().min(1, "CORS_ORIGINS is required"),
-	PROTOMAP_AUTH_SECRET: z.string().min(1).default("dev-default-secret"),
-	PROTOMAP_URL: z.string().url().default("https://tiles.cataqui.com"),
+	PROTOMAP_AUTH_SECRET: z.string().min(1, "PROTOMAP_AUTH_SECRET is required"),
+	PROTOMAP_URL: z.string().url("PROTOMAP_URL must be a valid URL"),
 });
 
 export type IEnv = z.infer<typeof IEnvSchema>;

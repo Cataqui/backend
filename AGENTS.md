@@ -726,7 +726,24 @@ Maintain `.env.example` with safe placeholder values.
 
 Do not put real Neon URLs, passwords, tokens, or production secrets in documentation or tests.
 
-> **When adding a new environment variable**, also add it to `worker/env.d.ts` and `worker/container.ts` so the Cloudflare Worker container has access to it. Forward it in the `envVars` object in `container.ts`.
+### Adding a New Environment Variable
+
+Every new env var must be registered in all of these locations. Use this checklist:
+
+1. **`src/core/config/env.validation.ts`** — Add to the Zod schema with appropriate validation
+2. **`src/core/config/`** — Update or create a config file (e.g., `map-auth.config.ts`) with the NestJS `registerAs` config token
+3. **`src/core/config/config.module.ts`** — Register the config provider and export the token
+4. **`.env`** — Add a local development value (gitignored, for your machine only)
+5. **`.env.example`** — Add a safe placeholder value for documentation
+6. **`vitest.config.ts`** — Add a test default value to the `test.env` block so tests never depend on your local `.env`
+7. **`worker/env.d.ts`** — Add the typed binding to the `Env` interface
+8. **`worker/container.ts`** — Forward it in the `this.envVars` object so the container receives it
+9. **`.dev.vars`** — Add a local development value for `wrangler dev` (gitignored)
+10. **`.github/workflows/deploy-staging.yml`** — Add to the `secrets:` list if it's sensitive (e.g., API keys, tokens), or add to `wrangler.jsonc` `env.*.vars` if it's a non-sensitive configuration value (URLs, feature flags). Add to the `env:` block if using a GitHub secret.
+11. **`.github/workflows/deploy-production.yml`** — Same as staging
+12. **GitHub repository secrets** — If the value is sensitive, add it in the repo settings → Secrets and variables → Actions under the relevant environments (`staging` / `production`). If it's a non-secret var, define it in `wrangler.jsonc` `env.*.vars` instead.
+
+Don't skip any. Missing one means the env var won't reach the container in that context.
 
 ---
 

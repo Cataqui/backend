@@ -17,8 +17,8 @@ import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
 				const result = IEnvSchema.safeParse(config);
 
 				if (!result.success) {
-					const errors = result.error.flatten().fieldErrors;
-					throw new Error(`Environment validation failed: ${JSON.stringify(errors)}`);
+					const details = result.error.issues.map((issue) => `  - ${issue.path.join(".")}: ${issue.message} (code: ${issue.code})`).join("\n");
+					throw new Error(`Environment validation failed:\n${details}`);
 				}
 
 				return result.data;

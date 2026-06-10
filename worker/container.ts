@@ -18,7 +18,11 @@ export class ApiContainer extends Container {
 	}
 
 	onError(error: unknown) {
-		console.error("Container errored:", error);
+		if (error instanceof Error && "exitCode" in error) {
+			console.error(`Container exited with code ${(error as { exitCode: number }).exitCode} — check app logs above for startup errors`);
+		} else {
+			console.error("Container errored:", error);
+		}
 	}
 
 	onStart() {
