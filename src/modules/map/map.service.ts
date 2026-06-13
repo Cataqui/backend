@@ -31,13 +31,15 @@ export class MapService {
 		const message = `${MapAuthConstants.AUTH_MESSAGE_PREFIX}:${expSeconds}`;
 		const sig = createHmac("sha256", this._mapAuthConfig.authSecret).update(message).digest("hex");
 		const queryParams = `v=${MapAuthConstants.AUTH_VERSION_PARAM}&sig=${sig}&exp=${expSeconds}`;
-		const tilesUrlTemplate = `${this._mapAuthConfig.protomapUrl}/${params.region.toLowerCase()}/${params.mapFileName}/{z}/{x}/{y}.mvt`;
+		const tilesUrlTemplate = `${this._mapAuthConfig.protomapUrl}/regions/${params.region.toLowerCase()}/${params.mapFileName}/{z}/{x}/{y}.mvt`;
+		const glyphUrlTemplate = `${this._mapAuthConfig.protomapUrl}/glyphs/{fontstack}/{range}.pbf`;
 
 		return new MapAuthOutputDto({
 			queryParams,
 			expiresAt: new Date(expiresAtMs).toISOString(),
 			mapVersion: params.mapFileName,
 			tilesUrlTemplate,
+			glyphUrlTemplate,
 		});
 	}
 }

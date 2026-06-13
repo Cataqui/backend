@@ -7,6 +7,7 @@ function createMapAuth(): MapAuthOutputDto {
 		expiresAt: "2026-06-10T12:00:00.000Z",
 		mapVersion: "br",
 		tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+		glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 	});
 }
 
@@ -34,6 +35,12 @@ describe("MapAuthOutputDto", () => {
 			const dto = createMapAuth();
 
 			expect(dto.tilesUrlTemplate).toBe("https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt");
+		});
+
+		it("should assign glyphUrlTemplate", () => {
+			const dto = createMapAuth();
+
+			expect(dto.glyphUrlTemplate).toBe("https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
 		});
 	});
 
@@ -68,6 +75,14 @@ describe("MapAuthOutputDto", () => {
 
 			expect(plain).toHaveProperty("tiles_url_template", "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt");
 			expect(plain).not.toHaveProperty("tilesUrlTemplate");
+		});
+
+		it("should serialize glyph_url_template as snake_case", () => {
+			const dto = createMapAuth();
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+
+			expect(plain).toHaveProperty("glyph_url_template", "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
+			expect(plain).not.toHaveProperty("glyphUrlTemplate");
 		});
 	});
 });

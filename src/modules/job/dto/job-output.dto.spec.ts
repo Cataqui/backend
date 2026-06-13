@@ -8,6 +8,7 @@ const mockMapAuth = new MapAuthOutputDto({
 	expiresAt: "2026-06-10T12:00:00.000Z",
 	mapVersion: "br",
 	tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+	glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 });
 
 function createMockDatabaseJob() {
@@ -174,6 +175,7 @@ describe("JobOutputDto", () => {
 					expires_at: "2026-06-10T12:00:00.000Z",
 					map_version: "br",
 					tiles_url_template: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+					glyph_url_template: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 				},
 			});
 		});

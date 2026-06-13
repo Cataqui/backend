@@ -34,6 +34,7 @@ function createMockJobOutputDto(): JobOutputDto {
 				expiresAt: "2026-01-01T00:00:00.000Z",
 				mapVersion: "br",
 				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+				glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 			}),
 		}),
 		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),

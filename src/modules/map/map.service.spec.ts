@@ -112,7 +112,7 @@ describe("MapService", () => {
 
 			const result = await service.authenticate({ region: "BR" });
 
-			expect(result.tilesUrlTemplate).toBe("https://tiles.cataqui.com/br/2026-06-09/{z}/{x}/{y}.mvt");
+			expect(result.tilesUrlTemplate).toBe("https://tiles.cataqui.com/regions/br/2026-06-09/{z}/{x}/{y}.mvt");
 		});
 
 		it("should use lowercase region in tilesUrlTemplate", async () => {
@@ -124,7 +124,7 @@ describe("MapService", () => {
 
 			const result = await service.authenticate({ region: "US" });
 
-			expect(result.tilesUrlTemplate).toMatch(/^https:\/\/tiles\.cataqui\.com\/us\//);
+			expect(result.tilesUrlTemplate).toMatch(/^https:\/\/tiles\.cataqui\.com\/regions\/us\//);
 		});
 
 		it("should use mapFileName as version segment in tilesUrlTemplate", async () => {
@@ -137,6 +137,18 @@ describe("MapService", () => {
 			const result = await service.authenticate({ region: "BR" });
 
 			expect(result.tilesUrlTemplate).toContain("/br/2026-06-10/");
+		});
+
+		it("should set glyphUrlTemplate with correct format", async () => {
+			(mapVersionRepository.findByRegionCode as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "uuid-1",
+				regionCode: "BR",
+				mapFileName: "2026-06-09",
+			});
+
+			const result = await service.authenticate({ region: "BR" });
+
+			expect(result.glyphUrlTemplate).toBe("https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
 		});
 	});
 });
