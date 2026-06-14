@@ -147,7 +147,7 @@ describe("JobService", () => {
 		} as unknown as JobCategoryRepository;
 
 		mapService = {
-			authenticate: vi.fn().mockResolvedValue({
+			getConfig: vi.fn().mockResolvedValue({
 				queryParams: "v=1&sig=abc&exp=123",
 				expiresAt: "2026-01-01T00:00:00.000Z",
 				mapVersion: "br",
@@ -207,16 +207,16 @@ describe("JobService", () => {
 			await expect(service.createJob(dto, "en-US")).resolves.not.toThrow();
 		});
 
-		it("should call MapService.authenticate with BR region on create", async () => {
+		it("should call MapService.getConfig with BR region on create", async () => {
 			await service.createJob(createValidDto(), "en-US");
 
-			expect(mapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+			expect(mapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
 		});
 
-		it("should set mapAuth on createJob output location", async () => {
+		it("should set mapConfig on createJob output location", async () => {
 			const result = await service.createJob(createValidDto(), "en-US");
 
-			expect(result.location.mapAuth.mapVersion).toBe("br");
+			expect(result.location.mapConfig.mapVersion).toBe("br");
 		});
 
 		it("should set status to ACTIVE", async () => {
@@ -430,16 +430,16 @@ describe("JobService", () => {
 			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({ id: "cm3x-job-1", locale: "pt-BR" });
 		});
 
-		it("should call MapService.authenticate with BR region on getJob", async () => {
+		it("should call MapService.getConfig with BR region on getJob", async () => {
 			await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
 
-			expect(mapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+			expect(mapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
 		});
 
-		it("should set mapAuth on getJob output location", async () => {
+		it("should set mapConfig on getJob output location", async () => {
 			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
 
-			expect(result.location.mapAuth.mapVersion).toBe("br");
+			expect(result.location.mapConfig.mapVersion).toBe("br");
 		});
 	});
 });

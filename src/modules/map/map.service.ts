@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 import { MAP_AUTH_CONFIG_KEY } from "../../core/config/map-auth.config";
 import type { IMapAuthConfig } from "../../core/config/map-auth.config";
 import { MapAuthConstants } from "./map-auth.constants";
-import { MapAuthOutputDto } from "./dto/map-auth-output.dto";
+import { MapConfigOutputDto } from "./dto/map-config-output.dto";
 import { MapVersionRepository } from "./repositories/map-version.repository";
 import { MapRegionNotFoundError } from "./errors/map-region-not-found.error";
 
@@ -14,7 +14,7 @@ export class MapService {
 		private readonly _mapVersionRepository: MapVersionRepository,
 	) {}
 
-	async authenticate(params: { region: string }): Promise<MapAuthOutputDto> {
+	async getConfig(params: { region: string }): Promise<MapConfigOutputDto> {
 		const mapVersion = await this._mapVersionRepository.findByRegionCode({
 			regionCode: params.region.toUpperCase(),
 		});
@@ -24,7 +24,7 @@ export class MapService {
 		return this._buildAuth({ region: params.region, mapFileName: mapVersion.mapFileName });
 	}
 
-	private _buildAuth(params: { region: string; mapFileName: string }): MapAuthOutputDto {
+	private _buildAuth(params: { region: string; mapFileName: string }): MapConfigOutputDto {
 		const now = Date.now();
 		const expiresAtMs = now + MapAuthConstants.AUTH_EXPIRATION_SECONDS * 1000;
 		const expSeconds = Math.floor(expiresAtMs / 1000);
@@ -34,7 +34,7 @@ export class MapService {
 		const tilesUrlTemplate = `${this._mapAuthConfig.protomapUrl}/regions/${params.region.toLowerCase()}/${params.mapFileName}/{z}/{x}/{y}.mvt`;
 		const glyphUrlTemplate = `${this._mapAuthConfig.protomapUrl}/glyphs/{fontstack}/{range}.pbf`;
 
-		return new MapAuthOutputDto({
+		return new MapConfigOutputDto({
 			queryParams,
 			expiresAt: new Date(expiresAtMs).toISOString(),
 			mapVersion: params.mapFileName,

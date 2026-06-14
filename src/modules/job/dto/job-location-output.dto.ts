@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { JobLocationConstants } from "../job-location.constants";
-import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
+import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 
 export class JobLocationOutputDto {
 	@Expose({ name: "neighborhood" })
@@ -44,14 +44,14 @@ export class JobLocationOutputDto {
 	@ApiProperty({ name: "area_radius", description: "Radius in meters clients should draw around the fuzzy location", example: JobLocationConstants.AREA_RADIUS_METERS })
 	readonly areaRadius: number;
 
-	@Expose({ name: "map_auth" })
+	@Expose({ name: "map_config" })
 	@ApiProperty({
-		name: "map_auth",
-		description: "Map authentication credentials for displaying the location on a map.",
-		type: MapAuthOutputDto,
+		name: "map_config",
+		description: "Map configuration including authentication credentials and tile settings for displaying the location on a map.",
+		type: MapConfigOutputDto,
 	})
-	@Type(() => MapAuthOutputDto)
-	readonly mapAuth: MapAuthOutputDto;
+	@Type(() => MapConfigOutputDto)
+	readonly mapConfig: MapConfigOutputDto;
 
 	constructor(params: {
 		neighborhood: string;
@@ -61,7 +61,7 @@ export class JobLocationOutputDto {
 		latitude: { toNumber(): number } | number;
 		longitude: { toNumber(): number } | number;
 		areaRadius?: number | undefined;
-		mapAuth: MapAuthOutputDto;
+		mapConfig: MapConfigOutputDto;
 	}) {
 		this.neighborhood = params.neighborhood;
 		this.city = params.city;
@@ -70,7 +70,7 @@ export class JobLocationOutputDto {
 		this.latitude = this._toNumber(params.latitude);
 		this.longitude = this._toNumber(params.longitude);
 		this.areaRadius = params.areaRadius ?? JobLocationConstants.AREA_RADIUS_METERS;
-		this.mapAuth = params.mapAuth;
+		this.mapConfig = params.mapConfig;
 	}
 
 	private _toNumber(value: { toNumber(): number } | number): number {

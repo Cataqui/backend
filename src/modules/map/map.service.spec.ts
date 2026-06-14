@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { MAP_AUTH_CONFIG_KEY } from "../../core/config/map-auth.config";
 import { MapService } from "./map.service";
-import { MapAuthOutputDto } from "./dto/map-auth-output.dto";
+import { MapConfigOutputDto } from "./dto/map-config-output.dto";
 import { MapVersionRepository } from "./repositories/map-version.repository";
 import { MapRegionNotFoundError } from "./errors/map-region-not-found.error";
 import { MapAuthConstants } from "./map-auth.constants";
@@ -30,24 +30,24 @@ describe("MapService", () => {
 		service = module.get(MapService);
 	});
 
-	describe("authenticate", () => {
-		it("should return MapAuthOutputDto when region exists", async () => {
+	describe("getConfig", () => {
+		it("should return MapConfigOutputDto when region exists", async () => {
 			(mapVersionRepository.findByRegionCode as ReturnType<typeof vi.fn>).mockResolvedValue({
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
 			});
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
-			expect(result).toBeInstanceOf(MapAuthOutputDto);
+			expect(result).toBeInstanceOf(MapConfigOutputDto);
 			expect(result.mapVersion).toBe("br");
 		});
 
 		it("should throw MapRegionNotFoundError when region does not exist", async () => {
 			(mapVersionRepository.findByRegionCode as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-			await expect(service.authenticate({ region: "XX" })).rejects.toThrow(MapRegionNotFoundError);
+			await expect(service.getConfig({ region: "XX" })).rejects.toThrow(MapRegionNotFoundError);
 		});
 
 		it("should normalize region to uppercase", async () => {
@@ -57,7 +57,7 @@ describe("MapService", () => {
 				mapFileName: "br",
 			});
 
-			await service.authenticate({ region: "br" });
+			await service.getConfig({ region: "br" });
 
 			expect(mapVersionRepository.findByRegionCode).toHaveBeenCalledWith({ regionCode: "BR" });
 		});
@@ -69,7 +69,7 @@ describe("MapService", () => {
 				mapFileName: "br",
 			});
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
 			expect(result.queryParams).toMatch(/^v=1&sig=[a-f0-9]+&exp=\d+$/);
 		});
@@ -84,7 +84,7 @@ describe("MapService", () => {
 			const before = Date.now() + MapAuthConstants.AUTH_EXPIRATION_SECONDS * 1000 - 1000;
 			const after = Date.now() + MapAuthConstants.AUTH_EXPIRATION_SECONDS * 1000 + 1000;
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
 			const expiresAtMs = new Date(result.expiresAt).getTime();
 			expect(expiresAtMs).toBeGreaterThanOrEqual(before);
@@ -98,7 +98,7 @@ describe("MapService", () => {
 				mapFileName: "br",
 			});
 
-			await service.authenticate({ region: "BR" });
+			await service.getConfig({ region: "BR" });
 
 			expect(mapVersionRepository.findByRegionCode).toHaveBeenCalledWith({ regionCode: "BR" });
 		});
@@ -110,7 +110,7 @@ describe("MapService", () => {
 				mapFileName: "2026-06-09",
 			});
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
 			expect(result.tilesUrlTemplate).toBe("https://tiles.cataqui.com/regions/br/2026-06-09/{z}/{x}/{y}.mvt");
 		});
@@ -122,7 +122,7 @@ describe("MapService", () => {
 				mapFileName: "2026-06-09",
 			});
 
-			const result = await service.authenticate({ region: "US" });
+			const result = await service.getConfig({ region: "US" });
 
 			expect(result.tilesUrlTemplate).toMatch(/^https:\/\/tiles\.cataqui\.com\/regions\/us\//);
 		});
@@ -134,7 +134,7 @@ describe("MapService", () => {
 				mapFileName: "2026-06-10",
 			});
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
 			expect(result.tilesUrlTemplate).toContain("/br/2026-06-10/");
 		});
@@ -146,7 +146,7 @@ describe("MapService", () => {
 				mapFileName: "2026-06-09",
 			});
 
-			const result = await service.authenticate({ region: "BR" });
+			const result = await service.getConfig({ region: "BR" });
 
 			expect(result.glyphUrlTemplate).toBe("https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
 		});

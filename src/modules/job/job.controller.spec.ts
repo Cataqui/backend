@@ -13,7 +13,7 @@ import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
 import { JobPaymentOutputDto } from "./dto/job-payment-output.dto";
-import { MapAuthOutputDto } from "../map/dto/map-auth-output.dto";
+import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
 import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
 
 function createMockJobOutputDto(): JobOutputDto {
@@ -29,7 +29,7 @@ function createMockJobOutputDto(): JobOutputDto {
 			country: "BR",
 			latitude: -23.55,
 			longitude: -46.63,
-			mapAuth: new MapAuthOutputDto({
+			mapConfig: new MapConfigOutputDto({
 				queryParams: "v=1&sig=abc&exp=123",
 				expiresAt: "2026-01-01T00:00:00.000Z",
 				mapVersion: "br",

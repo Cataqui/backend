@@ -2,10 +2,10 @@ import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { FeedPaymentOutputDto } from "./feed-payment-output.dto";
 import { FeedLocationOutputDto } from "./feed-location-output.dto";
-import { MapAuthOutputDto } from "../../map/dto/map-auth-output.dto";
+import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import type { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
-@ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto, MapAuthOutputDto)
+@ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto, MapConfigOutputDto)
 export class FeedItemOutputDto {
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
@@ -52,7 +52,7 @@ export class FeedItemOutputDto {
 			fuzzyLatitude: { toNumber(): number } | number;
 			fuzzyLongitude: { toNumber(): number } | number;
 		},
-		mapAuth: MapAuthOutputDto,
+		mapConfig: MapConfigOutputDto,
 	): FeedItemOutputDto {
 		return new FeedItemOutputDto({
 			jobId: job.id,
@@ -70,7 +70,7 @@ export class FeedItemOutputDto {
 				neighborhood: job.neighborhood,
 				latitude: job.fuzzyLatitude,
 				longitude: job.fuzzyLongitude,
-				mapAuth,
+				mapConfig,
 			}),
 		});
 	}

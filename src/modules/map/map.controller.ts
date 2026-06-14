@@ -1,20 +1,21 @@
-import { Controller, Post, Body, Version, HttpCode, HttpStatus } from "@nestjs/common";
+import { Controller, Get, Query, Version, Header } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { MapService } from "./map.service";
-import { MapAuthenticateRequestDto } from "./dto/map-authenticate-request.dto";
-import { MapAuthOutputDto } from "./dto/map-auth-output.dto";
-import { ApiAuthenticateMapDocs } from "./decorators/api-authenticate-map-docs.decorator";
+import { MapConfigRequestQueryDto } from "./dto/map-config-request-query.dto";
+import { MapConfigOutputDto } from "./dto/map-config-output.dto";
+import { ApiMapConfigDocs } from "./decorators/api-map-config-docs.decorator";
+import { MapAuthConstants } from "./map-auth.constants";
 
 @ApiTags("map")
 @Controller("map")
 export class MapController {
 	constructor(private readonly _mapService: MapService) {}
 
-	@Post("authenticate")
+	@Get("config")
 	@Version("1")
-	@HttpCode(HttpStatus.OK)
-	@ApiAuthenticateMapDocs()
-	async authenticate(@Body() dto: MapAuthenticateRequestDto): Promise<MapAuthOutputDto> {
-		return this._mapService.authenticate({ region: dto.region });
+	@Header("Cache-Control", `public, max-age=${MapAuthConstants.AUTH_EXPIRATION_SECONDS}`)
+	@ApiMapConfigDocs()
+	async getConfig(@Query() query: MapConfigRequestQueryDto): Promise<MapConfigOutputDto> {
+		return this._mapService.getConfig({ region: query.region });
 	}
 }

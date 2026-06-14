@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 
-export class MapAuthOutputDto {
+export class MapConfigOutputDto {
 	@Expose({ name: "query_params" })
 	@ApiProperty({
 		name: "query_params",
@@ -41,6 +41,22 @@ export class MapAuthOutputDto {
 		example: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 	})
 	readonly glyphUrlTemplate: string;
+
+	@Expose({ name: "tile_min_zoom" })
+	@ApiProperty({
+		name: "tile_min_zoom",
+		description: "Minimum zoom level available for map tiles",
+		example: 1,
+	})
+	readonly tileMinZoom: number = 1;
+
+	@Expose({ name: "tile_max_zoom" })
+	@ApiProperty({
+		name: "tile_max_zoom",
+		description: "Maximum zoom level available for map tiles",
+		example: 14,
+	})
+	readonly tileMaxZoom: number = 14;
 
 	constructor(params: { queryParams: string; expiresAt: string; mapVersion: string; tilesUrlTemplate: string; glyphUrlTemplate: string }) {
 		this.queryParams = params.queryParams;

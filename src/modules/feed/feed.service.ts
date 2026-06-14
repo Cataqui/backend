@@ -37,8 +37,8 @@ export class FeedService {
 			});
 		}
 
-		const mapAuth = await this._mapService.authenticate({ region: "BR" });
-		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item, mapAuth));
+		const mapConfig = await this._mapService.getConfig({ region: "BR" });
+		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item, mapConfig));
 		return new PaginatedResponseDto(items, new PaginationOutputDto(hasMore, nextCursor));
 	}
 }

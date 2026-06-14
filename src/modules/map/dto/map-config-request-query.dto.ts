@@ -2,7 +2,7 @@ import { Expose } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { IsISO31661Alpha2 } from "class-validator";
 
-export class MapAuthenticateRequestDto {
+export class MapConfigRequestQueryDto {
 	@Expose({ name: "region" })
 	@ApiProperty({
 		name: "region",

@@ -29,7 +29,7 @@ const mockRepository = {
 };
 
 const mockMapService = {
-	authenticate: vi.fn().mockResolvedValue({
+	getConfig: vi.fn().mockResolvedValue({
 		queryParams: "v=1&sig=abc&exp=123",
 		expiresAt: "2026-01-01T00:00:00.000Z",
 		mapVersion: "br",
@@ -146,16 +146,16 @@ describe("FeedService", () => {
 			expect(result.data[0]!.location.neighborhood).toBe("Centro");
 		});
 
-		it("should call MapService.authenticate with BR region", async () => {
+		it("should call MapService.getConfig with BR region", async () => {
 			mockRepository.getFeedItems.mockResolvedValue([]);
 
 			await service.getFeed({});
 
-			expect(mockMapService.authenticate).toHaveBeenCalledWith({ region: "BR" });
+			expect(mockMapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
 		});
 
-		it("should set mapAuth on all feed items location", async () => {
-			const mockAuth = {
+		it("should set mapConfig on all feed items location", async () => {
+			const mockConfig = {
 				queryParams: "v=1&sig=abc&exp=123",
 				expiresAt: "2026-01-01T00:00:00.000Z",
 				mapVersion: "br",
@@ -170,8 +170,8 @@ describe("FeedService", () => {
 
 			const result = await service.getFeed({});
 
-			expect(result.data[0]!.location.mapAuth).toEqual(mockAuth);
-			expect(result.data[1]!.location.mapAuth).toEqual(mockAuth);
+			expect(result.data[0]!.location.mapConfig).toEqual(mockConfig);
+			expect(result.data[1]!.location.mapConfig).toEqual(mockConfig);
 		});
 
 		it("should return PaginatedResponseDto structure", async () => {

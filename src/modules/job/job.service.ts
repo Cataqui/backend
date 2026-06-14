@@ -24,8 +24,8 @@ export class JobService {
 		const result = await this._jobRepository.findByIdLocalized({ id: params.jobId, locale: params.locale });
 		if (!result) throw new JobNotFoundError();
 
-		const mapAuth = await this._mapService.authenticate({ region: "BR" });
-		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapAuth);
+		const mapConfig = await this._mapService.getConfig({ region: "BR" });
+		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapConfig);
 	}
 
 	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
@@ -75,7 +75,7 @@ export class JobService {
 			},
 		});
 
-		const mapAuth = await this._mapService.authenticate({ region: "BR" });
-		return JobOutputDto.fromDatabase(job, category.displayName, mapAuth);
+		const mapConfig = await this._mapService.getConfig({ region: "BR" });
+		return JobOutputDto.fromDatabase(job, category.displayName, mapConfig);
 	}
 }
