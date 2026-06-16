@@ -1,11 +1,11 @@
 import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { FeedPaymentOutputDto } from "./feed-payment-output.dto";
+import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
 import { FeedLocationOutputDto } from "./feed-location-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import type { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
-@ApiExtraModels(FeedPaymentOutputDto, FeedLocationOutputDto, MapConfigOutputDto)
+@ApiExtraModels(JobPaymentOutputDto, FeedLocationOutputDto, MapConfigOutputDto)
 export class FeedItemOutputDto {
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
@@ -20,16 +20,16 @@ export class FeedItemOutputDto {
 	readonly createdAt: string;
 
 	@Expose({ name: "payment" })
-	@ApiProperty({ name: "payment", description: "Payment details", type: FeedPaymentOutputDto })
-	@Type(() => FeedPaymentOutputDto)
-	readonly payment: FeedPaymentOutputDto;
+	@ApiProperty({ name: "payment", description: "Payment details", type: JobPaymentOutputDto })
+	@Type(() => JobPaymentOutputDto)
+	readonly payment: JobPaymentOutputDto;
 
 	@Expose({ name: "location" })
 	@ApiProperty({ name: "location", description: "Job location", type: FeedLocationOutputDto })
 	@Type(() => FeedLocationOutputDto)
 	readonly location: FeedLocationOutputDto;
 
-	constructor(params: { jobId: string; title: string; createdAt: string; payment: FeedPaymentOutputDto; location: FeedLocationOutputDto }) {
+	constructor(params: { jobId: string; title: string; createdAt: string; payment: JobPaymentOutputDto; location: FeedLocationOutputDto }) {
 		this.jobId = params.jobId;
 		this.title = params.title;
 		this.createdAt = params.createdAt;
@@ -58,7 +58,7 @@ export class FeedItemOutputDto {
 			jobId: job.id,
 			title: job.title,
 			createdAt: job.createdAt.toISOString(),
-			payment: new FeedPaymentOutputDto({
+			payment: new JobPaymentOutputDto({
 				paymentType: job.paymentType,
 				paymentMinAmount: job.paymentMinAmount,
 				paymentMaxAmount: job.paymentMaxAmount,

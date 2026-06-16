@@ -3,7 +3,7 @@ import { Expose, Type } from "class-transformer";
 import { JobContactOutputDto } from "./job-contact-output.dto";
 import { JobLocationOutputDto } from "./job-location-output.dto";
 import { JobCategoryOutputDto } from "./job-category-output.dto";
-import { JobPaymentOutputDto } from "./job-payment-output.dto";
+import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
 

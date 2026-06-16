@@ -12,7 +12,7 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
-import { JobPaymentOutputDto } from "./dto/job-payment-output.dto";
+import { JobPaymentOutputDto } from "../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
 import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
 
