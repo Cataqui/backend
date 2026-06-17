@@ -34,6 +34,7 @@ const mockMapService = {
 		queryParams: "v=1&sig=abc&exp=123",
 		expiresAt: "2026-01-01T00:00:00.000Z",
 		mapVersion: "br",
+		fontstack: "inter",
 		tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
 	}),
 };
@@ -173,6 +174,7 @@ describe("FeedService", () => {
 				queryParams: "v=1&sig=abc&exp=123",
 				expiresAt: "2026-01-01T00:00:00.000Z",
 				mapVersion: "br",
+				fontstack: "inter",
 				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
 			};
 

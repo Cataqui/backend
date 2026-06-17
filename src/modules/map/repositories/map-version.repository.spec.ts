@@ -23,7 +23,7 @@ describe("MapVersionRepository", () => {
 
 	describe("findByRegionCode", () => {
 		it("should return map version when found", async () => {
-			const mockRecord = { id: "uuid-1", regionCode: "BR", mapFileName: "br" };
+			const mockRecord = { id: "uuid-1", regionCode: "BR", mapFileName: "br", fontstack: "inter" };
 			(prismaService.mapVersion.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockRecord);
 
 			const result = await repository.findByRegionCode({ regionCode: "BR" });
@@ -46,7 +46,7 @@ describe("MapVersionRepository", () => {
 
 			expect(prismaService.mapVersion.findUnique).toHaveBeenCalledWith({
 				where: { regionCode: "MX" },
-				select: { id: true, regionCode: true, mapFileName: true },
+				select: { id: true, regionCode: true, mapFileName: true, fontstack: true },
 			});
 		});
 	});

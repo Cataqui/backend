@@ -34,6 +34,14 @@ export class MapConfigOutputDto {
 	})
 	readonly tilesUrlTemplate: string;
 
+	@Expose({ name: "fontstack" })
+	@ApiProperty({
+		name: "fontstack",
+		description: "Font stack name to substitute into glyph_url_template's {fontstack} placeholder for label rendering",
+		example: "inter",
+	})
+	readonly fontstack: string;
+
 	@Expose({ name: "glyph_url_template" })
 	@ApiProperty({
 		name: "glyph_url_template",
@@ -63,12 +71,14 @@ export class MapConfigOutputDto {
 		queryParams: string;
 		expiresAt: string;
 		mapVersion: string;
+		fontstack: string;
 		tilesUrlTemplate: string;
 		glyphUrlTemplate: string;
 	}) {
 		this.queryParams = params.queryParams;
 		this.expiresAt = params.expiresAt;
 		this.mapVersion = params.mapVersion;
+		this.fontstack = params.fontstack;
 		this.tilesUrlTemplate = params.tilesUrlTemplate;
 		this.glyphUrlTemplate = params.glyphUrlTemplate;
 	}

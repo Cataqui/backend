@@ -21,10 +21,14 @@ export class MapService {
 
 		if (!mapVersion) throw new MapRegionNotFoundError();
 
-		return this._buildAuth({ region: params.region, mapFileName: mapVersion.mapFileName });
+		return this._buildAuth({
+			region: params.region,
+			mapFileName: mapVersion.mapFileName,
+			fontstack: mapVersion.fontstack,
+		});
 	}
 
-	private _buildAuth(params: { region: string; mapFileName: string }): MapConfigOutputDto {
+	private _buildAuth(params: { region: string; mapFileName: string; fontstack: string }): MapConfigOutputDto {
 		const now = Date.now();
 		const expiresAtMs = now + MapAuthConstants.AUTH_EXPIRATION_SECONDS * 1000;
 		const expSeconds = Math.floor(expiresAtMs / 1000);
@@ -38,6 +42,7 @@ export class MapService {
 			queryParams,
 			expiresAt: new Date(expiresAtMs).toISOString(),
 			mapVersion: params.mapFileName,
+			fontstack: params.fontstack,
 			tilesUrlTemplate,
 			glyphUrlTemplate,
 		});

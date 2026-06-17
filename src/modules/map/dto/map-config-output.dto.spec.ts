@@ -6,6 +6,7 @@ function createMapConfig(): MapConfigOutputDto {
 		queryParams: "v=1&sig=abc123&exp=1717891200",
 		expiresAt: "2026-06-10T12:00:00.000Z",
 		mapVersion: "br",
+		fontstack: "inter",
 		tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
 		glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 	});
@@ -41,6 +42,12 @@ describe("MapConfigOutputDto", () => {
 			const dto = createMapConfig();
 
 			expect(dto.glyphUrlTemplate).toBe("https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
+		});
+
+		it("should assign fontstack", () => {
+			const dto = createMapConfig();
+
+			expect(dto.fontstack).toBe("inter");
 		});
 
 		it("should set tileMinZoom to 1", () => {
@@ -95,6 +102,14 @@ describe("MapConfigOutputDto", () => {
 
 			expect(plain).toHaveProperty("glyph_url_template", "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf");
 			expect(plain).not.toHaveProperty("glyphUrlTemplate");
+		});
+
+		it("should serialize fontstack as fontstack", () => {
+			const dto = createMapConfig();
+			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
+
+			expect(plain).toHaveProperty("fontstack", "inter");
+			expect(plain).not.toHaveProperty("fontstack_renamed");
 		});
 
 		it("should serialize tile_min_zoom as snake_case", () => {

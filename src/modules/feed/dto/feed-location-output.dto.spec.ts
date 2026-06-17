@@ -6,6 +6,7 @@ const mockMapConfig = new MapConfigOutputDto({
 	queryParams: "v=1&sig=abc&exp=1717891200",
 	expiresAt: "2026-06-10T12:00:00.000Z",
 	mapVersion: "br",
+	fontstack: "inter",
 	tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
 	glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 });
@@ -54,6 +55,7 @@ describe("FeedLocationOutputDto", () => {
 					query_params: "v=1&sig=abc&exp=1717891200",
 					expires_at: "2026-06-10T12:00:00.000Z",
 					map_version: "br",
+					fontstack: "inter",
 					tiles_url_template: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
 					glyph_url_template: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 					tile_min_zoom: 1,

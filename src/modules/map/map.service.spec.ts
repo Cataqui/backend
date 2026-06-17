@@ -39,12 +39,26 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "BR" });
 
 			expect(result).toBeInstanceOf(MapConfigOutputDto);
 			expect(result.mapVersion).toBe("br");
+		});
+
+		it("should set fontstack from repository value", async () => {
+			(mapVersionRepository.findByRegionCode as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "uuid-1",
+				regionCode: "BR",
+				mapFileName: "br",
+				fontstack: "noto-sans",
+			});
+
+			const result = await service.getConfig({ region: "BR" });
+
+			expect(result.fontstack).toBe("noto-sans");
 		});
 
 		it("should throw MapRegionNotFoundError when region does not exist", async () => {
@@ -58,6 +72,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
+				fontstack: "inter",
 			});
 
 			await service.getConfig({ region: "br" });
@@ -70,6 +85,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "BR" });
@@ -82,6 +98,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
+				fontstack: "inter",
 			});
 
 			const before = Date.now() + MapAuthConstants.AUTH_EXPIRATION_SECONDS * 1000 - 1000;
@@ -99,6 +116,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "br",
+				fontstack: "inter",
 			});
 
 			await service.getConfig({ region: "BR" });
@@ -111,6 +129,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "2026-06-09",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "BR" });
@@ -123,6 +142,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "US",
 				mapFileName: "2026-06-09",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "US" });
@@ -135,6 +155,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "2026-06-10",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "BR" });
@@ -147,6 +168,7 @@ describe("MapService", () => {
 				id: "uuid-1",
 				regionCode: "BR",
 				mapFileName: "2026-06-09",
+				fontstack: "inter",
 			});
 
 			const result = await service.getConfig({ region: "BR" });
