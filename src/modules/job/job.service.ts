@@ -104,7 +104,7 @@ export class JobService {
 		const trimmed = rawSummary.trim();
 
 		if (trimmed.length === 0) return;
-		const summary = trimmed.length > 200 ? trimmed.substring(0, 200) : trimmed;
+		const summary = trimmed.length > 100 ? trimmed.substring(0, 100) : trimmed;
 
 		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
 	}
