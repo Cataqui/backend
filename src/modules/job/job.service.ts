@@ -39,7 +39,11 @@ export class JobService {
 			throw new InvalidJobTypePeriodError();
 		}
 
-		const category = await this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale });
+		const [category, mapConfig] = await Promise.all([
+			this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale }),
+			this._mapService.getConfig({ region: "BR" }),
+		]);
+
 		if (!category) throw new CategoryNotFoundError(HttpStatus.BAD_REQUEST);
 
 		const fuzzyLocation: ILocationCoordinate = dto.location.street?.trim()
@@ -86,7 +90,6 @@ export class JobService {
 			this._logger.error(`Failed to generate description summary for job ${job.id}:`, error);
 		});
 
-		const mapConfig = await this._mapService.getConfig({ region: "BR" });
 		return JobOutputDto.fromDatabase(job, category.displayName, mapConfig);
 	}
 

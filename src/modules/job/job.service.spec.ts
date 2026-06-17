@@ -228,6 +228,34 @@ describe("JobService", () => {
 			expect(result.location.mapConfig.mapVersion).toBe("br");
 		});
 
+		it("should call category lookup and map config lookup before job creation (parallel)", async () => {
+			(jobCategoryRepository.findByIdWithLocalizedName as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "cm3x-cat-1",
+				slug: "moving-help",
+				displayName: "Moving Help",
+			});
+
+			(mapService.getConfig as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+				queryParams: "v=1&sig=abc&exp=123",
+				expiresAt: "2026-01-01T00:00:00.000Z",
+				mapVersion: "br",
+				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
+			});
+
+			(jobRepository.create as ReturnType<typeof vi.fn>).mockImplementation(() => {
+				throw new Error("repository.create called before async lookups");
+			});
+
+			const createPromise = service.createJob(createValidDto(), "en-US");
+			await expect(createPromise).rejects.toThrow("repository.create called before async lookups");
+		});
+
+		it("should fetch map config only once (not after job creation)", async () => {
+			await service.createJob(createValidDto(), "en-US");
+
+			expect(mapService.getConfig).toHaveBeenCalledTimes(1);
+		});
+
 		it("should set status to ACTIVE", async () => {
 			await service.createJob(createValidDto(), "en-US");
 
