@@ -171,7 +171,7 @@ describe("Request Size Limits (e2e)", () => {
 		it("should reject requests with URL exceeding length limit", async () => {
 			const app = await buildApp(TEST_CONFIG);
 
-			const longUrl = "/" + "a".repeat(TEST_CONFIG.urlLengthLimitBytes);
+			const longUrl = `/${"a".repeat(TEST_CONFIG.urlLengthLimitBytes)}`;
 			const response = await app.inject({ method: "GET", url: longUrl });
 
 			assertErrorResponse(
@@ -240,7 +240,7 @@ describe("Request Size Limits (e2e)", () => {
 		it("should include endpoint matching request URL in envelope", async () => {
 			const app = await buildApp(TEST_CONFIG);
 
-			const longUrl = "/" + "a".repeat(TEST_CONFIG.urlLengthLimitBytes);
+			const longUrl = `/${"a".repeat(TEST_CONFIG.urlLengthLimitBytes)}`;
 			const response = await app.inject({ method: "GET", url: longUrl });
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;

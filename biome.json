@@ -54,11 +54,14 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/**/*.spec.ts"],
+			"includes": ["src/**/*.spec.ts", "test/**/*.spec.ts"],
 			"linter": {
 				"rules": {
 					"suspicious": {
 						"noExplicitAny": "off"
+					},
+					"style": {
+						"useTemplate": "off"
 					}
 				}
 			}
