@@ -98,7 +98,9 @@ jobs:
             DATABASE_POOLER_URL
             DATABASE_DIRECT_URL
             PROTOMAP_AUTH_SECRET
+            AI_GATEWAY_API_TOKEN
         env:
           DATABASE_POOLER_URL: ${{ secrets.DATABASE_POOLER_URL }}
           DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
           PROTOMAP_AUTH_SECRET: ${{ secrets.PROTOMAP_AUTH_SECRET }}
+          AI_GATEWAY_API_TOKEN: ${{ secrets.AI_GATEWAY_API_TOKEN }}

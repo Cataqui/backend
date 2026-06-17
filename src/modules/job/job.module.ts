@@ -4,9 +4,10 @@ import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { MapModule } from "../map/map.module";
+import { AiModule } from "../../core/ai/ai.module";
 
 @Module({
-	imports: [MapModule],
+	imports: [MapModule, AiModule],
 	controllers: [JobController],
 	providers: [JobRepository, JobCategoryRepository, JobService],
 })

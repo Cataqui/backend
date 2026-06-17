@@ -50,6 +50,7 @@ describe("FeedController", () => {
 						jobId: "abc",
 						title: "Test",
 						createdAt: "2026-01-01T00:00:00.000Z",
+						descriptionSummary: "",
 						payment: {} as never,
 						location: {} as never,
 					}),

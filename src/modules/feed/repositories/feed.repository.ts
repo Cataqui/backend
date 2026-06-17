@@ -7,6 +7,7 @@ export interface FeedItemRaw {
 	id: string;
 	title: string;
 	createdAt: Date;
+	descriptionSummary: string;
 	paymentType: JobPaymentType;
 	paymentMinAmount: { toNumber(): number } | null;
 	paymentMaxAmount: { toNumber(): number } | null;
@@ -38,6 +39,7 @@ export class FeedRepository {
 				id: true,
 				title: true,
 				createdAt: true,
+				descriptionSummary: true,
 				paymentType: true,
 				paymentMinAmount: true,
 				paymentMaxAmount: true,

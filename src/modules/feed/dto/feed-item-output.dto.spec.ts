@@ -15,6 +15,7 @@ function createMockDatabaseJob() {
 		id: "cm3x-1234-abcd",
 		title: "Help unload truck",
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
+		descriptionSummary: "",
 		paymentType: "FIXED" as const,
 		paymentMinAmount: { toNumber: (): number => 150.0 },
 		paymentMaxAmount: null,

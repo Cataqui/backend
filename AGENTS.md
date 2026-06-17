@@ -351,6 +351,8 @@ Create named constants for:
 
 Small one-off test descriptions, local validation messages, and obvious Swagger prose do not need constants unless repeated or domain-critical.
 
+Do not create a constants file for values used in only one place. Inline the value where it is used. Constants files and `*Constants` objects are for values referenced from multiple locations.
+
 ### Constant File Structure
 
 Every constants file (`*.constants.ts`) must export its values through a single `*Constants` object (named after the domain), not as individual exports.
@@ -438,6 +440,12 @@ export const ValidationErrorFormatter = {
 	formatValidationErrors,
 } as const;
 ```
+
+### Utility/Helper Files
+
+Do not create a separate utility or helper file for logic that is only used in one place. Keep the logic in the module where it is used, typically as a private method on a service or a module-private function.
+
+Utility files and exported namespaces are for logic shared across multiple modules or files. Single-use logic should stay co-located with its consumer.
 
 ### Utility Functions
 
@@ -670,6 +678,17 @@ This ensures that:
 - each test has a single, clear reason to fail
 - test names describe exactly what is being verified
 - failures are immediately obvious without reading assertion details
+
+### 100% Coverage for Every Feature
+
+Every new feature or change must include tests that cover 100% of the possibilities it introduces:
+
+- **All code paths** — every branch, early return, error case, and happy path must have a dedicated test
+- **All input variations** — every meaningful input permutation (boundary values, nulls, edge cases) must be tested
+- **All side effects** — every function call, database write, external API invocation, and log statement triggered by the feature must be verified
+- **All integration points** — parameter values passed to dependencies must be asserted explicitly, not just that the dependency was called
+
+A feature is not complete until its test suite proves every line and every state transition it introduces. If a test cannot be written for a specific scenario, document why in the commit or PR notes.
 
 ---
 

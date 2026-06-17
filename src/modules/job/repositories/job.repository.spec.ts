@@ -86,6 +86,7 @@ const mockJob: MockJobWithCategory = {
 const createParams: Prisma.JobUncheckedCreateInput = {
 	title: "Help unload truck",
 	description: "Need someone to help.",
+	descriptionSummary: "Need someone to help.",
 	status: "ACTIVE",
 	contactName: "João Silva",
 	contactPhoneNumber: "+5511999999999",
@@ -119,6 +120,7 @@ describe("JobRepository", () => {
 			job: {
 				create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 				findUnique: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
+				update: vi.fn().mockResolvedValue(mockJob),
 			},
 		} as unknown as PrismaService;
 
@@ -137,6 +139,7 @@ describe("JobRepository", () => {
 				data: {
 					title: "Help unload truck",
 					description: "Need someone to help.",
+					descriptionSummary: "Need someone to help.",
 					status: "ACTIVE",
 					contactName: "João Silva",
 					contactPhoneNumber: "+5511999999999",
@@ -243,6 +246,21 @@ describe("JobRepository", () => {
 
 			expect(result).not.toBeNull();
 			expect((result?.category as Record<string, unknown>)["translations"]).toBeUndefined();
+		});
+	});
+
+	describe("updateDescriptionSummary", () => {
+		it("should call prisma.job.update with correct jobId and summary", async () => {
+			await repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test summary sentence here" });
+
+			expect(prisma.job.update).toHaveBeenCalledWith({
+				where: { id: "cm3x-1234" },
+				data: { descriptionSummary: "Test summary sentence here" },
+			});
+		});
+
+		it("should not throw when update succeeds", async () => {
+			await expect(repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test" })).resolves.toBeUndefined();
 		});
 	});
 });

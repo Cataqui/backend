@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
@@ -11,13 +11,19 @@ import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { JobLocationConstants } from "./job-location.constants";
 import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
 import { MapService } from "../map/map.service";
+import { AiGatewayService } from "../../core/ai/ai-gateway-service";
+import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
+import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 
 @Injectable()
 export class JobService {
+	private readonly _logger = new Logger(JobService.name);
+
 	constructor(
 		private readonly _jobRepository: JobRepository,
 		private readonly _jobCategoryRepository: JobCategoryRepository,
 		private readonly _mapService: MapService,
+		private readonly _aiGatewayService: AiGatewayService,
 	) {}
 
 	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
@@ -53,6 +59,7 @@ export class JobService {
 			data: {
 				title: dto.title,
 				description: dto.description,
+				descriptionSummary: dto.description.substring(0, 200),
 				status: JobStatus.ACTIVE,
 				contactName: dto.contact.name,
 				contactPhoneNumber: dto.contact.phoneNumber,
@@ -75,7 +82,27 @@ export class JobService {
 			},
 		});
 
+		this._improveDescriptionSummary(job.id, dto.description).catch((error) => {
+			this._logger.error(`Failed to generate description summary for job ${job.id}:`, error);
+		});
+
 		const mapConfig = await this._mapService.getConfig({ region: "BR" });
 		return JobOutputDto.fromDatabase(job, category.displayName, mapConfig);
+	}
+
+	private async _improveDescriptionSummary(jobId: string, description: string): Promise<void> {
+		const rawSummary = await this._aiGatewayService.generateText({
+			jobType: AiGatewayJobTypeModel.SUMMARIZE,
+			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
+			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
+			temperature: 0,
+		});
+
+		const trimmed = rawSummary.trim();
+
+		if (trimmed.length === 0) return;
+		const summary = trimmed.length > 200 ? trimmed.substring(0, 200) : trimmed;
+
+		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
 	}
 }

@@ -31,8 +31,6 @@
 
 	"vars": {
 		"NODE_ENV": "production",
-		"SLEEP_AFTER": "5m",
-		"PROTOMAP_URL": "https://maptiles.cataqui.com",
 	},
 
 	"observability": {
@@ -67,6 +65,8 @@
 				"SLEEP_AFTER": "5m",
 				"CORS_ORIGINS": "https://staging.cataqui.com",
 				"PROTOMAP_URL": "https://staging.maptiles.cataqui.com",
+				"CLOUDFLARE_ACCOUNT_ID": "1fca946385505503c59dd6a2a4eeb442",
+				"CLOUDFLARE_AI_GATEWAY_ID": "staging",
 			},
 			"observability": {
 				"enabled": true,
@@ -99,6 +99,8 @@
 				"SLEEP_AFTER": "1h",
 				"CORS_ORIGINS": "https://cataqui.com",
 				"PROTOMAP_URL": "https://maptiles.cataqui.com",
+				"CLOUDFLARE_ACCOUNT_ID": "1fca946385505503c59dd6a2a4eeb442",
+				"CLOUDFLARE_AI_GATEWAY_ID": "production",
 			},
 			"observability": {
 				"enabled": true,

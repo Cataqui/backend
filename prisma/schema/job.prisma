@@ -2,6 +2,7 @@ model Job {
   id                String            @id @default(uuid()) @db.Uuid
   title             String            @db.VarChar(120)
   description       String            @db.Text
+  descriptionSummary String          @map("description_summary") @db.VarChar(200)
   contactName       String            @map("contact_name") @db.VarChar(100)
   contactPhoneNumber String            @map("contact_phone_number") @db.VarChar(20)
   contactMethod      JobContactMethod     @map("contact_method")

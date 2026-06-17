@@ -58,4 +58,11 @@ export class JobRepository {
 
 		return job;
 	}
+
+	async updateDescriptionSummary(params: { jobId: string; summary: string }): Promise<void> {
+		await this._prisma.job.update({
+			where: { id: params.jobId },
+			data: { descriptionSummary: params.summary },
+		});
+	}
 }

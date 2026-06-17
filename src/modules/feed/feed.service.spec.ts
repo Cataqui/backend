@@ -12,6 +12,7 @@ function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; c
 		id: overrides.id,
 		title: overrides.title ?? "Help unload truck",
 		createdAt: overrides.createdAt,
+		descriptionSummary: overrides.descriptionSummary ?? "",
 		paymentType: overrides.paymentType ?? ("FIXED" as const),
 		paymentMinAmount: overrides.paymentMinAmount ?? { toNumber: () => 150.0 },
 		paymentMaxAmount: overrides.paymentMaxAmount ?? null,

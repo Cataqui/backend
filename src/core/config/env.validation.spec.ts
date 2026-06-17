@@ -11,6 +11,9 @@ describe("IEnvSchema", () => {
 				CORS_ORIGINS: "http://localhost:3000",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 			});
 
 			expect(result.success).toBe(true);
@@ -42,6 +45,9 @@ describe("IEnvSchema", () => {
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 			});
 
 			expect(result.success).toBe(true);
@@ -59,6 +65,9 @@ describe("IEnvSchema", () => {
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 			});
 
 			expect(result.success).toBe(true);
@@ -105,6 +114,9 @@ describe("IEnvSchema", () => {
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 			});
 
 			expect(result.success).toBe(true);
@@ -141,6 +153,9 @@ describe("IEnvSchema", () => {
 				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 			});
 
 			expect(result.success).toBe(true);

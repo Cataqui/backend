@@ -14,6 +14,9 @@ import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { JobLocationConstants } from "./job-location.constants";
 import { MapService } from "../map/map.service";
+import { AiGatewayService } from "../../core/ai/ai-gateway-service";
+import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
+import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -135,6 +138,7 @@ describe("JobService", () => {
 	let jobRepository: JobRepository;
 	let jobCategoryRepository: JobCategoryRepository;
 	let mapService: MapService;
+	let aiGatewayService: { generateText: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		jobRepository = {
@@ -155,12 +159,17 @@ describe("JobService", () => {
 			}),
 		} as unknown as MapService;
 
+		aiGatewayService = {
+			generateText: vi.fn().mockResolvedValue(""),
+		};
+
 		const module = await Test.createTestingModule({
 			providers: [
 				JobService,
 				{ provide: JobRepository, useValue: jobRepository },
 				{ provide: JobCategoryRepository, useValue: jobCategoryRepository },
 				{ provide: MapService, useValue: mapService },
+				{ provide: AiGatewayService, useValue: aiGatewayService },
 			],
 		}).compile();
 
@@ -235,6 +244,7 @@ describe("JobService", () => {
 			expect(createData).toEqual({
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
+				descriptionSummary: "Need someone to help unload a delivery truck.",
 				status: JobStatus.ACTIVE,
 				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
@@ -397,6 +407,29 @@ describe("JobService", () => {
 			const result = await service.createJob(createValidDto(), "fr-FR");
 
 			expect(result.category.name).toBe("Moving Help");
+		});
+
+		it("should call AI to generate a description summary", async () => {
+			await service.createJob(createValidDto(), "en-US");
+
+			expect(aiGatewayService.generateText).toHaveBeenCalledWith({
+				jobType: AiGatewayJobTypeModel.SUMMARIZE,
+				system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
+				prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
+				temperature: 0,
+			});
+		});
+
+		it("should not await AI summary call before returning the created job", async () => {
+			aiGatewayService.generateText.mockReturnValue(new Promise<string>(() => {}));
+
+			const resultPromise = service.createJob(createValidDto(), "en-US");
+			const result = await Promise.race([
+				resultPromise,
+				new Promise<never>((_resolve, reject) => setTimeout(() => reject(new Error("createJob appears to await AI summary")), 500)),
+			]);
+
+			expect(result).toBeInstanceOf(JobOutputDto);
 		});
 	});
 

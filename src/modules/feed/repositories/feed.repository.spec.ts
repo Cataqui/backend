@@ -104,6 +104,7 @@ describe("FeedRepository", () => {
 				id: true,
 				title: true,
 				createdAt: true,
+				descriptionSummary: true,
 				paymentType: true,
 				paymentMinAmount: true,
 				paymentMaxAmount: true,
