@@ -1,11 +1,11 @@
 import { Test, type TestingModule } from "@nestjs/testing";
-import { FeedService } from "./feed.service";
-import { FeedRepository, type FeedItemRaw } from "./repositories/feed.repository";
-import { CursorUtils } from "./utils/cursor.utils";
+import { type Mock, vi } from "vitest";
+import { MapService } from "../map/map.service";
 import { FeedSort } from "./enums/feed-sort.enum";
 import { InvalidCursorError } from "./errors/invalid-cursor.error";
-import { MapService } from "../map/map.service";
-import { vi, type Mock } from "vitest";
+import { FeedService } from "./feed.service";
+import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
+import { CursorUtils } from "./utils/cursor.utils";
 
 function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
 	return {
@@ -45,7 +45,11 @@ describe("FeedService", () => {
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }, { provide: MapService, useValue: mockMapService }],
+			providers: [
+				FeedService,
+				{ provide: FeedRepository, useValue: mockRepository },
+				{ provide: MapService, useValue: mockMapService },
+			],
 		}).compile();
 
 		service = module.get<FeedService>(FeedService);
@@ -78,7 +82,11 @@ describe("FeedService", () => {
 			);
 			mockRepository.getFeedItems.mockResolvedValue(items);
 
-			const encodedCursor = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
+			const encodedCursor = CursorUtils.encodeCursor({
+				sort: FeedSort.LATEST,
+				createdAt: "2026-05-28T10:00:00.000Z",
+				jobId: "12345678-1234-1234-1234-1234567890ab",
+			});
 
 			const result = await service.getFeed({
 				cursor: encodedCursor,
@@ -86,7 +94,12 @@ describe("FeedService", () => {
 
 			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				expect.objectContaining({ cursor: expect.objectContaining({ createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" }) }),
+				expect.objectContaining({
+					cursor: expect.objectContaining({
+						createdAt: "2026-05-28T10:00:00.000Z",
+						jobId: "12345678-1234-1234-1234-1234567890ab",
+					}),
+				}),
 			);
 			expect(result.data).toHaveLength(5);
 		});

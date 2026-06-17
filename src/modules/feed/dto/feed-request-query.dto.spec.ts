@@ -1,10 +1,14 @@
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { FeedRequestQueryDto } from "./feed-request-query.dto";
-import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
+import { CursorUtils } from "../utils/cursor.utils";
+import { FeedRequestQueryDto } from "./feed-request-query.dto";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
+const VALID_CURSOR = CursorUtils.encodeCursor({
+	sort: FeedSort.LATEST,
+	createdAt: "2026-05-28T10:00:00.000Z",
+	jobId: "12345678-1234-1234-1234-1234567890ab",
+});
 
 describe("FeedRequestQueryDto", () => {
 	describe("validation", () => {

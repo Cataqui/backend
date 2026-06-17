@@ -5,7 +5,14 @@ import { ErrorOutputDto } from "./error-output.dto";
 describe("ErrorOutputDto", () => {
 	describe("constructor", () => {
 		it("should assign all fields", () => {
-			const dto = new ErrorOutputDto(ErrorCode.POST_NOT_FOUND, "The requested post was not found", 404, "req-123", "2026-05-28T10:00:00.000Z", "/v1/posts/123");
+			const dto = new ErrorOutputDto(
+				ErrorCode.POST_NOT_FOUND,
+				"The requested post was not found",
+				404,
+				"req-123",
+				"2026-05-28T10:00:00.000Z",
+				"/v1/posts/123",
+			);
 
 			expect(dto.errorCode).toBe(ErrorCode.POST_NOT_FOUND);
 			expect(dto.message).toBe("The requested post was not found");
@@ -26,7 +33,14 @@ describe("ErrorOutputDto", () => {
 		});
 
 		it("should serialize message as-is", () => {
-			const dto = new ErrorOutputDto(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred", 500, "req-1", "ts", "/test");
+			const dto = new ErrorOutputDto(
+				ErrorCode.INTERNAL_ERROR,
+				"An unexpected error occurred",
+				500,
+				"req-1",
+				"ts",
+				"/test",
+			);
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("message", "An unexpected error occurred");
@@ -49,7 +63,14 @@ describe("ErrorOutputDto", () => {
 		});
 
 		it("should serialize timestamp as-is", () => {
-			const dto = new ErrorOutputDto(ErrorCode.RATE_LIMITED, "Too many", 429, "req-1", "2026-05-28T10:00:00.000Z", "/test");
+			const dto = new ErrorOutputDto(
+				ErrorCode.RATE_LIMITED,
+				"Too many",
+				429,
+				"req-1",
+				"2026-05-28T10:00:00.000Z",
+				"/test",
+			);
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("timestamp", "2026-05-28T10:00:00.000Z");
@@ -68,7 +89,14 @@ describe("ErrorOutputDto", () => {
 
 			expect(plain).not.toHaveProperty("errorCode");
 			expect(plain).not.toHaveProperty("requestId");
-			expect(Object.keys(plain).sort()).toEqual(["endpoint", "error_code", "message", "request_id", "status", "timestamp"]);
+			expect(Object.keys(plain).sort()).toEqual([
+				"endpoint",
+				"error_code",
+				"message",
+				"request_id",
+				"status",
+				"timestamp",
+			]);
 		});
 	});
 });

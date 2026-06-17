@@ -1,8 +1,8 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger, Inject } from "@nestjs/common";
-import { PrismaClient } from "../../../generated/prisma/client.js";
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { DATABASE_CONFIG_KEY } from "../config/database.config";
+import { PrismaClient } from "../../../generated/prisma/client.js";
 import type { IDatabaseConfig } from "../config/database.config";
+import { DATABASE_CONFIG_KEY } from "../config/database.config";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {

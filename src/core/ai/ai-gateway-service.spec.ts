@@ -1,8 +1,8 @@
 import { Test } from "@nestjs/testing";
-import { AiGatewayService } from "./ai-gateway-service";
+import { vi } from "vitest";
 import { AI_CONFIG_KEY } from "./ai.config";
 import { AiGatewayJobTypeModel } from "./ai-gateway-job-type-model";
-import { vi } from "vitest";
+import { AiGatewayService } from "./ai-gateway-service";
 
 const mockGenerateText = vi.hoisted(() => vi.fn());
 const mockGatewayFn = vi.hoisted(() => vi.fn(() => ({})));

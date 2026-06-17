@@ -1,8 +1,8 @@
 import { Test } from "@nestjs/testing";
-import { JobRepository } from "./job.repository";
-import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { Prisma } from "../../../../generated/prisma/client.js";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 import { LocaleConstants } from "../../../shared/locale/locale.constants";
+import { JobRepository } from "./job.repository";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -116,7 +116,9 @@ describe("JobRepository", () => {
 	beforeEach(async () => {
 		executeRaw = vi.fn().mockResolvedValue(1);
 		prisma = {
-			$transaction: vi.fn((callback: (tx: unknown) => unknown) => callback({ job: { create: prisma.job.create }, $executeRaw: executeRaw })),
+			$transaction: vi.fn((callback: (tx: unknown) => unknown) =>
+				callback({ job: { create: prisma.job.create }, $executeRaw: executeRaw }),
+			),
 			job: {
 				create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 				findUnique: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
@@ -165,7 +167,10 @@ describe("JobRepository", () => {
 		});
 
 		it("should return the created job with category", async () => {
-			const result = await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+			const result = await repository.create({
+				data: createParams,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(result).toEqual(mockJob);
 			expect(result.category).toBeDefined();
@@ -260,7 +265,9 @@ describe("JobRepository", () => {
 		});
 
 		it("should not throw when update succeeds", async () => {
-			await expect(repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test" })).resolves.toBeUndefined();
+			await expect(
+				repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test" }),
+			).resolves.toBeUndefined();
 		});
 	});
 });

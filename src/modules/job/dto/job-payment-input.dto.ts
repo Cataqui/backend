@@ -1,6 +1,15 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsNumber, IsPositive, IsEnum, IsOptional, IsString, Length, IsISO4217CurrencyCode, Max } from "class-validator";
+import {
+	IsEnum,
+	IsISO4217CurrencyCode,
+	IsNumber,
+	IsOptional,
+	IsPositive,
+	IsString,
+	Length,
+	Max,
+} from "class-validator";
 import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
 export class JobPaymentInputDto {
@@ -43,7 +52,8 @@ export class JobPaymentInputDto {
 	@Expose({ name: "note" })
 	@ApiProperty({
 		name: "note",
-		description: "Note related to the payment, e.g. how it will be done, or any additional details (required when type is OTHER)",
+		description:
+			"Note related to the payment, e.g. how it will be done, or any additional details (required when type is OTHER)",
 		example: "Commission-based, percentage of sales",
 		required: false,
 		maxLength: 500,
@@ -58,7 +68,8 @@ export class JobPaymentInputDto {
 	@ApiProperty({
 		name: "amount_period",
 		enum: JobPaymentAmountPeriod,
-		description: "The period of the payment amount, e.g. if the payment amount is daily, weekly, monthly, etc. (e.g. $20/day, $100/week, etc.)",
+		description:
+			"The period of the payment amount, e.g. if the payment amount is daily, weekly, monthly, etc. (e.g. $20/day, $100/week, etc.)",
 		example: JobPaymentAmountPeriod.DAILY,
 		required: true,
 	})

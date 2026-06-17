@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
-import { JobLocationOutputDto } from "./job-location-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { JobLocationOutputDto } from "./job-location-output.dto";
 
 const mockMapConfig = new MapConfigOutputDto({
 	queryParams: "v=1&sig=abc&exp=1717891200",
@@ -23,7 +23,15 @@ describe("JobLocationOutputDto", () => {
 				mapConfig: mockMapConfig,
 			});
 
-			expect(dto).toMatchObject({ neighborhood: "Centro", city: "São Paulo", state: "SP", country: "BR", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
+			expect(dto).toMatchObject({
+				neighborhood: "Centro",
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				latitude: -23.55,
+				longitude: -46.63,
+				areaRadius: 2000,
+			});
 		});
 
 		it("should convert Decimal-like coordinates to numbers", () => {

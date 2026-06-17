@@ -13,6 +13,12 @@
       "skillPath": "skills/api-security-best-practices/SKILL.md",
       "computedHash": "5a088c5b84b75ed44955e7a153b4af20b5a70b6430e86d0f0398b824cc9efb20"
     },
+    "biome": {
+      "source": "bobmatnyc/claude-mpm-skills",
+      "sourceType": "github",
+      "skillPath": "toolchains/javascript/tooling/biome/SKILL.md",
+      "computedHash": "7eeb8068922761916f0b9fdf8a2aba804857ffddd450797d030b8ead90f4f8a5"
+    },
     "cloudflare-deploy": {
       "source": "openai/skills",
       "sourceType": "github",

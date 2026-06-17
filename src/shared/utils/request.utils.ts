@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
-import { LocaleConstants } from "../locale/locale.constants";
 import { InvalidLocaleException } from "../../core/errors/invalid-locale.exception";
+import { LocaleConstants } from "../locale/locale.constants";
 
 function resolveRequestId(request: FastifyRequest): string {
 	const headerRequestId = request.headers["x-request-id"];

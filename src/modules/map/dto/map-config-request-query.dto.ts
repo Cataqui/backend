@@ -1,5 +1,5 @@
-import { Expose } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
+import { Expose } from "class-transformer";
 import { IsISO31661Alpha2 } from "class-validator";
 
 export class MapConfigRequestQueryDto {

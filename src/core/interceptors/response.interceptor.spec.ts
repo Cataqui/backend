@@ -1,10 +1,10 @@
-import { of, lastValueFrom } from "rxjs";
-import type { ExecutionContext, CallHandler } from "@nestjs/common";
+import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
-import { ResponseInterceptor } from "./response.interceptor";
+import { lastValueFrom, of } from "rxjs";
+import { SKIP_ENVELOPE_KEY } from "../../shared/decorators/skip-envelope.decorator";
 import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
 import { PaginationOutputDto } from "../../shared/dto/pagination-output.dto";
-import { SKIP_ENVELOPE_KEY } from "../../shared/decorators/skip-envelope.decorator";
+import { ResponseInterceptor } from "./response.interceptor";
 
 function createMockContext(requestOverrides: Partial<FastifyRequest> = {}, handler?: () => void): ExecutionContext {
 	const request = {

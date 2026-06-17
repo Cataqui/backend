@@ -1,5 +1,5 @@
-import fc from "fast-check";
 import { validate } from "class-validator";
+import fc from "fast-check";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 
 function buildLocationDto(overrides: Partial<CreateJobLocationInputDto>): CreateJobLocationInputDto {
@@ -37,7 +37,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should pass with optional street omitted", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -45,7 +52,13 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail when neighborhood is omitted", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -53,7 +66,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with city shorter than 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "S", state: "SP", country: "BR", neighborhood: "Centro", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "S",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -61,7 +81,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with state not exactly 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SPA", country: "BR", neighborhood: "Centro", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SPA",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -69,7 +96,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with country not exactly 2 chars", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BRA", neighborhood: "Centro", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BRA",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -77,7 +111,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail with invalid 2-letter country code", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "XX", neighborhood: "Centro", latitude: -23.55052, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "XX",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -85,7 +126,13 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail when latitude is omitted", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro", longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -93,7 +140,13 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail when longitude is omitted", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro", latitude: -23.55052 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -101,7 +154,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail when latitude is outside valid range", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro", latitude: -91, longitude: -46.633308 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -91,
+				longitude: -46.633308,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -109,7 +169,14 @@ describe("CreateJobLocationInputDto", () => {
 		});
 
 		it("should fail when longitude is outside valid range", async () => {
-			const data: Partial<CreateJobLocationInputDto> = { city: "São Paulo", state: "SP", country: "BR", neighborhood: "Centro", latitude: -23.55052, longitude: -181 };
+			const data: Partial<CreateJobLocationInputDto> = {
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				neighborhood: "Centro",
+				latitude: -23.55052,
+				longitude: -181,
+			};
 			const dto = Object.assign(new CreateJobLocationInputDto(), data);
 			const errors = await validate(dto);
 
@@ -134,21 +201,33 @@ describe("CreateJobLocationInputDto", () => {
 
 		it("should reject fuzzed invalid latitude values", async () => {
 			await fc.assert(
-				fc.asyncProperty(fc.oneof(fc.integer({ min: -10_000_000_000, max: -90_000_001 }), fc.integer({ min: 90_000_001, max: 10_000_000_000 })), async (latitudeValue) => {
-					const errors = await validate(buildLocationDto({ latitude: latitudeValue / 1_000_000 }));
+				fc.asyncProperty(
+					fc.oneof(
+						fc.integer({ min: -10_000_000_000, max: -90_000_001 }),
+						fc.integer({ min: 90_000_001, max: 10_000_000_000 }),
+					),
+					async (latitudeValue) => {
+						const errors = await validate(buildLocationDto({ latitude: latitudeValue / 1_000_000 }));
 
-					expect(hasConstraint(errors, "latitude", "isLatitude")).toBe(true);
-				}),
+						expect(hasConstraint(errors, "latitude", "isLatitude")).toBe(true);
+					},
+				),
 			);
 		});
 
 		it("should reject fuzzed invalid longitude values", async () => {
 			await fc.assert(
-				fc.asyncProperty(fc.oneof(fc.integer({ min: -10_000_000_000, max: -180_000_001 }), fc.integer({ min: 180_000_001, max: 10_000_000_000 })), async (longitudeValue) => {
-					const errors = await validate(buildLocationDto({ longitude: longitudeValue / 1_000_000 }));
+				fc.asyncProperty(
+					fc.oneof(
+						fc.integer({ min: -10_000_000_000, max: -180_000_001 }),
+						fc.integer({ min: 180_000_001, max: 10_000_000_000 }),
+					),
+					async (longitudeValue) => {
+						const errors = await validate(buildLocationDto({ longitude: longitudeValue / 1_000_000 }));
 
-					expect(hasConstraint(errors, "longitude", "isLongitude")).toBe(true);
-				}),
+						expect(hasConstraint(errors, "longitude", "isLongitude")).toBe(true);
+					},
+				),
 			);
 		});
 	});

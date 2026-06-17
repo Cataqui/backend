@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { Prisma } from "../../../../generated/prisma/client.js";
+import { PrismaService } from "../../../core/prisma/prisma.service";
 import { LocaleConstants } from "../../../shared/locale/locale.constants";
 import { LocaleUtils } from "../../../shared/locale/locale.utils";
 
@@ -8,7 +8,10 @@ import { LocaleUtils } from "../../../shared/locale/locale.utils";
 export class JobRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findByIdLocalized(params: { id: string; locale: string }): Promise<(Prisma.JobGetPayload<{ include: { category: true } }> & { categoryDisplayName: string }) | null> {
+	async findByIdLocalized(params: {
+		id: string;
+		locale: string;
+	}): Promise<(Prisma.JobGetPayload<{ include: { category: true } }> & { categoryDisplayName: string }) | null> {
 		const job = await this._prisma.job.findUnique({
 			where: { id: params.id },
 			include: {
@@ -26,7 +29,12 @@ export class JobRepository {
 
 		return {
 			...job,
-			category: { id: job.category.id, slug: job.category.slug, createdAt: job.category.createdAt, updatedAt: job.category.updatedAt },
+			category: {
+				id: job.category.id,
+				slug: job.category.slug,
+				createdAt: job.category.createdAt,
+				updatedAt: job.category.updatedAt,
+			},
 			categoryDisplayName: LocaleUtils.resolveLocalizedName(job.category.translations, params.locale) ?? "",
 		};
 	}

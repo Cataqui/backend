@@ -4,15 +4,30 @@ import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/pr
 
 export class JobPaymentOutputDto {
 	@Expose({ name: "type" })
-	@ApiProperty({ name: "type", enum: JobPaymentType, description: "Defines if the payment amount is fixed, flexible, etc.", example: JobPaymentType.FIXED })
+	@ApiProperty({
+		name: "type",
+		enum: JobPaymentType,
+		description: "Defines if the payment amount is fixed, flexible, etc.",
+		example: JobPaymentType.FIXED,
+	})
 	readonly type: JobPaymentType;
 
 	@Expose({ name: "min_amount" })
-	@ApiProperty({ name: "min_amount", description: "Minimum payment amount for the job", example: 150.0, required: false })
+	@ApiProperty({
+		name: "min_amount",
+		description: "Minimum payment amount for the job",
+		example: 150.0,
+		required: false,
+	})
 	readonly minAmount: number | undefined;
 
 	@Expose({ name: "max_amount" })
-	@ApiProperty({ name: "max_amount", description: "Maximum payment amount for the job (in case of range)", example: 200.0, required: false })
+	@ApiProperty({
+		name: "max_amount",
+		description: "Maximum payment amount for the job (in case of range)",
+		example: 200.0,
+		required: false,
+	})
 	readonly maxAmount: number | undefined;
 
 	@Expose({ name: "note" })
@@ -28,7 +43,8 @@ export class JobPaymentOutputDto {
 	@ApiProperty({
 		name: "amount_period",
 		enum: JobPaymentAmountPeriod,
-		description: "The period of the payment amount, if the payment amount is daily, weekly, monthly, etc. (e.g. $20/day, $100/week, etc.)",
+		description:
+			"The period of the payment amount, if the payment amount is daily, weekly, monthly, etc. (e.g. $20/day, $100/week, etc.)",
 		example: JobPaymentAmountPeriod.SINGLE,
 	})
 	readonly amountPeriod: JobPaymentAmountPeriod;

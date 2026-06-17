@@ -1,11 +1,11 @@
-import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
+import { ApiExtraModels, ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { JobContactOutputDto } from "./job-contact-output.dto";
-import { JobLocationOutputDto } from "./job-location-output.dto";
-import { JobCategoryOutputDto } from "./job-category-output.dto";
+import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
-import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
+import { JobCategoryOutputDto } from "./job-category-output.dto";
+import { JobContactOutputDto } from "./job-contact-output.dto";
+import { JobLocationOutputDto } from "./job-location-output.dto";
 
 @ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
 export class JobOutputDto {
@@ -18,7 +18,11 @@ export class JobOutputDto {
 	readonly title: string;
 
 	@Expose({ name: "description" })
-	@ApiProperty({ name: "description", description: "Detailed description about the job", example: "Need someone to help unload a delivery truck..." })
+	@ApiProperty({
+		name: "description",
+		description: "Detailed description about the job",
+		example: "Need someone to help unload a delivery truck...",
+	})
 	readonly description: string;
 
 	@Expose({ name: "contact" })
@@ -42,24 +46,38 @@ export class JobOutputDto {
 	readonly payment: JobPaymentOutputDto;
 
 	@Expose({ name: "status" })
-	@ApiProperty({ name: "status", enum: JobStatus, description: "Define if a job accepts new proposals", example: JobStatus.ACTIVE })
+	@ApiProperty({
+		name: "status",
+		enum: JobStatus,
+		description: "Define if a job accepts new proposals",
+		example: JobStatus.ACTIVE,
+	})
 	readonly status: JobStatus;
 
 	@Expose({ name: "type" })
 	@ApiProperty({
 		name: "type",
 		enum: JobType,
-		description: "Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
+		description:
+			"Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
 		example: JobType.INDIVIDUAL,
 	})
 	readonly type: JobType;
 
 	@Expose({ name: "created_at" })
-	@ApiProperty({ name: "created_at", description: "ISO 8601 timestamp of job creation", example: "2026-05-28T10:00:00.000Z" })
+	@ApiProperty({
+		name: "created_at",
+		description: "ISO 8601 timestamp of job creation",
+		example: "2026-05-28T10:00:00.000Z",
+	})
 	readonly createdAt: string;
 
 	@Expose({ name: "updated_at" })
-	@ApiProperty({ name: "updated_at", description: "ISO 8601 timestamp of last job update", example: "2026-05-28T10:00:00.000Z" })
+	@ApiProperty({
+		name: "updated_at",
+		description: "ISO 8601 timestamp of last job update",
+		example: "2026-05-28T10:00:00.000Z",
+	})
 	readonly updatedAt: string;
 
 	constructor(params: {
@@ -88,12 +106,20 @@ export class JobOutputDto {
 		this.updatedAt = params.updatedAt;
 	}
 
-	static fromDatabase(job: Prisma.JobGetPayload<{ include: { category: true } }>, categoryDisplayName: string, mapConfig: MapConfigOutputDto): JobOutputDto {
+	static fromDatabase(
+		job: Prisma.JobGetPayload<{ include: { category: true } }>,
+		categoryDisplayName: string,
+		mapConfig: MapConfigOutputDto,
+	): JobOutputDto {
 		return new JobOutputDto({
 			jobId: job.id,
 			title: job.title,
 			description: job.description,
-			contact: new JobContactOutputDto({ contactName: job.contactName, contactPhoneNumber: job.contactPhoneNumber, contactMethod: job.contactMethod }),
+			contact: new JobContactOutputDto({
+				contactName: job.contactName,
+				contactPhoneNumber: job.contactPhoneNumber,
+				contactMethod: job.contactMethod,
+			}),
 			location: new JobLocationOutputDto({
 				neighborhood: job.neighborhood,
 				city: job.city,
@@ -103,7 +129,11 @@ export class JobOutputDto {
 				longitude: job.fuzzyLongitude,
 				mapConfig,
 			}),
-			category: new JobCategoryOutputDto({ categoryId: job.category.id, name: categoryDisplayName, slug: job.category.slug }),
+			category: new JobCategoryOutputDto({
+				categoryId: job.category.id,
+				name: categoryDisplayName,
+				slug: job.category.slug,
+			}),
 			payment: new JobPaymentOutputDto({
 				paymentType: job.paymentType,
 				paymentMinAmount: job.paymentMinAmount,

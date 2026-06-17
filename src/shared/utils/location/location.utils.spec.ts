@@ -38,7 +38,9 @@ describe("LocationUtils", () => {
 				random: vi.fn().mockReturnValueOnce(0.5).mockReturnValueOnce(0.25),
 			});
 
-			expect(LocationUtils.calculateDistanceMeters({ latitude: -23.55052, longitude: -46.633308 }, fuzzyCoordinate)).toBeGreaterThanOrEqual(300);
+			expect(
+				LocationUtils.calculateDistanceMeters({ latitude: -23.55052, longitude: -46.633308 }, fuzzyCoordinate),
+			).toBeGreaterThanOrEqual(300);
 		});
 
 		it("should keep fuzzy coordinate within the requested maximum distance", () => {
@@ -50,7 +52,9 @@ describe("LocationUtils", () => {
 				random: vi.fn().mockReturnValueOnce(0.5).mockReturnValueOnce(0.25),
 			});
 
-			expect(LocationUtils.calculateDistanceMeters({ latitude: -23.55052, longitude: -46.633308 }, fuzzyCoordinate)).toBeLessThanOrEqual(500);
+			expect(
+				LocationUtils.calculateDistanceMeters({ latitude: -23.55052, longitude: -46.633308 }, fuzzyCoordinate),
+			).toBeLessThanOrEqual(500);
 		});
 
 		it("should always fuzz the coordinate when requested", () => {

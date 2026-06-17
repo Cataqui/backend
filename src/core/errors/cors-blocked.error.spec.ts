@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "./error-code.enum";
 import { CorsBlockedError } from "./cors-blocked.error";
+import { ErrorCode } from "./error-code.enum";
 
 describe("CorsBlockedError", () => {
 	it("should have the correct error code", () => {

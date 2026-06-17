@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { CustomThrottlerGuard } from "../guards/throttler.guard";
 import { GLOBAL_THROTTLE_CONFIG_KEY, type IGlobalThrottleConfig } from "../config/throttle.config";
+import { CustomThrottlerGuard } from "../guards/throttler.guard";
 
 @Module({
 	imports: [

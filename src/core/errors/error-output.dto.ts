@@ -48,7 +48,14 @@ export class ErrorOutputDto {
 	})
 	readonly endpoint: string;
 
-	constructor(errorCode: ErrorCode, message: string, status: number, requestId: string, timestamp: string, endpoint: string) {
+	constructor(
+		errorCode: ErrorCode,
+		message: string,
+		status: number,
+		requestId: string,
+		timestamp: string,
+		endpoint: string,
+	) {
 		this.errorCode = errorCode;
 		this.message = message;
 		this.status = status;

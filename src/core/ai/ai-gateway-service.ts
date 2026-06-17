@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { ConfigType } from "@nestjs/config";
-import { createAiGateway, type AiGateway } from "ai-gateway-provider";
-import { createUnified } from "ai-gateway-provider/providers/unified";
 import { generateText as aiGenerateText } from "ai";
-import { AiGatewayJobTypeModel } from "./ai-gateway-job-type-model";
+import { type AiGateway, createAiGateway } from "ai-gateway-provider";
+import { createUnified } from "ai-gateway-provider/providers/unified";
 import { AI_CONFIG_KEY, aiConfig } from "./ai.config";
+import { AiGatewayJobTypeModel } from "./ai-gateway-job-type-model";
 
 @Injectable()
 export class AiGatewayService {
@@ -23,7 +23,12 @@ export class AiGatewayService {
 		this._unified = createUnified();
 	}
 
-	async generateText(params: { jobType: AiGatewayJobTypeModel; system: string; prompt: string; temperature: number }): Promise<string> {
+	async generateText(params: {
+		jobType: AiGatewayJobTypeModel;
+		system: string;
+		prompt: string;
+		temperature: number;
+	}): Promise<string> {
 		const { text } = await aiGenerateText({
 			model: this._gateway(this._unified(params.jobType)),
 			system: params.system,

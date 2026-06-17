@@ -2,7 +2,7 @@ import { registerDecorator, type ValidationOptions } from "class-validator";
 import { FeedPaginationCursorSchema } from "../interfaces/feed-pagination-cursor.interface";
 
 export function IsIFeedPaginationCursor(validationOptions: ValidationOptions = {}): PropertyDecorator {
-	return function (object: object, propertyKey: string | symbol): void {
+	return (object: object, propertyKey: string | symbol): void => {
 		registerDecorator({
 			name: "IsIFeedPaginationCursor",
 			target: object.constructor,

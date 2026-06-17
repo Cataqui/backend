@@ -37,7 +37,8 @@ export class MapConfigOutputDto {
 	@Expose({ name: "glyph_url_template" })
 	@ApiProperty({
 		name: "glyph_url_template",
-		description: "URL template for map glyphs (font sprites). Replace {fontstack} with font name and {range} with glyph range to load server-rendered text labels",
+		description:
+			"URL template for map glyphs (font sprites). Replace {fontstack} with font name and {range} with glyph range to load server-rendered text labels",
 		example: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
 	})
 	readonly glyphUrlTemplate: string;
@@ -58,7 +59,13 @@ export class MapConfigOutputDto {
 	})
 	readonly tileMaxZoom: number = 14;
 
-	constructor(params: { queryParams: string; expiresAt: string; mapVersion: string; tilesUrlTemplate: string; glyphUrlTemplate: string }) {
+	constructor(params: {
+		queryParams: string;
+		expiresAt: string;
+		mapVersion: string;
+		tilesUrlTemplate: string;
+		glyphUrlTemplate: string;
+	}) {
 		this.queryParams = params.queryParams;
 		this.expiresAt = params.expiresAt;
 		this.mapVersion = params.mapVersion;

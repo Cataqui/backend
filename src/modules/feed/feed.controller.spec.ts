@@ -1,13 +1,13 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { plainToInstance } from "class-transformer";
-import { FeedController } from "./feed.controller";
-import { FeedService } from "./feed.service";
+import { vi } from "vitest";
 import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
 import { PaginationOutputDto } from "../../shared/dto/pagination-output.dto";
 import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
 import { FeedRequestQueryDto } from "./dto/feed-request-query.dto";
 import type { FeedSort } from "./enums/feed-sort.enum";
-import { vi } from "vitest";
+import { FeedController } from "./feed.controller";
+import { FeedService } from "./feed.service";
 
 const mockService = {
 	getFeed: vi.fn(),

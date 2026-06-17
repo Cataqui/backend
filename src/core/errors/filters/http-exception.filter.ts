@@ -1,9 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { instanceToPlain } from "class-transformer";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { RequestUtils } from "../../../shared/utils/request.utils";
 import { ErrorCode } from "../error-code.enum";
 import { ErrorOutputDto } from "../error-output.dto";
-import { RequestUtils } from "../../../shared/utils/request.utils";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -28,7 +28,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			this._logger.error(`Unhandled error: ${exception.message}`, exception.stack);
 		}
 
-		return this._buildErrorOutput(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR, request);
+		return this._buildErrorOutput(
+			ErrorCode.INTERNAL_ERROR,
+			"An unexpected error occurred",
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			request,
+		);
 	}
 
 	private _resolveHttpException(
@@ -50,10 +55,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			return this._resolveObjectResponse(exceptionResponse as Record<string, unknown>, status, request);
 		}
 
-		return this._buildErrorOutput(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR, request);
+		return this._buildErrorOutput(
+			ErrorCode.INTERNAL_ERROR,
+			"An unexpected error occurred",
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			request,
+		);
 	}
 
-	private _resolveErrorCodeForStringResponse(message: string, status: HttpStatus): { errorCode: ErrorCode; message: string } {
+	private _resolveErrorCodeForStringResponse(
+		message: string,
+		status: HttpStatus,
+	): { errorCode: ErrorCode; message: string } {
 		if (status === HttpStatus.NOT_FOUND && message.startsWith("Cannot")) {
 			return { errorCode: ErrorCode.ROUTE_NOT_FOUND, message: "The requested endpoint was not found." };
 		}
@@ -71,7 +84,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		}
 
 		if (Number(status) === 431) {
-			return { errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE, message: "Request header fields exceed the maximum allowed size." };
+			return {
+				errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE,
+				message: "Request header fields exceed the maximum allowed size.",
+			};
 		}
 
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message };
@@ -90,7 +106,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		return this._buildErrorOutput(errorCode, message, status, request);
 	}
 
-	private _resolveErrorCodeFromObject(resp: Record<string, unknown>, status: HttpStatus): { errorCode: ErrorCode; message: string } {
+	private _resolveErrorCodeFromObject(
+		resp: Record<string, unknown>,
+		status: HttpStatus,
+	): { errorCode: ErrorCode; message: string } {
 		if (typeof resp["error_code"] === "string") {
 			return { errorCode: resp["error_code"] as ErrorCode, message: this._resolveMessage(resp["message"]) };
 		}
@@ -135,7 +154,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 	} {
 		return {
 			status,
-			body: new ErrorOutputDto(errorCode, message, status, RequestUtils.resolveRequestId(request), new Date().toISOString(), RequestUtils.resolveEndpoint(request)),
+			body: new ErrorOutputDto(
+				errorCode,
+				message,
+				status,
+				RequestUtils.resolveRequestId(request),
+				new Date().toISOString(),
+				RequestUtils.resolveEndpoint(request),
+			),
 		};
 	}
 

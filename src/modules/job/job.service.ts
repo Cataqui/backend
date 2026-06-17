@@ -1,19 +1,19 @@
 import { HttpStatus, Injectable, Logger } from "@nestjs/common";
+import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
+import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/prisma/client.js";
+import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
+import { AiGatewayService } from "../../core/ai/ai-gateway-service";
+import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { MapService } from "../map/map.service";
+import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { JobOutputDto } from "./dto/job-output.dto";
+import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
+import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobLocationConstants } from "./job-location.constants";
+import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
-import { CategoryNotFoundError } from "./errors/category-not-found.error";
-import { JobNotFoundError } from "./errors/job-not-found.error";
-import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
-import { JobType, JobPaymentAmountPeriod, JobStatus } from "../../../generated/prisma/client.js";
-import { JobOutputDto } from "./dto/job-output.dto";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { LocationUtils } from "../../shared/utils/location/location.utils";
-import { JobLocationConstants } from "./job-location.constants";
-import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
-import { MapService } from "../map/map.service";
-import { AiGatewayService } from "../../core/ai/ai-gateway-service";
-import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
-import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 
 @Injectable()
 export class JobService {

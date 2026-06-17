@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
-import { MapVersionRepository } from "./map-version.repository";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import { MapVersionRepository } from "./map-version.repository";
 
 describe("MapVersionRepository", () => {
 	let repository: MapVersionRepository;

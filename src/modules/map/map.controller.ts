@@ -1,9 +1,9 @@
-import { Controller, Get, Query, Version, Header } from "@nestjs/common";
+import { Controller, Get, Header, Query, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { MapService } from "./map.service";
-import { MapConfigRequestQueryDto } from "./dto/map-config-request-query.dto";
-import { MapConfigOutputDto } from "./dto/map-config-output.dto";
 import { ApiMapConfigDocs } from "./decorators/api-map-config-docs.decorator";
+import { MapConfigOutputDto } from "./dto/map-config-output.dto";
+import { MapConfigRequestQueryDto } from "./dto/map-config-request-query.dto";
+import { MapService } from "./map.service";
 import { MapAuthConstants } from "./map-auth.constants";
 
 @ApiTags("map")

@@ -1,7 +1,12 @@
-import { IsValidJobPaymentConstraint } from "./is-valid-job-payment.decorator";
 import { JobPaymentType } from "../../../../generated/prisma/client.js";
+import { IsValidJobPaymentConstraint } from "./is-valid-job-payment.decorator";
 
-function createDefaultMessageArgs(payment: { type: JobPaymentType; minAmount?: number | null; maxAmount?: number | null; note?: string | null }) {
+function createDefaultMessageArgs(payment: {
+	type: JobPaymentType;
+	minAmount?: number | null;
+	maxAmount?: number | null;
+	note?: string | null;
+}) {
 	return {
 		object: {},
 		property: "payment",
@@ -38,7 +43,9 @@ describe("IsValidJobPaymentConstraint", () => {
 		});
 
 		it("should return message when maxAmount is set", () => {
-			const msg = constraint.defaultMessage(createDefaultMessageArgs({ type: JobPaymentType.FIXED, minAmount: 100.0, maxAmount: 200.0 }));
+			const msg = constraint.defaultMessage(
+				createDefaultMessageArgs({ type: JobPaymentType.FIXED, minAmount: 100.0, maxAmount: 200.0 }),
+			);
 
 			expect(msg).toBe("Fixed payment must not have a maximum amount");
 		});
@@ -88,7 +95,9 @@ describe("IsValidJobPaymentConstraint", () => {
 		});
 
 		it("should return message when maxAmount <= minAmount", () => {
-			const msg = constraint.defaultMessage(createDefaultMessageArgs({ type: JobPaymentType.RANGE, minAmount: 200.0, maxAmount: 100.0 }));
+			const msg = constraint.defaultMessage(
+				createDefaultMessageArgs({ type: JobPaymentType.RANGE, minAmount: 200.0, maxAmount: 100.0 }),
+			);
 
 			expect(msg).toBe("Maximum amount must be greater than the minimum amount");
 		});
@@ -112,7 +121,9 @@ describe("IsValidJobPaymentConstraint", () => {
 		});
 
 		it("should return message when amounts are set", () => {
-			const msg = constraint.defaultMessage(createDefaultMessageArgs({ type: JobPaymentType.FLEXIBLE, minAmount: 100.0 }));
+			const msg = constraint.defaultMessage(
+				createDefaultMessageArgs({ type: JobPaymentType.FLEXIBLE, minAmount: 100.0 }),
+			);
 
 			expect(msg).toBe("Flexible payment must not have amount values");
 		});
@@ -156,13 +167,17 @@ describe("IsValidJobPaymentConstraint", () => {
 		});
 
 		it("should return message when amounts are set", () => {
-			const msg = constraint.defaultMessage(createDefaultMessageArgs({ type: JobPaymentType.OTHER, minAmount: 100.0, note: "Commission" }));
+			const msg = constraint.defaultMessage(
+				createDefaultMessageArgs({ type: JobPaymentType.OTHER, minAmount: 100.0, note: "Commission" }),
+			);
 
 			expect(msg).toBe("Other payment type must not have amount values");
 		});
 
 		it("should pass when amounts are explicitly null", () => {
-			expect(constraint.validate({ type: JobPaymentType.OTHER, minAmount: null, maxAmount: null, note: "Commission" })).toBe(true);
+			expect(
+				constraint.validate({ type: JobPaymentType.OTHER, minAmount: null, maxAmount: null, note: "Commission" }),
+			).toBe(true);
 		});
 
 		it("should fail when note is explicitly null", () => {

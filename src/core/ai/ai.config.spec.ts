@@ -1,4 +1,4 @@
-import { aiConfig, AI_CONFIG_KEY, type IAiConfig } from "./ai.config";
+import { AI_CONFIG_KEY, aiConfig, type IAiConfig } from "./ai.config";
 
 describe("aiConfig", () => {
 	const originalEnv = process.env;

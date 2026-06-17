@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { JobLocationConstants } from "../job-location.constants";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { JobLocationConstants } from "../job-location.constants";
 
 export class JobLocationOutputDto {
 	@Expose({ name: "neighborhood" })
@@ -27,7 +27,8 @@ export class JobLocationOutputDto {
 	@Expose({ name: "latitude" })
 	@ApiProperty({
 		name: "latitude",
-		description: "Fuzzy public latitude of the location to show on map. Note that this is not the exact location but an estimation",
+		description:
+			"Fuzzy public latitude of the location to show on map. Note that this is not the exact location but an estimation",
 		example: -23.547812,
 	})
 	readonly latitude: number;
@@ -35,19 +36,25 @@ export class JobLocationOutputDto {
 	@Expose({ name: "longitude" })
 	@ApiProperty({
 		name: "longitude",
-		description: "Fuzzy public longitude of the location to show on map. Note that this is not the exact location but an estimation",
+		description:
+			"Fuzzy public longitude of the location to show on map. Note that this is not the exact location but an estimation",
 		example: -46.630431,
 	})
 	readonly longitude: number;
 
 	@Expose({ name: "area_radius" })
-	@ApiProperty({ name: "area_radius", description: "Radius in meters clients should draw around the fuzzy location", example: JobLocationConstants.AREA_RADIUS_METERS })
+	@ApiProperty({
+		name: "area_radius",
+		description: "Radius in meters clients should draw around the fuzzy location",
+		example: JobLocationConstants.AREA_RADIUS_METERS,
+	})
 	readonly areaRadius: number;
 
 	@Expose({ name: "map_config" })
 	@ApiProperty({
 		name: "map_config",
-		description: "Map configuration including authentication credentials and tile settings for displaying the location on a map.",
+		description:
+			"Map configuration including authentication credentials and tile settings for displaying the location on a map.",
 		type: MapConfigOutputDto,
 	})
 	@Type(() => MapConfigOutputDto)

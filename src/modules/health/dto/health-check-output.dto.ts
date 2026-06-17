@@ -1,4 +1,4 @@
-import { ApiProperty, getSchemaPath, ApiExtraModels } from "@nestjs/swagger";
+import { ApiExtraModels, ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { HealthCheckStatus } from "../enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "../enums/health-indicator-status.enum";

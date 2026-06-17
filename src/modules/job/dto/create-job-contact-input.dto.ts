@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsString, IsEnum, Length, IsPhoneNumber } from "class-validator";
+import { IsEnum, IsPhoneNumber, IsString, Length } from "class-validator";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
 
 export class CreateJobContactInputDto {

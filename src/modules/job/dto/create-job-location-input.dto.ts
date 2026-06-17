@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsString, IsOptional, Length, IsISO31661Alpha2, IsLatitude, IsLongitude } from "class-validator";
+import { IsISO31661Alpha2, IsLatitude, IsLongitude, IsOptional, IsString, Length } from "class-validator";
 
 export class CreateJobLocationInputDto {
 	@Expose({ name: "street" })

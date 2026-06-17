@@ -1,19 +1,19 @@
-import { Test } from "@nestjs/testing";
-import { type NestFastifyApplication, FastifyAdapter } from "@nestjs/platform-fastify";
 import { ValidationPipe, VersioningType } from "@nestjs/common";
+import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
+import { Test } from "@nestjs/testing";
 import { instanceToPlain } from "class-transformer";
 import { AppModule } from "../src/app.module";
-import { PrismaService } from "../src/core/prisma/prisma.service";
-import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
-import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
-import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
-import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
-import { requestSizeConfig, REQUEST_SIZE_CONFIG_KEY } from "../src/core/config/request-size.config";
 import type { IRequestSizeConfig } from "../src/core/config/request-size.config";
-import { registerRequestSizeHooks } from "../src/core/hooks/request-size.hook";
+import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "../src/core/config/request-size.config";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
 import { ErrorOutputDto } from "../src/core/errors/error-output.dto";
+import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
+import { registerRequestSizeHooks } from "../src/core/hooks/request-size.hook";
+import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
+import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
+import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
+import { PrismaService } from "../src/core/prisma/prisma.service";
 
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
@@ -27,17 +27,32 @@ const TEST_CONFIG: IRequestSizeConfig = {
 	keepAliveTimeoutMs: 5_000,
 };
 
-function expectedErrorBody(errorCode: ErrorCode, message: string, status: number, endpoint: string): Record<string, unknown> {
-	return instanceToPlain(new ErrorOutputDto(errorCode, message, status, "", "", endpoint), { exposeUnsetFields: false }) as Record<string, unknown>;
+function expectedErrorBody(
+	errorCode: ErrorCode,
+	message: string,
+	status: number,
+	endpoint: string,
+): Record<string, unknown> {
+	return instanceToPlain(new ErrorOutputDto(errorCode, message, status, "", "", endpoint), {
+		exposeUnsetFields: false,
+	}) as Record<string, unknown>;
 }
 
-function assertErrorResponse(response: { statusCode: number; body: string }, errorCode: ErrorCode, message: string, status: number, endpoint: string): Record<string, unknown> {
+function assertErrorResponse(
+	response: { statusCode: number; body: string },
+	errorCode: ErrorCode,
+	message: string,
+	status: number,
+	endpoint: string,
+): Record<string, unknown> {
 	expect(response.statusCode).toBe(status);
 
 	const body = JSON.parse(response.body) as Record<string, unknown>;
 	const expected = expectedErrorBody(errorCode, message, status, endpoint);
 
-	const staticFields = Object.fromEntries(Object.entries(expected).filter(([key]) => key !== "request_id" && key !== "timestamp"));
+	const staticFields = Object.fromEntries(
+		Object.entries(expected).filter(([key]) => key !== "request_id" && key !== "timestamp"),
+	);
 	expect(body).toMatchObject(staticFields);
 	expect(body).not.toHaveProperty("errorCode");
 	expect(body).not.toHaveProperty("requestId");
@@ -120,7 +135,13 @@ describe("Request Size Limits (e2e)", () => {
 				headers: { "content-length": String(TEST_CONFIG.bodyLimitBytes + 1) },
 			});
 
-			assertErrorResponse(response, ErrorCode.PAYLOAD_TOO_LARGE, "Request body exceeds the maximum allowed size.", 413, "/v1/health");
+			assertErrorResponse(
+				response,
+				ErrorCode.PAYLOAD_TOO_LARGE,
+				"Request body exceeds the maximum allowed size.",
+				413,
+				"/v1/health",
+			);
 
 			await app.close();
 		});
@@ -136,7 +157,13 @@ describe("Request Size Limits (e2e)", () => {
 				body: largeBody,
 			});
 
-			assertErrorResponse(response, ErrorCode.PAYLOAD_TOO_LARGE, "Request body exceeds the maximum allowed size.", 413, "/v1/health");
+			assertErrorResponse(
+				response,
+				ErrorCode.PAYLOAD_TOO_LARGE,
+				"Request body exceeds the maximum allowed size.",
+				413,
+				"/v1/health",
+			);
 
 			await app.close();
 		});
@@ -147,7 +174,13 @@ describe("Request Size Limits (e2e)", () => {
 			const longUrl = "/" + "a".repeat(TEST_CONFIG.urlLengthLimitBytes);
 			const response = await app.inject({ method: "GET", url: longUrl });
 
-			assertErrorResponse(response, ErrorCode.URI_TOO_LONG, "Request URL exceeds the maximum allowed length.", 414, longUrl);
+			assertErrorResponse(
+				response,
+				ErrorCode.URI_TOO_LONG,
+				"Request URL exceeds the maximum allowed length.",
+				414,
+				longUrl,
+			);
 
 			await app.close();
 		});
@@ -173,7 +206,11 @@ describe("Request Size Limits (e2e)", () => {
 			});
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
-			const dtoKeys = Object.keys(instanceToPlain(new ErrorOutputDto(ErrorCode.PAYLOAD_TOO_LARGE, "", 0, "", "", ""), { exposeUnsetFields: false }));
+			const dtoKeys = Object.keys(
+				instanceToPlain(new ErrorOutputDto(ErrorCode.PAYLOAD_TOO_LARGE, "", 0, "", "", ""), {
+					exposeUnsetFields: false,
+				}),
+			);
 
 			for (const key of dtoKeys) {
 				expect(body).toHaveProperty(key);

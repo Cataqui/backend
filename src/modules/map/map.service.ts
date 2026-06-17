@@ -1,11 +1,11 @@
-import { Injectable, Inject } from "@nestjs/common";
 import { createHmac } from "node:crypto";
-import { MAP_AUTH_CONFIG_KEY } from "../../core/config/map-auth.config";
+import { Inject, Injectable } from "@nestjs/common";
 import type { IMapAuthConfig } from "../../core/config/map-auth.config";
-import { MapAuthConstants } from "./map-auth.constants";
+import { MAP_AUTH_CONFIG_KEY } from "../../core/config/map-auth.config";
 import { MapConfigOutputDto } from "./dto/map-config-output.dto";
-import { MapVersionRepository } from "./repositories/map-version.repository";
 import { MapRegionNotFoundError } from "./errors/map-region-not-found.error";
+import { MapAuthConstants } from "./map-auth.constants";
+import { MapVersionRepository } from "./repositories/map-version.repository";
 
 @Injectable()
 export class MapService {

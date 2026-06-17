@@ -1,5 +1,5 @@
-import { validate } from "class-validator";
 import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import { MapConfigRequestQueryDto } from "./map-config-request-query.dto";
 
 describe("MapConfigRequestQueryDto", () => {

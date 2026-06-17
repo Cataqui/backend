@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { DomainError } from "../../../core/errors/domain-error";
+import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { CategoryNotFoundError } from "./category-not-found.error";
 
 describe("CategoryNotFoundError", () => {

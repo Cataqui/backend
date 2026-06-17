@@ -1,7 +1,7 @@
-import { CursorUtils } from "./cursor.utils";
-import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 import { FeedSort } from "../enums/feed-sort.enum";
 import { InvalidCursorError } from "../errors/invalid-cursor.error";
+import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
+import { CursorUtils } from "./cursor.utils";
 
 describe("CursorUtils", () => {
 	describe("encodeCursor", () => {
@@ -37,10 +37,17 @@ describe("CursorUtils", () => {
 		});
 
 		it("should throw on unsupported version", () => {
-			const payload = Buffer.from(JSON.stringify({ version: 99, sort: "LATEST", createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" })).toString(
-				"base64url",
+			const payload = Buffer.from(
+				JSON.stringify({
+					version: 99,
+					sort: "LATEST",
+					createdAt: "2026-05-28T10:00:00.000Z",
+					jobId: "12345678-1234-1234-1234-1234567890ab",
+				}),
+			).toString("base64url");
+			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow(
+				"Cursor version '99' is not supported. Please use 1",
 			);
-			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow("Cursor version '99' is not supported. Please use 1");
 		});
 
 		it("should throw on sort mismatch", () => {
@@ -55,7 +62,9 @@ describe("CursorUtils", () => {
 
 		it("should throw on missing fields", () => {
 			const payload = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
-			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow("Cursor is missing required fields or has invalid types.");
+			expect(() => CursorUtils.decodeCursor(payload, FeedSort.LATEST)).toThrow(
+				"Cursor is missing required fields or has invalid types.",
+			);
 		});
 
 		it("should roundtrip successfully", () => {

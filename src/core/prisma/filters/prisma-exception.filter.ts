@@ -1,10 +1,10 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from "@nestjs/common";
 import { instanceToPlain } from "class-transformer";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { Prisma } from "../../../../generated/prisma/client.js";
+import { RequestUtils } from "../../../shared/utils/request.utils";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { ErrorOutputDto } from "../../errors/error-output.dto.js";
-import { RequestUtils } from "../../../shared/utils/request.utils";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
@@ -63,16 +63,29 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 		};
 
 		if (mapping) {
-			this._logger.warn(`Prisma error ${exception.code} on ${request.method} ${request.url} - Meta: ${JSON.stringify(sanitizedMeta)}`);
+			this._logger.warn(
+				`Prisma error ${exception.code} on ${request.method} ${request.url} - Meta: ${JSON.stringify(sanitizedMeta)}`,
+			);
 		} else {
-			this._logger.error(`Unhandled Prisma database error ${exception.code} on ${request.method} ${request.url}`, exception.stack, JSON.stringify(logMetadata));
+			this._logger.error(
+				`Unhandled Prisma database error ${exception.code} on ${request.method} ${request.url}`,
+				exception.stack,
+				JSON.stringify(logMetadata),
+			);
 		}
 
 		const status = mapping?.status ?? HttpStatus.INTERNAL_SERVER_ERROR;
 		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
 		const userMessage = mapping?.message ?? "An unexpected database error occurred.";
 
-		const body = new ErrorOutputDto(errorCode, userMessage, status, RequestUtils.resolveRequestId(request), new Date().toISOString(), RequestUtils.resolveEndpoint(request));
+		const body = new ErrorOutputDto(
+			errorCode,
+			userMessage,
+			status,
+			RequestUtils.resolveRequestId(request),
+			new Date().toISOString(),
+			RequestUtils.resolveEndpoint(request),
+		);
 
 		response.status(status).send(instanceToPlain(body));
 	}

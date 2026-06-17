@@ -1,27 +1,38 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { Test } from "@nestjs/testing";
+
 import { PATH_METADATA } from "@nestjs/common/constants";
-import { JobController } from "./job.controller";
-import { JobService } from "./job.service";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
-import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
-import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
-import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
-import { JobOutputDto } from "./dto/job-output.dto";
-import { JobContactOutputDto } from "./dto/job-contact-output.dto";
-import { JobLocationOutputDto } from "./dto/job-location-output.dto";
-import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
+import { Test } from "@nestjs/testing";
+import {
+	JobContactMethod,
+	JobPaymentAmountPeriod,
+	JobPaymentType,
+	JobStatus,
+	JobType,
+} from "../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
-import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
+import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
+import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
+import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
+import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
+import { JobContactOutputDto } from "./dto/job-contact-output.dto";
+import { JobLocationOutputDto } from "./dto/job-location-output.dto";
+import { JobOutputDto } from "./dto/job-output.dto";
+import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
+import { JobController } from "./job.controller";
+import { JobService } from "./job.service";
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
 		jobId: "cm3x-job-1",
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
-		contact: new JobContactOutputDto({ contactName: "João Silva", contactPhoneNumber: "+5511999999999", contactMethod: JobContactMethod.WHATSAPP }),
+		contact: new JobContactOutputDto({
+			contactName: "João Silva",
+			contactPhoneNumber: "+5511999999999",
+			contactMethod: JobContactMethod.WHATSAPP,
+		}),
 		location: new JobLocationOutputDto({
 			neighborhood: "Centro",
 			city: "São Paulo",
@@ -77,7 +88,11 @@ describe("JobController", () => {
 		});
 
 		it("should return JobOutputDto on success", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = {
+				name: "João Silva",
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
@@ -89,7 +104,12 @@ describe("JobController", () => {
 				longitude: -46.633308,
 			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
@@ -110,7 +130,11 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = {
+				name: "João Silva",
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
@@ -121,7 +145,12 @@ describe("JobController", () => {
 				longitude: -46.633308,
 			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Help unload truck",
@@ -154,7 +183,10 @@ describe("JobController", () => {
 			const params = Object.assign(new GetJobRequestParamsDto(), { jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b" });
 			await controller.getJob(params, "pt-BR");
 
-			expect(jobService.getJob).toHaveBeenCalledWith({ jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b", locale: "pt-BR" });
+			expect(jobService.getJob).toHaveBeenCalledWith({
+				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+				locale: "pt-BR",
+			});
 		});
 	});
 });

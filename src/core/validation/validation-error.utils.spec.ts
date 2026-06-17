@@ -245,7 +245,9 @@ describe("formatValidationErrors", () => {
 
 		const result = ValidationErrorUtils.formatValidationErrors(errors);
 
-		expect(result).toEqual(["amount_period must be one of the following values: SINGLE, HOURLY, DAILY, WEEKLY, MONTHLY"]);
+		expect(result).toEqual([
+			"amount_period must be one of the following values: SINGLE, HOURLY, DAILY, WEEKLY, MONTHLY",
+		]);
 	});
 
 	it("should handle method (contact_method) conversion", () => {
@@ -271,7 +273,10 @@ describe("formatValidationErrors", () => {
 
 		const result = ValidationErrorUtils.formatValidationErrors(errors);
 
-		expect(result).toEqual(["method must be one of the following values: WHATSAPP, PHONE, OTHER", "contact.method must be one of the following values: WHATSAPP, PHONE, OTHER"]);
+		expect(result).toEqual([
+			"method must be one of the following values: WHATSAPP, PHONE, OTHER",
+			"contact.method must be one of the following values: WHATSAPP, PHONE, OTHER",
+		]);
 	});
 
 	it("should pass through forbidNonWhitelisted messages unchanged", () => {

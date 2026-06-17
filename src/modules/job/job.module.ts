@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
+import { AiModule } from "../../core/ai/ai.module";
+import { MapModule } from "../map/map.module";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
-import { MapModule } from "../map/map.module";
-import { AiModule } from "../../core/ai/ai.module";
 
 @Module({
 	imports: [MapModule, AiModule],

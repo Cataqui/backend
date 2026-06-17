@@ -1,5 +1,5 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from "@nestjs/common";
-import type { FastifyRequest, FastifyReply } from "fastify";
+import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Observable } from "rxjs";
 import { tap } from "rxjs";
 

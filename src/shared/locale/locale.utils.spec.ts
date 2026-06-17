@@ -1,5 +1,5 @@
-import { LocaleUtils } from "./locale.utils";
 import { LocaleConstants } from "./locale.constants";
+import { LocaleUtils } from "./locale.utils";
 
 describe("resolveLocalizedName", () => {
 	it("should return translation for requested locale when it exists", () => {

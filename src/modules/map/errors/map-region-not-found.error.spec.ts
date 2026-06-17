@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { MapRegionNotFoundError } from "./map-region-not-found.error";
 import { ErrorCode } from "../../../core/errors/error-code.enum";
+import { MapRegionNotFoundError } from "./map-region-not-found.error";
 
 describe("MapRegionNotFoundError", () => {
 	it("should have MAP_REGION_NOT_FOUND error code", () => {

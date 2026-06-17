@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "./error-code.enum";
 import { DomainError } from "./domain-error";
+import { ErrorCode } from "./error-code.enum";
 
 export class PayloadTooLargeError extends DomainError {
 	constructor(message: string = "Request body exceeds the maximum allowed size.") {

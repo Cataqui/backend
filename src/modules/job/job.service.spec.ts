@@ -1,22 +1,28 @@
 import { Test } from "@nestjs/testing";
-import { JobService } from "./job.service";
-import { JobRepository } from "./repositories/job.repository";
-import { JobCategoryRepository } from "./repositories/job-category.repository";
-import { JobOutputDto } from "./dto/job-output.dto";
-import { JobStatus, JobType, JobPaymentAmountPeriod, JobPaymentType, JobContactMethod } from "../../../generated/prisma/client.js";
-import { CategoryNotFoundError } from "./errors/category-not-found.error";
-import { JobNotFoundError } from "./errors/job-not-found.error";
-import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import {
+	JobContactMethod,
+	JobPaymentAmountPeriod,
+	JobPaymentType,
+	JobStatus,
+	JobType,
+} from "../../../generated/prisma/client.js";
+import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
+import { AiGatewayService } from "../../core/ai/ai-gateway-service";
+import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { MapService } from "../map/map.service";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
+import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
-import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { CategoryNotFoundError } from "./errors/category-not-found.error";
+import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
+import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobService } from "./job.service";
 import { JobLocationConstants } from "./job-location.constants";
-import { MapService } from "../map/map.service";
-import { AiGatewayService } from "../../core/ai/ai-gateway-service";
-import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
 import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
+import { JobRepository } from "./repositories/job.repository";
+import { JobCategoryRepository } from "./repositories/job-category.repository";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -74,12 +80,21 @@ const mockJob: MockJobWithCategory = {
 	categoryId: "cm3x-cat-1",
 	createdAt: new Date("2026-05-28T10:00:00.000Z"),
 	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-	category: { id: "cm3x-cat-1", slug: "moving-help", createdAt: new Date("2026-05-28T10:00:00.000Z"), updatedAt: new Date("2026-05-28T10:00:00.000Z") },
+	category: {
+		id: "cm3x-cat-1",
+		slug: "moving-help",
+		createdAt: new Date("2026-05-28T10:00:00.000Z"),
+		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
+	},
 	categoryDisplayName: "Moving Help",
 };
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+	const contactData: Partial<CreateJobContactInputDto> = {
+		name: "João Silva",
+		phoneNumber: "+5511999999999",
+		method: JobContactMethod.WHATSAPP,
+	};
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = {
 		city: "São Paulo",
@@ -91,7 +106,12 @@ function createValidDto(): CreateJobRequestDto {
 		longitude: -46.633308,
 	};
 	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-	const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+	const paymentData: Partial<JobPaymentInputDto> = {
+		type: JobPaymentType.FIXED,
+		minAmount: 150.0,
+		amountPeriod: JobPaymentAmountPeriod.SINGLE,
+		currency: "BRL",
+	};
 	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 
 	const dtoData: Partial<CreateJobRequestDto> = {
@@ -107,7 +127,11 @@ function createValidDto(): CreateJobRequestDto {
 }
 
 function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+	const contactData: Partial<CreateJobContactInputDto> = {
+		name: "João Silva",
+		phoneNumber: "+5511999999999",
+		method: JobContactMethod.WHATSAPP,
+	};
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = {
 		city: "São Paulo",
@@ -128,7 +152,13 @@ function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInpu
 		type: overrides.type ?? JobType.INDIVIDUAL,
 		categoryId: "cm3x-cat-1",
 		payment:
-			overrides.payment ?? Object.assign(new JobPaymentInputDto(), { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" }),
+			overrides.payment ??
+			Object.assign(new JobPaymentInputDto(), {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			}),
 	};
 	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
@@ -147,7 +177,9 @@ describe("JobService", () => {
 		} as unknown as JobRepository;
 
 		jobCategoryRepository = {
-			findByIdWithLocalizedName: vi.fn().mockResolvedValue({ id: "cm3x-cat-1", slug: "moving-help", displayName: "Moving Help" }),
+			findByIdWithLocalizedName: vi
+				.fn()
+				.mockResolvedValue({ id: "cm3x-cat-1", slug: "moving-help", displayName: "Moving Help" }),
 		} as unknown as JobCategoryRepository;
 
 		mapService = {
@@ -193,7 +225,12 @@ describe("JobService", () => {
 		});
 
 		it("should throw InvalidJobTypePeriodError when EMPLOYMENT has SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
@@ -201,7 +238,12 @@ describe("JobService", () => {
 		});
 
 		it("should throw InvalidJobTypePeriodError when CONTRACTOR has SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.CONTRACTOR, payment });
 
@@ -209,7 +251,12 @@ describe("JobService", () => {
 		});
 
 		it("should not throw when EMPLOYMENT has non-SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.DAILY, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.DAILY,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
@@ -311,7 +358,10 @@ describe("JobService", () => {
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			randomSpy.mockRestore();
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).not.toEqual({ latitude: -23.55052, longitude: -46.633308 });
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).not.toEqual({
+				latitude: -23.55052,
+				longitude: -46.633308,
+			});
 		});
 
 		it("should call location fuzzing with job coordinates and constants when street is provided", async () => {
@@ -329,7 +379,11 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street when not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = {
+				name: "João Silva",
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
@@ -340,7 +394,12 @@ describe("JobService", () => {
 				longitude: -46.633308,
 			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dtoData: Partial<CreateJobRequestDto> = {
 				title: "Test",
@@ -361,7 +420,11 @@ describe("JobService", () => {
 		});
 
 		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = { name: "João Silva", phoneNumber: "+5511999999999", method: JobContactMethod.WHATSAPP };
+			const contactData: Partial<CreateJobContactInputDto> = {
+				name: "João Silva",
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
@@ -372,7 +435,12 @@ describe("JobService", () => {
 				longitude: -46.633308,
 			};
 			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = { type: JobPaymentType.FIXED, minAmount: 150.0, amountPeriod: JobPaymentAmountPeriod.SINGLE, currency: "BRL" };
+			const paymentData: Partial<JobPaymentInputDto> = {
+				type: JobPaymentType.FIXED,
+				minAmount: 150.0,
+				amountPeriod: JobPaymentAmountPeriod.SINGLE,
+				currency: "BRL",
+			};
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = Object.assign(new CreateJobRequestDto(), {
 				title: "Test",
@@ -399,7 +467,10 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({ latitude: -23.55052, longitude: -46.633308 });
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({
+				latitude: -23.55052,
+				longitude: -46.633308,
+			});
 		});
 
 		it("should use real coordinates as fuzzy coordinates when street is empty", async () => {
@@ -410,7 +481,10 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({ latitude: -23.55052, longitude: -46.633308 });
+			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({
+				latitude: -23.55052,
+				longitude: -46.633308,
+			});
 		});
 
 		it("should use translated category name when translation exists", async () => {
@@ -454,7 +528,9 @@ describe("JobService", () => {
 			const resultPromise = service.createJob(createValidDto(), "en-US");
 			const result = await Promise.race([
 				resultPromise,
-				new Promise<never>((_resolve, reject) => setTimeout(() => reject(new Error("createJob appears to await AI summary")), 500)),
+				new Promise<never>((_resolve, reject) =>
+					setTimeout(() => reject(new Error("createJob appears to await AI summary")), 500),
+				),
 			]);
 
 			expect(result).toBeInstanceOf(JobOutputDto);
@@ -478,7 +554,10 @@ describe("JobService", () => {
 		});
 
 		it("should use categoryDisplayName from repository for localized name", async () => {
-			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mockJob, categoryDisplayName: "Ayuda con mudanza" });
+			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue({
+				...mockJob,
+				categoryDisplayName: "Ayuda con mudanza",
+			});
 
 			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "es-MX" });
 

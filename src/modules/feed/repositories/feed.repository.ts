@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { JobPaymentAmountPeriod, JobPaymentType, JobStatus } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import { JobStatus, JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 
 export interface FeedItemRaw {
@@ -29,7 +29,10 @@ export class FeedRepository {
 				status: JobStatus.ACTIVE,
 				...(params.cursor
 					? {
-							OR: [{ createdAt: { lt: new Date(params.cursor.createdAt) } }, { createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } }],
+							OR: [
+								{ createdAt: { lt: new Date(params.cursor.createdAt) } },
+								{ createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } },
+							],
 						}
 					: {}),
 			},

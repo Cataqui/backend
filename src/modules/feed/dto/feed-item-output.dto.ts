@@ -1,9 +1,9 @@
-import { ApiProperty, ApiExtraModels } from "@nestjs/swagger";
+import { ApiExtraModels, ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
-import { FeedLocationOutputDto } from "./feed-location-output.dto";
-import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import type { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
+import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
+import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { FeedLocationOutputDto } from "./feed-location-output.dto";
 
 @ApiExtraModels(JobPaymentOutputDto, FeedLocationOutputDto, MapConfigOutputDto)
 export class FeedItemOutputDto {
@@ -37,7 +37,14 @@ export class FeedItemOutputDto {
 	@Type(() => FeedLocationOutputDto)
 	readonly location: FeedLocationOutputDto;
 
-	constructor(params: { jobId: string; title: string; createdAt: string; descriptionSummary: string; payment: JobPaymentOutputDto; location: FeedLocationOutputDto }) {
+	constructor(params: {
+		jobId: string;
+		title: string;
+		createdAt: string;
+		descriptionSummary: string;
+		payment: JobPaymentOutputDto;
+		location: FeedLocationOutputDto;
+	}) {
 		this.jobId = params.jobId;
 		this.title = params.title;
 		this.createdAt = params.createdAt;

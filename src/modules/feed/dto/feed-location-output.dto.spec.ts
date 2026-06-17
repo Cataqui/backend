@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
-import { FeedLocationOutputDto } from "./feed-location-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { FeedLocationOutputDto } from "./feed-location-output.dto";
 
 const mockMapConfig = new MapConfigOutputDto({
 	queryParams: "v=1&sig=abc&exp=1717891200",

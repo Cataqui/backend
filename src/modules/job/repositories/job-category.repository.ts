@@ -7,7 +7,10 @@ import { LocaleUtils } from "../../../shared/locale/locale.utils";
 export class JobCategoryRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findByIdWithLocalizedName(params: { id: string; locale: string }): Promise<{ id: string; slug: string; displayName: string } | null> {
+	async findByIdWithLocalizedName(params: {
+		id: string;
+		locale: string;
+	}): Promise<{ id: string; slug: string; displayName: string } | null> {
 		const result = await this._prisma.jobCategory.findUnique({
 			where: { id: params.id },
 			include: {

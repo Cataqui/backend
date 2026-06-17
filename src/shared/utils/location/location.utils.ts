@@ -8,7 +8,8 @@ function calculateDistanceMeters(start: ILocationCoordinate, end: ILocationCoord
 	const longitudeDelta = _degreesToRadians(end.longitude - start.longitude);
 
 	const haversine =
-		Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2) + Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
+		Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2) +
+		Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
 
 	return LocationConstants.EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
@@ -40,13 +41,16 @@ function _radiansToDegrees(radians: number): number {
 	return (radians * 180) / Math.PI;
 }
 
-function _calculateOffsetCoordinate(params: ILocationCoordinate & { distanceMeters: number; bearingRadians: number }): ILocationCoordinate {
+function _calculateOffsetCoordinate(
+	params: ILocationCoordinate & { distanceMeters: number; bearingRadians: number },
+): ILocationCoordinate {
 	const latitudeRadians = _degreesToRadians(params.latitude);
 	const longitudeRadians = _degreesToRadians(params.longitude);
 	const angularDistance = params.distanceMeters / LocationConstants.EARTH_RADIUS_METERS;
 
 	const fuzzyLatitudeRadians = Math.asin(
-		Math.sin(latitudeRadians) * Math.cos(angularDistance) + Math.cos(latitudeRadians) * Math.sin(angularDistance) * Math.cos(params.bearingRadians),
+		Math.sin(latitudeRadians) * Math.cos(angularDistance) +
+			Math.cos(latitudeRadians) * Math.sin(angularDistance) * Math.cos(params.bearingRadians),
 	);
 
 	const fuzzyLongitudeRadians =

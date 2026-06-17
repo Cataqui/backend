@@ -23,3 +23,6 @@ worker/dist/
 
 # AI
 .opencode
+
+# Biome
+.biome/

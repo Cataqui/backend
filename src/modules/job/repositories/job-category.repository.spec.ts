@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from "@nestjs/testing";
-import { JobCategoryRepository } from "./job-category.repository";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { LocaleConstants } from "../../../shared/locale/locale.constants";
+import { JobCategoryRepository } from "./job-category.repository";
 
 const mockCategory = { id: "cm3x-cat-1", slug: "moving-help", createdAt: new Date(), updatedAt: new Date() };
 

@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
-import { PrismaService } from "./prisma.service";
 import { DATABASE_CONFIG_KEY, databaseConfig } from "../config/database.config";
+import { PrismaService } from "./prisma.service";
 
 let prismaNeonConfigs: Record<string, unknown>[] = [];
 

@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Param, Version, Body, HttpCode, HttpStatus } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { JobService } from "./job.service";
+import { RequestLocale } from "../../shared/locale/request-locale.decorator";
+import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";
+import { ApiGetJobDocs } from "./decorators/api-get-job-docs.decorator";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
-import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";
-import { ApiGetJobDocs } from "./decorators/api-get-job-docs.decorator";
-import { RequestLocale } from "../../shared/locale/request-locale.decorator";
+import { JobService } from "./job.service";
 
 @ApiTags("jobs")
 @Controller("job")

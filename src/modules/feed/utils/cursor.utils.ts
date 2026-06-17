@@ -1,6 +1,6 @@
+import type { FeedSort } from "../enums/feed-sort.enum";
 import { InvalidCursorError } from "../errors/invalid-cursor.error";
 import { FeedPaginationCursorSchema, type IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
-import type { FeedSort } from "../enums/feed-sort.enum";
 
 const CURSOR_VERSION = 1;
 
@@ -31,10 +31,13 @@ function decodeCursor(cursor: string, expectedSort: FeedSort): IFeedPaginationCu
 	}
 
 	if (parsedCursor.data.version !== CURSOR_VERSION) {
-		throw new InvalidCursorError(`Cursor version '${String(parsedCursor.data.version)}' is not supported. Please use ${CURSOR_VERSION}.`);
+		throw new InvalidCursorError(
+			`Cursor version '${String(parsedCursor.data.version)}' is not supported. Please use ${CURSOR_VERSION}.`,
+		);
 	}
 
-	if (parsedCursor.data.sort !== String(expectedSort)) throw InvalidCursorError.sortMismatch(parsedCursor.data.sort, expectedSort);
+	if (parsedCursor.data.sort !== String(expectedSort))
+		throw InvalidCursorError.sortMismatch(parsedCursor.data.sort, expectedSort);
 
 	return parsedCursor.data;
 }

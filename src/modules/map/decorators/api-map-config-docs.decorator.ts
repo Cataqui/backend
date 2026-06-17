@@ -1,4 +1,4 @@
-import { HttpStatus, applyDecorators } from "@nestjs/common";
+import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { MapConfigOutputDto } from "../dto/map-config-output.dto";
 
@@ -13,7 +13,8 @@ export function ApiMapConfigDocs(): MethodDecorator & ClassDecorator {
 		}),
 		ApiResponse({
 			status: HttpStatus.OK,
-			description: "Map configuration returned successfully. Response is cacheable for the duration of the credentials validity.",
+			description:
+				"Map configuration returned successfully. Response is cacheable for the duration of the credentials validity.",
 			type: MapConfigOutputDto,
 			headers: {
 				"Cache-Control": {

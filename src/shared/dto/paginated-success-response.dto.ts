@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { SuccessResponseDto } from "./success-response.dto";
 import { PaginationOutputDto } from "./pagination-output.dto";
+import { SuccessResponseDto } from "./success-response.dto";
 
 export class PaginatedSuccessResponseDto<T> extends SuccessResponseDto<T[]> {
 	@Expose({ name: "pagination" })

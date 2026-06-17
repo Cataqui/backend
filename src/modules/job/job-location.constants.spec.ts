@@ -10,7 +10,9 @@ describe("JobLocationConstants", () => {
 	});
 
 	it("should keep the maximum fuzzy distance greater than the minimum fuzzy distance", () => {
-		expect(JobLocationConstants.FUZZ_MAX_DISTANCE_METERS).toBeGreaterThan(JobLocationConstants.FUZZ_MIN_DISTANCE_METERS);
+		expect(JobLocationConstants.FUZZ_MAX_DISTANCE_METERS).toBeGreaterThan(
+			JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
+		);
 	});
 
 	it("should set the public area radius to 2000 meters", () => {

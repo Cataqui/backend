@@ -1,11 +1,11 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
-import { IEnvSchema } from "./env.validation";
-import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
-import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
-import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
-import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
 import { AI_CONFIG_KEY, aiConfig } from "../ai/ai.config";
+import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
+import { IEnvSchema } from "./env.validation";
+import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
+import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
+import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
 
 @Global()
 @Module({
@@ -18,7 +18,9 @@ import { AI_CONFIG_KEY, aiConfig } from "../ai/ai.config";
 				const result = IEnvSchema.safeParse(config);
 
 				if (!result.success) {
-					const details = result.error.issues.map((issue) => `  - ${issue.path.join(".")}: ${issue.message} (code: ${issue.code})`).join("\n");
+					const details = result.error.issues
+						.map((issue) => `  - ${issue.path.join(".")}: ${issue.message} (code: ${issue.code})`)
+						.join("\n");
 					throw new Error(`Environment validation failed:\n${details}`);
 				}
 
@@ -48,6 +50,12 @@ import { AI_CONFIG_KEY, aiConfig } from "../ai/ai.config";
 			useFactory: aiConfig,
 		},
 	],
-	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY, MAP_AUTH_CONFIG_KEY, AI_CONFIG_KEY],
+	exports: [
+		DATABASE_CONFIG_KEY,
+		GLOBAL_THROTTLE_CONFIG_KEY,
+		REQUEST_SIZE_CONFIG_KEY,
+		MAP_AUTH_CONFIG_KEY,
+		AI_CONFIG_KEY,
+	],
 })
 export class ConfigModule {}

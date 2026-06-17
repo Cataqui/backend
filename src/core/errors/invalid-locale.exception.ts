@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "./error-code.enum";
 import { DomainError } from "./domain-error";
+import { ErrorCode } from "./error-code.enum";
 
 export class InvalidLocaleException extends DomainError {
 	constructor(value: string) {

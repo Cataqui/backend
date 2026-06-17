@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
-import { FeedItemOutputDto } from "./feed-item-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { FeedItemOutputDto } from "./feed-item-output.dto";
 
 const mockMapConfig = new MapConfigOutputDto({
 	queryParams: "v=1&sig=abc&exp=1717891200",
@@ -52,7 +52,12 @@ describe("FeedItemOutputDto", () => {
 		it("should construct nested location DTO", () => {
 			const dto = FeedItemOutputDto.fromDatabase(createMockDatabaseJob(), mockMapConfig);
 
-			expect(dto.location).toMatchObject({ neighborhood: "Centro", latitude: -23.55, longitude: -46.63, areaRadius: 2000 });
+			expect(dto.location).toMatchObject({
+				neighborhood: "Centro",
+				latitude: -23.55,
+				longitude: -46.63,
+				areaRadius: 2000,
+			});
 		});
 	});
 

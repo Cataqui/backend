@@ -1,16 +1,16 @@
+import helmet from "@fastify/helmet";
+import { BadRequestException, Logger, ValidationPipe, VersioningType } from "@nestjs/common";
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { ValidationPipe, VersioningType, Logger, BadRequestException } from "@nestjs/common";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import type { ValidationError } from "class-validator";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { requestSizeConfig } from "./config/request-size.config";
+import { CorsBlockedError } from "./errors/cors-blocked.error";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
-import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
+import { registerRequestSizeHooks } from "./hooks/request-size.hook";
 import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
-import { requestSizeConfig } from "./config/request-size.config";
-import { registerRequestSizeHooks } from "./hooks/request-size.hook";
+import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
 import { ValidationErrorUtils } from "./validation/validation-error.utils";
-import helmet from "@fastify/helmet";
-import { CorsBlockedError } from "./errors/cors-blocked.error";
 
 export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	const corsLogger = new Logger("CORS");

@@ -1,10 +1,10 @@
 import { Test } from "@nestjs/testing";
 import { MAP_AUTH_CONFIG_KEY } from "../../core/config/map-auth.config";
-import { MapService } from "./map.service";
 import { MapConfigOutputDto } from "./dto/map-config-output.dto";
-import { MapVersionRepository } from "./repositories/map-version.repository";
 import { MapRegionNotFoundError } from "./errors/map-region-not-found.error";
+import { MapService } from "./map.service";
 import { MapAuthConstants } from "./map-auth.constants";
+import { MapVersionRepository } from "./repositories/map-version.repository";
 
 const MOCK_AUTH_SECRET = "test-secret-123";
 
@@ -22,7 +22,10 @@ describe("MapService", () => {
 		const module = await Test.createTestingModule({
 			providers: [
 				MapService,
-				{ provide: MAP_AUTH_CONFIG_KEY, useValue: { authSecret: MOCK_AUTH_SECRET, protomapUrl: "https://tiles.cataqui.com" } },
+				{
+					provide: MAP_AUTH_CONFIG_KEY,
+					useValue: { authSecret: MOCK_AUTH_SECRET, protomapUrl: "https://tiles.cataqui.com" },
+				},
 				{ provide: MapVersionRepository, useValue: mapVersionRepository },
 			],
 		}).compile();
