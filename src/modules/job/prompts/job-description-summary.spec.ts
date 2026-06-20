@@ -1,3 +1,4 @@
+import { JobConstants } from "../job.constants";
 import { JobDescriptionSummaryPrompts } from "./job-description-summary";
 
 describe("JobDescriptionSummaryPrompts", () => {
@@ -18,6 +19,12 @@ describe("JobDescriptionSummaryPrompts", () => {
 			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
 
 			expect(result).toContain("HTML tags");
+		});
+
+		it("should use DESCRIPTION_SUMMARY_MAX_LENGTH for the character limit", () => {
+			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
+
+			expect(result).toContain(`between 60 and ${JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH} characters`);
 		});
 	});
 
