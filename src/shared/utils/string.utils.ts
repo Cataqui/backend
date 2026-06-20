@@ -5,6 +5,18 @@ function camelToSnake(str: string): string {
 		.toLowerCase();
 }
 
+function truncateToLimitAfterWord(text: string, maxLength: number): string {
+	if (text.length <= maxLength) return text;
+
+	const truncated = text.substring(0, maxLength);
+	const lastSpaceIndex = truncated.lastIndexOf(" ");
+
+	if (lastSpaceIndex <= 0) return truncated;
+
+	return truncated.substring(0, lastSpaceIndex).trimEnd();
+}
+
 export const StringUtils = {
 	camelToSnake,
+	truncateToLimitAfterWord,
 } as const;

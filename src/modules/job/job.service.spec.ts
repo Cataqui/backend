@@ -600,6 +600,31 @@ describe("JobService", () => {
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
 			expect(updateCall?.summary).toBe(shortSummary);
 		});
+
+		it("should truncate AI-generated summary at word boundary when it exceeds the limit", async () => {
+			const longSummary =
+				"Auxiliar na preparação, montagem e suporte operacional de eventos, incluindo transporte, montagem de estruturas, organização de materiais e apoio à recepção, com necessidade de mobilidade física e atenção aos detalhes";
+			aiGatewayService.generateText.mockResolvedValue(longSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe(
+				"Auxiliar na preparação, montagem e suporte operacional de eventos, incluindo transporte, montagem",
+			);
+		});
+
+		it("should not update description summary when AI returns empty text", async () => {
+			aiGatewayService.generateText.mockResolvedValue("   ");
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe("getJob", () => {

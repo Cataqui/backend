@@ -85,4 +85,53 @@ describe("StringUtils", () => {
 			);
 		});
 	});
+
+	describe("truncateToLimitAfterWord", () => {
+		it("should return text as-is when it is within the limit", () => {
+			const result = StringUtils.truncateToLimitAfterWord("text within limit", 100);
+
+			expect(result).toBe("text within limit");
+		});
+
+		it("should return text as-is when it is exactly at the limit", () => {
+			const text = "a".repeat(100);
+			const result = StringUtils.truncateToLimitAfterWord(text, 100);
+
+			expect(result).toBe(text);
+		});
+
+		it("should truncate at word boundary when text exceeds the limit", () => {
+			const text =
+				"word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16";
+			const result = StringUtils.truncateToLimitAfterWord(text, 100);
+
+			expect(result).toBe(
+				"word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15",
+			);
+		});
+
+		it("should hard-cut when the first word exceeds the limit", () => {
+			const text = "a".repeat(150);
+			const result = StringUtils.truncateToLimitAfterWord(text, 100);
+
+			expect(result).toBe("a".repeat(100));
+		});
+
+		it("should trim trailing whitespace after word-boundary truncation", () => {
+			const text = "a   bcdefghijklmnopqrstuvwxyz";
+			const result = StringUtils.truncateToLimitAfterWord(text, 20);
+
+			expect(result).toBe("a");
+		});
+
+		it("should never produce a result longer than the limit (property-based)", () => {
+			fc.assert(
+				fc.property(fc.string({ maxLength: 300 }), fc.integer({ min: 1, max: 200 }), (input, maxLength) => {
+					const result = StringUtils.truncateToLimitAfterWord(input, maxLength);
+
+					expect(result.length).toBeLessThanOrEqual(maxLength);
+				}),
+			);
+		});
+	});
 });

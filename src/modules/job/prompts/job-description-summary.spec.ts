@@ -24,7 +24,19 @@ describe("JobDescriptionSummaryPrompts", () => {
 		it("should use DESCRIPTION_SUMMARY_MAX_LENGTH for the character limit", () => {
 			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
 
-			expect(result).toContain(`between 60 and ${JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH} characters`);
+			expect(result).toContain(`${JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH} characters`);
+		});
+
+		it("should emphasize the length limit as a hard limit", () => {
+			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
+
+			expect(result).toContain("hard limit");
+		});
+
+		it("should include a word count proxy in the length rule", () => {
+			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
+
+			expect(result).toContain("10 to 15 words");
 		});
 	});
 
