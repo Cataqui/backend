@@ -18,6 +18,7 @@ import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobConstants } from "./job.constants";
 import { JobService } from "./job.service";
 import { JobLocationConstants } from "./job-location.constants";
 import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
@@ -174,12 +175,15 @@ describe("JobService", () => {
 		jobRepository = {
 			create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 			findByIdLocalized: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
+			updateDescriptionSummary: vi.fn().mockResolvedValue(undefined),
 		} as unknown as JobRepository;
 
 		jobCategoryRepository = {
-			findByIdWithLocalizedName: vi
-				.fn()
-				.mockResolvedValue({ id: "cm3x-cat-1", slug: "moving-help", displayName: "Moving Help" }),
+			findByIdWithLocalizedName: vi.fn().mockResolvedValue({
+				id: "cm3x-cat-1",
+				slug: "moving-help",
+				displayName: "Moving Help",
+			}),
 		} as unknown as JobCategoryRepository;
 
 		mapService = {
@@ -348,7 +352,10 @@ describe("JobService", () => {
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
 
-			expect(createCall?.locationPoint).toEqual({ latitude: -23.55052, longitude: -46.633308 });
+			expect(createCall?.locationPoint).toEqual({
+				latitude: -23.55052,
+				longitude: -46.633308,
+			});
 		});
 
 		it("should fuzz coordinates when street is provided", async () => {
@@ -359,7 +366,10 @@ describe("JobService", () => {
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			randomSpy.mockRestore();
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).not.toEqual({
+			expect({
+				latitude: createData?.fuzzyLatitude,
+				longitude: createData?.fuzzyLongitude,
+			}).not.toEqual({
 				latitude: -23.55052,
 				longitude: -46.633308,
 			});
@@ -468,7 +478,10 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({
+			expect({
+				latitude: createData?.fuzzyLatitude,
+				longitude: createData?.fuzzyLongitude,
+			}).toEqual({
 				latitude: -23.55052,
 				longitude: -46.633308,
 			});
@@ -482,7 +495,10 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
-			expect({ latitude: createData?.fuzzyLatitude, longitude: createData?.fuzzyLongitude }).toEqual({
+			expect({
+				latitude: createData?.fuzzyLatitude,
+				longitude: createData?.fuzzyLongitude,
+			}).toEqual({
 				latitude: -23.55052,
 				longitude: -46.633308,
 			});
@@ -536,11 +552,62 @@ describe("JobService", () => {
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 		});
+
+		it("should truncate description to DESCRIPTION_SUMMARY_MAX_LENGTH when description exceeds limit", async () => {
+			const longDescription = "a".repeat(150);
+			const dto = createValidDto();
+			Object.assign(dto, { description: longDescription });
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			expect(createData?.descriptionSummary).toBe("a".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+		});
+
+		it("should preserve description when it is exactly at DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
+			const exactDescription = "b".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH);
+			const dto = createValidDto();
+			Object.assign(dto, { description: exactDescription });
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			expect(createData?.descriptionSummary).toBe(exactDescription);
+		});
+
+		it("should truncate AI-generated summary when it exceeds DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
+			const longSummary = "c".repeat(150);
+			aiGatewayService.generateText.mockResolvedValue(longSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+		});
+
+		it("should preserve AI-generated summary when it is within DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
+			const shortSummary = "d".repeat(50);
+			aiGatewayService.generateText.mockResolvedValue(shortSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe(shortSummary);
+		});
 	});
 
 	describe("getJob", () => {
 		it("should return JobOutputDto when job exists", async () => {
-			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+			const result = await service.getJob({
+				jobId: "cm3x-job-1",
+				locale: "en-US",
+			});
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 			expect(result.jobId).toBe("cm3x-job-1");
@@ -560,7 +627,10 @@ describe("JobService", () => {
 				categoryDisplayName: "Ayuda con mudanza",
 			});
 
-			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "es-MX" });
+			const result = await service.getJob({
+				jobId: "cm3x-job-1",
+				locale: "es-MX",
+			});
 
 			expect(result.category.name).toBe("Ayuda con mudanza");
 		});
@@ -568,7 +638,10 @@ describe("JobService", () => {
 		it("should pass jobId and locale to findByIdLocalized", async () => {
 			await service.getJob({ jobId: "cm3x-job-1", locale: "pt-BR" });
 
-			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({ id: "cm3x-job-1", locale: "pt-BR" });
+			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({
+				id: "cm3x-job-1",
+				locale: "pt-BR",
+			});
 		});
 
 		it("should call MapService.getConfig with BR region on getJob", async () => {
@@ -578,7 +651,10 @@ describe("JobService", () => {
 		});
 
 		it("should set mapConfig on getJob output location", async () => {
-			const result = await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+			const result = await service.getJob({
+				jobId: "cm3x-job-1",
+				locale: "en-US",
+			});
 
 			expect(result.location.mapConfig.mapVersion).toBe("br");
 		});

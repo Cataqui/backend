@@ -10,6 +10,7 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobConstants } from "./job.constants";
 import { JobLocationConstants } from "./job-location.constants";
 import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 import { JobRepository } from "./repositories/job.repository";
@@ -63,7 +64,7 @@ export class JobService {
 			data: {
 				title: dto.title,
 				description: dto.description,
-				descriptionSummary: dto.description.substring(0, 200),
+				descriptionSummary: dto.description.substring(0, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH),
 				status: JobStatus.ACTIVE,
 				contactName: dto.contact.name,
 				contactPhoneNumber: dto.contact.phoneNumber,
@@ -104,7 +105,10 @@ export class JobService {
 		const trimmed = rawSummary.trim();
 
 		if (trimmed.length === 0) return;
-		const summary = trimmed.length > 100 ? trimmed.substring(0, 100) : trimmed;
+		const summary =
+			trimmed.length > JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH
+				? trimmed.substring(0, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH)
+				: trimmed;
 
 		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
 	}
