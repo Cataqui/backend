@@ -536,6 +536,7 @@ describe("JobService", () => {
 				system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 				prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
 				temperature: 0,
+				reasoningEffort: "low",
 			});
 		});
 

@@ -29,7 +29,10 @@ export class JobService {
 	) {}
 
 	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
-		const result = await this._jobRepository.findByIdLocalized({ id: params.jobId, locale: params.locale });
+		const result = await this._jobRepository.findByIdLocalized({
+			id: params.jobId,
+			locale: params.locale,
+		});
 		if (!result) throw new JobNotFoundError();
 
 		const mapConfig = await this._mapService.getConfig({ region: "BR" });
@@ -42,7 +45,10 @@ export class JobService {
 		}
 
 		const [category, mapConfig] = await Promise.all([
-			this._jobCategoryRepository.findByIdWithLocalizedName({ id: dto.categoryId, locale }),
+			this._jobCategoryRepository.findByIdWithLocalizedName({
+				id: dto.categoryId,
+				locale,
+			}),
 			this._mapService.getConfig({ region: "BR" }),
 		]);
 
@@ -101,6 +107,7 @@ export class JobService {
 			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
 			temperature: 0,
+			reasoningEffort: "low",
 		});
 
 		const trimmed = rawSummary.trim();

@@ -38,6 +38,25 @@ describe("JobDescriptionSummaryPrompts", () => {
 
 			expect(result).toContain("10 to 15 words");
 		});
+
+		it("should place language rule as the first rule", () => {
+			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
+
+			const rulesStart = result.indexOf("Rules:");
+			const firstRuleEnd = result.indexOf("\n", rulesStart) + 1;
+			const secondLineEnd = result.indexOf("\n", firstRuleEnd);
+			const firstRule = result.substring(firstRuleEnd, secondLineEnd);
+
+			expect(firstRule).toContain("MUST be in the SAME language");
+			expect(firstRule).toContain("Never translate");
+		});
+
+		it("should include anti-hallucination rules against inventing details", () => {
+			const result = JobDescriptionSummaryPrompts.buildSystemPrompt();
+
+			expect(result).toContain("do not invent it");
+			expect(result).toContain("shorter summary rather than fabricating");
+		});
 	});
 
 	describe("buildUserPrompt", () => {
@@ -69,6 +88,13 @@ describe("JobDescriptionSummaryPrompts", () => {
 
 			expect(result).toContain("5 &lt; 10 and &gt; 3");
 			expect(result).not.toContain("5 < 10 and > 3");
+		});
+
+		it("should include a language-matching note before the examples", () => {
+			const result = JobDescriptionSummaryPrompts.buildUserPrompt("Test");
+
+			expect(result).toContain("same language as its description");
+			expect(result.indexOf("same language as its description")).toBeLessThan(result.indexOf("<examples>"));
 		});
 	});
 

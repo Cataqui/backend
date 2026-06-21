@@ -65,6 +65,52 @@ describe("AiGatewayService", () => {
 		expect(result).toBe("Test summary");
 	});
 
+	it("should pass reasoningEffort as providerOptions to aiGenerateText", async () => {
+		mockGenerateText.mockResolvedValue({ text: "test" });
+
+		const module = await Test.createTestingModule({
+			providers: [AiGatewayService, { provide: AI_CONFIG_KEY, useValue: mockConfig }],
+		}).compile();
+
+		const service = module.get(AiGatewayService);
+		await service.generateText({
+			jobType: AiGatewayJobTypeModel.SUMMARIZE,
+			system: "system",
+			prompt: "prompt",
+			temperature: 0.5,
+			reasoningEffort: "low",
+		});
+
+		expect(mockGenerateText).toHaveBeenCalledWith(
+			expect.objectContaining({
+				providerOptions: { openaiCompatible: { reasoningEffort: "low" } },
+			}),
+		);
+	});
+
+	it("should work without reasoningEffort", async () => {
+		mockGenerateText.mockResolvedValue({ text: "test" });
+
+		const module = await Test.createTestingModule({
+			providers: [AiGatewayService, { provide: AI_CONFIG_KEY, useValue: mockConfig }],
+		}).compile();
+
+		const service = module.get(AiGatewayService);
+		await service.generateText({
+			jobType: AiGatewayJobTypeModel.SUMMARIZE,
+			system: "system",
+			prompt: "prompt",
+			temperature: 0.5,
+		});
+
+		expect(mockGenerateText).toHaveBeenCalledWith({
+			model: {},
+			system: "system",
+			prompt: "prompt",
+			temperature: 0.5,
+		});
+	});
+
 	it("should use the correct model for each job type", async () => {
 		const module = await Test.createTestingModule({
 			providers: [AiGatewayService, { provide: AI_CONFIG_KEY, useValue: mockConfig }],
