@@ -71,6 +71,13 @@ describe("JobOutputDto", () => {
 			expect(dto.contact.method).toBe(JobContactMethod.WHATSAPP);
 		});
 
+		it("should expose null contact name when the job has none", () => {
+			const job = { ...createMockDatabaseJob(), contactName: null } as Parameters<typeof JobOutputDto.fromDatabase>[0];
+			const dto = JobOutputDto.fromDatabase(job, "Moving Help", mockMapConfig);
+
+			expect(dto.contact.name).toBeNull();
+		});
+
 		it("should construct nested location DTO", () => {
 			const dto = JobOutputDto.fromDatabase(
 				createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0],

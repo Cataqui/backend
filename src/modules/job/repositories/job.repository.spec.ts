@@ -19,7 +19,7 @@ interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactName: string;
+	contactName: string | null;
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;

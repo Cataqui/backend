@@ -4,8 +4,14 @@ import { JobContactMethod } from "../../../../generated/prisma/client.js";
 
 export class JobContactOutputDto {
 	@Expose({ name: "name" })
-	@ApiProperty({ name: "name", description: "Contact person's name", example: "João Silva" })
-	readonly name: string;
+	@ApiProperty({
+		name: "name",
+		description: "Contact person's name. Null when the poster chose to omit it.",
+		example: "João Silva",
+		required: false,
+		nullable: true,
+	})
+	readonly name: string | null;
 
 	@Expose({ name: "phone_number" })
 	@ApiProperty({
@@ -24,7 +30,7 @@ export class JobContactOutputDto {
 	})
 	readonly method: JobContactMethod;
 
-	constructor(params: { contactName: string; contactPhoneNumber: string; contactMethod: JobContactMethod }) {
+	constructor(params: { contactName: string | null; contactPhoneNumber: string; contactMethod: JobContactMethod }) {
 		this.name = params.contactName;
 		this.phoneNumber = params.contactPhoneNumber;
 		this.method = params.contactMethod;

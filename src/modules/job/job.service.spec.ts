@@ -31,7 +31,7 @@ interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactName: string;
+	contactName: string | null;
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;
@@ -313,6 +313,30 @@ describe("JobService", () => {
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect(createCall?.status).toBe(JobStatus.ACTIVE);
+		});
+
+		it("should store null contact name when name is omitted", async () => {
+			const contactData: Partial<CreateJobContactInputDto> = {
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
+			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+			const validDto = createValidDto();
+			const dtoData: Partial<CreateJobRequestDto> = {
+				title: validDto.title,
+				description: validDto.description,
+				contact,
+				location: validDto.location,
+				type: validDto.type,
+				categoryId: validDto.categoryId,
+				payment: validDto.payment,
+			};
+			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
+
+			await service.createJob(dto, "en-US");
+
+			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			expect(createData?.contactName).toBeNull();
 		});
 
 		it("should pass all values to the repository", async () => {

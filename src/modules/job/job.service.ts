@@ -1,6 +1,10 @@
 import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
-import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/prisma/client.js";
+import {
+	JobPaymentAmountPeriod,
+	JobStatus,
+	JobType,
+} from "../../../generated/prisma/client.js";
 import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
 import { AiGatewayService } from "../../core/ai/ai-gateway-service";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
@@ -28,7 +32,10 @@ export class JobService {
 		private readonly _aiGatewayService: AiGatewayService,
 	) {}
 
-	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
+	async getJob(params: {
+		jobId: string;
+		locale: string;
+	}): Promise<JobOutputDto> {
 		const result = await this._jobRepository.findByIdLocalized({
 			id: params.jobId,
 			locale: params.locale,
@@ -36,11 +43,21 @@ export class JobService {
 		if (!result) throw new JobNotFoundError();
 
 		const mapConfig = await this._mapService.getConfig({ region: "BR" });
-		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapConfig);
+		return JobOutputDto.fromDatabase(
+			result,
+			result.categoryDisplayName,
+			mapConfig,
+		);
 	}
 
-	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
-		if (dto.type !== JobType.INDIVIDUAL && dto.payment.amountPeriod === JobPaymentAmountPeriod.SINGLE) {
+	async createJob(
+		dto: CreateJobRequestDto,
+		locale: string,
+	): Promise<JobOutputDto> {
+		if (
+			dto.type !== JobType.INDIVIDUAL &&
+			dto.payment.amountPeriod === JobPaymentAmountPeriod.SINGLE
+		) {
 			throw new InvalidJobTypePeriodError();
 		}
 
@@ -71,9 +88,12 @@ export class JobService {
 			data: {
 				title: dto.title,
 				description: dto.description,
-				descriptionSummary: dto.description.substring(0, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH),
+				descriptionSummary: dto.description.substring(
+					0,
+					JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH,
+				),
 				status: JobStatus.ACTIVE,
-				contactName: dto.contact.name,
+				contactName: dto.contact.name ?? null,
 				contactPhoneNumber: dto.contact.phoneNumber,
 				contactMethod: dto.contact.method,
 				street: dto.location.street ?? null,
@@ -95,13 +115,19 @@ export class JobService {
 		});
 
 		this._improveDescriptionSummary(job.id, dto.description).catch((error) => {
-			this._logger.error(`Failed to generate description summary for job ${job.id}:`, error);
+			this._logger.error(
+				`Failed to generate description summary for job ${job.id}:`,
+				error,
+			);
 		});
 
 		return JobOutputDto.fromDatabase(job, category.displayName, mapConfig);
 	}
 
-	private async _improveDescriptionSummary(jobId: string, description: string): Promise<void> {
+	private async _improveDescriptionSummary(
+		jobId: string,
+		description: string,
+	): Promise<void> {
 		const rawSummary = await this._aiGatewayService.generateText({
 			jobType: AiGatewayJobTypeModel.SUMMARIZE,
 			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
@@ -113,7 +139,10 @@ export class JobService {
 		const trimmed = rawSummary.trim();
 
 		if (trimmed.length === 0) return;
-		const summary = StringUtils.truncateToLimitAfterWord(trimmed, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH);
+		const summary = StringUtils.truncateToLimitAfterWord(
+			trimmed,
+			JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH,
+		);
 
 		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
 	}

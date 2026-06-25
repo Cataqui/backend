@@ -25,6 +25,16 @@ describe("JobContactOutputDto", () => {
 
 			expect(dto.method).toBe(JobContactMethod.PHONE_CALL);
 		});
+
+		it("should accept null contact name", () => {
+			const dto = new JobContactOutputDto({
+				contactName: null,
+				contactPhoneNumber: "+5511999999999",
+				contactMethod: JobContactMethod.WHATSAPP,
+			});
+
+			expect(dto.name).toBeNull();
+		});
 	});
 
 	describe("serialization", () => {
@@ -64,6 +74,17 @@ describe("JobContactOutputDto", () => {
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).not.toHaveProperty("whatsapp_url");
+		});
+
+		it("should serialize name as null when contact name is null", () => {
+			const dto = new JobContactOutputDto({
+				contactName: null,
+				contactPhoneNumber: "+5511999999999",
+				contactMethod: JobContactMethod.WHATSAPP,
+			});
+			const plain = instanceToPlain(dto) as Record<string, unknown>;
+
+			expect(plain["name"]).toBeNull();
 		});
 	});
 });

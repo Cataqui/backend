@@ -28,6 +28,29 @@ describe("CreateJobContactInputDto", () => {
 			expect(errors).toHaveLength(0);
 		});
 
+		it("should pass when name is omitted", async () => {
+			const data: Partial<CreateJobContactInputDto> = {
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
+			const dto = Object.assign(new CreateJobContactInputDto(), data);
+			const errors = await validate(dto);
+
+			expect(errors).toHaveLength(0);
+		});
+
+		it("should pass when name is null", async () => {
+			const data = {
+				name: null,
+				phoneNumber: "+5511999999999",
+				method: JobContactMethod.WHATSAPP,
+			};
+			const dto = Object.assign(new CreateJobContactInputDto(), data);
+			const errors = await validate(dto);
+
+			expect(errors).toHaveLength(0);
+		});
+
 		it("should fail with name shorter than 2 chars", async () => {
 			const data: Partial<CreateJobContactInputDto> = {
 				name: "A",
