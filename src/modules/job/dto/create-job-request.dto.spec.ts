@@ -5,11 +5,12 @@ import {
 	JobPaymentType,
 	JobType,
 } from "../../../../generated/prisma/client.js";
+import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobRequestDto } from "./create-job-request.dto";
 import { JobPaymentInputDto } from "./job-payment-input.dto";
 
-	function createValidDto(): CreateJobRequestDto {
+function createValidDto(): CreateJobRequestDto {
 	const contactData = {
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
@@ -153,7 +154,6 @@ describe("CreateJobRequestDto", () => {
 
 		function buildDto(paymentData: Partial<JobPaymentInputDto>): CreateJobRequestDto {
 			const contact = Object.assign(new CreateJobContactInputDto(), {
-				name: "João Silva",
 				phoneNumber: "+5511999999999",
 				method: JobContactMethod.WHATSAPP,
 			});

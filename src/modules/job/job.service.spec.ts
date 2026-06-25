@@ -88,7 +88,7 @@ const mockJob: MockJobWithCategory = {
 	categoryDisplayName: "Moving Help",
 };
 
-	function createValidDto(): CreateJobRequestDto {
+function createValidDto(): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = {
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
@@ -124,7 +124,7 @@ const mockJob: MockJobWithCategory = {
 	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
 
-	function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
+function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = {
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
