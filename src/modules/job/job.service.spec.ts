@@ -31,7 +31,6 @@ interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactName: string | null;
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;
@@ -60,7 +59,6 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-job-1",
 	title: "Help unload truck",
 	description: "Need someone to help unload a delivery truck.",
-	contactName: "João Silva",
 	contactPhoneNumber: "+5511999999999",
 	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
@@ -90,9 +88,8 @@ const mockJob: MockJobWithCategory = {
 	categoryDisplayName: "Moving Help",
 };
 
-function createValidDto(): CreateJobRequestDto {
+	function createValidDto(): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = {
-		name: "João Silva",
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
 	};
@@ -127,9 +124,8 @@ function createValidDto(): CreateJobRequestDto {
 	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
 
-function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
+	function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
 	const contactData: Partial<CreateJobContactInputDto> = {
-		name: "João Silva",
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
 	};
@@ -315,30 +311,6 @@ describe("JobService", () => {
 			expect(createCall?.status).toBe(JobStatus.ACTIVE);
 		});
 
-		it("should store null contact name when name is omitted", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
-			};
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
-			const validDto = createValidDto();
-			const dtoData: Partial<CreateJobRequestDto> = {
-				title: validDto.title,
-				description: validDto.description,
-				contact,
-				location: validDto.location,
-				type: validDto.type,
-				categoryId: validDto.categoryId,
-				payment: validDto.payment,
-			};
-			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
-
-			await service.createJob(dto, "en-US");
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createData?.contactName).toBeNull();
-		});
-
 		it("should pass all values to the repository", async () => {
 			await service.createJob(createValidDto(), "en-US");
 
@@ -350,7 +322,6 @@ describe("JobService", () => {
 				description: "Need someone to help unload a delivery truck.",
 				descriptionSummary: "Need someone to help unload a delivery truck.",
 				status: JobStatus.ACTIVE,
-				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
 				contactMethod: "WHATSAPP",
 				street: "Rua das Flores, 123",
@@ -414,8 +385,7 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street when not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				name: "João Silva",
+			const contactData = {
 				phoneNumber: "+5511999999999",
 				method: JobContactMethod.WHATSAPP,
 			};
@@ -455,8 +425,7 @@ describe("JobService", () => {
 		});
 
 		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				name: "João Silva",
+			const contactData = {
 				phoneNumber: "+5511999999999",
 				method: JobContactMethod.WHATSAPP,
 			};

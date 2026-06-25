@@ -5,14 +5,12 @@ import {
 	JobPaymentType,
 	JobType,
 } from "../../../../generated/prisma/client.js";
-import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobRequestDto } from "./create-job-request.dto";
 import { JobPaymentInputDto } from "./job-payment-input.dto";
 
-function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = {
-		name: "João Silva",
+	function createValidDto(): CreateJobRequestDto {
+	const contactData = {
 		phoneNumber: "+5511999999999",
 		method: JobContactMethod.WHATSAPP,
 	};
@@ -107,8 +105,7 @@ describe("CreateJobRequestDto", () => {
 		});
 
 		it("should validate nested contact errors", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				name: "",
+			const contactData = {
 				phoneNumber: "",
 				method: undefined as unknown as JobContactMethod,
 			};

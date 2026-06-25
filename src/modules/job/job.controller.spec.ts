@@ -29,7 +29,6 @@ function createMockJobOutputDto(): JobOutputDto {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact: new JobContactOutputDto({
-			contactName: "João Silva",
 			contactPhoneNumber: "+5511999999999",
 			contactMethod: JobContactMethod.WHATSAPP,
 		}),
@@ -89,8 +88,7 @@ describe("JobController", () => {
 		});
 
 		it("should return JobOutputDto on success", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				name: "João Silva",
+			const contactData = {
 				phoneNumber: "+5511999999999",
 				method: JobContactMethod.WHATSAPP,
 			};
@@ -131,8 +129,7 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactData: Partial<CreateJobContactInputDto> = {
-				name: "João Silva",
+			const contactData = {
 				phoneNumber: "+5511999999999",
 				method: JobContactMethod.WHATSAPP,
 			};

@@ -3,7 +3,7 @@ model Job {
   title               String                               @db.VarChar(120)
   description         String                               @db.Text
   descriptionSummary  String                               @map("description_summary") @db.Text
-  contactName         String?                              @map("contact_name") @db.VarChar(100)
+
   contactPhoneNumber  String                               @map("contact_phone_number") @db.VarChar(20)
   contactMethod       JobContactMethod                     @map("contact_method")
   street              String?                              @db.VarChar(200)

@@ -19,7 +19,6 @@ interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactName: string | null;
 	contactPhoneNumber: string;
 	contactMethod: string;
 	street: string | null;
@@ -52,7 +51,6 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-1234",
 	title: "Help unload truck",
 	description: "Need someone to help.",
-	contactName: "João Silva",
 	contactPhoneNumber: "+5511999999999",
 	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
@@ -88,7 +86,6 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	description: "Need someone to help.",
 	descriptionSummary: "Need someone to help.",
 	status: "ACTIVE",
-	contactName: "João Silva",
 	contactPhoneNumber: "+5511999999999",
 	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
@@ -143,7 +140,6 @@ describe("JobRepository", () => {
 					description: "Need someone to help.",
 					descriptionSummary: "Need someone to help.",
 					status: "ACTIVE",
-					contactName: "João Silva",
 					contactPhoneNumber: "+5511999999999",
 					contactMethod: "WHATSAPP",
 					street: "Rua das Flores, 123",

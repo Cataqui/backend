@@ -4,50 +4,35 @@ import { JobContactOutputDto } from "./job-contact-output.dto";
 
 describe("JobContactOutputDto", () => {
 	describe("constructor", () => {
-		it("should set name, phoneNumber, and method", () => {
+		it("should set phoneNumber and method", () => {
 			const dto = new JobContactOutputDto({
-				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
 				contactMethod: JobContactMethod.WHATSAPP,
 			});
 
-			expect(dto.name).toBe("João Silva");
 			expect(dto.phoneNumber).toBe("+5511999999999");
 			expect(dto.method).toBe(JobContactMethod.WHATSAPP);
 		});
 
 		it("should accept PHONE_CALL method", () => {
 			const dto = new JobContactOutputDto({
-				contactName: "Maria",
 				contactPhoneNumber: "+5511888888888",
 				contactMethod: JobContactMethod.PHONE_CALL,
 			});
 
 			expect(dto.method).toBe(JobContactMethod.PHONE_CALL);
 		});
-
-		it("should accept null contact name", () => {
-			const dto = new JobContactOutputDto({
-				contactName: null,
-				contactPhoneNumber: "+5511999999999",
-				contactMethod: JobContactMethod.WHATSAPP,
-			});
-
-			expect(dto.name).toBeNull();
-		});
 	});
 
 	describe("serialization", () => {
-		it("should serialize name, phone_number, contact_method as snake_case", () => {
+		it("should serialize phone_number and contact_method as snake_case", () => {
 			const dto = new JobContactOutputDto({
-				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
 				contactMethod: JobContactMethod.WHATSAPP,
 			});
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toEqual({
-				name: "João Silva",
 				phone_number: "+5511999999999",
 				contact_method: "WHATSAPP",
 			});
@@ -55,7 +40,6 @@ describe("JobContactOutputDto", () => {
 
 		it("should not expose raw camelCase property names", () => {
 			const dto = new JobContactOutputDto({
-				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
 				contactMethod: JobContactMethod.WHATSAPP,
 			});
@@ -65,26 +49,15 @@ describe("JobContactOutputDto", () => {
 			expect(plain).not.toHaveProperty("method");
 		});
 
-		it("should not include whatsapp_url", () => {
+		it("should not include whatsapp_url or name", () => {
 			const dto = new JobContactOutputDto({
-				contactName: "João Silva",
 				contactPhoneNumber: "+5511999999999",
 				contactMethod: JobContactMethod.WHATSAPP,
 			});
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).not.toHaveProperty("whatsapp_url");
-		});
-
-		it("should serialize name as null when contact name is null", () => {
-			const dto = new JobContactOutputDto({
-				contactName: null,
-				contactPhoneNumber: "+5511999999999",
-				contactMethod: JobContactMethod.WHATSAPP,
-			});
-			const plain = instanceToPlain(dto) as Record<string, unknown>;
-
-			expect(plain["name"]).toBeNull();
+			expect(plain).not.toHaveProperty("name");
 		});
 	});
 });

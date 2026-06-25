@@ -116,7 +116,6 @@ export class JobOutputDto {
 			title: job.title,
 			description: job.description,
 			contact: new JobContactOutputDto({
-				contactName: job.contactName,
 				contactPhoneNumber: job.contactPhoneNumber,
 				contactMethod: job.contactMethod,
 			}),
