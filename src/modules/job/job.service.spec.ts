@@ -524,13 +524,16 @@ describe("JobService", () => {
 		it("should call AI to generate a description summary", async () => {
 			await service.createJob(createValidDto(), "en-US");
 
-			expect(aiGatewayService.generateText).toHaveBeenCalledWith({
-				jobType: AiGatewayJobTypeModel.SUMMARIZE,
-				system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
-				prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
-				temperature: 0,
-				reasoningEffort: "low",
-			});
+			expect(aiGatewayService.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					jobType: AiGatewayJobTypeModel.SUMMARIZE,
+					system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
+					prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
+					temperature: 0,
+					maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
+					abortSignal: expect.any(AbortSignal),
+				}),
+			);
 		});
 
 		it("should not await AI summary call before returning the created job", async () => {

@@ -28,18 +28,16 @@ export class AiGatewayService {
 		system: string;
 		prompt: string;
 		temperature: number;
-		reasoningEffort?: "low" | "medium" | "high";
+		maxTokens?: number;
+		abortSignal?: AbortSignal;
 	}): Promise<string> {
 		const { text } = await aiGenerateText({
 			model: this._gateway(this._unified(params.jobType)),
 			system: params.system,
 			prompt: params.prompt,
 			temperature: params.temperature,
-			...(params.reasoningEffort && {
-				providerOptions: {
-					openaiCompatible: { reasoningEffort: params.reasoningEffort },
-				},
-			}),
+			...(params.maxTokens !== undefined && { maxTokens: params.maxTokens }),
+			...(params.abortSignal && { abortSignal: params.abortSignal }),
 		});
 
 		return text.trim();

@@ -65,7 +65,7 @@ describe("AiGatewayService", () => {
 		expect(result).toBe("Test summary");
 	});
 
-	it("should pass reasoningEffort as providerOptions to aiGenerateText", async () => {
+	it("should pass maxTokens to aiGenerateText when provided", async () => {
 		mockGenerateText.mockResolvedValue({ text: "test" });
 
 		const module = await Test.createTestingModule({
@@ -78,17 +78,13 @@ describe("AiGatewayService", () => {
 			system: "system",
 			prompt: "prompt",
 			temperature: 0.5,
-			reasoningEffort: "low",
+			maxTokens: 256,
 		});
 
-		expect(mockGenerateText).toHaveBeenCalledWith(
-			expect.objectContaining({
-				providerOptions: { openaiCompatible: { reasoningEffort: "low" } },
-			}),
-		);
+		expect(mockGenerateText).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 256 }));
 	});
 
-	it("should work without reasoningEffort", async () => {
+	it("should pass abortSignal to aiGenerateText when provided", async () => {
 		mockGenerateText.mockResolvedValue({ text: "test" });
 
 		const module = await Test.createTestingModule({
@@ -96,19 +92,17 @@ describe("AiGatewayService", () => {
 		}).compile();
 
 		const service = module.get(AiGatewayService);
+		const abortController = new AbortController();
+
 		await service.generateText({
 			jobType: AiGatewayJobTypeModel.SUMMARIZE,
 			system: "system",
 			prompt: "prompt",
 			temperature: 0.5,
+			abortSignal: abortController.signal,
 		});
 
-		expect(mockGenerateText).toHaveBeenCalledWith({
-			model: {},
-			system: "system",
-			prompt: "prompt",
-			temperature: 0.5,
-		});
+		expect(mockGenerateText).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: abortController.signal }));
 	});
 
 	it("should use the correct model for each job type", async () => {

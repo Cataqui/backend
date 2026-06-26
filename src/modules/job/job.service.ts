@@ -106,7 +106,8 @@ export class JobService {
 			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
 			temperature: 0,
-			reasoningEffort: "low",
+			maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
+			abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
 		});
 
 		const trimmed = rawSummary.trim();
