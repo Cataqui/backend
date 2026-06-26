@@ -15,7 +15,12 @@ export class JobCategoryRepository {
 			where: { id: params.id },
 			include: {
 				translations: {
-					where: { locale: { in: [params.locale, LocaleConstants.DEFAULT_LOCALE] } },
+					where: {
+						locale: {
+							in: [params.locale, LocaleConstants.DEFAULT_LOCALE],
+							mode: "insensitive",
+						},
+					},
 				},
 			},
 		});
@@ -25,7 +30,14 @@ export class JobCategoryRepository {
 		return {
 			id: result.id,
 			slug: result.slug,
-			displayName: LocaleUtils.resolveLocalizedName(result.translations, params.locale) ?? "",
+			displayName:
+				LocaleUtils.resolveLocalizedString({
+					translations: result.translations.map((t) => ({
+						locale: t.locale,
+						string: t.name,
+					})),
+					targetLocale: params.locale,
+				}) ?? "",
 		};
 	}
 }

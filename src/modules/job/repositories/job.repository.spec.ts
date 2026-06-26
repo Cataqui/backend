@@ -206,7 +206,7 @@ describe("JobRepository", () => {
 					category: {
 						include: {
 							translations: {
-								where: { locale: { in: ["es-MX", LocaleConstants.DEFAULT_LOCALE] } },
+								where: { locale: { in: ["es-MX", LocaleConstants.DEFAULT_LOCALE], mode: "insensitive" } },
 							},
 						},
 					},

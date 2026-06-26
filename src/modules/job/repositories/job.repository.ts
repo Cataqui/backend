@@ -8,17 +8,24 @@ import { LocaleUtils } from "../../../shared/locale/locale.utils";
 export class JobRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findByIdLocalized(params: {
-		id: string;
-		locale: string;
-	}): Promise<(Prisma.JobGetPayload<{ include: { category: true } }> & { categoryDisplayName: string }) | null> {
+	async findByIdLocalized(params: { id: string; locale: string }): Promise<
+		| (Prisma.JobGetPayload<{ include: { category: true } }> & {
+				categoryDisplayName: string;
+		  })
+		| null
+	> {
 		const job = await this._prisma.job.findUnique({
 			where: { id: params.id },
 			include: {
 				category: {
 					include: {
 						translations: {
-							where: { locale: { in: [params.locale, LocaleConstants.DEFAULT_LOCALE] } },
+							where: {
+								locale: {
+									in: [params.locale, LocaleConstants.DEFAULT_LOCALE],
+									mode: "insensitive",
+								},
+							},
 						},
 					},
 				},
@@ -35,7 +42,14 @@ export class JobRepository {
 				createdAt: job.category.createdAt,
 				updatedAt: job.category.updatedAt,
 			},
-			categoryDisplayName: LocaleUtils.resolveLocalizedName(job.category.translations, params.locale) ?? "",
+			categoryDisplayName:
+				LocaleUtils.resolveLocalizedString({
+					translations: job.category.translations.map((t) => ({
+						locale: t.locale,
+						string: t.name,
+					})),
+					targetLocale: params.locale,
+				}) ?? "",
 		};
 	}
 

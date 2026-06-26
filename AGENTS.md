@@ -265,7 +265,22 @@ Do not instantiate services manually unless there is a clear technical reason.
 
 Code must be boring, explicit, and easy to review.
 
-Use descriptive names.
+Variable and function names must describe both the **input format** and the **transformation/output**. Reading the name alone must reveal what value you pass in and what comes out — no implementation-reading required.
+
+Bad — vague transformation, unknown input format:
+```ts
+normalizeLocale("pt-br")        // normalize what? what do I pass in?
+formatLocaleCasing("pt-br")      // "casing" tells the what, but "locale" is unclear — what is a locale?
+```
+
+Good — input format + transformation are both explicit:
+```ts
+formatBcp47LocaleTag("pt-br")   // "I pass a BCP 47 locale tag like pt-br, and it formats it"
+```
+
+The function name `formatBcp47LocaleTag` tells you:
+- **Input**: a BCP 47 locale tag (a well-known standard string format like `pt-br`, `en-US`)
+- **Output**: the formatted version of that tag (language lowercase, region uppercase → `pt-BR`)
 
 Avoid:
 
@@ -786,12 +801,14 @@ Don't skip any. Missing one means the env var won't reach the container in that 
 
 ### Before Finishing
 
-Run the relevant checks:
+Before closing a task, always run linting and type checking — in addition to tests. A change is not complete until `pnpm lint`, `pnpm typecheck`, and `pnpm test` all pass. Do not skip these even for small changes.
+
+Run the relevant checks in order:
 
 ```bash
-pnpm test
 pnpm lint
 pnpm typecheck
+pnpm test
 ```
 
 If the repository has more specific scripts, prefer the smallest relevant module-level checks first, then broader checks when needed.

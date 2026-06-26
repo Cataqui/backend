@@ -102,5 +102,29 @@ describe("RequestUtils", () => {
 		it("should include the invalid value in the exception message", () => {
 			expect(() => RequestUtils.resolveRequestLocale("!!!bad")).toThrow("!!!bad");
 		});
+
+		it("should normalize PT-BR to pt-BR", () => {
+			const result = RequestUtils.resolveRequestLocale("PT-BR");
+
+			expect(result).toBe("pt-BR");
+		});
+
+		it("should normalize EN-us to en-US", () => {
+			const result = RequestUtils.resolveRequestLocale("EN-us");
+
+			expect(result).toBe("en-US");
+		});
+
+		it("should normalize es-mx to es-MX", () => {
+			const result = RequestUtils.resolveRequestLocale("es-mx");
+
+			expect(result).toBe("es-MX");
+		});
+
+		it("should normalize Pt-bR to pt-BR", () => {
+			const result = RequestUtils.resolveRequestLocale("Pt-bR");
+
+			expect(result).toBe("pt-BR");
+		});
 	});
 });

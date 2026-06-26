@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { InvalidLocaleException } from "../../core/errors/invalid-locale.exception";
 import { LocaleConstants } from "../locale/locale.constants";
+import { LocaleUtils } from "../locale/locale.utils";
 
 function resolveRequestId(request: FastifyRequest): string {
 	const headerRequestId = request.headers["x-request-id"];
@@ -21,7 +22,7 @@ function resolveRequestLocale(acceptLanguage: string | undefined): string {
 
 	if (primary.length > 0 && !LocaleConstants.LOCALE_TAG_REGEX.test(primary)) throw new InvalidLocaleException(primary);
 
-	return primary || LocaleConstants.DEFAULT_LOCALE;
+	return LocaleUtils.formatBcp47LocaleTag(primary) || LocaleConstants.DEFAULT_LOCALE;
 }
 
 export const RequestUtils = {

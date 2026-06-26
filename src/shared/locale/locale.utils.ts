@@ -1,18 +1,29 @@
 import { LocaleConstants } from "./locale.constants";
 
-function resolveLocalizedName(
-	translations: ReadonlyArray<{ locale: string; name: string }>,
-	locale: string,
-): string | undefined {
-	const requested = translations.find((t) => t.locale === locale);
-	if (requested) return requested.name;
+function formatBcp47LocaleTag(bcp47LocaleTag: string): string {
+	const [language = "", region] = bcp47LocaleTag.split("-");
 
-	const defaultTranslation = translations.find((t) => t.locale === LocaleConstants.DEFAULT_LOCALE);
-	if (defaultTranslation) return defaultTranslation.name;
+	if (!region) return language.toLowerCase();
+	return `${language.toLowerCase()}-${region.toUpperCase()}`;
+}
 
-	return translations[0]?.name;
+function resolveLocalizedString(params: {
+	translations: ReadonlyArray<{ locale: string; string: string }>;
+	targetLocale: string;
+}): string | undefined {
+	const requestedLocaleLower = params.targetLocale.toLowerCase();
+	const defaultLocaleLower = LocaleConstants.DEFAULT_LOCALE.toLowerCase();
+
+	const requested = params.translations.find((t) => t.locale.toLowerCase() === requestedLocaleLower);
+	if (requested) return requested.string;
+
+	const defaultTranslation = params.translations.find((t) => t.locale.toLowerCase() === defaultLocaleLower);
+	if (defaultTranslation) return defaultTranslation.string;
+
+	return params.translations[0]?.string;
 }
 
 export const LocaleUtils = {
-	resolveLocalizedName,
+	formatBcp47LocaleTag,
+	resolveLocalizedString,
 } as const;
