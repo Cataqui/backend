@@ -106,15 +106,37 @@ export class JobService {
 			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
 			temperature: 0,
-			maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
 			abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
 		});
 
-		const trimmed = rawSummary.trim();
+		let trimmed = rawSummary.trim();
 
 		if (trimmed.length === 0) return;
+
+		if (trimmed.length > JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH) {
+			const shortened = await this._shortenSummary(trimmed);
+
+			if (shortened.length > 0) trimmed = shortened.trim();
+		}
+
 		const summary = StringUtils.truncateToLimitAfterWord(trimmed, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH);
 
 		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
+	}
+
+	private async _shortenSummary(summary: string): Promise<string> {
+		try {
+			const result = await this._aiGatewayService.generateText({
+				jobType: AiGatewayJobTypeModel.SUMMARIZE,
+				system: JobDescriptionSummaryPrompts.buildShortenSystemPrompt(),
+				prompt: JobDescriptionSummaryPrompts.buildShortenUserPrompt(summary),
+				temperature: 0,
+				abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
+			});
+			return result.trim();
+		} catch (error) {
+			this._logger.error("Failed to shorten description summary:", error);
+			return "";
+		}
 	}
 }

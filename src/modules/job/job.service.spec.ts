@@ -530,7 +530,6 @@ describe("JobService", () => {
 					system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 					prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
 					temperature: 0,
-					maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
 					abortSignal: expect.any(AbortSignal),
 				}),
 			);
@@ -621,6 +620,102 @@ describe("JobService", () => {
 			await vi.waitFor(() => {
 				expect(jobRepository.updateDescriptionSummary).not.toHaveBeenCalled();
 			});
+		});
+
+		it("should not call AI to shorten when the summary is within the limit", async () => {
+			aiGatewayService.generateText.mockResolvedValue("d".repeat(50));
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			expect(aiGatewayService.generateText).toHaveBeenCalledTimes(1);
+		});
+
+		it("should call AI to shorten when the summary exceeds the limit", async () => {
+			const longSummary = "c".repeat(150);
+			const shortSummary = "c".repeat(80);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			expect(aiGatewayService.generateText).toHaveBeenCalledTimes(2);
+		});
+
+		it("should pass the shorten prompt on the second AI call", async () => {
+			const longSummary = "c".repeat(150);
+			const shortSummary = "c".repeat(80);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			expect(aiGatewayService.generateText).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					system: JobDescriptionSummaryPrompts.buildShortenSystemPrompt(),
+				}),
+			);
+		});
+
+		it("should use the shortened summary when the second call succeeds", async () => {
+			const longSummary = "c".repeat(150);
+			const shortSummary = "c".repeat(80);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe(shortSummary);
+		});
+
+		it("should truncate when the shortened summary still exceeds the limit", async () => {
+			const longSummary = "c".repeat(150);
+			const stillLongSummary = "c".repeat(120);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(stillLongSummary);
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+		});
+
+		it("should fall back to truncating the original summary when the shorten call throws", async () => {
+			const longSummary = "c".repeat(150);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockRejectedValueOnce(new Error("AI timeout"));
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+		});
+
+		it("should fall back to truncating the original summary when the shorten call returns empty", async () => {
+			const longSummary = "c".repeat(150);
+			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce("   ");
+
+			await service.createJob(createValidDto(), "en-US");
+			await vi.waitFor(() => {
+				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
+			});
+
+			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
 		});
 	});
 
