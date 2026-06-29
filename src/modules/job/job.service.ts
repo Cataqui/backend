@@ -4,7 +4,6 @@ import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/p
 import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
 import { AiGatewayService } from "../../core/ai/ai-gateway-service";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
-import { StringUtils } from "../../shared/utils/string.utils";
 import { MapService } from "../map/map.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
@@ -120,9 +119,7 @@ export class JobService {
 			if (shortened.length > 0) trimmed = shortened.trim();
 		}
 
-		const summary = StringUtils.truncateToLimitAfterWord(trimmed, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH);
-
-		await this._jobRepository.updateDescriptionSummary({ jobId, summary });
+		await this._jobRepository.updateDescriptionSummary({ jobId, summary: trimmed });
 	}
 
 	private async _shortenSummary(summary: string): Promise<string> {

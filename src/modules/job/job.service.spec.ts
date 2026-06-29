@@ -572,7 +572,7 @@ describe("JobService", () => {
 			expect(createData?.descriptionSummary).toBe(exactDescription);
 		});
 
-		it("should truncate AI-generated summary when it exceeds DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
+		it("should preserve AI-generated summary even when it exceeds DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
 			const longSummary = "c".repeat(150);
 			aiGatewayService.generateText.mockResolvedValue(longSummary);
 
@@ -582,7 +582,7 @@ describe("JobService", () => {
 			});
 
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+			expect(updateCall?.summary).toBe("c".repeat(150));
 		});
 
 		it("should preserve AI-generated summary when it is within DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
@@ -598,7 +598,7 @@ describe("JobService", () => {
 			expect(updateCall?.summary).toBe(shortSummary);
 		});
 
-		it("should truncate AI-generated summary at word boundary when it exceeds the limit", async () => {
+		it("should preserve AI-generated summary at full length even when it exceeds the limit", async () => {
 			const longSummary =
 				"Auxiliar na preparação, montagem e suporte operacional de eventos, incluindo transporte, montagem de estruturas, organização de materiais e apoio à recepção, com necessidade de mobilidade física e atenção aos detalhes";
 			aiGatewayService.generateText.mockResolvedValue(longSummary);
@@ -609,9 +609,7 @@ describe("JobService", () => {
 			});
 
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe(
-				"Auxiliar na preparação, montagem e suporte operacional de eventos, incluindo transporte, montagem",
-			);
+			expect(updateCall?.summary).toBe(longSummary);
 		});
 
 		it("should not update description summary when AI returns empty text", async () => {
@@ -679,7 +677,7 @@ describe("JobService", () => {
 			expect(updateCall?.summary).toBe(shortSummary);
 		});
 
-		it("should truncate when the shortened summary still exceeds the limit", async () => {
+		it("should preserve the shortened summary even when it still exceeds the limit", async () => {
 			const longSummary = "c".repeat(150);
 			const stillLongSummary = "c".repeat(120);
 			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(stillLongSummary);
@@ -690,10 +688,10 @@ describe("JobService", () => {
 			});
 
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+			expect(updateCall?.summary).toBe("c".repeat(120));
 		});
 
-		it("should fall back to truncating the original summary when the shorten call throws", async () => {
+		it("should preserve the original summary when the shorten call throws", async () => {
 			const longSummary = "c".repeat(150);
 			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockRejectedValueOnce(new Error("AI timeout"));
 
@@ -703,10 +701,10 @@ describe("JobService", () => {
 			});
 
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+			expect(updateCall?.summary).toBe("c".repeat(150));
 		});
 
-		it("should fall back to truncating the original summary when the shorten call returns empty", async () => {
+		it("should preserve the original summary when the shorten call returns empty", async () => {
 			const longSummary = "c".repeat(150);
 			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce("   ");
 
@@ -716,7 +714,7 @@ describe("JobService", () => {
 			});
 
 			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+			expect(updateCall?.summary).toBe("c".repeat(150));
 		});
 	});
 
