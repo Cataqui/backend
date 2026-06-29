@@ -530,6 +530,7 @@ describe("JobService", () => {
 					system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 					prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
 					temperature: 0,
+					maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
 					abortSignal: expect.any(AbortSignal),
 				}),
 			);

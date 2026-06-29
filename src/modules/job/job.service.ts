@@ -106,6 +106,7 @@ export class JobService {
 			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
 			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
 			temperature: 0,
+			maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
 			abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
 		});
 
@@ -131,6 +132,7 @@ export class JobService {
 				system: JobDescriptionSummaryPrompts.buildShortenSystemPrompt(),
 				prompt: JobDescriptionSummaryPrompts.buildShortenUserPrompt(summary),
 				temperature: 0,
+				maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
 				abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
 			});
 			return result.trim();
