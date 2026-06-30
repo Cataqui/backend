@@ -163,7 +163,7 @@ describe("JobController", () => {
 
 			await controller.create(dto, "en-US");
 
-			expect(jobService.createJob).toHaveBeenCalledWith(dto, "en-US");
+			expect(jobService.createJob).toHaveBeenCalledWith({ dto: dto, locale: "en-US" });
 		});
 	});
 

@@ -1,8 +1,6 @@
-import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { ILocationCoordinate } from "@/shared/utils/location/location-coordinate.interface";
+import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/prisma/client.js";
-import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
-import { AiGatewayService } from "../../core/ai/ai-gateway-service";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { MapService } from "../map/map.service";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -10,11 +8,10 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobConstants } from "./job.constants";
 import { JobLocationConstants } from "./job-location.constants";
-import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
-import { JobRepository } from "./repositories/job.repository";
+import { JobDescriptionService } from "./job-description.service";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
+import { JobRepository } from "./repositories/job.repository";
 
 @Injectable()
 export class JobService {
@@ -24,7 +21,7 @@ export class JobService {
 		private readonly _jobRepository: JobRepository,
 		private readonly _jobCategoryRepository: JobCategoryRepository,
 		private readonly _mapService: MapService,
-		private readonly _aiGatewayService: AiGatewayService,
+		private readonly _jobDescriptionService: JobDescriptionService,
 	) {}
 
 	async getJob(params: { jobId: string; locale: string }): Promise<JobOutputDto> {
@@ -38,7 +35,7 @@ export class JobService {
 		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapConfig);
 	}
 
-	async createJob(dto: CreateJobRequestDto, locale: string): Promise<JobOutputDto> {
+	async createJob({ dto, locale }: { dto: CreateJobRequestDto; locale: string }): Promise<JobOutputDto> {
 		if (dto.type !== JobType.INDIVIDUAL && dto.payment.amountPeriod === JobPaymentAmountPeriod.SINGLE) {
 			throw new InvalidJobTypePeriodError();
 		}
@@ -70,7 +67,7 @@ export class JobService {
 			data: {
 				title: dto.title,
 				description: dto.description,
-				descriptionSummary: dto.description.substring(0, JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH),
+				descriptionSummary: dto.description,
 				status: JobStatus.ACTIVE,
 				contactPhoneNumber: dto.contact.phoneNumber,
 				contactMethod: dto.contact.method,
@@ -92,50 +89,16 @@ export class JobService {
 			},
 		});
 
-		this._improveDescriptionSummary(job.id, dto.description).catch((error) => {
-			this._logger.error(`Failed to generate description summary for job ${job.id}:`, error);
-		});
+		this._jobDescriptionService
+			.improveDescriptionSummary({
+				jobId: job.id,
+				title: dto.title,
+				description: dto.description,
+			})
+			.catch((error) => {
+				this._logger.error(`Failed to generate description summary for job ${job.id}:`, error);
+			});
 
 		return JobOutputDto.fromDatabase(job, category.displayName, mapConfig);
-	}
-
-	private async _improveDescriptionSummary(jobId: string, description: string): Promise<void> {
-		const rawSummary = await this._aiGatewayService.generateText({
-			jobType: AiGatewayJobTypeModel.SUMMARIZE,
-			system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
-			prompt: JobDescriptionSummaryPrompts.buildUserPrompt(description),
-			temperature: 0,
-			maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
-			abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
-		});
-
-		let trimmed = rawSummary.trim();
-
-		if (trimmed.length === 0) return;
-
-		if (trimmed.length > JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH) {
-			const shortened = await this._shortenSummary(trimmed);
-
-			if (shortened.length > 0) trimmed = shortened.trim();
-		}
-
-		await this._jobRepository.updateDescriptionSummary({ jobId, summary: trimmed });
-	}
-
-	private async _shortenSummary(summary: string): Promise<string> {
-		try {
-			const result = await this._aiGatewayService.generateText({
-				jobType: AiGatewayJobTypeModel.SUMMARIZE,
-				system: JobDescriptionSummaryPrompts.buildShortenSystemPrompt(),
-				prompt: JobDescriptionSummaryPrompts.buildShortenUserPrompt(summary),
-				temperature: 0,
-				maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
-				abortSignal: AbortSignal.timeout(JobConstants.DESCRIPTION_SUMMARY_TIMEOUT_MS),
-			});
-			return result.trim();
-		} catch (error) {
-			this._logger.error("Failed to shorten description summary:", error);
-			return "";
-		}
 	}
 }

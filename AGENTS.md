@@ -296,19 +296,42 @@ const post = await this._postsRepository.findById({ postId });
 
 ### Named Parameters
 
-If a function receives more than two arguments, use an object parameter.
+Always use named (object) parameters unless the sole parameter is self-evident from the function name alone.
 
-Good:
+**Test: is the parameter "clean"?** If you can look at the call site and instantly know what every value means without reading the function signature, it's clean. Otherwise, use named params.
+
+Use named param — `languageCode` is a domain concept, the call site doesn't explain it:
 
 ```ts
+buildSystemPrompt({ languageCode: "por" });
 findNearbyPosts({ cityId, categoryId, cursor, limit });
 ```
 
-Bad:
+Don't use named param — `a` and `b` are trivially clear:
 
 ```ts
-findNearbyPosts(cityId, categoryId, cursor, limit);
+multiply(a, b);
 ```
+
+A single domain-ambiguous argument is enough to require named params. Every value at the call site must be obvious *without* checking the function signature.
+
+**Always use explicit key-value pairs** — never shorthand. This makes it safer to rename the local variable without changing the API contract.
+
+Wrong — shorthand makes it hard to tell key from value:
+
+```ts
+buildUserPrompt({ description, title, languageCode });
+```
+
+Correct — explicit pairs decouple the key (API) from the value (local):
+
+```ts
+buildUserPrompt({ description: description, title: title, languageCode: languageCode });
+```
+
+If you rename the local var `languageCode` to `lang`, the shorthand form `{ languageCode }` breaks the API (it'd pass `lang` as `languageCode`). The explicit form `{ languageCode: lang }` is a one-word fix and makes the intent obvious.
+
+Note: Biome cannot enforce this lint — its `useShorthandAssignments` rule (part of the recommended preset) does the opposite. This is a code review convention.
 
 ### Guard Clauses
 

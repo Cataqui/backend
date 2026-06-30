@@ -1,3 +1,3 @@
 export enum AiGatewayJobTypeModel {
-	SUMMARIZE = "workers-ai/@cf/qwen/qwen3-30b-a3b-fp8",
+	SUMMARIZE = "workers-ai/@cf/meta/llama-3.1-8b-instruct-fast",
 }

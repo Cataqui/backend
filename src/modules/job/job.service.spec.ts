@@ -6,8 +6,6 @@ import {
 	JobStatus,
 	JobType,
 } from "../../../generated/prisma/client.js";
-import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
-import { AiGatewayService } from "../../core/ai/ai-gateway-service";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { MapService } from "../map/map.service";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
@@ -19,9 +17,9 @@ import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobConstants } from "./job.constants";
+import { JobDescriptionService } from "./job-description.service";
 import { JobService } from "./job.service";
 import { JobLocationConstants } from "./job-location.constants";
-import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 
@@ -165,9 +163,11 @@ describe("JobService", () => {
 	let jobRepository: JobRepository;
 	let jobCategoryRepository: JobCategoryRepository;
 	let mapService: MapService;
-	let aiGatewayService: { generateText: ReturnType<typeof vi.fn> };
+	let jobDescriptionService: { improveDescriptionSummary: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
+		vi.clearAllMocks();
+
 		jobRepository = {
 			create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 			findByIdLocalized: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
@@ -192,8 +192,8 @@ describe("JobService", () => {
 			}),
 		} as unknown as MapService;
 
-		aiGatewayService = {
-			generateText: vi.fn().mockResolvedValue(""),
+		jobDescriptionService = {
+			improveDescriptionSummary: vi.fn().mockResolvedValue(undefined),
 		};
 
 		const module = await Test.createTestingModule({
@@ -202,7 +202,7 @@ describe("JobService", () => {
 				{ provide: JobRepository, useValue: jobRepository },
 				{ provide: JobCategoryRepository, useValue: jobCategoryRepository },
 				{ provide: MapService, useValue: mapService },
-				{ provide: AiGatewayService, useValue: aiGatewayService },
+				{ provide: JobDescriptionService, useValue: jobDescriptionService },
 			],
 		}).compile();
 
@@ -211,7 +211,7 @@ describe("JobService", () => {
 
 	describe("createJob", () => {
 		it("should create a job and return JobOutputDto", async () => {
-			const result = await service.createJob(createValidDto(), "en-US");
+			const result = await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 			expect(result.jobId).toBe("cm3x-job-1");
@@ -222,7 +222,9 @@ describe("JobService", () => {
 		it("should throw CategoryNotFoundError when category does not exist", async () => {
 			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-			await expect(service.createJob(createValidDto(), "en-US")).rejects.toThrow(CategoryNotFoundError);
+			await expect(service.createJob({ dto: createValidDto(), locale: "en-US" })).rejects.toThrow(
+				CategoryNotFoundError,
+			);
 		});
 
 		it("should throw InvalidJobTypePeriodError when EMPLOYMENT has SINGLE period", async () => {
@@ -235,7 +237,7 @@ describe("JobService", () => {
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
-			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypePeriodError);
+			await expect(service.createJob({ dto: dto, locale: "en-US" })).rejects.toThrow(InvalidJobTypePeriodError);
 		});
 
 		it("should throw InvalidJobTypePeriodError when CONTRACTOR has SINGLE period", async () => {
@@ -248,7 +250,7 @@ describe("JobService", () => {
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.CONTRACTOR, payment });
 
-			await expect(service.createJob(dto, "en-US")).rejects.toThrow(InvalidJobTypePeriodError);
+			await expect(service.createJob({ dto: dto, locale: "en-US" })).rejects.toThrow(InvalidJobTypePeriodError);
 		});
 
 		it("should not throw when EMPLOYMENT has non-SINGLE period", async () => {
@@ -261,17 +263,17 @@ describe("JobService", () => {
 			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
 			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
 
-			await expect(service.createJob(dto, "en-US")).resolves.not.toThrow();
+			await expect(service.createJob({ dto: dto, locale: "en-US" })).resolves.not.toThrow();
 		});
 
 		it("should call MapService.getConfig with BR region on create", async () => {
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			expect(mapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
 		});
 
 		it("should set mapConfig on createJob output location", async () => {
-			const result = await service.createJob(createValidDto(), "en-US");
+			const result = await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			expect(result.location.mapConfig.mapVersion).toBe("br");
 		});
@@ -294,25 +296,25 @@ describe("JobService", () => {
 				throw new Error("repository.create called before async lookups");
 			});
 
-			const createPromise = service.createJob(createValidDto(), "en-US");
+			const createPromise = service.createJob({ dto: createValidDto(), locale: "en-US" });
 			await expect(createPromise).rejects.toThrow("repository.create called before async lookups");
 		});
 
 		it("should fetch map config only once (not after job creation)", async () => {
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			expect(mapService.getConfig).toHaveBeenCalledTimes(1);
 		});
 
 		it("should set status to ACTIVE", async () => {
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect(createCall?.status).toBe(JobStatus.ACTIVE);
 		});
 
 		it("should pass all values to the repository", async () => {
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -343,7 +345,7 @@ describe("JobService", () => {
 		});
 
 		it("should pass real coordinates as PostGIS location point to the repository", async () => {
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
 
@@ -356,7 +358,7 @@ describe("JobService", () => {
 		it("should fuzz coordinates when street is provided", async () => {
 			const randomSpy = vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.25);
 
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			randomSpy.mockRestore();
@@ -373,7 +375,7 @@ describe("JobService", () => {
 		it("should call location fuzzing with job coordinates and constants when street is provided", async () => {
 			const fuzzLocationCoordinateSpy = vi.spyOn(LocationUtils, "fuzzLocationCoordinate");
 
-			await service.createJob(createValidDto(), "en-US");
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
 			expect(fuzzLocationCoordinateSpy).toHaveBeenCalledWith({
 				latitude: -23.55052,
@@ -417,7 +419,7 @@ describe("JobService", () => {
 			};
 			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -456,7 +458,7 @@ describe("JobService", () => {
 				payment,
 			});
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -467,7 +469,7 @@ describe("JobService", () => {
 			const dto = createValidDto();
 			Object.assign(dto.location, { street: null });
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -484,7 +486,7 @@ describe("JobService", () => {
 			const dto = createValidDto();
 			Object.assign(dto.location, { street: "" });
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 
@@ -504,7 +506,7 @@ describe("JobService", () => {
 				displayName: "Ayuda con mudanza",
 			});
 
-			const result = await service.createJob(createValidDto(), "es-MX");
+			const result = await service.createJob({ dto: createValidDto(), locale: "es-MX" });
 
 			expect(result.category.name).toBe("Ayuda con mudanza");
 		});
@@ -516,49 +518,44 @@ describe("JobService", () => {
 				displayName: "Moving Help",
 			});
 
-			const result = await service.createJob(createValidDto(), "fr-FR");
+			const result = await service.createJob({ dto: createValidDto(), locale: "fr-FR" });
 
 			expect(result.category.name).toBe("Moving Help");
 		});
 
-		it("should call AI to generate a description summary", async () => {
-			await service.createJob(createValidDto(), "en-US");
+		it("should call JobDescriptionService to improve the description summary", async () => {
+			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
-			expect(aiGatewayService.generateText).toHaveBeenCalledWith(
-				expect.objectContaining({
-					jobType: AiGatewayJobTypeModel.SUMMARIZE,
-					system: JobDescriptionSummaryPrompts.buildSystemPrompt(),
-					prompt: JobDescriptionSummaryPrompts.buildUserPrompt("Need someone to help unload a delivery truck."),
-					temperature: 0,
-					maxTokens: JobConstants.DESCRIPTION_SUMMARY_MAX_TOKENS,
-					abortSignal: expect.any(AbortSignal),
-				}),
-			);
+			expect(jobDescriptionService.improveDescriptionSummary).toHaveBeenCalledWith({
+				jobId: "cm3x-job-1",
+				title: "Help unload truck",
+				description: "Need someone to help unload a delivery truck.",
+			});
 		});
 
-		it("should not await AI summary call before returning the created job", async () => {
-			aiGatewayService.generateText.mockReturnValue(new Promise<string>(() => {}));
+		it("should not await description summary improvement before returning the created job", async () => {
+			jobDescriptionService.improveDescriptionSummary.mockReturnValue(new Promise<void>(() => {}));
 
-			const resultPromise = service.createJob(createValidDto(), "en-US");
+			const resultPromise = service.createJob({ dto: createValidDto(), locale: "en-US" });
 			const result = await Promise.race([
 				resultPromise,
 				new Promise<never>((_resolve, reject) =>
-					setTimeout(() => reject(new Error("createJob appears to await AI summary")), 500),
+					setTimeout(() => reject(new Error("createJob appears to await description summary")), 500),
 				),
 			]);
 
 			expect(result).toBeInstanceOf(JobOutputDto);
 		});
 
-		it("should truncate description to DESCRIPTION_SUMMARY_MAX_LENGTH when description exceeds limit", async () => {
+		it("should store the full description while AI summary generation is pending", async () => {
 			const longDescription = "a".repeat(150);
 			const dto = createValidDto();
 			Object.assign(dto, { description: longDescription });
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createData?.descriptionSummary).toBe("a".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH));
+			expect(createData?.descriptionSummary).toBe(longDescription);
 		});
 
 		it("should preserve description when it is exactly at DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
@@ -566,155 +563,10 @@ describe("JobService", () => {
 			const dto = createValidDto();
 			Object.assign(dto, { description: exactDescription });
 
-			await service.createJob(dto, "en-US");
+			await service.createJob({ dto: dto, locale: "en-US" });
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect(createData?.descriptionSummary).toBe(exactDescription);
-		});
-
-		it("should preserve AI-generated summary even when it exceeds DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
-			const longSummary = "c".repeat(150);
-			aiGatewayService.generateText.mockResolvedValue(longSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(150));
-		});
-
-		it("should preserve AI-generated summary when it is within DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
-			const shortSummary = "d".repeat(50);
-			aiGatewayService.generateText.mockResolvedValue(shortSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe(shortSummary);
-		});
-
-		it("should preserve AI-generated summary at full length even when it exceeds the limit", async () => {
-			const longSummary =
-				"Auxiliar na preparação, montagem e suporte operacional de eventos, incluindo transporte, montagem de estruturas, organização de materiais e apoio à recepção, com necessidade de mobilidade física e atenção aos detalhes";
-			aiGatewayService.generateText.mockResolvedValue(longSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe(longSummary);
-		});
-
-		it("should not update description summary when AI returns empty text", async () => {
-			aiGatewayService.generateText.mockResolvedValue("   ");
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).not.toHaveBeenCalled();
-			});
-		});
-
-		it("should not call AI to shorten when the summary is within the limit", async () => {
-			aiGatewayService.generateText.mockResolvedValue("d".repeat(50));
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			expect(aiGatewayService.generateText).toHaveBeenCalledTimes(1);
-		});
-
-		it("should call AI to shorten when the summary exceeds the limit", async () => {
-			const longSummary = "c".repeat(150);
-			const shortSummary = "c".repeat(80);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			expect(aiGatewayService.generateText).toHaveBeenCalledTimes(2);
-		});
-
-		it("should pass the shorten prompt on the second AI call", async () => {
-			const longSummary = "c".repeat(150);
-			const shortSummary = "c".repeat(80);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			expect(aiGatewayService.generateText).toHaveBeenNthCalledWith(
-				2,
-				expect.objectContaining({
-					system: JobDescriptionSummaryPrompts.buildShortenSystemPrompt(),
-				}),
-			);
-		});
-
-		it("should use the shortened summary when the second call succeeds", async () => {
-			const longSummary = "c".repeat(150);
-			const shortSummary = "c".repeat(80);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(shortSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe(shortSummary);
-		});
-
-		it("should preserve the shortened summary even when it still exceeds the limit", async () => {
-			const longSummary = "c".repeat(150);
-			const stillLongSummary = "c".repeat(120);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce(stillLongSummary);
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(120));
-		});
-
-		it("should preserve the original summary when the shorten call throws", async () => {
-			const longSummary = "c".repeat(150);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockRejectedValueOnce(new Error("AI timeout"));
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(150));
-		});
-
-		it("should preserve the original summary when the shorten call returns empty", async () => {
-			const longSummary = "c".repeat(150);
-			aiGatewayService.generateText.mockResolvedValueOnce(longSummary).mockResolvedValueOnce("   ");
-
-			await service.createJob(createValidDto(), "en-US");
-			await vi.waitFor(() => {
-				expect(jobRepository.updateDescriptionSummary).toHaveBeenCalled();
-			});
-
-			const updateCall = (jobRepository.updateDescriptionSummary as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-			expect(updateCall?.summary).toBe("c".repeat(150));
 		});
 	});
 

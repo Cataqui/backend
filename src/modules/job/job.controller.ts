@@ -26,6 +26,6 @@ export class JobController {
 	@HttpCode(HttpStatus.CREATED)
 	@ApiCreateJobDocs()
 	async create(@Body() dto: CreateJobRequestDto, @RequestLocale() locale: string): Promise<JobOutputDto> {
-		return this._jobService.createJob(dto, locale);
+		return this._jobService.createJob({ dto: dto, locale: locale });
 	}
 }

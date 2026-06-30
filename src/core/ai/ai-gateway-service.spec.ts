@@ -65,7 +65,7 @@ describe("AiGatewayService", () => {
 		expect(result).toBe("Test summary");
 	});
 
-	it("should pass maxTokens to aiGenerateText when provided", async () => {
+	it("should pass maxOutputTokens to aiGenerateText when maxTokens is provided", async () => {
 		mockGenerateText.mockResolvedValue({ text: "test" });
 
 		const module = await Test.createTestingModule({
@@ -81,7 +81,7 @@ describe("AiGatewayService", () => {
 			maxTokens: 256,
 		});
 
-		expect(mockGenerateText).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 256 }));
+		expect(mockGenerateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 256 }));
 	});
 
 	it("should pass abortSignal to aiGenerateText when provided", async () => {

@@ -1,3 +1,4 @@
+import { franc } from "franc-min";
 import { LocaleConstants } from "./locale.constants";
 
 function formatBcp47LocaleTag(bcp47LocaleTag: string): string {
@@ -23,7 +24,12 @@ function resolveLocalizedString(params: {
 	return params.translations[0]?.string;
 }
 
+function detectTextLocaleAsISO6393(text: string): string {
+	return franc(text, { minLength: 1 });
+}
+
 export const LocaleUtils = {
 	formatBcp47LocaleTag,
 	resolveLocalizedString,
+	detectTextLocaleAsISO6393,
 } as const;

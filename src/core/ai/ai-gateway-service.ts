@@ -36,7 +36,7 @@ export class AiGatewayService {
 			system: params.system,
 			prompt: params.prompt,
 			temperature: params.temperature,
-			...(params.maxTokens !== undefined && { maxTokens: params.maxTokens }),
+			...(params.maxTokens !== undefined && { maxOutputTokens: params.maxTokens }),
 			...(params.abortSignal && { abortSignal: params.abortSignal }),
 		});
 
