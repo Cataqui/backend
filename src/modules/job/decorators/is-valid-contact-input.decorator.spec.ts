@@ -2,7 +2,9 @@ import fc from "fast-check";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
 import { IsValidContactInputConstraint } from "./is-valid-contact-input.decorator";
 
-function makeValidationArgs(contact: Record<string, unknown>): Parameters<IsValidContactInputConstraint["defaultMessage"]>[0] {
+function makeValidationArgs(
+	contact: Record<string, unknown>,
+): Parameters<IsValidContactInputConstraint["defaultMessage"]>[0] {
 	return {
 		object: {},
 		property: "contact",
@@ -149,7 +151,10 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should fail when identifier is a number", () => {
-			const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: 12345 } as Record<string, unknown>);
+			const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: 12345 } as Record<
+				string,
+				unknown
+			>);
 
 			expect(result).toBe(false);
 		});
@@ -163,7 +168,10 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should fail when identifier is an array", () => {
-			const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: ["+5511999999999"] } as Record<string, unknown>);
+			const result = constraint.validate({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: ["+5511999999999"],
+			} as Record<string, unknown>);
 
 			expect(result).toBe(false);
 		});
@@ -177,7 +185,10 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should fail when identifier is a plain object", () => {
-			const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: { phone: "+5511999999999" } } as Record<string, unknown>);
+			const result = constraint.validate({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: { phone: "+5511999999999" },
+			} as Record<string, unknown>);
 
 			expect(result).toBe(false);
 		});
@@ -197,9 +208,7 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should return correct message when contact is null", () => {
-			const msg = constraint.defaultMessage(
-				makeValidationArgs(null as unknown as Record<string, unknown>),
-			);
+			const msg = constraint.defaultMessage(makeValidationArgs(null as unknown as Record<string, unknown>));
 
 			expect(msg).toBe("contact is required");
 		});
@@ -225,7 +234,9 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should return correct message when contact method is unknown", () => {
-			const msg = constraint.defaultMessage(makeValidationArgs({ contactMethod: "EMAIL", identifier: "+5511999999999" }));
+			const msg = constraint.defaultMessage(
+				makeValidationArgs({ contactMethod: "EMAIL", identifier: "+5511999999999" }),
+			);
 
 			expect(msg).toBe("contact_method must be set to a supported contact method: WHATSAPP, PHONE_CALL");
 		});
@@ -264,13 +275,7 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should accept valid international phone numbers from various countries", () => {
-			const validPhoneNumbers = [
-				"+5511999999999",
-				"+5521988887777",
-				"+5541999999999",
-				"+14155552671",
-				"+447911123456",
-			];
+			const validPhoneNumbers = ["+5511999999999", "+5521988887777", "+5541999999999", "+14155552671", "+447911123456"];
 
 			for (const phone of validPhoneNumbers) {
 				const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: phone });
@@ -280,12 +285,7 @@ describe("IsValidContactInputConstraint", () => {
 		});
 
 		it("should reject obviously invalid phone-like patterns", () => {
-			const invalidPatterns = [
-				"not-a-phone",
-				"12345",
-				"",
-				"   ",
-			];
+			const invalidPatterns = ["not-a-phone", "12345", "", "   "];
 
 			for (const value of invalidPatterns) {
 				const result = constraint.validate({ contactMethod: JobContactMethod.WHATSAPP, identifier: value });

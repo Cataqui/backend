@@ -1,4 +1,5 @@
 import {
+	isEnum,
 	registerDecorator,
 	type ValidationArguments,
 	type ValidationOptions,
@@ -12,6 +13,15 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 	isValid: boolean;
 	message: string;
 } {
+	if (!payment) return { isValid: false, message: "payment is required" };
+
+	if (!payment.type || !isEnum(payment.type, JobPaymentType)) {
+		return {
+			isValid: false,
+			message: `type must be one of ${Object.values(JobPaymentType).join(", ")}`,
+		};
+	}
+
 	if (payment === null || payment === undefined || typeof payment !== "object") {
 		return { isValid: false, message: "Invalid payment format" };
 	}

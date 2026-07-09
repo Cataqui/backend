@@ -192,7 +192,7 @@ describe("IsValidJobPaymentConstraint", () => {
 
 		it("should return correct message when value is null", () => {
 			const msg = constraint.defaultMessage(createDefaultMessageArgs(null as never));
-			expect(msg).toBe("Invalid payment format");
+			expect(msg).toBe("payment is required");
 		});
 
 		it("should fail validation when value is undefined", () => {
@@ -201,6 +201,30 @@ describe("IsValidJobPaymentConstraint", () => {
 
 		it("should fail validation when value is not an object", () => {
 			expect(constraint.validate("not-an-object")).toBe(false);
+		});
+	});
+
+	describe("payment type validation", () => {
+		it("should fail when type is missing", () => {
+			expect(constraint.validate({})).toBe(false);
+		});
+
+		it("should return correct message when type is missing", () => {
+			const msg = constraint.defaultMessage(createDefaultMessageArgs({} as never));
+			expect(msg).toBe(`type must be one of ${Object.values(JobPaymentType).join(", ")}`);
+		});
+
+		it("should fail when type is an unknown value", () => {
+			expect(constraint.validate({ type: "UNKNOWN" })).toBe(false);
+		});
+
+		it("should return correct message when type is unknown", () => {
+			const msg = constraint.defaultMessage(createDefaultMessageArgs({ type: "UNKNOWN" as JobPaymentType }));
+			expect(msg).toBe(`type must be one of ${Object.values(JobPaymentType).join(", ")}`);
+		});
+
+		it("should fail when type is null", () => {
+			expect(constraint.validate({ type: null })).toBe(false);
 		});
 	});
 });
