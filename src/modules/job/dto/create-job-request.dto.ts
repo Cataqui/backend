@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { IsEnum, IsString, IsUUID, Length, ValidateNested } from "class-validator";
 import { JobType } from "../../../../generated/prisma/client.js";
+import { IsValidContactInput } from "../decorators/is-valid-contact-input.decorator";
 import { IsValidJobPayment } from "../decorators/is-valid-job-payment.decorator";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
@@ -38,6 +39,7 @@ export class CreateJobRequestDto {
 		description: "Person to contact regarding the job offer",
 		type: CreateJobContactInputDto,
 	})
+	@IsValidContactInput()
 	@ValidateNested()
 	@Type(() => CreateJobContactInputDto)
 	readonly contact!: CreateJobContactInputDto;

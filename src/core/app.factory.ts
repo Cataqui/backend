@@ -30,6 +30,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			transform: true,
+			stopAtFirstError: true,
 			transformOptions: {
 				enableImplicitConversion: true,
 			},

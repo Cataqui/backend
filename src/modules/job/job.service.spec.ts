@@ -14,7 +14,6 @@ import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
-import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-contact-details-input.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
@@ -95,14 +94,10 @@ const mockJob: MockJobWithCategory = {
 };
 
 function createValidDto(): CreateJobRequestDto {
-	const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-		phoneNumber: "+5511999999999",
-	});
-	const contactData: Partial<CreateJobContactInputDto> = {
+	const contact = Object.assign(new CreateJobContactInputDto(), {
 		contactMethod: JobContactMethod.WHATSAPP,
-		contactDetails,
-	};
-	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+		identifier: "+5511999999999",
+	});
 	const locationData: Partial<CreateJobLocationInputDto> = {
 		city: "São Paulo",
 		state: "SP",
@@ -134,14 +129,10 @@ function createValidDto(): CreateJobRequestDto {
 }
 
 function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
-	const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-		phoneNumber: "+5511999999999",
-	});
-	const contactData: Partial<CreateJobContactInputDto> = {
+	const contact = Object.assign(new CreateJobContactInputDto(), {
 		contactMethod: JobContactMethod.WHATSAPP,
-		contactDetails,
-	};
-	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+		identifier: "+5511999999999",
+	});
 	const locationData: Partial<CreateJobLocationInputDto> = {
 		city: "São Paulo",
 		state: "SP",
@@ -406,14 +397,10 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street when not provided", async () => {
-			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-				phoneNumber: "+5511999999999",
-			});
-			const contactData: Partial<CreateJobContactInputDto> = {
+			const contact = Object.assign(new CreateJobContactInputDto(), {
 				contactMethod: JobContactMethod.WHATSAPP,
-				contactDetails,
-			};
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+				identifier: "+5511999999999",
+			});
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
 				state: "SP",
@@ -449,14 +436,10 @@ describe("JobService", () => {
 		});
 
 		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
-			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-				phoneNumber: "+5511999999999",
-			});
-			const contactData: Partial<CreateJobContactInputDto> = {
+			const contact = Object.assign(new CreateJobContactInputDto(), {
 				contactMethod: JobContactMethod.WHATSAPP,
-				contactDetails,
-			};
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+				identifier: "+5511999999999",
+			});
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
 				state: "SP",
@@ -631,10 +614,17 @@ describe("JobService", () => {
 			expect(result.contactMethod).toBe(JobContactMethod.WHATSAPP);
 		});
 
-		it("should return contact details with phone number on success", async () => {
+		it("should return identifier on success", async () => {
+			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+				id: "cm3x-contact-1",
+				contactMethod: "WHATSAPP",
+				identifier: "+5511999999999",
+				jobId: "cm3x-job-1",
+			});
+
 			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
 
-			expect(result.contactDetails.getIdentifier()).toBe("+5511999999999");
+			expect(result.identifier).toBe("+5511999999999");
 		});
 
 		it("should throw JobContactNotFoundError when contact does not exist", async () => {

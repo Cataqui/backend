@@ -1,14 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
-import type { ContactDetailsOutputDto } from "../types/job-contact.types";
-import { JobContactUtils } from "../utils/job-contact.utils";
 
 export class JobContactOutputDto {
 	static fromDatabase(contact: { contactMethod: JobContactMethod; identifier: string }): JobContactOutputDto {
 		return new JobContactOutputDto({
 			contactMethod: contact.contactMethod,
-			contactDetails: JobContactUtils.buildDetailsOutputDto(contact.contactMethod, contact.identifier),
+			identifier: contact.identifier,
 		});
 	}
 
@@ -21,15 +19,17 @@ export class JobContactOutputDto {
 	})
 	readonly contactMethod: JobContactMethod;
 
-	@Expose({ name: "contact_details" })
+	@Expose({ name: "identifier" })
 	@ApiProperty({
-		name: "contact_details",
-		description: "Method-specific contact details. Shape depends on contact_method",
+		name: "identifier",
+		description:
+			"Contact identifier such as phone number with country code, email address, etc. Vary depending on the contact method.",
+		example: "+5511999999999",
 	})
-	readonly contactDetails: ContactDetailsOutputDto;
+	readonly identifier: string;
 
-	constructor(params: { contactMethod: JobContactMethod; contactDetails: ContactDetailsOutputDto }) {
+	constructor(params: { contactMethod: JobContactMethod; identifier: string }) {
 		this.contactMethod = params.contactMethod;
-		this.contactDetails = params.contactDetails;
+		this.identifier = params.identifier;
 	}
 }

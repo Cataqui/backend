@@ -560,6 +560,43 @@ export const ObjectUtils = {
 } as const;
 ```
 
+### Use class-validator Built-ins Before Custom Validation
+
+Always check if `class-validator` has a built-in validator (decorator or standalone function) before writing custom validation logic. This applies to both DTO property decorators (`@IsPhoneNumber`, `@Matches`, etc.) and standalone functions used inside custom decorators (`isPhoneNumber`, `isString`, etc.).
+
+The library exports standalone validation functions alongside the decorators — use them instead of raw inline checks.
+
+Good — using the built-in standalone function:
+```ts
+import { isPhoneNumber } from "class-validator";
+
+if (!isPhoneNumber(identifier)) { ... }
+```
+
+Avoid — reinventing it inline:
+```ts
+if (!identifier.startsWith("+") || identifier.length < 8) { ... }
+```
+
+Checking `class-validator` first ensures consistent validation semantics, keeps the codebase small, and reduces review surface for validation logic.
+
+### Derive Enum Values From the Code, Never Hardcode
+
+Never hardcode enum values, list contents, or any domain constants that already exist in the codebase. Always derive them from the source of truth at runtime.
+
+Good — building the error message from the actual enum:
+```ts
+const _VALID_CONTACT_METHODS_LIST = Object.values(JobContactMethod).join(", ");
+// → "contact_method must be set to a supported contact method (WHATSAPP, PHONE_CALL)"
+```
+
+Avoid — hardcoding values that will become stale:
+```ts
+"contact_method must be set to a supported contact method (WHATSAPP or PHONE_CALL)"
+```
+
+This ensures that adding a new enum value automatically updates all derived messages, switches, and serialization logic. No manual update, no drift, no forgotten sites.
+
 ---
 
 ## 6. Error Handling
@@ -602,6 +639,18 @@ Example:
 	"message": "The requested post was not found."
 }
 ```
+
+### Error Message Descriptiveness
+
+Error messages must be deeply descriptive — a developer with zero context about the codebase should understand exactly what went wrong and how to fix it within seconds.
+
+Every validation error message must:
+
+1. **Name the field** that failed: say `identifier` not `"The field"` or `"Value"`. Example: `"identifier must be a string"`, not `"Invalid value"`.
+2. **Explain what's wrong** specifically: say `"must be a phone number with country code, starting with + and followed by 7 to 15 digits"`, not `"invalid format"` or `"validation failed"`.
+3. **Include an example** where possible so the developer knows exactly what to send: `"Example: +5511999999999"`.
+
+A good error message lets the developer fix the problem without reading any docs, looking at the schema, or asking for help.
 
 ---
 

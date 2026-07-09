@@ -103,7 +103,7 @@ export class JobService {
 			},
 			contact: {
 				contactMethod: dto.contact.contactMethod,
-				identifier: dto.contact.contactDetails.getIdentifier(),
+				identifier: dto.contact.identifier,
 			},
 		});
 

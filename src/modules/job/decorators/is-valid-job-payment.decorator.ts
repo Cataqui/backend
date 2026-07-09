@@ -46,9 +46,6 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 
 			return { isValid: true, message: "" };
 		}
-
-		default:
-			return { isValid: false, message: "Fixed payment requires a minimum amount" };
 	}
 }
 

@@ -11,7 +11,6 @@ import {
 } from "../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
-import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-contact-details-input.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -99,14 +98,10 @@ describe("JobController", () => {
 		});
 
 		it("should return JobOutputDto on success", async () => {
-			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-				phoneNumber: "+5511999999999",
-			});
-			const contactData = {
+			const contact = Object.assign(new CreateJobContactInputDto(), {
 				contactMethod: JobContactMethod.WHATSAPP,
-				contactDetails,
-			};
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+				identifier: "+5511999999999",
+			});
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
 				state: "SP",
@@ -143,14 +138,10 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
-				phoneNumber: "+5511999999999",
-			});
-			const contactData = {
+			const contact = Object.assign(new CreateJobContactInputDto(), {
 				contactMethod: JobContactMethod.WHATSAPP,
-				contactDetails,
-			};
-			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
+				identifier: "+5511999999999",
+			});
 			const locationData: Partial<CreateJobLocationInputDto> = {
 				city: "São Paulo",
 				state: "SP",

@@ -1,9 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose, Transform } from "class-transformer";
-import { IsEnum, IsNotEmptyObject, ValidateNested } from "class-validator";
+import { Expose } from "class-transformer";
+import { IsEnum, IsString } from "class-validator";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
-import type { ContactDetailsInputDto } from "../types/job-contact.types";
-import { JobContactUtils } from "../utils/job-contact.utils";
 
 export class CreateJobContactInputDto {
 	@Expose({ name: "contact_method" })
@@ -16,13 +14,13 @@ export class CreateJobContactInputDto {
 	@IsEnum(JobContactMethod)
 	readonly contactMethod!: JobContactMethod;
 
-	@Expose({ name: "contact_details" })
+	@Expose({ name: "identifier" })
 	@ApiProperty({
-		name: "contact_details",
-		description: "Method-specific contact details. Shape depends on contact_method",
+		name: "identifier",
+		description:
+			"Contact identifier such as phone number with country code, email address, etc. Vary depending on the contact method.",
+		example: "+5511999999999",
 	})
-	@IsNotEmptyObject()
-	@Transform(({ obj }: { obj: Record<string, unknown> }) => JobContactUtils.instantiateDetailsInput(obj))
-	@ValidateNested()
-	readonly contactDetails!: ContactDetailsInputDto;
+	@IsString()
+	readonly identifier!: string;
 }

@@ -4,17 +4,22 @@ import { JobContactOutputDto } from "./job-contact-output.dto";
 
 describe("JobContactOutputDto", () => {
 	describe("constructor", () => {
-		it("should set contactMethod and contactDetails", () => {
-			const details = JobContactOutputDto.fromDatabase({
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			}).contactDetails;
+		it("should set contactMethod and identifier", () => {
 			const dto = new JobContactOutputDto({
 				contactMethod: JobContactMethod.WHATSAPP,
-				contactDetails: details,
+				identifier: "+5511999999999",
 			});
 
 			expect(dto.contactMethod).toBe(JobContactMethod.WHATSAPP);
+		});
+
+		it("should set identifier from constructor", () => {
+			const dto = new JobContactOutputDto({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: "+5511999999999",
+			});
+
+			expect(dto.identifier).toBe("+5511999999999");
 		});
 	});
 
@@ -28,6 +33,15 @@ describe("JobContactOutputDto", () => {
 			expect(dto.contactMethod).toBe(JobContactMethod.WHATSAPP);
 		});
 
+		it("should pass identifier through fromDatabase", () => {
+			const dto = JobContactOutputDto.fromDatabase({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: "+5511999999999",
+			});
+
+			expect(dto.identifier).toBe("+5511999999999");
+		});
+
 		it("should create output DTO for PHONE_CALL method", () => {
 			const dto = JobContactOutputDto.fromDatabase({
 				contactMethod: JobContactMethod.PHONE_CALL,
@@ -39,7 +53,7 @@ describe("JobContactOutputDto", () => {
 	});
 
 	describe("serialization", () => {
-		it("should serialize contact_method and nested contact_details as snake_case", () => {
+		it("should serialize contact_method and identifier as snake_case", () => {
 			const dto = JobContactOutputDto.fromDatabase({
 				contactMethod: JobContactMethod.WHATSAPP,
 				identifier: "+5511999999999",
@@ -47,8 +61,7 @@ describe("JobContactOutputDto", () => {
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("contact_method", "WHATSAPP");
-			expect(plain).toHaveProperty("contact_details");
-			expect((plain["contact_details"] as Record<string, unknown>)["phone_number"]).toBe("+5511999999999");
+			expect(plain).toHaveProperty("identifier", "+5511999999999");
 		});
 
 		it("should not expose raw camelCase property names", () => {
@@ -61,16 +74,14 @@ describe("JobContactOutputDto", () => {
 			expect(plain).not.toHaveProperty("contactMethod");
 		});
 
-		it("should serialize PHONE_CALL contact details", () => {
+		it("should not expose nested contact_details field", () => {
 			const dto = JobContactOutputDto.fromDatabase({
 				contactMethod: JobContactMethod.PHONE_CALL,
 				identifier: "+5511888888888",
 			});
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
-			const details = plain["contact_details"] as Record<string, unknown>;
 
-			expect(plain).toHaveProperty("contact_method", "PHONE_CALL");
-			expect(details["phone_number"]).toBe("+5511888888888");
+			expect(plain).not.toHaveProperty("contact_details");
 		});
 	});
 });
