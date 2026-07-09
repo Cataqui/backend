@@ -9,6 +9,48 @@ import { JobLocationOutputDto } from "./job-location-output.dto";
 
 @ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
 export class JobOutputDto {
+	static fromDatabase(
+		job: Prisma.JobGetPayload<{ include: { category: true; contact: true } }>,
+		categoryDisplayName: string,
+		mapConfig: MapConfigOutputDto,
+	): JobOutputDto {
+		return new JobOutputDto({
+			jobId: job.id,
+			title: job.title,
+			description: job.description,
+			contact: JobContactOutputDto.fromDatabase({
+				contactMethod: job.contact!.contactMethod,
+				identifier: job.contact!.identifier,
+			}),
+			location: new JobLocationOutputDto({
+				neighborhood: job.neighborhood,
+				city: job.city,
+				state: job.state,
+				country: job.country,
+				latitude: job.fuzzyLatitude,
+				longitude: job.fuzzyLongitude,
+				mapConfig,
+			}),
+			category: new JobCategoryOutputDto({
+				categoryId: job.category.id,
+				name: categoryDisplayName,
+				slug: job.category.slug,
+			}),
+			payment: new JobPaymentOutputDto({
+				paymentType: job.paymentType,
+				paymentMinAmount: job.paymentMinAmount,
+				paymentMaxAmount: job.paymentMaxAmount,
+				paymentNote: job.paymentNote,
+				paymentAmountPeriod: job.paymentAmountPeriod,
+				paymentCurrency: job.paymentCurrency,
+			}),
+			status: job.status,
+			type: job.type,
+			createdAt: job.createdAt.toISOString(),
+			updatedAt: job.updatedAt.toISOString(),
+		});
+	}
+
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
 	readonly jobId: string;
@@ -104,47 +146,5 @@ export class JobOutputDto {
 		this.type = params.type;
 		this.createdAt = params.createdAt;
 		this.updatedAt = params.updatedAt;
-	}
-
-	static fromDatabase(
-		job: Prisma.JobGetPayload<{ include: { category: true } }>,
-		categoryDisplayName: string,
-		mapConfig: MapConfigOutputDto,
-	): JobOutputDto {
-		return new JobOutputDto({
-			jobId: job.id,
-			title: job.title,
-			description: job.description,
-			contact: new JobContactOutputDto({
-				contactPhoneNumber: job.contactPhoneNumber,
-				contactMethod: job.contactMethod,
-			}),
-			location: new JobLocationOutputDto({
-				neighborhood: job.neighborhood,
-				city: job.city,
-				state: job.state,
-				country: job.country,
-				latitude: job.fuzzyLatitude,
-				longitude: job.fuzzyLongitude,
-				mapConfig,
-			}),
-			category: new JobCategoryOutputDto({
-				categoryId: job.category.id,
-				name: categoryDisplayName,
-				slug: job.category.slug,
-			}),
-			payment: new JobPaymentOutputDto({
-				paymentType: job.paymentType,
-				paymentMinAmount: job.paymentMinAmount,
-				paymentMaxAmount: job.paymentMaxAmount,
-				paymentNote: job.paymentNote,
-				paymentAmountPeriod: job.paymentAmountPeriod,
-				paymentCurrency: job.paymentCurrency,
-			}),
-			status: job.status,
-			type: job.type,
-			createdAt: job.createdAt.toISOString(),
-			updatedAt: job.updatedAt.toISOString(),
-		});
 	}
 }

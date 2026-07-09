@@ -1,4 +1,4 @@
-import { JobConstants } from "../job.constants";
+import { JobConstants } from "../constants/job.constants";
 import { JobDescriptionSummaryPrompts } from "./job-description-summary-prompts";
 
 describe("JobDescriptionSummaryPrompts", () => {

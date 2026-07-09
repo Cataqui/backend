@@ -1,4 +1,4 @@
-import { JobLocationConstants } from "./job-location.constants";
+import { JobLocationConstants } from "./job-location.constants.js";
 
 describe("JobLocationConstants", () => {
 	it("should set the minimum fuzzy distance to 300 meters", () => {

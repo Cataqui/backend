@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JobConstants } from "./job.constants";
+import { JobConstants } from "./job.constants.js";
 
 describe("JobConstants", () => {
 	it("should set the description summary max length to 100", () => {

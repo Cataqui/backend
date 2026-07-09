@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import type { Prisma } from "../../../../generated/prisma/client.js";
+import type { JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { LocaleConstants } from "../../../shared/locale/locale.constants";
 import { JobRepository } from "./job.repository";
@@ -15,12 +15,16 @@ interface MockCategoryWithTranslations {
 	translations: Array<{ id: string; name: string; locale: string }>;
 }
 
+interface MockContact {
+	contactMethod: string;
+	identifier: string;
+}
+
 interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactPhoneNumber: string;
-	contactMethod: string;
+	contact: MockContact;
 	street: string | null;
 	neighborhood: string;
 	city: string;
@@ -51,8 +55,7 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-1234",
 	title: "Help unload truck",
 	description: "Need someone to help.",
-	contactPhoneNumber: "+5511999999999",
-	contactMethod: "WHATSAPP",
+	contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -81,13 +84,11 @@ const mockJob: MockJobWithCategory = {
 	},
 };
 
-const createParams: Prisma.JobUncheckedCreateInput = {
+const createData: Record<string, unknown> = {
 	title: "Help unload truck",
 	description: "Need someone to help.",
 	descriptionSummary: "Need someone to help.",
 	status: "ACTIVE",
-	contactPhoneNumber: "+5511999999999",
-	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -103,6 +104,11 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	paymentAmountPeriod: "SINGLE",
 	paymentCurrency: "BRL",
 	categoryId: "cm3x-cat-1",
+};
+
+const createContact = {
+	contactMethod: "WHATSAPP" as JobContactMethod,
+	identifier: "+5511999999999",
 };
 
 describe("JobRepository", () => {
@@ -131,40 +137,32 @@ describe("JobRepository", () => {
 	});
 
 	describe("create", () => {
-		it("should call prisma.job.create with flattened data and include category", async () => {
-			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+		it("should call prisma.job.create with data and nested contact create", async () => {
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(prisma.job.create).toHaveBeenCalledWith({
 				data: {
-					title: "Help unload truck",
-					description: "Need someone to help.",
-					descriptionSummary: "Need someone to help.",
-					status: "ACTIVE",
-					contactPhoneNumber: "+5511999999999",
-					contactMethod: "WHATSAPP",
+					...createData,
 					street: "Rua das Flores, 123",
-					neighborhood: "Centro",
-					city: "São Paulo",
-					state: "SP",
-					country: "BR",
-					fuzzyLatitude: -23.55,
-					fuzzyLongitude: -46.63,
-					type: "INDIVIDUAL",
-					paymentType: "FIXED",
-					paymentMinAmount: 150.0,
-					paymentMaxAmount: null,
-					paymentNote: null,
-					paymentAmountPeriod: "SINGLE",
-					paymentCurrency: "BRL",
-					categoryId: "cm3x-cat-1",
+					contact: {
+						create: {
+							contactMethod: "WHATSAPP",
+							identifier: "+5511999999999",
+						},
+					},
 				},
-				include: { category: true },
+				include: { category: true, contact: true },
 			});
 		});
 
-		it("should return the created job with category", async () => {
+		it("should return the created job with category and contact", async () => {
 			const result = await repository.create({
-				data: createParams,
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
 				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
 			});
 
@@ -173,8 +171,12 @@ describe("JobRepository", () => {
 		});
 
 		it("should convert nullish street to null", async () => {
-			const params = { ...createParams, street: undefined as unknown as string | null };
-			await repository.create({ data: params, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+			const params = { ...createData, street: undefined as unknown as string | null };
+			await repository.create({
+				data: params as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			const callData = (prisma.job.create as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]?.data;
 
@@ -184,20 +186,28 @@ describe("JobRepository", () => {
 		});
 
 		it("should wrap create and PostGIS point update in a transaction", async () => {
-			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(prisma.$transaction).toHaveBeenCalledOnce();
 		});
 
 		it("should update the real PostGIS location point after creating the job", async () => {
-			await repository.create({ data: createParams, locationPoint: { latitude: -23.55052, longitude: -46.633308 } });
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(executeRaw).toHaveBeenCalledOnce();
 		});
 	});
 
 	describe("findByIdLocalized", () => {
-		it("should call prisma.job.findUnique with id and include category with translations for both locales", async () => {
+		it("should call prisma.job.findUnique with id and include category with translations and contact", async () => {
 			await repository.findByIdLocalized({ id: "cm3x-1234", locale: "es-MX" });
 
 			expect(prisma.job.findUnique).toHaveBeenCalledWith({
@@ -210,6 +220,7 @@ describe("JobRepository", () => {
 							},
 						},
 					},
+					contact: true,
 				},
 			});
 		});

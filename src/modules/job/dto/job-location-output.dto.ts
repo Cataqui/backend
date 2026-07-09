@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
-import { JobLocationConstants } from "../job-location.constants";
+import { JobLocationConstants } from "../constants/job-location.constants";
 
 export class JobLocationOutputDto {
 	@Expose({ name: "neighborhood" })

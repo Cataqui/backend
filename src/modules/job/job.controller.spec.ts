@@ -11,6 +11,7 @@ import {
 } from "../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
+import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-contact-details-input.dto";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
@@ -22,6 +23,7 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
+import { JobContactUtils } from "./utils/job-contact.utils";
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
@@ -29,8 +31,8 @@ function createMockJobOutputDto(): JobOutputDto {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact: new JobContactOutputDto({
-			contactPhoneNumber: "+5511999999999",
 			contactMethod: JobContactMethod.WHATSAPP,
+			contactDetails: JobContactUtils.buildDetailsOutputDto(JobContactMethod.WHATSAPP, "+5511999999999"),
 		}),
 		location: new JobLocationOutputDto({
 			neighborhood: "Centro",
@@ -88,9 +90,12 @@ describe("JobController", () => {
 		});
 
 		it("should return JobOutputDto on success", async () => {
-			const contactData = {
+			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
+			});
+			const contactData = {
+				contactMethod: JobContactMethod.WHATSAPP,
+				contactDetails,
 			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
@@ -129,9 +134,12 @@ describe("JobController", () => {
 		});
 
 		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contactData = {
+			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
+			});
+			const contactData = {
+				contactMethod: JobContactMethod.WHATSAPP,
+				contactDetails,
 			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {

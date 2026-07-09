@@ -365,6 +365,23 @@ Prefer early returns and guard clauses.
 
 Avoid deeply nested `if/else` blocks.
 
+### No Default in Switches
+
+Never use `default` in a `switch` statement. A default branch silently absorbs unhandled enum values or cases, making it impossible for the compiler to warn when new values are added. The code should always break/error explicitly so every addition hits every switch site:
+
+```ts
+function formatContactMethod(method: JobContactMethod): string {
+	switch (method) {
+		case JobContactMethod.WHATSAPP:
+			return "WhatsApp";
+		case JobContactMethod.PHONE_CALL:
+			return "Phone Call";
+	}
+}
+```
+
+Adding a new enum value without a case here will cause a compile error, forcing you to handle the new case or explicitly decide what to do.
+
 ### Type Safety
 
 Do not use `any`.

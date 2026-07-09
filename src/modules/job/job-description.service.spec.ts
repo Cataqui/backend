@@ -4,7 +4,7 @@ import { AiGatewayJobTypeModel } from "../../core/ai/ai-gateway-job-type-model";
 import { AiGatewayService } from "../../core/ai/ai-gateway-service";
 import { LocaleUtils } from "../../shared/locale/locale.utils";
 import { JobDescriptionService } from "./job-description.service";
-import { JobConstants } from "./job.constants";
+import { JobConstants } from "./constants/job.constants";
 import { JobDescriptionSummaryPrompts } from "./prompts/job-description-summary-prompts";
 import { JobRepository } from "./repositories/job.repository";
 

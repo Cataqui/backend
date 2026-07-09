@@ -13,24 +13,29 @@ import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
+import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-contact-details-input.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobConstants } from "./job.constants";
+import { JobConstants } from "./constants/job.constants";
 import { JobDescriptionService } from "./job-description.service";
 import { JobService } from "./job.service";
-import { JobLocationConstants } from "./job-location.constants";
+import { JobLocationConstants } from "./constants/job-location.constants";
 import { JobRepository } from "./repositories/job.repository";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
+interface MockJobContact {
+	contactMethod: string;
+	identifier: string;
+}
+
 interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactPhoneNumber: string;
-	contactMethod: string;
+	contact: MockJobContact;
 	street: string | null;
 	neighborhood: string;
 	city: string;
@@ -57,8 +62,7 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-job-1",
 	title: "Help unload truck",
 	description: "Need someone to help unload a delivery truck.",
-	contactPhoneNumber: "+5511999999999",
-	contactMethod: "WHATSAPP",
+	contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -87,9 +91,12 @@ const mockJob: MockJobWithCategory = {
 };
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = {
+	const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 		phoneNumber: "+5511999999999",
-		method: JobContactMethod.WHATSAPP,
+	});
+	const contactData: Partial<CreateJobContactInputDto> = {
+		contactMethod: JobContactMethod.WHATSAPP,
+		contactDetails,
 	};
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = {
@@ -123,9 +130,12 @@ function createValidDto(): CreateJobRequestDto {
 }
 
 function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
-	const contactData: Partial<CreateJobContactInputDto> = {
+	const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 		phoneNumber: "+5511999999999",
-		method: JobContactMethod.WHATSAPP,
+	});
+	const contactData: Partial<CreateJobContactInputDto> = {
+		contactMethod: JobContactMethod.WHATSAPP,
+		contactDetails,
 	};
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = {
@@ -309,23 +319,21 @@ describe("JobService", () => {
 		it("should set status to ACTIVE", async () => {
 			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
-			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createCall?.status).toBe(JobStatus.ACTIVE);
+			const createCallData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			expect(createCallData?.status).toBe(JobStatus.ACTIVE);
 		});
 
 		it("should pass all values to the repository", async () => {
 			await service.createJob({ dto: createValidDto(), locale: "en-US" });
 
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
+			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
 
-			expect(createData).toBeDefined();
-			expect(createData).toEqual({
+			expect(createCall).toBeDefined();
+			expect(createCall.data).toEqual({
 				title: "Help unload truck",
 				description: "Need someone to help unload a delivery truck.",
 				descriptionSummary: "Need someone to help unload a delivery truck.",
 				status: JobStatus.ACTIVE,
-				contactPhoneNumber: "+5511999999999",
-				contactMethod: "WHATSAPP",
 				street: "Rua das Flores, 123",
 				neighborhood: "Centro",
 				city: "São Paulo",
@@ -341,6 +349,10 @@ describe("JobService", () => {
 				paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
 				paymentCurrency: "BRL",
 				categoryId: "cm3x-cat-1",
+			});
+			expect(createCall.contact).toEqual({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: "+5511999999999",
 			});
 		});
 
@@ -387,9 +399,12 @@ describe("JobService", () => {
 		});
 
 		it("should pass null for street when not provided", async () => {
-			const contactData = {
+			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
+			});
+			const contactData: Partial<CreateJobContactInputDto> = {
+				contactMethod: JobContactMethod.WHATSAPP,
+				contactDetails,
 			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
@@ -427,9 +442,12 @@ describe("JobService", () => {
 		});
 
 		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
-			const contactData = {
+			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
+			});
+			const contactData: Partial<CreateJobContactInputDto> = {
+				contactMethod: JobContactMethod.WHATSAPP,
+				contactDetails,
 			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {

@@ -8,7 +8,7 @@ import { JobOutputDto } from "./dto/job-output.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobLocationConstants } from "./job-location.constants";
+import { JobLocationConstants } from "./constants/job-location.constants";
 import { JobDescriptionService } from "./job-description.service";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobRepository } from "./repositories/job.repository";
@@ -69,8 +69,6 @@ export class JobService {
 				description: dto.description,
 				descriptionSummary: dto.description,
 				status: JobStatus.ACTIVE,
-				contactPhoneNumber: dto.contact.phoneNumber,
-				contactMethod: dto.contact.method,
 				street: dto.location.street ?? null,
 				neighborhood: dto.location.neighborhood,
 				city: dto.location.city,
@@ -86,6 +84,10 @@ export class JobService {
 				paymentAmountPeriod: dto.payment.amountPeriod,
 				paymentCurrency: dto.payment.currency,
 				categoryId: dto.categoryId,
+			},
+			contact: {
+				contactMethod: dto.contact.contactMethod,
+				identifier: dto.contact.contactDetails.getIdentifier(),
 			},
 		});
 

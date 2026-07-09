@@ -9,11 +9,15 @@ import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { CreateJobRequestDto } from "./create-job-request.dto";
 import { JobPaymentInputDto } from "./job-payment-input.dto";
+import { WhatsappContactDetailsInputDto } from "./contact-details/whatsapp-contact-details-input.dto";
 
 function createValidDto(): CreateJobRequestDto {
-	const contactData = {
+	const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 		phoneNumber: "+5511999999999",
-		method: JobContactMethod.WHATSAPP,
+	});
+	const contactData = {
+		contactMethod: JobContactMethod.WHATSAPP,
+		contactDetails,
 	};
 	const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 	const locationData: Partial<CreateJobLocationInputDto> = {
@@ -107,8 +111,8 @@ describe("CreateJobRequestDto", () => {
 
 		it("should validate nested contact errors", async () => {
 			const contactData = {
-				phoneNumber: "",
-				method: undefined as unknown as JobContactMethod,
+				contactMethod: undefined as unknown as JobContactMethod,
+				contactDetails: undefined,
 			};
 			const contact = Object.assign(new CreateJobContactInputDto(), contactData);
 			const locationData: Partial<CreateJobLocationInputDto> = {
@@ -153,9 +157,12 @@ describe("CreateJobRequestDto", () => {
 		};
 
 		function buildDto(paymentData: Partial<JobPaymentInputDto>): CreateJobRequestDto {
-			const contact = Object.assign(new CreateJobContactInputDto(), {
+			const contactDetails = Object.assign(new WhatsappContactDetailsInputDto(), {
 				phoneNumber: "+5511999999999",
-				method: JobContactMethod.WHATSAPP,
+			});
+			const contact = Object.assign(new CreateJobContactInputDto(), {
+				contactMethod: JobContactMethod.WHATSAPP,
+				contactDetails,
 			});
 			const location = Object.assign(new CreateJobLocationInputDto(), {
 				city: "São Paulo",

@@ -17,8 +17,10 @@ function createMockDatabaseJob() {
 		id: "cm3x-1234-abcd",
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
-		contactPhoneNumber: "+5511999999999",
-		contactMethod: JobContactMethod.WHATSAPP,
+		contact: {
+			contactMethod: JobContactMethod.WHATSAPP,
+			identifier: "+5511999999999",
+		},
 		street: "Rua das Flores, 123",
 		neighborhood: "Centro",
 		city: "São Paulo",
@@ -65,8 +67,7 @@ describe("JobOutputDto", () => {
 				mockMapConfig,
 			);
 
-			expect(dto.contact.phoneNumber).toBe("+5511999999999");
-			expect(dto.contact.method).toBe(JobContactMethod.WHATSAPP);
+			expect(dto.contact.contactMethod).toBe(JobContactMethod.WHATSAPP);
 		});
 
 		it("should construct nested location DTO", () => {
@@ -168,9 +169,9 @@ describe("JobOutputDto", () => {
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
 			const contact = plain["contact"] as Record<string, unknown>;
 
-			expect(contact).toHaveProperty("phone_number", "+5511999999999");
 			expect(contact).toHaveProperty("contact_method", "WHATSAPP");
-			expect(contact).not.toHaveProperty("name");
+			expect(contact).toHaveProperty("contact_details");
+			expect((contact["contact_details"] as Record<string, unknown>)["phone_number"]).toBe("+5511999999999");
 		});
 
 		it("should serialize nested category with category_id", () => {

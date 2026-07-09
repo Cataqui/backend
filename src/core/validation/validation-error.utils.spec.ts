@@ -250,21 +250,21 @@ describe("formatValidationErrors", () => {
 		]);
 	});
 
-	it("should handle method (contact_method) conversion", () => {
+	it("should handle contactMethod to contact_method conversion", () => {
 		const errors: ValidationError[] = [
 			{
-				property: "method",
+				property: "contactMethod",
 				constraints: {
-					isEnum: "method must be one of the following values: WHATSAPP, PHONE, OTHER",
+					isEnum: "contactMethod must be one of the following values: WHATSAPP, PHONE_CALL",
 				},
 			},
 			{
 				property: "contact",
 				children: [
 					{
-						property: "method",
+						property: "contactMethod",
 						constraints: {
-							isEnum: "method must be one of the following values: WHATSAPP, PHONE, OTHER",
+							isEnum: "contactMethod must be one of the following values: WHATSAPP, PHONE_CALL",
 						},
 					},
 				],
@@ -274,9 +274,34 @@ describe("formatValidationErrors", () => {
 		const result = ValidationErrorUtils.formatValidationErrors(errors);
 
 		expect(result).toEqual([
-			"method must be one of the following values: WHATSAPP, PHONE, OTHER",
-			"contact.method must be one of the following values: WHATSAPP, PHONE, OTHER",
+			"contact_method must be one of the following values: WHATSAPP, PHONE_CALL",
+			"contact.contact_method must be one of the following values: WHATSAPP, PHONE_CALL",
 		]);
+	});
+
+	it("should handle deeply nested contact_details path conversion", () => {
+		const errors: ValidationError[] = [
+			{
+				property: "contact",
+				children: [
+					{
+						property: "contactDetails",
+						children: [
+							{
+								property: "phoneNumber",
+								constraints: {
+									isPhoneNumber: "phoneNumber must be a valid phone number",
+								},
+							},
+						],
+					},
+				],
+			},
+		];
+
+		const result = ValidationErrorUtils.formatValidationErrors(errors);
+
+		expect(result).toEqual(["contact.contact_details.phone_number must be a valid phone number"]);
 	});
 
 	it("should pass through forbidNonWhitelisted messages unchanged", () => {

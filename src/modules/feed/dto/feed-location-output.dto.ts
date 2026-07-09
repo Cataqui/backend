@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { JobLocationConstants } from "../../job/job-location.constants";
+import { JobLocationConstants } from "../../job/constants/job-location.constants";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 
 export class FeedLocationOutputDto {

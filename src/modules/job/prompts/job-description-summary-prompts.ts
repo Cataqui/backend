@@ -1,4 +1,4 @@
-import { JobConstants } from "../job.constants";
+import { JobConstants } from "../constants/job.constants";
 
 function _sanitizeUserProvidedText(raw: string): string {
 	return raw.replace(/</g, "&lt;").replace(/>/g, "&gt;");
