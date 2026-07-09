@@ -191,6 +191,32 @@ For DTOs exposed through the API:
 - Output DTOs must be constructible through constructors.
 - Do not use `!` non-null assertions on output DTO properties.
 
+### DTO Member Ordering
+
+Members within a DTO class must follow this order:
+
+1. Constructor
+2. `static` factory methods
+3. Variables / properties (including `readonly`)
+4. Utility methods
+5. Private helpers (prefixed `_`)
+
+Example:
+
+```ts
+export class JobContactOutputDto {
+	constructor(params: { ... }) { ... }
+
+	static fromDatabase(...): JobOutputDto { ... }
+
+	readonly contactMethod: JobContactMethod;
+
+	getIdentifier(): string { ... }
+
+	private _buildCursor(): string { ... }
+}
+```
+
 ### Cursor Pagination
 
 Infinite feeds must use cursor pagination, not offset pagination.
