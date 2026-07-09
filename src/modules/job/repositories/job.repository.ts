@@ -92,6 +92,19 @@ export class JobRepository {
 		return job;
 	}
 
+	async findContactByIdAndJobId(params: {
+		contactId: string;
+		jobId: string;
+	}): Promise<Prisma.JobContactGetPayload<Record<string, never>> | null> {
+		const contact = await this._prisma.jobContact.findUnique({
+			where: { id: params.contactId },
+		});
+
+		if (!contact || contact.jobId !== params.jobId) return null;
+
+		return contact;
+	}
+
 	async updateDescriptionSummary(params: { jobId: string; summary: string }): Promise<void> {
 		await this._prisma.job.update({
 			where: { id: params.jobId },

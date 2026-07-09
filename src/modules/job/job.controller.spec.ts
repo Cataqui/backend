@@ -15,24 +15,32 @@ import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-c
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { GetJobContactRequestParamsDto } from "./dto/get-job-contact-request-params.dto";
 import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
 import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
 import { JobContactOutputDto } from "./dto/job-contact-output.dto";
+import { JobContactReferenceOutputDto } from "./dto/job-contact-reference-output.dto";
 import { JobLocationOutputDto } from "./dto/job-location-output.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
-import { JobContactUtils } from "./utils/job-contact.utils";
+
+function createMockJobContactOutputDto(): JobContactOutputDto {
+	return JobContactOutputDto.fromDatabase({
+		contactMethod: JobContactMethod.WHATSAPP,
+		identifier: "+5511999999999",
+	});
+}
 
 function createMockJobOutputDto(): JobOutputDto {
 	return new JobOutputDto({
 		jobId: "cm3x-job-1",
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
-		contact: new JobContactOutputDto({
+		contactReference: new JobContactReferenceOutputDto({
+			contactId: "cm3x-contact-1",
 			contactMethod: JobContactMethod.WHATSAPP,
-			contactDetails: JobContactUtils.buildDetailsOutputDto(JobContactMethod.WHATSAPP, "+5511999999999"),
 		}),
 		location: new JobLocationOutputDto({
 			neighborhood: "Centro",
@@ -74,6 +82,7 @@ describe("JobController", () => {
 		jobService = {
 			createJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
 			getJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
+			getJobContact: vi.fn().mockImplementation(() => Promise.resolve(createMockJobContactOutputDto())),
 		} as unknown as JobService;
 
 		const module = await Test.createTestingModule({
@@ -172,6 +181,52 @@ describe("JobController", () => {
 			await controller.create(dto, "en-US");
 
 			expect(jobService.createJob).toHaveBeenCalledWith({ dto: dto, locale: "en-US" });
+		});
+	});
+
+	describe("getJobContact", () => {
+		it("should expose the getJobContact action at the nested contact route", () => {
+			expect(Reflect.getMetadata(PATH_METADATA, controller.getJobContact)).toBe(":job_id/contact/:contact_id");
+		});
+
+		it("should return JobContactOutputDto on success", async () => {
+			const params = Object.assign(new GetJobContactRequestParamsDto(), {
+				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+				contactId: "cm3x-contact-1",
+			});
+			const result = await controller.getJobContact(params);
+
+			expect(result).toBeInstanceOf(JobContactOutputDto);
+		});
+
+		it("should pass contactId and jobId to jobService.getJobContact", async () => {
+			const params = Object.assign(new GetJobContactRequestParamsDto(), {
+				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+				contactId: "cm3x-contact-1",
+			});
+			await controller.getJobContact(params);
+
+			expect(jobService.getJobContact).toHaveBeenCalledWith({
+				contactId: "cm3x-contact-1",
+				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+			});
+		});
+
+		it("should return WHATSAPP contact method on success", async () => {
+			const expected = JobContactOutputDto.fromDatabase({
+				contactMethod: JobContactMethod.WHATSAPP,
+				identifier: "+5511999999999",
+			});
+			(jobService.getJobContact as ReturnType<typeof vi.fn>).mockResolvedValueOnce(expected);
+
+			const params = Object.assign(new GetJobContactRequestParamsDto(), {
+				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+				contactId: "cm3x-contact-1",
+			});
+
+			const result = await controller.getJobContact(params);
+
+			expect(result.contactMethod).toBe(JobContactMethod.WHATSAPP);
 		});
 	});
 

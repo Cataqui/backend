@@ -11,11 +11,13 @@ import { MapService } from "../map/map.service";
 import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
 import { WhatsappContactDetailsInputDto } from "./dto/contact-details/whatsapp-contact-details-input.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
+import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobConstants } from "./constants/job.constants";
 import { JobDescriptionService } from "./job-description.service";
@@ -27,8 +29,10 @@ import { JobCategoryRepository } from "./repositories/job-category.repository";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
 interface MockJobContact {
+	id: string;
 	contactMethod: string;
 	identifier: string;
+	jobId: string;
 }
 
 interface MockJobWithCategory {
@@ -62,7 +66,7 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-job-1",
 	title: "Help unload truck",
 	description: "Need someone to help unload a delivery truck.",
-	contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
+	contact: { id: "cm3x-contact-1", contactMethod: "WHATSAPP", identifier: "+5511999999999", jobId: "cm3x-job-1" },
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -181,6 +185,9 @@ describe("JobService", () => {
 		jobRepository = {
 			create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 			findByIdLocalized: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
+			findContactByIdAndJobId: vi
+				.fn<(...args: unknown[]) => MockJobContact | null>()
+				.mockResolvedValue(mockJob.contact),
 			updateDescriptionSummary: vi.fn().mockResolvedValue(undefined),
 		} as unknown as JobRepository;
 
@@ -585,6 +592,57 @@ describe("JobService", () => {
 
 			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
 			expect(createData?.descriptionSummary).toBe(exactDescription);
+		});
+	});
+
+	describe("getJobContact", () => {
+		it("should return JobContactOutputDto when contact exists", async () => {
+			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+				id: "cm3x-contact-1",
+				contactMethod: "WHATSAPP",
+				identifier: "+5511999999999",
+				jobId: "cm3x-job-1",
+			});
+
+			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
+
+			expect(result).toBeInstanceOf(JobContactOutputDto);
+		});
+
+		it("should pass contactId and jobId to findContactByIdAndJobId", async () => {
+			await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
+
+			expect(jobRepository.findContactByIdAndJobId).toHaveBeenCalledWith({
+				contactId: "cm3x-contact-1",
+				jobId: "cm3x-job-1",
+			});
+		});
+
+		it("should return WHATSAPP contact method on success", async () => {
+			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+				id: "cm3x-contact-1",
+				contactMethod: "WHATSAPP",
+				identifier: "+5511999999999",
+				jobId: "cm3x-job-1",
+			});
+
+			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
+
+			expect(result.contactMethod).toBe(JobContactMethod.WHATSAPP);
+		});
+
+		it("should return contact details with phone number on success", async () => {
+			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
+
+			expect(result.contactDetails.getIdentifier()).toBe("+5511999999999");
+		});
+
+		it("should throw JobContactNotFoundError when contact does not exist", async () => {
+			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+			await expect(service.getJobContact({ contactId: "nonexistent", jobId: "cm3x-job-1" })).rejects.toThrow(
+				JobContactNotFoundError,
+			);
 		});
 	});
 

@@ -760,6 +760,16 @@ This ensures that:
 - test names describe exactly what is being verified
 - failures are immediately obvious without reading assertion details
 
+### Test Independence
+
+Each test must set up the specific values it asserts on within its own `it()` block. Do not rely on shared mock defaults (from `beforeEach` or module-level factories) to produce the exact value a test claims to verify. Changing a shared default must not break unrelated tests.
+
+If a test asserts `result.contactMethod === "WHATSAPP"`, the test must explicitly configure the mock to return `"WHATSAPP"` in that `it()` block — even if the shared mock already happens to return that value.
+
+Shared setup (`beforeEach`) is allowed for wiring the test module and creating the system under test. It is **not** allowed for providing the specific return values that a test asserts on.
+
+This applies to **all** assertions — not just specific expected values, but also existence checks (e.g., `toBeInstanceOf`, `not.toBeNull`), type checks, and any other validation that depends on the test's runtime state. If a test depends on a mock returning a value for its assertion, that test must set up the mock return value itself. The only exception is pure infrastructure assertions (e.g., "the module compiled correctly").
+
 ### 100% Coverage for Every Feature
 
 Every new feature or change must include tests that cover 100% of the possibilities it introduces:

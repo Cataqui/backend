@@ -18,6 +18,7 @@ function createMockDatabaseJob() {
 		title: "Help unload truck",
 		description: "Need someone to help unload a delivery truck.",
 		contact: {
+			id: "cm3x-contact-1",
 			contactMethod: JobContactMethod.WHATSAPP,
 			identifier: "+5511999999999",
 		},
@@ -60,14 +61,15 @@ describe("JobOutputDto", () => {
 			expect(dto.type).toBe(JobType.INDIVIDUAL);
 		});
 
-		it("should construct nested contact DTO", () => {
+		it("should construct nested contact reference DTO", () => {
 			const dto = JobOutputDto.fromDatabase(
 				createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0],
 				"Moving Help",
 				mockMapConfig,
 			);
 
-			expect(dto.contact.contactMethod).toBe(JobContactMethod.WHATSAPP);
+			expect(dto.contactReference.contactId).toBe("cm3x-contact-1");
+			expect(dto.contactReference.contactMethod).toBe(JobContactMethod.WHATSAPP);
 		});
 
 		it("should construct nested location DTO", () => {
@@ -160,18 +162,18 @@ describe("JobOutputDto", () => {
 			expect(plain).not.toHaveProperty("jobId");
 		});
 
-		it("should serialize nested contact with snake_case keys", () => {
+		it("should serialize nested contact reference with snake_case keys", () => {
 			const dto = JobOutputDto.fromDatabase(
 				createMockDatabaseJob() as Parameters<typeof JobOutputDto.fromDatabase>[0],
 				"Moving Help",
 				mockMapConfig,
 			);
 			const plain = instanceToPlain(dto, { exposeUnsetFields: false }) as Record<string, unknown>;
-			const contact = plain["contact"] as Record<string, unknown>;
+			const contact = plain["contact_reference"] as Record<string, unknown>;
 
+			expect(contact).toHaveProperty("contact_id", "cm3x-contact-1");
 			expect(contact).toHaveProperty("contact_method", "WHATSAPP");
-			expect(contact).toHaveProperty("contact_details");
-			expect((contact["contact_details"] as Record<string, unknown>)["phone_number"]).toBe("+5511999999999");
+			expect(contact).not.toHaveProperty("contact_details");
 		});
 
 		it("should serialize nested category with category_id", () => {

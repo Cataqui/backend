@@ -16,8 +16,10 @@ interface MockCategoryWithTranslations {
 }
 
 interface MockContact {
+	id: string;
 	contactMethod: string;
 	identifier: string;
+	jobId: string;
 }
 
 interface MockJobWithCategory {
@@ -55,7 +57,7 @@ const mockJob: MockJobWithCategory = {
 	id: "cm3x-1234",
 	title: "Help unload truck",
 	description: "Need someone to help.",
-	contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
+	contact: { id: "cm3x-contact-1", contactMethod: "WHATSAPP", identifier: "+5511999999999", jobId: "cm3x-1234" },
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
@@ -126,6 +128,14 @@ describe("JobRepository", () => {
 				create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 				findUnique: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
 				update: vi.fn().mockResolvedValue(mockJob),
+			},
+			jobContact: {
+				findUnique: vi.fn<(...args: unknown[]) => MockContact | null>().mockResolvedValue({
+					id: "cm3x-contact-1",
+					contactMethod: "WHATSAPP",
+					identifier: "+5511999999999",
+					jobId: "cm3x-1234",
+				}),
 			},
 		} as unknown as PrismaService;
 
@@ -258,6 +268,45 @@ describe("JobRepository", () => {
 
 			expect(result).not.toBeNull();
 			expect((result?.category as Record<string, unknown>)["translations"]).toBeUndefined();
+		});
+	});
+
+	describe("findContactByIdAndJobId", () => {
+		it("should call prisma.jobContact.findUnique with contact id", async () => {
+			await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(prisma.jobContact.findUnique).toHaveBeenCalledWith({
+				where: { id: "cm3x-contact-1" },
+			});
+		});
+
+		it("should return the contact when found and jobId matches", async () => {
+			const result = await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(result).not.toBeNull();
+			expect(result?.id).toBe("cm3x-contact-1");
+			expect(result?.contactMethod).toBe("WHATSAPP");
+		});
+
+		it("should return null when contact is not found", async () => {
+			(prisma.jobContact.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+			const result = await repository.findContactByIdAndJobId({ contactId: "nonexistent", jobId: "cm3x-1234" });
+
+			expect(result).toBeNull();
+		});
+
+		it("should return null when contact.jobId does not match the requested jobId", async () => {
+			(prisma.jobContact.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "cm3x-contact-1",
+				contactMethod: "WHATSAPP",
+				identifier: "+5511999999999",
+				jobId: "other-job-id",
+			});
+
+			const result = await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(result).toBeNull();
 		});
 	});
 

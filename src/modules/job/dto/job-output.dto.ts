@@ -4,10 +4,10 @@ import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.
 import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
 import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import { JobCategoryOutputDto } from "./job-category-output.dto";
-import { JobContactOutputDto } from "./job-contact-output.dto";
+import { JobContactReferenceOutputDto } from "./job-contact-reference-output.dto";
 import { JobLocationOutputDto } from "./job-location-output.dto";
 
-@ApiExtraModels(JobContactOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
+@ApiExtraModels(JobContactReferenceOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
 export class JobOutputDto {
 	static fromDatabase(
 		job: Prisma.JobGetPayload<{ include: { category: true; contact: true } }>,
@@ -18,9 +18,9 @@ export class JobOutputDto {
 			jobId: job.id,
 			title: job.title,
 			description: job.description,
-			contact: JobContactOutputDto.fromDatabase({
+			contactReference: JobContactReferenceOutputDto.fromDatabase({
+				id: job.contact!.id,
 				contactMethod: job.contact!.contactMethod,
-				identifier: job.contact!.identifier,
 			}),
 			location: new JobLocationOutputDto({
 				neighborhood: job.neighborhood,
@@ -67,10 +67,14 @@ export class JobOutputDto {
 	})
 	readonly description: string;
 
-	@Expose({ name: "contact" })
-	@ApiProperty({ name: "contact", description: "Person to contact regarding the job offer", type: JobContactOutputDto })
-	@Type(() => JobContactOutputDto)
-	readonly contact: JobContactOutputDto;
+	@Expose({ name: "contact_reference" })
+	@ApiProperty({
+		name: "contact_reference",
+		description: "Reference to the job contact",
+		type: JobContactReferenceOutputDto,
+	})
+	@Type(() => JobContactReferenceOutputDto)
+	readonly contactReference: JobContactReferenceOutputDto;
 
 	@Expose({ name: "location" })
 	@ApiProperty({ name: "location", description: "Where the job will be executed", type: JobLocationOutputDto })
@@ -126,7 +130,7 @@ export class JobOutputDto {
 		jobId: string;
 		title: string;
 		description: string;
-		contact: JobContactOutputDto;
+		contactReference: JobContactReferenceOutputDto;
 		location: JobLocationOutputDto;
 		category: JobCategoryOutputDto;
 		payment: JobPaymentOutputDto;
@@ -138,7 +142,7 @@ export class JobOutputDto {
 		this.jobId = params.jobId;
 		this.title = params.title;
 		this.description = params.description;
-		this.contact = params.contact;
+		this.contactReference = params.contactReference;
 		this.location = params.location;
 		this.category = params.category;
 		this.payment = params.payment;

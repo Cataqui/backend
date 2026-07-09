@@ -3,12 +3,14 @@ import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/prisma/client.js";
 import { LocationUtils } from "../../shared/utils/location/location.utils";
 import { MapService } from "../map/map.service";
+import { JobLocationConstants } from "./constants/job-location.constants";
 import { CreateJobRequestDto } from "./dto/create-job-request.dto";
+import { JobContactOutputDto } from "./dto/job-contact-output.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { CategoryNotFoundError } from "./errors/category-not-found.error";
 import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
+import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobLocationConstants } from "./constants/job-location.constants";
 import { JobDescriptionService } from "./job-description.service";
 import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobRepository } from "./repositories/job.repository";
@@ -33,6 +35,20 @@ export class JobService {
 
 		const mapConfig = await this._mapService.getConfig({ region: "BR" });
 		return JobOutputDto.fromDatabase(result, result.categoryDisplayName, mapConfig);
+	}
+
+	async getJobContact(params: { contactId: string; jobId: string }): Promise<JobContactOutputDto> {
+		const contact = await this._jobRepository.findContactByIdAndJobId({
+			contactId: params.contactId,
+			jobId: params.jobId,
+		});
+
+		if (!contact) throw new JobContactNotFoundError();
+
+		return JobContactOutputDto.fromDatabase({
+			contactMethod: contact.contactMethod,
+			identifier: contact.identifier,
+		});
 	}
 
 	async createJob({ dto, locale }: { dto: CreateJobRequestDto; locale: string }): Promise<JobOutputDto> {
