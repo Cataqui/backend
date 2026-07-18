@@ -109,6 +109,18 @@
       "skillPath": "plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md",
       "computedHash": "de45b8066301dda62d6912dfe54c4062bad1f4259a7231a9e98c55b10c49fa2e"
     },
+    "sharp-edges": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/sharp-edges/skills/sharp-edges/SKILL.md",
+      "computedHash": "8aa5c8ad250215a5b8f40c4e386dcd045b4a7a31c67952d1685d906aa7571843"
+    },
+    "supply-chain-risk-auditor": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor/SKILL.md",
+      "computedHash": "483d9ce83cd95ef1b343c879c608e87ab30ec8ede5873f8ea22707e6ebab033a"
+    },
     "testing-patterns": {
       "source": "vudovn/antigravity-kit",
       "sourceType": "github",
