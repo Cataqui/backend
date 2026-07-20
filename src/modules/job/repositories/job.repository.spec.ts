@@ -1,7 +1,8 @@
 import { Test } from "@nestjs/testing";
-import { JobRepository } from "./job.repository";
+import type { JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import type { Prisma } from "../../../../generated/prisma/client.js";
+import { LocaleConstants } from "../../../shared/locale/locale.constants";
+import { JobRepository } from "./job.repository";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
 
@@ -14,18 +15,25 @@ interface MockCategoryWithTranslations {
 	translations: Array<{ id: string; name: string; locale: string }>;
 }
 
+interface MockContact {
+	id: string;
+	contactMethod: string;
+	identifier: string;
+	jobId: string;
+}
+
 interface MockJobWithCategory {
 	id: string;
 	title: string;
 	description: string;
-	contactName: string;
-	contactPhoneNumber: string;
-	contactMethod: string;
+	contact: MockContact;
 	street: string | null;
-	neighborhood: string | null;
+	neighborhood: string;
 	city: string;
 	state: string;
 	country: string;
+	fuzzyLatitude: number;
+	fuzzyLongitude: number;
 	status: string;
 	type: string;
 	paymentType: string;
@@ -40,18 +48,23 @@ interface MockJobWithCategory {
 	category: MockCategoryWithTranslations;
 }
 
+const mockTranslations = [
+	{ id: "t-en", name: "Moving Help", locale: LocaleConstants.DEFAULT_LOCALE },
+	{ id: "t-es", name: "Ayuda con mudanza", locale: "es-MX" },
+];
+
 const mockJob: MockJobWithCategory = {
 	id: "cm3x-1234",
 	title: "Help unload truck",
 	description: "Need someone to help.",
-	contactName: "João Silva",
-	contactPhoneNumber: "+5511999999999",
-	contactMethod: "WHATSAPP",
+	contact: { id: "cm3x-contact-1", contactMethod: "WHATSAPP", identifier: "+5511999999999", jobId: "cm3x-1234" },
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
+	fuzzyLatitude: -23.55,
+	fuzzyLongitude: -46.63,
 	status: "ACTIVE",
 	type: "INDIVIDUAL",
 	paymentType: "FIXED",
@@ -69,22 +82,22 @@ const mockJob: MockJobWithCategory = {
 		slug: "moving-help",
 		createdAt: new Date("2026-05-28T10:00:00.000Z"),
 		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-		translations: [{ id: "t1", name: "Ayuda con mudanza", locale: "es-MX" }],
+		translations: mockTranslations,
 	},
 };
 
-const createParams: Prisma.JobUncheckedCreateInput = {
+const createData: Record<string, unknown> = {
 	title: "Help unload truck",
 	description: "Need someone to help.",
+	descriptionSummary: "Need someone to help.",
 	status: "ACTIVE",
-	contactName: "João Silva",
-	contactPhoneNumber: "+5511999999999",
-	contactMethod: "WHATSAPP",
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
+	fuzzyLatitude: -23.55,
+	fuzzyLongitude: -46.63,
 	type: "INDIVIDUAL",
 	paymentType: "FIXED",
 	paymentMinAmount: 150.0,
@@ -95,15 +108,34 @@ const createParams: Prisma.JobUncheckedCreateInput = {
 	categoryId: "cm3x-cat-1",
 };
 
+const createContact = {
+	contactMethod: "WHATSAPP" as JobContactMethod,
+	identifier: "+5511999999999",
+};
+
 describe("JobRepository", () => {
 	let repository: JobRepository;
 	let prisma: PrismaService;
+	let executeRaw: ReturnType<typeof vi.fn>;
 
 	beforeEach(async () => {
+		executeRaw = vi.fn().mockResolvedValue(1);
 		prisma = {
+			$transaction: vi.fn((callback: (tx: unknown) => unknown) =>
+				callback({ job: { create: prisma.job.create }, $executeRaw: executeRaw }),
+			),
 			job: {
 				create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
 				findUnique: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
+				update: vi.fn().mockResolvedValue(mockJob),
+			},
+			jobContact: {
+				findUnique: vi.fn<(...args: unknown[]) => MockContact | null>().mockResolvedValue({
+					id: "cm3x-contact-1",
+					contactMethod: "WHATSAPP",
+					identifier: "+5511999999999",
+					jobId: "cm3x-1234",
+				}),
 			},
 		} as unknown as PrismaService;
 
@@ -115,58 +147,77 @@ describe("JobRepository", () => {
 	});
 
 	describe("create", () => {
-		it("should call prisma.job.create with flattened data and include category", async () => {
-			await repository.create({ data: createParams });
+		it("should call prisma.job.create with data and nested contact create", async () => {
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(prisma.job.create).toHaveBeenCalledWith({
 				data: {
-					title: "Help unload truck",
-					description: "Need someone to help.",
-					status: "ACTIVE",
-					contactName: "João Silva",
-					contactPhoneNumber: "+5511999999999",
-					contactMethod: "WHATSAPP",
+					...createData,
 					street: "Rua das Flores, 123",
-					neighborhood: "Centro",
-					city: "São Paulo",
-					state: "SP",
-					country: "BR",
-					type: "INDIVIDUAL",
-					paymentType: "FIXED",
-					paymentMinAmount: 150.0,
-					paymentMaxAmount: null,
-					paymentNote: null,
-					paymentAmountPeriod: "SINGLE",
-					paymentCurrency: "BRL",
-					categoryId: "cm3x-cat-1",
+					contact: {
+						create: {
+							contactMethod: "WHATSAPP",
+							identifier: "+5511999999999",
+						},
+					},
 				},
-				include: { category: true },
+				include: { category: true, contact: true },
 			});
 		});
 
-		it("should return the created job with category", async () => {
-			const result = await repository.create({ data: createParams });
+		it("should return the created job with category and contact", async () => {
+			const result = await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			expect(result).toEqual(mockJob);
 			expect(result.category).toBeDefined();
-			expect(result.category.name).toBe("Moving Help");
 		});
 
 		it("should convert nullish street to null", async () => {
-			const params = { ...createParams, street: undefined as unknown as string | null, neighborhood: null as unknown as string | null };
-			await repository.create({ data: params });
+			const params = { ...createData, street: undefined as unknown as string | null };
+			await repository.create({
+				data: params as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
 
 			const callData = (prisma.job.create as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]?.data;
 
 			if (callData) {
 				expect(callData.street).toBeNull();
-				expect(callData.neighborhood).toBeNull();
 			}
+		});
+
+		it("should wrap create and PostGIS point update in a transaction", async () => {
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
+
+			expect(prisma.$transaction).toHaveBeenCalledOnce();
+		});
+
+		it("should update the real PostGIS location point after creating the job", async () => {
+			await repository.create({
+				data: createData as Prisma.JobUncheckedCreateInput,
+				contact: createContact,
+				locationPoint: { latitude: -23.55052, longitude: -46.633308 },
+			});
+
+			expect(executeRaw).toHaveBeenCalledOnce();
 		});
 	});
 
 	describe("findByIdLocalized", () => {
-		it("should call prisma.job.findUnique with id and include category with translations", async () => {
+		it("should call prisma.job.findUnique with id and include category with translations and contact", async () => {
 			await repository.findByIdLocalized({ id: "cm3x-1234", locale: "es-MX" });
 
 			expect(prisma.job.findUnique).toHaveBeenCalledWith({
@@ -175,11 +226,11 @@ describe("JobRepository", () => {
 					category: {
 						include: {
 							translations: {
-								where: { locale: "es-MX" },
-								take: 1,
+								where: { locale: { in: ["es-MX", LocaleConstants.DEFAULT_LOCALE], mode: "insensitive" } },
 							},
 						},
 					},
+					contact: true,
 				},
 			});
 		});
@@ -189,14 +240,13 @@ describe("JobRepository", () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.category.id).toBe("cm3x-cat-1");
-			expect(result?.category.name).toBe("Moving Help");
 			expect(result?.categoryDisplayName).toBe("Ayuda con mudanza");
 		});
 
-		it("should fall back to base category name when no translation matches locale", async () => {
+		it("should fall back to default locale translation when no translation matches requested locale", async () => {
 			(prisma.job.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
 				...mockJob,
-				category: { ...mockJob.category, translations: [] },
+				category: { ...mockJob.category, translations: [mockTranslations[0]] },
 			});
 
 			const result = await repository.findByIdLocalized({ id: "cm3x-1234", locale: "fr-FR" });
@@ -218,6 +268,62 @@ describe("JobRepository", () => {
 
 			expect(result).not.toBeNull();
 			expect((result?.category as Record<string, unknown>)["translations"]).toBeUndefined();
+		});
+	});
+
+	describe("findContactByIdAndJobId", () => {
+		it("should call prisma.jobContact.findUnique with contact id", async () => {
+			await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(prisma.jobContact.findUnique).toHaveBeenCalledWith({
+				where: { id: "cm3x-contact-1" },
+			});
+		});
+
+		it("should return the contact when found and jobId matches", async () => {
+			const result = await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(result).not.toBeNull();
+			expect(result?.id).toBe("cm3x-contact-1");
+			expect(result?.contactMethod).toBe("WHATSAPP");
+		});
+
+		it("should return null when contact is not found", async () => {
+			(prisma.jobContact.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+			const result = await repository.findContactByIdAndJobId({ contactId: "nonexistent", jobId: "cm3x-1234" });
+
+			expect(result).toBeNull();
+		});
+
+		it("should return null when contact.jobId does not match the requested jobId", async () => {
+			(prisma.jobContact.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+				id: "cm3x-contact-1",
+				contactMethod: "WHATSAPP",
+				identifier: "+5511999999999",
+				jobId: "other-job-id",
+			});
+
+			const result = await repository.findContactByIdAndJobId({ contactId: "cm3x-contact-1", jobId: "cm3x-1234" });
+
+			expect(result).toBeNull();
+		});
+	});
+
+	describe("updateDescriptionSummary", () => {
+		it("should call prisma.job.update with correct jobId and summary", async () => {
+			await repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test summary sentence here" });
+
+			expect(prisma.job.update).toHaveBeenCalledWith({
+				where: { id: "cm3x-1234" },
+				data: { descriptionSummary: "Test summary sentence here" },
+			});
+		});
+
+		it("should not throw when update succeeds", async () => {
+			await expect(
+				repository.updateDescriptionSummary({ jobId: "cm3x-1234", summary: "Test" }),
+			).resolves.toBeUndefined();
 		});
 	});
 });

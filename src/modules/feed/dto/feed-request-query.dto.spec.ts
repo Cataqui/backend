@@ -1,10 +1,14 @@
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { FeedRequestQueryDto } from "./feed-request-query.dto";
-import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
+import { CursorUtils } from "../utils/cursor.utils";
+import { FeedRequestQueryDto } from "./feed-request-query.dto";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
+const VALID_CURSOR = CursorUtils.encodeCursor({
+	sort: FeedSort.LATEST,
+	createdAt: "2026-05-28T10:00:00.000Z",
+	jobId: "12345678-1234-1234-1234-1234567890ab",
+});
 
 describe("FeedRequestQueryDto", () => {
 	describe("validation", () => {
@@ -30,7 +34,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should fail when cursor is valid base64 but invalid cursor shape", async () => {
-			const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest" })).toString("base64url");
+			const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
 			const dto = plainToInstance(FeedRequestQueryDto, { cursor: badCursor });
 			const errors = await validate(dto);
 
@@ -38,7 +42,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should pass with valid optional sort", async () => {
-			const dto = plainToInstance(FeedRequestQueryDto, { sort: "latest" });
+			const dto = plainToInstance(FeedRequestQueryDto, { sort: "LATEST" });
 			const errors = await validate(dto);
 
 			expect(errors.length).toBe(0);
@@ -59,7 +63,7 @@ describe("FeedRequestQueryDto", () => {
 		});
 
 		it("should pass with all valid fields", async () => {
-			const dto = plainToInstance(FeedRequestQueryDto, { cursor: VALID_CURSOR, sort: "latest" });
+			const dto = plainToInstance(FeedRequestQueryDto, { cursor: VALID_CURSOR, sort: "LATEST" });
 			const errors = await validate(dto);
 
 			expect(errors.length).toBe(0);

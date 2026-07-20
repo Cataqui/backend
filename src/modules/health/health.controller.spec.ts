@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { Test } from "@nestjs/testing";
+
 import { HealthCheckService, TerminusModule } from "@nestjs/terminus";
-import { HealthController } from "./health.controller";
+import { Test } from "@nestjs/testing";
+import type { FastifyReply } from "fastify";
 import { PrismaService } from "../../core/prisma/prisma.service";
 import { HealthCheckOutputDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
-import type { FastifyReply } from "fastify";
+import { HealthController } from "./health.controller";
 
 describe("HealthController", () => {
 	let controller: HealthController;

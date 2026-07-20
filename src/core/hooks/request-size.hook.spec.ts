@@ -1,6 +1,6 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { ErrorCode } from "../errors/error-code.enum";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requestSizeConfig } from "../config/request-size.config";
+import { ErrorCode } from "../errors/error-code.enum";
 import { registerRequestSizeHooks } from "./request-size.hook";
 
 const config = requestSizeConfig();

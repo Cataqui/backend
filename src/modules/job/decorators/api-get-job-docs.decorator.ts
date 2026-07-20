@@ -1,4 +1,4 @@
-import { HttpStatus, applyDecorators } from "@nestjs/common";
+import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { JobOutputDto } from "../dto/job-output.dto";
 

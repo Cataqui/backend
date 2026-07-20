@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "./error-code.enum";
 import { DomainError } from "./domain-error";
+import { ErrorCode } from "./error-code.enum";
 import { RouteNotFoundException } from "./route-not-found.exception";
 
 describe("RouteNotFoundException", () => {
@@ -17,7 +17,9 @@ describe("RouteNotFoundException", () => {
 
 		it("should set a friendly message", () => {
 			const error = new RouteNotFoundException();
-			expect(error.message).toBe("The requested endpoint was not found. Perhaps you meant to use a different HTTP method?");
+			expect(error.message).toBe(
+				"The requested endpoint was not found. Perhaps you meant to use a different HTTP method?",
+			);
 		});
 	});
 
@@ -33,7 +35,10 @@ describe("RouteNotFoundException", () => {
 			const error = new RouteNotFoundException();
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("message", "The requested endpoint was not found. Perhaps you meant to use a different HTTP method?");
+			expect(response).toHaveProperty(
+				"message",
+				"The requested endpoint was not found. Perhaps you meant to use a different HTTP method?",
+			);
 		});
 	});
 

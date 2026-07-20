@@ -26,7 +26,12 @@ describe("SuccessResponseDto", () => {
 
 	describe("serialization", () => {
 		it("should serialize to data, request_id, timestamp, endpoint", () => {
-			const dto = new SuccessResponseDto({ someField: "value" }, "req-abc", "2026-05-28T10:00:00.000Z", "/v1/posts/123");
+			const dto = new SuccessResponseDto(
+				{ someField: "value" },
+				"req-abc",
+				"2026-05-28T10:00:00.000Z",
+				"/v1/posts/123",
+			);
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("data");

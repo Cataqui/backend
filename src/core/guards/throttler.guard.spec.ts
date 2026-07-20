@@ -1,10 +1,10 @@
-import { Test, type TestingModule } from "@nestjs/testing";
 import { ExecutionContext } from "@nestjs/common";
-import { ThrottlerModule } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
+import { Test, type TestingModule } from "@nestjs/testing";
+import { ThrottlerModule } from "@nestjs/throttler";
 import type { ThrottlerLimitDetail } from "@nestjs/throttler/dist/throttler.guard.interface";
-import { CustomThrottlerGuard } from "./throttler.guard";
 import { RateLimitedError } from "../errors/rate-limited.error";
+import { CustomThrottlerGuard } from "./throttler.guard";
 
 describe("CustomThrottlerGuard", () => {
 	let guard: CustomThrottlerGuard;

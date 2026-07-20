@@ -1,7 +1,7 @@
 import { instanceToPlain } from "class-transformer";
-import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./health-check-output.dto";
 import { HealthCheckStatus } from "../enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "../enums/health-indicator-status.enum";
+import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./health-check-output.dto";
 
 describe("HealthIndicatorDetailDto", () => {
 	it("should create an instance with the given status", () => {

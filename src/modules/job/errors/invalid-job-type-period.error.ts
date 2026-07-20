@@ -1,10 +1,14 @@
 import { HttpStatus } from "@nestjs/common";
+import { JobPaymentAmountPeriod, JobType } from "../../../../generated/prisma/client.js";
 import { DomainError } from "../../../core/errors/domain-error";
 import { ErrorCode } from "../../../core/errors/error-code.enum";
-import { JobPaymentAmountPeriod, JobType } from "../../../../generated/prisma/client.js";
 
 export class InvalidJobTypePeriodError extends DomainError {
 	constructor() {
-		super(ErrorCode.INVALID_JOB_TYPE_PAYMENT_PERIOD, `Only ${JobType.INDIVIDUAL} job type can have ${JobPaymentAmountPeriod.SINGLE} payment period`, HttpStatus.BAD_REQUEST);
+		super(
+			ErrorCode.INVALID_JOB_TYPE_PAYMENT_PERIOD,
+			`Only ${JobType.INDIVIDUAL} job type can have ${JobPaymentAmountPeriod.SINGLE} payment period`,
+			HttpStatus.BAD_REQUEST,
+		);
 	}
 }

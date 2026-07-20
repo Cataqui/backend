@@ -10,6 +10,11 @@ export default defineConfig({
 			DATABASE_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			DATABASE_DIRECT_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
+			PROTOMAP_AUTH_SECRET: "test-secret",
+			PROTOMAP_URL: "https://tiles.cataqui.com",
+			CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+			AI_GATEWAY_API_TOKEN: "test-api-token",
+			CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
 		},
 		coverage: {
 			provider: "v8",

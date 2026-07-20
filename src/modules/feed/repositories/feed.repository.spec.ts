@@ -1,9 +1,9 @@
 import { Test, type TestingModule } from "@nestjs/testing";
-import { FeedRepository } from "./feed.repository";
-import { PrismaService } from "../../../core/prisma/prisma.service";
-import { CursorUtils } from "../utils/cursor.utils";
-import { FeedSort } from "../enums/feed-sort.enum";
 import { vi } from "vitest";
+import { PrismaService } from "../../../core/prisma/prisma.service";
+import { FeedSort } from "../enums/feed-sort.enum";
+import { CursorUtils } from "../utils/cursor.utils";
+import { FeedRepository } from "./feed.repository";
 
 const mockFindMany = vi.fn();
 
@@ -69,7 +69,11 @@ describe("FeedRepository", () => {
 			mockFindMany.mockResolvedValue([]);
 
 			const cursor = CursorUtils.decodeCursor(
-				CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" }),
+				CursorUtils.encodeCursor({
+					sort: FeedSort.LATEST,
+					createdAt: "2026-05-28T10:00:00.000Z",
+					jobId: "12345678-1234-1234-1234-1234567890ab",
+				}),
 				FeedSort.LATEST,
 			);
 
@@ -80,7 +84,10 @@ describe("FeedRepository", () => {
 
 			expect(orConditions).toBeDefined();
 			expect(orConditions[0]).toEqual({ createdAt: { lt: new Date("2026-05-28T10:00:00.000Z") } });
-			expect(orConditions[1]).toEqual({ createdAt: new Date("2026-05-28T10:00:00.000Z"), id: { lt: "12345678-1234-1234-1234-1234567890ab" } });
+			expect(orConditions[1]).toEqual({
+				createdAt: new Date("2026-05-28T10:00:00.000Z"),
+				id: { lt: "12345678-1234-1234-1234-1234567890ab" },
+			});
 		});
 
 		it("should not include cursor condition when cursor is not provided", async () => {
@@ -104,6 +111,7 @@ describe("FeedRepository", () => {
 				id: true,
 				title: true,
 				createdAt: true,
+				descriptionSummary: true,
 				paymentType: true,
 				paymentMinAmount: true,
 				paymentMaxAmount: true,
@@ -111,8 +119,8 @@ describe("FeedRepository", () => {
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
-				city: true,
-				state: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
 			});
 		});
 	});

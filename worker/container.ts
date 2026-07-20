@@ -12,11 +12,21 @@ export class ApiContainer extends Container {
 			DATABASE_POOLER_URL: env.DATABASE_POOLER_URL,
 			DATABASE_DIRECT_URL: env.DATABASE_DIRECT_URL,
 			CORS_ORIGINS: env.CORS_ORIGINS,
+			PROTOMAP_AUTH_SECRET: env.PROTOMAP_AUTH_SECRET,
+			PROTOMAP_URL: env.PROTOMAP_URL,
+			CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+			AI_GATEWAY_API_TOKEN: env.AI_GATEWAY_API_TOKEN,
+			CLOUDFLARE_AI_GATEWAY_ID: env.CLOUDFLARE_AI_GATEWAY_ID,
 		};
 	}
 
 	onError(error: unknown) {
-		console.error("Container errored:", error);
+		if (error instanceof Error && "exitCode" in error) {
+			const exitCode = (error as Error & { exitCode: number }).exitCode;
+			console.error(`Container exited with code ${exitCode}. Check "wrangler tail" or Cloudflare dashboard logs for the startup error.`);
+		} else {
+			console.error("Container errored:", error);
+		}
 	}
 
 	onStart() {

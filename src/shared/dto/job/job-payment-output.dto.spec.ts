@@ -1,6 +1,6 @@
 import { instanceToPlain } from "class-transformer";
-import { JobPaymentOutputDto } from "./job-payment-output.dto";
 import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
+import { JobPaymentOutputDto } from "./job-payment-output.dto";
 
 describe("JobPaymentOutputDto", () => {
 	describe("constructor", () => {

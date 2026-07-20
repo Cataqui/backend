@@ -1,18 +1,19 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from "@nestjs/common";
-import type { Observable } from "rxjs";
-import { map } from "rxjs";
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
 import { instanceToPlain } from "class-transformer";
 import type { FastifyRequest } from "fastify";
-import { RequestUtils } from "../../shared/utils/request.utils";
-import { SuccessResponseDto } from "../../shared/dto/success-response.dto";
-import { PaginatedSuccessResponseDto } from "../../shared/dto/paginated-success-response.dto";
-import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
+import type { Observable } from "rxjs";
+import { map } from "rxjs";
 import { SKIP_ENVELOPE_KEY } from "../../shared/decorators/skip-envelope.decorator";
+import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
+import { PaginatedSuccessResponseDto } from "../../shared/dto/paginated-success-response.dto";
+import { SuccessResponseDto } from "../../shared/dto/success-response.dto";
+import { RequestUtils } from "../../shared/utils/request.utils";
 
 @Injectable()
 export class ResponseInterceptor implements NestInterceptor {
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-		const skipEnvelope = (Reflect.getOwnMetadata(SKIP_ENVELOPE_KEY, context.getHandler()) ?? Reflect.getMetadata(SKIP_ENVELOPE_KEY, context.getClass())) as boolean | undefined;
+		const skipEnvelope = (Reflect.getOwnMetadata(SKIP_ENVELOPE_KEY, context.getHandler()) ??
+			Reflect.getMetadata(SKIP_ENVELOPE_KEY, context.getClass())) as boolean | undefined;
 
 		if (skipEnvelope) {
 			return next.handle().pipe(

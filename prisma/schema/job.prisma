@@ -1,27 +1,30 @@
 model Job {
-  id                String            @id @default(uuid()) @db.Uuid
-  title             String            @db.VarChar(120)
-  description       String            @db.Text
-  contactName       String            @map("contact_name") @db.VarChar(100)
-  contactPhoneNumber String            @map("contact_phone_number") @db.VarChar(20)
-  contactMethod      JobContactMethod     @map("contact_method")
-  street            String?           @db.VarChar(200)
-  neighborhood      String?           @db.VarChar(100)
-  city              String            @db.VarChar(100)
-  state             String            @db.VarChar(2)
-  country           String            @db.VarChar(2)
-  status            JobStatus
-  type              JobType
-  paymentType       JobPaymentType    @map("payment_type")
-  paymentMinAmount  Decimal?          @map("payment_min_amount") @db.Decimal(10, 2)
-  paymentMaxAmount  Decimal?          @map("payment_max_amount") @db.Decimal(10, 2)
-  paymentNote       String?           @map("payment_note") @db.Text
-  paymentAmountPeriod JobPaymentAmountPeriod @map("payment_amount_period")
-  paymentCurrency   String            @map("payment_currency") @db.VarChar(3)
-  categoryId        String            @map("category_id") @db.Uuid
-  category          JobCategory       @relation(fields: [categoryId], references: [id])
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  id                 String @id @default(uuid()) @db.Uuid
+  title              String @db.VarChar(120)
+  description        String @db.Text
+  descriptionSummary String @map("description_summary") @db.Text
+
+  contact             JobContact?
+  street              String?                              @db.VarChar(200)
+  neighborhood        String                               @db.VarChar(100)
+  city                String                               @db.VarChar(100)
+  state               String                               @db.VarChar(2)
+  country             String                               @db.VarChar(2)
+  locationPoint       Unsupported("geometry(Point,4326)")? @map("location_point")
+  fuzzyLatitude       Decimal                              @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude      Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
+  status              JobStatus
+  type                JobType
+  paymentType         JobPaymentType                       @map("payment_type")
+  paymentMinAmount    Decimal?                             @map("payment_min_amount") @db.Decimal(10, 2)
+  paymentMaxAmount    Decimal?                             @map("payment_max_amount") @db.Decimal(10, 2)
+  paymentNote         String?                              @map("payment_note") @db.Text
+  paymentAmountPeriod JobPaymentAmountPeriod               @map("payment_amount_period")
+  paymentCurrency     String                               @map("payment_currency") @db.VarChar(3)
+  categoryId          String                               @map("category_id") @db.Uuid
+  category            JobCategory                          @relation(fields: [categoryId], references: [id])
+  createdAt           DateTime                             @default(now()) @map("created_at")
+  updatedAt           DateTime                             @updatedAt @map("updated_at")
 
   @@index([city, state, country])
   @@index([categoryId])

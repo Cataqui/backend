@@ -1,24 +1,9 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsString, IsEnum, Length, IsPhoneNumber } from "class-validator";
+import { IsEnum, IsString } from "class-validator";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
 
 export class CreateJobContactInputDto {
-	@Expose({ name: "name" })
-	@ApiProperty({ name: "name", description: "The name of the person to contact", example: "João Silva" })
-	@IsString()
-	@Length(2, 100)
-	readonly name!: string;
-
-	@Expose({ name: "phone_number" })
-	@ApiProperty({
-		name: "phone_number",
-		description: "Phone number with country code",
-		example: "+5511999999999",
-	})
-	@IsPhoneNumber()
-	readonly phoneNumber!: string;
-
 	@Expose({ name: "contact_method" })
 	@ApiProperty({
 		name: "contact_method",
@@ -27,5 +12,15 @@ export class CreateJobContactInputDto {
 		example: JobContactMethod.WHATSAPP,
 	})
 	@IsEnum(JobContactMethod)
-	readonly method!: JobContactMethod;
+	readonly contactMethod!: JobContactMethod;
+
+	@Expose({ name: "identifier" })
+	@ApiProperty({
+		name: "identifier",
+		description:
+			"Contact identifier such as phone number with country code, email address, etc. Vary depending on the contact method.",
+		example: "+5511999999999",
+	})
+	@IsString()
+	readonly identifier!: string;
 }

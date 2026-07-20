@@ -1,10 +1,14 @@
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { IsIFeedPaginationCursor } from "./is-feed-pagination-cursor.decorator";
-import { CursorUtils } from "../utils/cursor.utils";
 import { FeedSort } from "../enums/feed-sort.enum";
+import { CursorUtils } from "../utils/cursor.utils";
+import { IsIFeedPaginationCursor } from "./is-feed-pagination-cursor.decorator";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({ sort: FeedSort.LATEST, createdAt: "2026-05-28T10:00:00.000Z", jobId: "12345678-1234-1234-1234-1234567890ab" });
+const VALID_CURSOR = CursorUtils.encodeCursor({
+	sort: FeedSort.LATEST,
+	createdAt: "2026-05-28T10:00:00.000Z",
+	jobId: "12345678-1234-1234-1234-1234567890ab",
+});
 
 class TestDto {
 	@IsIFeedPaginationCursor()
@@ -34,7 +38,7 @@ describe("IsIFeedPaginationCursor", () => {
 	});
 
 	it("should fail for valid base64url but invalid cursor shape", async () => {
-		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest" })).toString("base64url");
+		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "LATEST" })).toString("base64url");
 		const dto = plainToInstance(TestDto, { cursor: badCursor });
 		const errors = await validate(dto);
 
@@ -42,7 +46,9 @@ describe("IsIFeedPaginationCursor", () => {
 	});
 
 	it("should fail for valid base64url JSON with wrong field types", async () => {
-		const badCursor = Buffer.from(JSON.stringify({ version: 1, sort: "latest", createdAt: 123, jobId: "abc" })).toString("base64url");
+		const badCursor = Buffer.from(
+			JSON.stringify({ version: 1, sort: "LATEST", createdAt: 123, jobId: "abc" }),
+		).toString("base64url");
 		const dto = plainToInstance(TestDto, { cursor: badCursor });
 		const errors = await validate(dto);
 
@@ -53,6 +59,8 @@ describe("IsIFeedPaginationCursor", () => {
 		const dto = plainToInstance(TestDto, { cursor: "invalid" });
 		const errors = await validate(dto);
 
-		expect(errors[0]?.constraints?.["IsIFeedPaginationCursor"]).toBe("The cursor must be a valid encoded feed pagination cursor");
+		expect(errors[0]?.constraints?.["IsIFeedPaginationCursor"]).toBe(
+			"The cursor must be a valid encoded feed pagination cursor",
+		);
 	});
 });

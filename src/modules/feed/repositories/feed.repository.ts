@@ -1,21 +1,22 @@
 import { Injectable } from "@nestjs/common";
+import { JobPaymentAmountPeriod, JobPaymentType, JobStatus } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import { JobStatus, JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
 
 export interface FeedItemRaw {
 	id: string;
 	title: string;
 	createdAt: Date;
+	descriptionSummary: string;
 	paymentType: JobPaymentType;
 	paymentMinAmount: { toNumber(): number } | null;
 	paymentMaxAmount: { toNumber(): number } | null;
 	paymentNote: string | null;
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
-	neighborhood: string | null;
-	city: string;
-	state: string;
+	neighborhood: string;
+	fuzzyLatitude: { toNumber(): number };
+	fuzzyLongitude: { toNumber(): number };
 }
 
 @Injectable()
@@ -28,7 +29,10 @@ export class FeedRepository {
 				status: JobStatus.ACTIVE,
 				...(params.cursor
 					? {
-							OR: [{ createdAt: { lt: new Date(params.cursor.createdAt) } }, { createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } }],
+							OR: [
+								{ createdAt: { lt: new Date(params.cursor.createdAt) } },
+								{ createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } },
+							],
 						}
 					: {}),
 			},
@@ -38,6 +42,7 @@ export class FeedRepository {
 				id: true,
 				title: true,
 				createdAt: true,
+				descriptionSummary: true,
 				paymentType: true,
 				paymentMinAmount: true,
 				paymentMaxAmount: true,
@@ -45,8 +50,8 @@ export class FeedRepository {
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
 				neighborhood: true,
-				city: true,
-				state: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
 			},
 		});
 

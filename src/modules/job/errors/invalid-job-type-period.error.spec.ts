@@ -1,6 +1,6 @@
-import { InvalidJobTypePeriodError } from "./invalid-job-type-period.error";
-import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { JobPaymentAmountPeriod, JobType } from "../../../../generated/prisma/client.js";
+import { ErrorCode } from "../../../core/errors/error-code.enum";
+import { InvalidJobTypePeriodError } from "./invalid-job-type-period.error";
 
 describe("InvalidJobTypePeriodError", () => {
 	it("should have code INVALID_JOB_TYPE_PAYMENT_PERIOD", () => {
@@ -14,6 +14,8 @@ describe("InvalidJobTypePeriodError", () => {
 		const response = error.getResponse() as Record<string, unknown>;
 
 		expect(response).toHaveProperty("message");
-		expect(response["message"] as string).toBe(`Only ${JobType.INDIVIDUAL} job type can have ${JobPaymentAmountPeriod.SINGLE} payment period`);
+		expect(response["message"] as string).toBe(
+			`Only ${JobType.INDIVIDUAL} job type can have ${JobPaymentAmountPeriod.SINGLE} payment period`,
+		);
 	});
 });

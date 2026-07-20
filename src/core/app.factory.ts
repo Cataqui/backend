@@ -1,14 +1,16 @@
+import helmet from "@fastify/helmet";
+import { BadRequestException, Logger, ValidationPipe, VersioningType } from "@nestjs/common";
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { ValidationPipe, VersioningType, Logger } from "@nestjs/common";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import type { ValidationError } from "class-validator";
+import { requestSizeConfig } from "./config/request-size.config";
+import { CorsBlockedError } from "./errors/cors-blocked.error";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
-import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
+import { registerRequestSizeHooks } from "./hooks/request-size.hook";
 import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
-import { requestSizeConfig } from "./config/request-size.config";
-import { registerRequestSizeHooks } from "./hooks/request-size.hook";
-import helmet from "@fastify/helmet";
-import { CorsBlockedError } from "./errors/cors-blocked.error";
+import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
+import { ValidationErrorUtils } from "./validation/validation-error.utils";
 
 export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	const corsLogger = new Logger("CORS");
@@ -28,8 +30,13 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			transform: true,
+			stopAtFirstError: true,
 			transformOptions: {
 				enableImplicitConversion: true,
+			},
+			exceptionFactory: (errors: ValidationError[]): BadRequestException => {
+				const messages = ValidationErrorUtils.formatValidationErrors(errors);
+				return new BadRequestException(messages);
 			},
 		}),
 	);
@@ -37,16 +44,20 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
 	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
 
-	app.enableCors({
-		origin: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
-			if (origin === undefined) return callback(null, true);
+	const isDevelopment = process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
 
-			if (allowedOrigins.includes(origin)) callback(null, true);
-			else {
-				corsLogger.warn(`CORS Violation Blocked: Unauthorized access attempt from origin [${origin}]`);
-				callback(new CorsBlockedError(), false);
-			}
-		},
+	app.enableCors({
+		origin: isDevelopment
+			? true
+			: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+					if (origin === undefined) return callback(null, true);
+
+					if (allowedOrigins.includes(origin)) callback(null, true);
+					else {
+						corsLogger.warn(`CORS Violation Blocked: Unauthorized access attempt from origin [${origin}]`);
+						callback(new CorsBlockedError(), false);
+					}
+				},
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],

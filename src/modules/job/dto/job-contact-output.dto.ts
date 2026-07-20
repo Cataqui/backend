@@ -3,17 +3,12 @@ import { Expose } from "class-transformer";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
 
 export class JobContactOutputDto {
-	@Expose({ name: "name" })
-	@ApiProperty({ name: "name", description: "Contact person's name", example: "João Silva" })
-	readonly name: string;
-
-	@Expose({ name: "phone_number" })
-	@ApiProperty({
-		name: "phone_number",
-		description: "Phone number with country code",
-		example: "+5511999999999",
-	})
-	readonly phoneNumber: string;
+	static fromDatabase(contact: { contactMethod: JobContactMethod; identifier: string }): JobContactOutputDto {
+		return new JobContactOutputDto({
+			contactMethod: contact.contactMethod,
+			identifier: contact.identifier,
+		});
+	}
 
 	@Expose({ name: "contact_method" })
 	@ApiProperty({
@@ -22,11 +17,19 @@ export class JobContactOutputDto {
 		description: "Preferred contact method",
 		example: JobContactMethod.WHATSAPP,
 	})
-	readonly method: JobContactMethod;
+	readonly contactMethod: JobContactMethod;
 
-	constructor(params: { contactName: string; contactPhoneNumber: string; contactMethod: JobContactMethod }) {
-		this.name = params.contactName;
-		this.phoneNumber = params.contactPhoneNumber;
-		this.method = params.contactMethod;
+	@Expose({ name: "identifier" })
+	@ApiProperty({
+		name: "identifier",
+		description:
+			"Contact identifier such as phone number with country code, email address, etc. Vary depending on the contact method.",
+		example: "+5511999999999",
+	})
+	readonly identifier: string;
+
+	constructor(params: { contactMethod: JobContactMethod; identifier: string }) {
+		this.contactMethod = params.contactMethod;
+		this.identifier = params.identifier;
 	}
 }

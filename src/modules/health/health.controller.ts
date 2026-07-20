@@ -1,12 +1,12 @@
-import { Controller, Get, Version, Res, HttpStatus, Logger } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
+import { Controller, Get, HttpStatus, Logger, Res, Version } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
+import type { FastifyReply } from "fastify";
 import { PrismaService } from "../../core/prisma/prisma.service";
+import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
 import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
-import type { FastifyReply } from "fastify";
 
 @ApiTags("health")
 @Controller("health")

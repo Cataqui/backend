@@ -6,7 +6,13 @@ describe("PaginatedSuccessResponseDto", () => {
 	describe("constructor", () => {
 		it("should assign data, pagination, requestId, timestamp, endpoint", () => {
 			const pagination = new PaginationOutputDto(true, "cursor-val");
-			const dto = new PaginatedSuccessResponseDto([{ id: 1 }, { id: 2 }], pagination, "req-123", "2026-05-28T10:00:00.000Z", "/v1/feed");
+			const dto = new PaginatedSuccessResponseDto(
+				[{ id: 1 }, { id: 2 }],
+				pagination,
+				"req-123",
+				"2026-05-28T10:00:00.000Z",
+				"/v1/feed",
+			);
 
 			expect(dto.data).toHaveLength(2);
 			expect(dto.pagination).toBe(pagination);
@@ -26,7 +32,13 @@ describe("PaginatedSuccessResponseDto", () => {
 	describe("serialization", () => {
 		it("should serialize to data, pagination, request_id, timestamp, endpoint", () => {
 			const pagination = new PaginationOutputDto(true, "cursor-val");
-			const dto = new PaginatedSuccessResponseDto([{ id: 1 }], pagination, "req-abc", "2026-05-28T10:00:00.000Z", "/v1/feed");
+			const dto = new PaginatedSuccessResponseDto(
+				[{ id: 1 }],
+				pagination,
+				"req-abc",
+				"2026-05-28T10:00:00.000Z",
+				"/v1/feed",
+			);
 			const plain = instanceToPlain(dto) as Record<string, unknown>;
 
 			expect(plain).toHaveProperty("data");

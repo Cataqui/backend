@@ -1,11 +1,23 @@
 {
   "version": 1,
   "skills": {
+    "agents-sdk": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/agents-sdk/SKILL.md",
+      "computedHash": "cb669fba9289d500872584ea0daab1c5114f1c8f12a991f90871431d3fadbf3c"
+    },
     "api-security-best-practices": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
       "skillPath": "skills/api-security-best-practices/SKILL.md",
       "computedHash": "5a088c5b84b75ed44955e7a153b4af20b5a70b6430e86d0f0398b824cc9efb20"
+    },
+    "biome": {
+      "source": "bobmatnyc/claude-mpm-skills",
+      "sourceType": "github",
+      "skillPath": "toolchains/javascript/tooling/biome/SKILL.md",
+      "computedHash": "7eeb8068922761916f0b9fdf8a2aba804857ffddd450797d030b8ead90f4f8a5"
     },
     "cloudflare-deploy": {
       "source": "openai/skills",
@@ -30,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "jwt-security/SKILL.md",
       "computedHash": "07d22bb08ad8ac8ffcb90885bb04c04ec7e6f5498eb63580ca6072a4c1694c80"
+    },
+    "llm-security": {
+      "source": "semgrep/skills",
+      "sourceType": "github",
+      "skillPath": "skills/llm-security/SKILL.md",
+      "computedHash": "c6f01f4b16c45c4a68aa7679ada409647435207d3bce7185d8fa62be9dbe7553"
     },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
@@ -84,6 +102,24 @@
       "sourceType": "github",
       "skillPath": "prisma-postgres-setup/SKILL.md",
       "computedHash": "5dbcf5a488d7cb7136340b86dcf781d6d92cf793f92c105ef644ac31ccac4d3b"
+    },
+    "prompt-engineering-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md",
+      "computedHash": "de45b8066301dda62d6912dfe54c4062bad1f4259a7231a9e98c55b10c49fa2e"
+    },
+    "sharp-edges": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/sharp-edges/skills/sharp-edges/SKILL.md",
+      "computedHash": "8aa5c8ad250215a5b8f40c4e386dcd045b4a7a31c67952d1685d906aa7571843"
+    },
+    "supply-chain-risk-auditor": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor/SKILL.md",
+      "computedHash": "483d9ce83cd95ef1b343c879c608e87ab30ec8ede5873f8ea22707e6ebab033a"
     },
     "testing-patterns": {
       "source": "vudovn/antigravity-kit",

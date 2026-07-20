@@ -1,5 +1,5 @@
-import { of } from "rxjs";
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
+import { of } from "rxjs";
 import { LoggingInterceptor } from "./logging.interceptor";
 
 describe("LoggingInterceptor", () => {

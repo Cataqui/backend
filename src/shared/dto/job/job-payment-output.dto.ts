@@ -2,28 +2,38 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
-export class FeedPaymentOutputDto {
+export class JobPaymentOutputDto {
 	@Expose({ name: "type" })
 	@ApiProperty({
 		name: "type",
 		enum: JobPaymentType,
-		description: "Defines if the job payment amount for the worker is fixed, range based on expertise, totally flexible or other",
+		description: "Defines if the payment amount is fixed, flexible, etc.",
 		example: JobPaymentType.FIXED,
 	})
 	readonly type: JobPaymentType;
 
 	@Expose({ name: "min_amount" })
-	@ApiProperty({ name: "min_amount", description: "Minimum payment amount that the worker will receive. Omitted in case of flexible", example: 150.0, required: false })
+	@ApiProperty({
+		name: "min_amount",
+		description: "Minimum payment amount for the job",
+		example: 150.0,
+		required: false,
+	})
 	readonly minAmount: number | undefined;
 
 	@Expose({ name: "max_amount" })
-	@ApiProperty({ name: "max_amount", description: "Maximum payment amount that the worker will receive. Omitted in case of flexible", example: 200.0, required: false })
+	@ApiProperty({
+		name: "max_amount",
+		description: "Maximum payment amount for the job (in case of range)",
+		example: 200.0,
+		required: false,
+	})
 	readonly maxAmount: number | undefined;
 
 	@Expose({ name: "note" })
 	@ApiProperty({
 		name: "note",
-		description: "A note explaining how the payment works. Required if payment type is `OTHER`",
+		description: "A note related to the payment (e.g. how it will be done, or any additional details)",
 		example: "Commission-based",
 		required: false,
 	})
@@ -33,13 +43,14 @@ export class FeedPaymentOutputDto {
 	@ApiProperty({
 		name: "amount_period",
 		enum: JobPaymentAmountPeriod,
-		description: "Define if a payment is single time or recurring (and recurrency period if recurring)",
+		description:
+			"The period of the payment amount, if the payment amount is daily, weekly, monthly, etc. (e.g. $20/day, $100/week, etc.)",
 		example: JobPaymentAmountPeriod.SINGLE,
 	})
 	readonly amountPeriod: JobPaymentAmountPeriod;
 
 	@Expose({ name: "currency" })
-	@ApiProperty({ name: "currency", description: "Payment currency code (ISO 4217)", example: "BRL" })
+	@ApiProperty({ name: "currency", description: "Currency code (ISO 4217)", example: "BRL" })
 	readonly currency: string;
 
 	constructor(params: {

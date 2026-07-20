@@ -1,10 +1,11 @@
-import { Test } from "@nestjs/testing";
-import { type NestFastifyApplication, FastifyAdapter } from "@nestjs/platform-fastify";
+import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
+import { Test } from "@nestjs/testing";
 import { AppModule } from "../src/app.module";
-import { PrismaService } from "../src/core/prisma/prisma.service";
 import { configureApp } from "../src/core/app.factory";
+import { PrismaService } from "../src/core/prisma/prisma.service";
 
+process.env["NODE_ENV"] = "production";
 process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://allowed-origin.com";

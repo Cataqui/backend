@@ -1,5 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose } from "class-transformer";
+import { Expose, Type } from "class-transformer";
+import { JobLocationConstants } from "../../job/constants/job-location.constants";
+import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 
 export class FeedLocationOutputDto {
 	@Expose({ name: "neighborhood" })
@@ -7,21 +9,61 @@ export class FeedLocationOutputDto {
 		name: "neighborhood",
 		description: "Neighborhood or district of the job",
 		example: "Centro",
-		required: false,
 	})
-	readonly neighborhood: string | null;
+	readonly neighborhood: string;
 
-	@Expose({ name: "city" })
-	@ApiProperty({ name: "city", description: "City name of the job", example: "São Paulo" })
-	readonly city: string;
+	@Expose({ name: "latitude" })
+	@ApiProperty({
+		name: "latitude",
+		description:
+			"Fuzzy public latitude of the location to show on map. Note that this is not the exact location of the job but an estimation",
+		example: -23.547812,
+	})
+	readonly latitude: number;
 
-	@Expose({ name: "state" })
-	@ApiProperty({ name: "state", description: "State code (2 chars) of the job", example: "SP" })
-	readonly state: string;
+	@Expose({ name: "longitude" })
+	@ApiProperty({
+		name: "longitude",
+		description:
+			"Fuzzy public longitude of the location to show on map. Note that this is not the exact location of the job but an estimation",
+		example: -46.630431,
+	})
+	readonly longitude: number;
 
-	constructor(params: { neighborhood: string | null; city: string; state: string }) {
+	@Expose({ name: "area_radius" })
+	@ApiProperty({
+		name: "area_radius",
+		description:
+			"Radius in meters clients should draw around the fuzzy location to show where is the job located as estimation.",
+		example: JobLocationConstants.AREA_RADIUS_METERS,
+	})
+	readonly areaRadius: number;
+
+	@Expose({ name: "map_config" })
+	@ApiProperty({
+		name: "map_config",
+		description:
+			"Map configuration including authentication credentials and tile settings for displaying the location on a map.",
+		type: MapConfigOutputDto,
+	})
+	@Type(() => MapConfigOutputDto)
+	readonly mapConfig: MapConfigOutputDto;
+
+	constructor(params: {
+		neighborhood: string;
+		latitude: { toNumber(): number } | number;
+		longitude: { toNumber(): number } | number;
+		areaRadius?: number | undefined;
+		mapConfig: MapConfigOutputDto;
+	}) {
 		this.neighborhood = params.neighborhood;
-		this.city = params.city;
-		this.state = params.state;
+		this.latitude = this._toNumber(params.latitude);
+		this.longitude = this._toNumber(params.longitude);
+		this.areaRadius = params.areaRadius ?? JobLocationConstants.AREA_RADIUS_METERS;
+		this.mapConfig = params.mapConfig;
+	}
+
+	private _toNumber(value: { toNumber(): number } | number): number {
+		return typeof value === "number" ? value : value.toNumber();
 	}
 }

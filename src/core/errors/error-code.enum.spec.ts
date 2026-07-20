@@ -14,11 +14,13 @@ describe("ErrorCode", () => {
 			"INVALID_CURSOR",
 			"JOB_CATEGORY_NOT_FOUND",
 			"JOB_NOT_FOUND",
+			"JOB_CONTACT_NOT_FOUND",
 			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
+			"MAP_REGION_NOT_FOUND",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -34,7 +36,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 17 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(17);
+	it("should have exactly 19 members", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(19);
 	});
 });

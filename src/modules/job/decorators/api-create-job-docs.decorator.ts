@@ -1,5 +1,5 @@
-import { HttpStatus, applyDecorators } from "@nestjs/common";
-import { ApiOperation, ApiBody, ApiResponse } from "@nestjs/swagger";
+import { applyDecorators, HttpStatus } from "@nestjs/common";
+import { ApiBody, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { CreateJobRequestDto } from "../dto/create-job-request.dto";
 import { JobOutputDto } from "../dto/job-output.dto";
 
@@ -14,11 +14,7 @@ export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
 		}),
 		ApiResponse({
 			status: HttpStatus.BAD_REQUEST,
-			description: "Invalid input (validation error)",
-		}),
-		ApiResponse({
-			status: HttpStatus.NOT_FOUND,
-			description: "Category not found",
+			description: "Invalid input, invalid job payment rules, or category_id does not match an existing category",
 		}),
 	);
 }

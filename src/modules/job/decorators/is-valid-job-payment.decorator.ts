@@ -1,4 +1,11 @@
-import { ValidatorConstraint, type ValidatorConstraintInterface, type ValidationArguments, registerDecorator, type ValidationOptions } from "class-validator";
+import {
+	isEnum,
+	registerDecorator,
+	type ValidationArguments,
+	type ValidationOptions,
+	ValidatorConstraint,
+	type ValidatorConstraintInterface,
+} from "class-validator";
 import { JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { JobPaymentInputDto } from "../../job/dto/job-payment-input.dto.js";
 
@@ -6,6 +13,15 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 	isValid: boolean;
 	message: string;
 } {
+	if (!payment) return { isValid: false, message: "payment is required" };
+
+	if (!payment.type || !isEnum(payment.type, JobPaymentType)) {
+		return {
+			isValid: false,
+			message: `type must be one of ${Object.values(JobPaymentType).join(", ")}`,
+		};
+	}
+
 	if (payment === null || payment === undefined || typeof payment !== "object") {
 		return { isValid: false, message: "Invalid payment format" };
 	}
@@ -20,7 +36,8 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 		case JobPaymentType.RANGE: {
 			if (!payment.minAmount) return { isValid: false, message: "Range payment requires a minimum and maximum amount" };
 			if (!payment.maxAmount) return { isValid: false, message: "Range payment requires a minimum and maximum amount" };
-			if (payment.maxAmount <= payment.minAmount) return { isValid: false, message: "Maximum amount must be greater than the minimum amount" };
+			if (payment.maxAmount <= payment.minAmount)
+				return { isValid: false, message: "Maximum amount must be greater than the minimum amount" };
 			return { isValid: true, message: "" };
 		}
 
@@ -33,12 +50,12 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 		case JobPaymentType.OTHER: {
 			if (payment.minAmount) return { isValid: false, message: "Other payment type must not have amount values" };
 			if (payment.maxAmount) return { isValid: false, message: "Other payment type must not have amount values" };
-			if (!payment.note || payment.note.trim().length === 0) return { isValid: false, message: "Other payment type requires a note explaining the payment" };
+			if (!payment.note || payment.note.trim().length === 0) {
+				return { isValid: false, message: "Other payment type requires a note explaining the payment" };
+			}
+
 			return { isValid: true, message: "" };
 		}
-
-		default:
-			return { isValid: false, message: "Fixed payment requires a minimum amount" };
 	}
 }
 
@@ -54,7 +71,7 @@ export class IsValidJobPaymentConstraint implements ValidatorConstraintInterface
 }
 
 export function IsValidJobPayment(validationOptions?: ValidationOptions): PropertyDecorator {
-	return function (object: object, propertyName: string | symbol): void {
+	return (object: object, propertyName: string | symbol): void => {
 		registerDecorator({
 			name: "isValidJobPayment",
 			target: object.constructor,

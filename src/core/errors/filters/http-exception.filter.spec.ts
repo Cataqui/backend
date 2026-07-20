@@ -64,7 +64,10 @@ describe("HttpExceptionFilter", () => {
 	});
 
 	it("should handle HttpException with array message (validation errors)", () => {
-		const exception = new HttpException({ message: ["field is required", "field must be a string"] }, HttpStatus.BAD_REQUEST);
+		const exception = new HttpException(
+			{ message: ["field is required", "field must be a string"] },
+			HttpStatus.BAD_REQUEST,
+		);
 
 		const { sendMock, statusMock } = createMockHost(exception);
 
@@ -76,7 +79,10 @@ describe("HttpExceptionFilter", () => {
 	});
 
 	it("should handle HttpException with object response containing error_code", () => {
-		const exception = new HttpException({ error_code: ErrorCode.RATE_LIMITED, message: "Too many requests" }, HttpStatus.TOO_MANY_REQUESTS);
+		const exception = new HttpException(
+			{ error_code: ErrorCode.RATE_LIMITED, message: "Too many requests" },
+			HttpStatus.TOO_MANY_REQUESTS,
+		);
 
 		const { sendMock, statusMock } = createMockHost(exception);
 
@@ -89,7 +95,10 @@ describe("HttpExceptionFilter", () => {
 	});
 
 	it("should handle HttpException with array message (validation errors)", () => {
-		const exception = new HttpException({ message: ["field is required", "field must be a string"] }, HttpStatus.BAD_REQUEST);
+		const exception = new HttpException(
+			{ message: ["field is required", "field must be a string"] },
+			HttpStatus.BAD_REQUEST,
+		);
 
 		const { sendMock, statusMock } = createMockHost(exception);
 
@@ -98,6 +107,28 @@ describe("HttpExceptionFilter", () => {
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
 		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty("message", "field is required; field must be a string");
+	});
+
+	it("should preserve snake_case field names in validation error messages", () => {
+		const exception = new HttpException(
+			{
+				message: [
+					"category_id must be a UUID",
+					"contact.phone_number must be a valid phone number",
+					"min_amount must be a positive number",
+				],
+			},
+			HttpStatus.BAD_REQUEST,
+		);
+
+		const { sendMock } = createMockHost(exception);
+
+		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
+		expect(body).toHaveProperty(
+			"message",
+			"category_id must be a UUID; contact.phone_number must be a valid phone number; min_amount must be a positive number",
+		);
 	});
 
 	it("should handle non-HttpException Error", () => {
@@ -257,7 +288,10 @@ describe("HttpExceptionFilter", () => {
 		});
 
 		it("should pass through custom error_code from PayloadTooLargeError", () => {
-			const exception = new HttpException({ error_code: ErrorCode.PAYLOAD_TOO_LARGE, message: "custom body too large" }, HttpStatus.PAYLOAD_TOO_LARGE);
+			const exception = new HttpException(
+				{ error_code: ErrorCode.PAYLOAD_TOO_LARGE, message: "custom body too large" },
+				HttpStatus.PAYLOAD_TOO_LARGE,
+			);
 
 			const { sendMock } = createMockHost(exception);
 
@@ -269,7 +303,10 @@ describe("HttpExceptionFilter", () => {
 
 	describe("route not found", () => {
 		it("should return ROUTE_NOT_FOUND when ExceptionMessage starts with Cannot and status is 404", () => {
-			const exception = new HttpException({ message: "Cannot GET /v1/nonexistent", statusCode: 404, error: "Not Found" }, HttpStatus.NOT_FOUND);
+			const exception = new HttpException(
+				{ message: "Cannot GET /v1/nonexistent", statusCode: 404, error: "Not Found" },
+				HttpStatus.NOT_FOUND,
+			);
 
 			const { sendMock, statusMock } = createMockHost(exception);
 

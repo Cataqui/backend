@@ -1,5 +1,5 @@
-import { Controller, Get, Version, VERSION_NEUTRAL } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { Controller, Get, VERSION_NEUTRAL, Version } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { SkipEnvelope } from "./shared/decorators/skip-envelope.decorator";
 
 @ApiTags("app")

@@ -1,24 +1,24 @@
 model JobCategory {
-  id          String                      @id @default(uuid()) @db.Uuid
-  name        String                      @unique @db.VarChar(100)
-  slug        String                      @unique @db.VarChar(100)
-  createdAt   DateTime                    @default(now()) @map("created_at")
-  updatedAt   DateTime                    @updatedAt @map("updated_at")
-  jobs        Job[]
+  id           String                   @id @default(uuid()) @db.Uuid
+  slug         String                   @unique @db.VarChar(100)
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+  jobs         Job[]
   translations JobCategoryTranslation[]
 
   @@map("job_categories")
 }
 
 model JobCategoryTranslation {
-  id         String     @id @default(uuid()) @db.Uuid
-  categoryId String     @map("category_id") @db.Uuid
-  locale     String     @db.VarChar(10)
-  name       String     @db.VarChar(100)
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id         String      @id @default(uuid()) @db.Uuid
+  categoryId String      @map("category_id") @db.Uuid
+  locale     String      @db.VarChar(10)
+  name       String      @db.VarChar(100)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
   category   JobCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([categoryId, locale])
+  @@unique([locale, name])
   @@map("job_category_translations")
 }

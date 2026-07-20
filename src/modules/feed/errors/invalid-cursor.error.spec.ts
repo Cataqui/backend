@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { InvalidCursorError } from "./invalid-cursor.error";
 import { ErrorCode } from "../../../core/errors/error-code.enum";
+import { InvalidCursorError } from "./invalid-cursor.error";
 
 describe("InvalidCursorError", () => {
 	it("should have INVALID_CURSOR error code", () => {
@@ -29,10 +29,10 @@ describe("InvalidCursorError", () => {
 
 	describe("sortMismatch", () => {
 		it("should create an error with sort mismatch message", () => {
-			const error = InvalidCursorError.sortMismatch("latest", "expiring" as never);
+			const error = InvalidCursorError.sortMismatch("LATEST", "EXPIRING" as never);
 
 			expect(error.errorCode).toBe(ErrorCode.INVALID_CURSOR);
-			expect(error.message).toBe("Cursor sort 'latest' does not match requested sort 'expiring'.");
+			expect(error.message).toBe("Cursor sort 'LATEST' does not match requested sort 'EXPIRING'.");
 		});
 	});
 });

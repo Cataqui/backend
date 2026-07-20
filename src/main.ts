@@ -1,6 +1,6 @@
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { Logger } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import { configureApp } from "./core/app.factory";
 import { requestSizeConfig } from "./core/config/request-size.config";
@@ -29,4 +29,8 @@ async function bootstrap(): Promise<void> {
 	logger.log(`Swagger docs at http://localhost:${port}/docs`);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+	const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+	process.stderr.write(`[FATAL] Application failed to start:\n${message}\n`);
+	process.exitCode = 1;
+});

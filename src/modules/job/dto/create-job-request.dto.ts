@@ -1,15 +1,22 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { IsString, Length, IsEnum, ValidateNested, IsUUID } from "class-validator";
+import { IsEnum, IsString, IsUUID, Length, ValidateNested } from "class-validator";
+import { JobType } from "../../../../generated/prisma/client.js";
+import { IsValidContactInput } from "../decorators/is-valid-contact-input.decorator";
+import { IsValidJobPayment } from "../decorators/is-valid-job-payment.decorator";
 import { CreateJobContactInputDto } from "./create-job-contact-input.dto";
 import { CreateJobLocationInputDto } from "./create-job-location-input.dto";
 import { JobPaymentInputDto } from "./job-payment-input.dto";
-import { IsValidJobPayment } from "../decorators/is-valid-job-payment.decorator";
-import { JobType } from "../../../../generated/prisma/client.js";
 
 export class CreateJobRequestDto {
 	@Expose({ name: "title" })
-	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck", minLength: 3, maxLength: 120 })
+	@ApiProperty({
+		name: "title",
+		description: "Short Job title",
+		example: "Help unload truck",
+		minLength: 3,
+		maxLength: 120,
+	})
 	@IsString()
 	@Length(3, 120)
 	readonly title!: string;
@@ -27,7 +34,12 @@ export class CreateJobRequestDto {
 	readonly description!: string;
 
 	@Expose({ name: "contact" })
-	@ApiProperty({ name: "contact", description: "Person to contact regarding the job offer", type: CreateJobContactInputDto })
+	@ApiProperty({
+		name: "contact",
+		description: "Person to contact regarding the job offer",
+		type: CreateJobContactInputDto,
+	})
+	@IsValidContactInput()
 	@ValidateNested()
 	@Type(() => CreateJobContactInputDto)
 	readonly contact!: CreateJobContactInputDto;
@@ -42,14 +54,19 @@ export class CreateJobRequestDto {
 	@ApiProperty({
 		name: "type",
 		enum: JobType,
-		description: "Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
+		description:
+			"Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
 		example: JobType.INDIVIDUAL,
 	})
 	@IsEnum(JobType)
 	readonly type!: JobType;
 
 	@Expose({ name: "category_id" })
-	@ApiProperty({ name: "category_id", description: "The category of the job defined as UUI", example: "afdfd9b2-203d-4528-8a1c-82b6b139039b" })
+	@ApiProperty({
+		name: "category_id",
+		description: "The category of the job defined as UUI",
+		example: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
+	})
 	@IsUUID()
 	readonly categoryId!: string;
 

@@ -4,7 +4,6 @@ dist/
 coverage/
 generated/
 .idea/
-.vscode/
 *.js.map
 *.ts.map
 .DS_Store
@@ -23,3 +22,6 @@ worker/dist/
 
 # AI
 .opencode
+
+# Biome
+.biome/

@@ -1,10 +1,10 @@
-import { Controller, Get, Version, Query, HttpCode, HttpStatus } from "@nestjs/common";
+import { Controller, Get, HttpCode, HttpStatus, Query, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { FeedService } from "./feed.service";
-import { FeedRequestQueryDto } from "./dto/feed-request-query.dto";
 import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
-import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
 import { ApiGetFeedDocs } from "./decorators/api-get-feed-docs.decorator";
+import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
+import { FeedRequestQueryDto } from "./dto/feed-request-query.dto";
+import { FeedService } from "./feed.service";
 
 @ApiTags("feed")
 @Controller("feed")
