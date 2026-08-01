@@ -60,12 +60,12 @@ describe("Cloudflare Terraform workflow security", () => {
 
 		expect(workflowsUsingTerraformApiToken).toEqual([
 			{
-				fileName: "cloudflare-terraform-deploy.yml",
+				fileName: "cloudflare-terraform-components-deploy.yml",
 				forwardsToken: false,
 				hasEnvironmentBoundary: true,
 			},
 			{
-				fileName: "cloudflare-terraform-drift.yml",
+				fileName: "cloudflare-terraform-components-drift.yml",
 				forwardsToken: false,
 				hasEnvironmentBoundary: true,
 			},
@@ -73,14 +73,14 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should expose only the read-only Cloudflare token to Terraform drift jobs", () => {
-		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-drift.yml");
+		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-components-drift.yml");
 
 		expect(terraformDriftSource.includes("CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN")).toBe(false);
 	});
 
 	it("should select the Cloudflare read token through the target GitHub environment", () => {
 		const combinedWorkflowSource = Object.values(workflowSources).join("\n");
-		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-drift.yml");
+		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-components-drift.yml");
 
 		expect({
 			usesEnvironmentScopedName: terraformDriftSource.includes("secrets.CLOUDFLARE_TERRAFORM_READ_API_TOKEN"),
@@ -102,11 +102,11 @@ describe("Cloudflare Terraform workflow security", () => {
 			.filter(([, source]) => source.includes("secrets.CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN"))
 			.map(([fileName]) => fileName);
 
-		expect(workflowsUsingEditToken).toEqual(["cloudflare-terraform-deploy.yml"]);
+		expect(workflowsUsingEditToken).toEqual(["cloudflare-terraform-components-deploy.yml"]);
 	});
 
 	it("should require the protected environment before Terraform can plan or apply infrastructure changes", () => {
-		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-deploy.yml");
+		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-components-deploy.yml");
 		const protectedEnvironmentPosition = terraformDeploySource.indexOf(
 			`environment:\n      name: \${{ inputs.environment }}`,
 		);
@@ -125,7 +125,7 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should keep the exact Terraform plan only on the ephemeral runner that applies it", () => {
-		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-deploy.yml");
+		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-components-deploy.yml");
 		const combinedWorkflowSource = Object.values(workflowSources).join("\n");
 
 		expect({
@@ -161,6 +161,22 @@ describe("Cloudflare Terraform workflow security", () => {
 				),
 				componentDiscoveryActionSource.includes("infra/cloudflare/components.json"),
 			].every(Boolean),
+		).toBe(true);
+	});
+
+	it("should consume environment secrets in the same matrix jobs that run Terraform", () => {
+		const environmentBoundTerraformSources = [
+			_getWorkflowSource("cloudflare-terraform-components-deploy.yml"),
+			_getWorkflowSource("cloudflare-terraform-components-drift.yml"),
+		];
+
+		expect(
+			environmentBoundTerraformSources.every(
+				(source) =>
+					source.includes(`environment:\n      name: \${{ inputs.environment }}`) &&
+					source.includes("cli_config_credentials_token: $" + "{{ secrets.TERRAFORM_API_TOKEN }}") &&
+					!source.includes("uses: ./.github/workflows/cloudflare-terraform-"),
+			),
 		).toBe(true);
 	});
 
@@ -208,8 +224,8 @@ describe("Cloudflare Terraform workflow security", () => {
 
 	it("should install the centrally pinned Terraform version in deploy and drift workflows", () => {
 		const terraformWorkflowSources = [
-			_getWorkflowSource("cloudflare-terraform-deploy.yml"),
-			_getWorkflowSource("cloudflare-terraform-drift.yml"),
+			_getWorkflowSource("cloudflare-terraform-components-deploy.yml"),
+			_getWorkflowSource("cloudflare-terraform-components-drift.yml"),
 			_getWorkflowSource("cloudflare-terraform-validate.yml"),
 		];
 
@@ -298,8 +314,8 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should isolate authenticated Terraform planning between deployment and drift workflows", () => {
-		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-deploy.yml");
-		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-drift.yml");
+		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-components-deploy.yml");
+		const terraformDriftSource = _getWorkflowSource("cloudflare-terraform-components-drift.yml");
 
 		expect({
 			deployCreatesSavedPlan: terraformDeploySource.includes("-out=tfplan"),
@@ -315,7 +331,7 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should lint only the Cloudflare infrastructure directory", () => {
-		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-deploy.yml");
+		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-components-deploy.yml");
 
 		expect({
 			cloudflareDirectoryRuns: terraformDeploySource.match(/--chdir=infra\/cloudflare/g)?.length,
@@ -363,7 +379,7 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should apply only the exact plan produced earlier in the same protected job", () => {
-		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-deploy.yml");
+		const terraformDeploySource = _getWorkflowSource("cloudflare-terraform-components-deploy.yml");
 		const planPosition = terraformDeploySource.indexOf("terraform plan -input=false -lock-timeout=5m -out=tfplan");
 		const applyPosition = terraformDeploySource.indexOf("terraform apply -input=false -lock-timeout=5m tfplan");
 

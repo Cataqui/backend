@@ -12,7 +12,6 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/actions/**'
       - '.github/workflows/cloudflare-terraform-components-deploy.yml'
-      - '.github/workflows/cloudflare-terraform-deploy.yml'
       - '.github/workflows/deploy-production.yml'
 
 permissions:

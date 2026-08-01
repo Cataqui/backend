@@ -11,8 +11,6 @@ on:
       - '.github/workflows/cloudflare-terraform-components-deploy.yml'
       - '.github/workflows/cloudflare-terraform-components-drift.yml'
       - '.github/workflows/cloudflare-terraform-components-validate.yml'
-      - '.github/workflows/cloudflare-terraform-deploy.yml'
-      - '.github/workflows/cloudflare-terraform-drift.yml'
       - '.github/workflows/cloudflare-terraform-validate.yml'
       - '.github/workflows/terraform-plan.yml'
       - '.github/workflows/terraform-drift.yml'
