@@ -1,4 +1,4 @@
-name: Terraform Plan
+name: Terraform Validate
 
 on:
   pull_request:
@@ -8,10 +8,12 @@ on:
       - 'wrangler.jsonc'
       - '.github/dependabot.yml'
       - '.github/actions/**'
-      - '.github/workflows/cloudflare-terraform-apply.yml'
-      - '.github/workflows/cloudflare-terraform-components-apply.yml'
-      - '.github/workflows/cloudflare-terraform-components-plan.yml'
-      - '.github/workflows/cloudflare-terraform-plan.yml'
+      - '.github/workflows/cloudflare-terraform-components-deploy.yml'
+      - '.github/workflows/cloudflare-terraform-components-drift.yml'
+      - '.github/workflows/cloudflare-terraform-components-validate.yml'
+      - '.github/workflows/cloudflare-terraform-deploy.yml'
+      - '.github/workflows/cloudflare-terraform-drift.yml'
+      - '.github/workflows/cloudflare-terraform-validate.yml'
       - '.github/workflows/terraform-plan.yml'
       - '.github/workflows/terraform-drift.yml'
       - '.github/workflows/deploy-staging.yml'
@@ -27,33 +29,4 @@ concurrency:
 jobs:
   validate:
     name: Validate Cloudflare infrastructure without credentials
-    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
-    with:
-      environment: staging
-      mode: validate
-
-  staging:
-    name: Plan staging Cloudflare infrastructure with read-only access
-    needs: validate
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.event.pull_request.base.ref == 'development' || github.event.pull_request.base.ref == 'staging')
-    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
-    with:
-      environment: staging
-      mode: speculative
-    secrets:
-      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
-
-  production:
-    name: Plan production Cloudflare infrastructure with read-only access
-    needs: validate
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.base.ref == 'main'
-    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
-    with:
-      environment: production
-      mode: speculative
-    secrets:
-      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
+    uses: ./.github/workflows/cloudflare-terraform-components-validate.yml

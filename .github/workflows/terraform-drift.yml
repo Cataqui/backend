@@ -15,18 +15,12 @@ concurrency:
 jobs:
   staging:
     name: Detect staging Cloudflare drift
-    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
+    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
     with:
       environment: staging
-      mode: drift
-    secrets:
-      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
 
   production:
     name: Detect production Cloudflare drift
-    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
+    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
     with:
       environment: production
-      mode: drift
-    secrets:
-      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}

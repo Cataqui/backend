@@ -1,24 +1,7 @@
-name: Cloudflare Terraform Components Plan
+name: Cloudflare Terraform Components Validate
 
 on:
   workflow_call:
-    inputs:
-      environment:
-        description: Persistent environment whose registered Cloudflare components are being planned
-        required: true
-        type: string
-      mode:
-        description: Whether to validate locally, show a speculative plan, save an apply plan, or detect drift
-        required: true
-        type: string
-      artifact_suffix:
-        description: Immutable suffix for saved component plan artifacts
-        required: false
-        default: ''
-        type: string
-    secrets:
-      TERRAFORM_API_TOKEN:
-        required: false
 
 permissions:
   contents: read
@@ -39,7 +22,6 @@ jobs:
 
   validate-modules:
     name: Validate reusable Terraform modules
-    if: inputs.mode == 'validate'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -75,18 +57,13 @@ jobs:
             terraform -chdir="$module_directory" test
           done
 
-  plan:
-    name: Plan registered Cloudflare components
+  validate:
+    name: Validate registered Cloudflare components
     needs: discover
     strategy:
       fail-fast: false
       matrix:
         component: ${{ fromJSON(needs.discover.outputs.components) }}
-    uses: ./.github/workflows/cloudflare-terraform-plan.yml
+    uses: ./.github/workflows/cloudflare-terraform-validate.yml
     with:
       component: ${{ matrix.component }}
-      environment: ${{ inputs.environment }}
-      mode: ${{ inputs.mode }}
-      plan_artifact_name: ${{ inputs.mode == 'saved' && format('cloudflare-{0}-{1}-{2}', matrix.component, inputs.environment, inputs.artifact_suffix) || '' }}
-    secrets:
-      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
