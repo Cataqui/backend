@@ -990,9 +990,6 @@ Every new env var must be registered in all of these locations. Use this checkli
 7. **`src/platform/cloudflare/env.d.ts`** — Add the typed binding to the `Env` interface
 8. **`src/platform/cloudflare/container/container-env.ts`** — Forward it to the container process environment
 9. **`.dev.vars`** — Add a local development value for `wrangler dev` (gitignored)
-10. **`.github/workflows/deploy-staging.yml`** — Add to the `secrets:` list if it's sensitive (e.g., API keys, tokens), or add to `wrangler.jsonc` `env.*.vars` if it's a non-sensitive configuration value (URLs, feature flags). Add to the `env:` block if using a GitHub secret.
-11. **`.github/workflows/deploy-production.yml`** — Same as staging
-12. **GitHub repository secrets** — If the value is sensitive, add it in the repo settings → Secrets and variables → Actions under the relevant environments (`staging` / `production`). If it's a non-secret var, define it in `wrangler.jsonc` `env.*.vars` instead.
 
 Don't skip any. Missing one means the env var won't reach the container in that context.
 

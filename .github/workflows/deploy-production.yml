@@ -1,34 +1,65 @@
 name: Deploy Production
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'src/**'
       - 'prisma/**'
+      - 'infra/**'
       - 'Dockerfile'
       - 'wrangler.jsonc'
       - 'pnpm-lock.yaml'
+      - '.github/actions/**'
+      - '.github/workflows/cloudflare-terraform-apply.yml'
+      - '.github/workflows/cloudflare-terraform-components-apply.yml'
+      - '.github/workflows/cloudflare-terraform-components-plan.yml'
+      - '.github/workflows/cloudflare-terraform-plan.yml'
+      - '.github/workflows/deploy-production.yml'
+
+permissions:
+  actions: read
+  contents: read
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
+  infrastructure-plan:
+    name: Plan Cloudflare infrastructure (Production)
+    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
+    with:
+      environment: production
+      mode: saved
+      artifact_suffix: ${{ github.sha }}
+    secrets:
+      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
+
+  infrastructure-apply:
+    name: Apply Cloudflare infrastructure (Production)
+    needs: infrastructure-plan
+    uses: ./.github/workflows/cloudflare-terraform-components-apply.yml
+    with:
+      environment: production
+      artifact_suffix: ${{ github.sha }}
+    secrets:
+      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
+
   migrate:
     name: Migrate (Production)
     runs-on: ubuntu-latest
+    needs: infrastructure-apply
     environment:
       name: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
 
@@ -36,7 +67,7 @@ jobs:
 
       - name: Create Neon test branch
         id: neon-branch
-        uses: neondatabase/create-branch-action@v6
+        uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: production-deploy-${{ github.run_id }}
@@ -57,7 +88,7 @@ jobs:
 
       - name: Cleanup Neon test branch
         if: always() && steps.neon-branch.outputs.branch_id != ''
-        uses: neondatabase/delete-branch-action@v3
+        uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ${{ steps.neon-branch.outputs.branch_id }}
@@ -71,23 +102,23 @@ jobs:
       name: production
       url: https://api.cataqui.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
 
       - run: pnpm install --frozen-lockfile
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

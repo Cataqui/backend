@@ -1,0 +1,49 @@
+name: Cloudflare Terraform Components Apply
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Protected environment whose registered Cloudflare component plans are being applied
+        required: true
+        type: string
+      artifact_suffix:
+        description: Immutable suffix used by every saved component plan artifact
+        required: true
+        type: string
+    secrets:
+      TERRAFORM_API_TOKEN:
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  discover:
+    name: Discover registered Terraform components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Discover registered Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
+  apply:
+    name: Apply registered Cloudflare components
+    needs: discover
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.discover.outputs.components) }}
+    uses: ./.github/workflows/cloudflare-terraform-apply.yml
+    with:
+      component: ${{ matrix.component }}
+      environment: ${{ inputs.environment }}
+      plan_artifact_name: cloudflare-${{ matrix.component }}-${{ inputs.environment }}-${{ inputs.artifact_suffix }}
+    secrets:
+      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}

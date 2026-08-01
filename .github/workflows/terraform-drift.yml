@@ -1,0 +1,32 @@
+name: Terraform Drift Detection
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-drift
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: Detect staging Cloudflare drift
+    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
+    with:
+      environment: staging
+      mode: drift
+    secrets:
+      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}
+
+  production:
+    name: Detect production Cloudflare drift
+    uses: ./.github/workflows/cloudflare-terraform-components-plan.yml
+    with:
+      environment: production
+      mode: drift
+    secrets:
+      TERRAFORM_API_TOKEN: ${{ secrets.TERRAFORM_API_TOKEN }}

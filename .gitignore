@@ -19,6 +19,20 @@ bun.lockb
 .dev.vars
 .dev.vars.*
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+
 # AI
 .opencode
 
