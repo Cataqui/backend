@@ -127,6 +127,12 @@
       "skillPath": "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor/SKILL.md",
       "computedHash": "483d9ce83cd95ef1b343c879c608e87ab30ec8ede5873f8ea22707e6ebab033a"
     },
+    "terraform-engineer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/terraform-engineer/SKILL.md",
+      "computedHash": "04e717ca5d883a2839863f371f8ebba8b3f89cde3b2292cf90a3186c30b2d24a"
+    },
     "testing-patterns": {
       "source": "vudovn/antigravity-kit",
       "sourceType": "github",

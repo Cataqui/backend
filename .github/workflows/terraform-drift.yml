@@ -1,0 +1,26 @@
+name: Terraform Drift Detection
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-drift
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: Detect staging Cloudflare drift
+    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
+    with:
+      environment: staging
+
+  production:
+    name: Detect production Cloudflare drift
+    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
+    with:
+      environment: production

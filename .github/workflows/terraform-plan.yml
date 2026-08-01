@@ -1,0 +1,32 @@
+name: Terraform Validate
+
+on:
+  pull_request:
+    branches: [development, staging, main]
+    paths:
+      - 'infra/**'
+      - 'wrangler.jsonc'
+      - '.github/dependabot.yml'
+      - '.github/actions/**'
+      - '.github/workflows/cloudflare-terraform-components-deploy.yml'
+      - '.github/workflows/cloudflare-terraform-components-drift.yml'
+      - '.github/workflows/cloudflare-terraform-components-validate.yml'
+      - '.github/workflows/cloudflare-terraform-deploy.yml'
+      - '.github/workflows/cloudflare-terraform-drift.yml'
+      - '.github/workflows/cloudflare-terraform-validate.yml'
+      - '.github/workflows/terraform-plan.yml'
+      - '.github/workflows/terraform-drift.yml'
+      - '.github/workflows/deploy-staging.yml'
+      - '.github/workflows/deploy-production.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.base.ref }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Cloudflare infrastructure without credentials
+    uses: ./.github/workflows/cloudflare-terraform-components-validate.yml

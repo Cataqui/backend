@@ -1,0 +1,38 @@
+name: Cloudflare Terraform Components Drift Detection
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Persistent environment whose registered Cloudflare components are being inspected for drift
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover registered Terraform components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Discover registered Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
+  detect:
+    name: Detect drift in registered Cloudflare components
+    needs: discover
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.discover.outputs.components) }}
+    uses: ./.github/workflows/cloudflare-terraform-drift.yml
+    with:
+      component: ${{ matrix.component }}
+      environment: ${{ inputs.environment }}
