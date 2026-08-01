@@ -11,7 +11,6 @@ on:
       - 'wrangler.jsonc'
       - 'pnpm-lock.yaml'
       - '.github/actions/**'
-      - '.github/workflows/cloudflare-terraform-components-deploy.yml'
       - '.github/workflows/deploy-production.yml'
 
 permissions:
@@ -23,11 +22,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  infrastructure-components:
+    name: Discover Cloudflare infrastructure components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Discover registered Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
   infrastructure:
-    name: Deploy Cloudflare infrastructure (Production)
-    uses: ./.github/workflows/cloudflare-terraform-components-deploy.yml
-    with:
-      environment: production
+    name: Deploy ${{ matrix.component }} Cloudflare infrastructure (Production)
+    needs: infrastructure-components
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.infrastructure-components.outputs.components) }}
+    env:
+      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TF_CLOUD_ORGANIZATION: ${{ vars.HCP_TERRAFORM_ORGANIZATION }}
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_PRODUCTION_ACCOUNT_ID }}
+      TF_VAR_environment: production
+      TF_WORKSPACE: cataqui-api-${{ matrix.component }}-production
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Deploy the registered Terraform component
+        uses: ./.github/actions/deploy-cloudflare-terraform-component
+        with:
+          component: ${{ matrix.component }}
+          environment: production
+          terraform-api-token: ${{ secrets.TERRAFORM_API_TOKEN }}
+          cloudflare-read-api-token: ${{ secrets.CLOUDFLARE_TERRAFORM_READ_API_TOKEN }}
+          cloudflare-write-api-token: ${{ secrets.CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN }}
 
   migrate:
     name: Migrate (Production)

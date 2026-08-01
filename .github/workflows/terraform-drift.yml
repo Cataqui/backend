@@ -13,14 +13,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  staging:
-    name: Detect staging Cloudflare drift
-    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
-    with:
-      environment: staging
+  components:
+    name: Discover Cloudflare infrastructure components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-  production:
-    name: Detect production Cloudflare drift
-    uses: ./.github/workflows/cloudflare-terraform-components-drift.yml
-    with:
-      environment: production
+      - name: Discover registered Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
+  detect:
+    name: Detect ${{ matrix.component }} Cloudflare drift (${{ matrix.environment }})
+    needs: components
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ matrix.environment }}
+      deployment: false
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.components.outputs.components) }}
+        environment: [staging, production]
+    env:
+      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TF_CLOUD_ORGANIZATION: ${{ vars.HCP_TERRAFORM_ORGANIZATION }}
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_cloudflare_account_id: ${{ matrix.environment == 'production' && vars.CLOUDFLARE_PRODUCTION_ACCOUNT_ID || vars.CLOUDFLARE_STAGING_ACCOUNT_ID }}
+      TF_VAR_environment: ${{ matrix.environment }}
+      TF_WORKSPACE: cataqui-api-${{ matrix.component }}-${{ matrix.environment }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Detect drift in the registered Terraform component
+        uses: ./.github/actions/detect-cloudflare-terraform-drift
+        with:
+          component: ${{ matrix.component }}
+          environment: ${{ matrix.environment }}
+          terraform-api-token: ${{ secrets.TERRAFORM_API_TOKEN }}
+          cloudflare-read-api-token: ${{ secrets.CLOUDFLARE_TERRAFORM_READ_API_TOKEN }}

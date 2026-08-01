@@ -1,0 +1,145 @@
+name: Deploy Cloudflare Terraform component
+description: Validate, plan, and apply one registered Cloudflare Terraform component
+
+inputs:
+  component:
+    description: Registered component name from infra/cloudflare/components.json
+    required: true
+  environment:
+    description: Persistent environment to deploy
+    required: true
+  terraform-api-token:
+    description: HCP Terraform API token
+    required: true
+  cloudflare-read-api-token:
+    description: Cloudflare API token with read access
+    required: true
+  cloudflare-write-api-token:
+    description: Cloudflare API token with write access
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify protected environment credentials are available
+      shell: bash
+      env:
+        HCP_TERRAFORM_TOKEN: ${{ inputs.terraform-api-token }}
+        CLOUDFLARE_READ_TOKEN: ${{ inputs.cloudflare-read-api-token }}
+        CLOUDFLARE_WRITE_TOKEN: ${{ inputs.cloudflare-write-api-token }}
+      run: |
+        if [[ -z "$HCP_TERRAFORM_TOKEN" ]]; then
+          echo "TERRAFORM_API_TOKEN must be configured in the selected GitHub environment" >&2
+          exit 1
+        fi
+
+        if [[ -z "$CLOUDFLARE_READ_TOKEN" ]]; then
+          echo "CLOUDFLARE_TERRAFORM_READ_API_TOKEN must be configured in the selected GitHub environment" >&2
+          exit 1
+        fi
+
+        if [[ -z "$CLOUDFLARE_WRITE_TOKEN" ]]; then
+          echo "CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN must be configured in the selected GitHub environment" >&2
+          exit 1
+        fi
+
+    - name: Read the pinned Terraform version
+      id: terraform-version
+      shell: bash
+      run: |
+        terraform_version="$(tr -d '[:space:]' < infra/cloudflare/.terraform-version)"
+
+        if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "infra/cloudflare/.terraform-version must contain a semantic version such as 1.15.8" >&2
+          exit 1
+        fi
+
+        echo "version=$terraform_version" >> "$GITHUB_OUTPUT"
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+      with:
+        terraform_version: ${{ steps.terraform-version.outputs.version }}
+        terraform_wrapper: false
+
+    - name: Install TFLint
+      uses: terraform-linters/setup-tflint@c750028ac0f3831886a261f96da68ab58a92e7ec # v6
+      with:
+        cache: true
+        tflint_config_path: infra/cloudflare/.tflint.hcl
+        tflint_version: v0.64.0
+
+    - name: Verify the deployment target
+      shell: bash
+      env:
+        TERRAFORM_COMPONENT: ${{ inputs.component }}
+        TERRAFORM_TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        if [[ ! "$TERRAFORM_COMPONENT" =~ ^[a-z0-9-]+$ || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
+          echo "component must identify a registered Terraform root under infra/cloudflare" >&2
+          exit 1
+        fi
+
+        if ! jq --exit-status --arg component "$TERRAFORM_COMPONENT" 'index($component) != null' infra/cloudflare/components.json > /dev/null; then
+          echo "component must be listed in infra/cloudflare/components.json" >&2
+          exit 1
+        fi
+
+        if [[ "$TERRAFORM_TARGET_ENVIRONMENT" != "staging" && "$TERRAFORM_TARGET_ENVIRONMENT" != "production" ]]; then
+          echo "environment must be staging or production" >&2
+          exit 1
+        fi
+
+    - name: Verify Terraform formatting
+      shell: bash
+      run: terraform fmt -check -recursive infra/cloudflare
+
+    - name: Initialize Terraform and the HCP workspace
+      shell: bash
+      run: terraform init -input=false
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
+
+    - name: Validate the Terraform configuration
+      shell: bash
+      run: terraform validate
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+
+    - name: Initialize TFLint plugins
+      shell: bash
+      run: tflint --chdir=infra/cloudflare --config="$GITHUB_WORKSPACE/infra/cloudflare/.tflint.hcl" --init
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Verify Terraform conventions
+      shell: bash
+      run: tflint --chdir=infra/cloudflare --config="$GITHUB_WORKSPACE/infra/cloudflare/.tflint.hcl" --recursive --format compact
+
+    - name: Verify Terraform behavior
+      shell: bash
+      run: terraform test
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
+
+    - name: Create the exact infrastructure plan with read-only Cloudflare access
+      shell: bash
+      run: terraform plan -input=false -lock-timeout=5m -out=tfplan
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-read-api-token }}
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
+
+    - name: Add the infrastructure plan to the workflow summary
+      shell: bash
+      run: terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+
+    - name: Apply the exact plan with write-capable Cloudflare access
+      shell: bash
+      run: terraform apply -input=false -lock-timeout=5m tfplan
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-write-api-token }}
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
