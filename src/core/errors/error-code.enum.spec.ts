@@ -12,9 +12,10 @@ describe("ErrorCode", () => {
 			"POST_NOT_FOUND",
 			"POST_ALREADY_REPORTED",
 			"INVALID_CURSOR",
-			"JOB_CATEGORY_NOT_FOUND",
 			"JOB_NOT_FOUND",
 			"JOB_CONTACT_NOT_FOUND",
+			"JOB_DATA_DERIVATION_UNAVAILABLE",
+			"JOB_DRAFT_INCOMPLETE",
 			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
 			"PAYLOAD_TOO_LARGE",
@@ -36,7 +37,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 19 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(19);
+	it("should expose every supported error code", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(21);
 	});
 });

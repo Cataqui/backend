@@ -6,691 +6,550 @@ import {
 	JobStatus,
 	JobType,
 } from "../../../generated/prisma/client.js";
-import { LocationUtils } from "../../shared/utils/location/location.utils";
+import { AiService } from "../ai/ai.service";
 import { MapService } from "../map/map.service";
-import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
-import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { JobContactOutputDto } from "./dto/job-contact-output.dto";
+import { JobLocationConstants } from "./constants/job-location.constants";
+import { RequiredToPublishMetadata } from "./decorators/required-to-publish.decorator";
+import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
+import { JobContactInputDto } from "./dto/job-contact-input.dto";
+import { JobLocationInputDto } from "./dto/job-location-input.dto";
 import { JobOutputDto } from "./dto/job-output.dto";
 import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
-import { CategoryNotFoundError } from "./errors/category-not-found.error";
-import { InvalidJobTypePeriodError } from "./errors/invalid-job-type-period.error";
-import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
+import { UpdateJobRequestDto } from "./dto/update-job-request.dto";
+import { InvalidEmploymentPaymentError } from "./errors/invalid-job-type-period.error";
+import { JobAlreadyPublishedError } from "./errors/job-already-published.error";
+import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
+import { JobDraftIncompleteError } from "./errors/job-draft-incomplete.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
-import { JobConstants } from "./constants/job.constants";
-import { JobDescriptionService } from "./job-description.service";
 import { JobService } from "./job.service";
-import { JobLocationConstants } from "./constants/job-location.constants";
 import { JobRepository } from "./repositories/job.repository";
-import { JobCategoryRepository } from "./repositories/job-category.repository";
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method */
 
-interface MockJobContact {
-	id: string;
-	contactMethod: string;
-	identifier: string;
-	jobId: string;
-}
-
-interface MockJobWithCategory {
-	id: string;
-	title: string;
-	description: string;
-	contact: MockJobContact;
-	street: string | null;
-	neighborhood: string;
-	city: string;
-	state: string;
-	country: string;
-	fuzzyLatitude: number;
-	fuzzyLongitude: number;
-	status: string;
-	type: string;
-	paymentType: string;
-	paymentMinAmount: { toNumber(): number } | null;
-	paymentMaxAmount: { toNumber(): number } | null;
-	paymentNote: string | null;
-	paymentAmountPeriod: string;
-	paymentCurrency: string;
-	categoryId: string;
-	createdAt: Date;
-	updatedAt: Date;
-	category: { id: string; slug: string; createdAt: Date; updatedAt: Date };
-	categoryDisplayName: string;
-}
-
-const mockJob: MockJobWithCategory = {
-	id: "cm3x-job-1",
-	title: "Help unload truck",
-	description: "Need someone to help unload a delivery truck.",
-	contact: { id: "cm3x-contact-1", contactMethod: "WHATSAPP", identifier: "+5511999999999", jobId: "cm3x-job-1" },
+const createdAt = new Date("2026-07-30T12:00:00.000Z");
+const contact = {
+	id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+	jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+	contactMethod: JobContactMethod.WHATSAPP,
+	identifier: "+5511999999999",
+	createdAt: createdAt,
+	updatedAt: createdAt,
+};
+const completeJob = {
+	id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+	title: "Auxiliar de cozinha",
+	description: "Descrição completa da oportunidade.",
+	descriptionSummary: "Descrição completa da oportunidade.",
+	contact: contact,
 	street: "Rua das Flores, 123",
 	neighborhood: "Centro",
 	city: "São Paulo",
 	state: "SP",
 	country: "BR",
-	fuzzyLatitude: -23.55,
-	fuzzyLongitude: -46.63,
-	status: "ACTIVE",
-	type: "INDIVIDUAL",
-	paymentType: "FIXED",
-	paymentMinAmount: { toNumber: (): number => 150.0 },
+	locationPoint: null,
+	fuzzyLatitude: { toNumber: (): number => -23.55 },
+	fuzzyLongitude: { toNumber: (): number => -46.63 },
+	status: JobStatus.DRAFT,
+	type: JobType.EMPLOYMENT,
+	paymentType: JobPaymentType.FIXED,
+	paymentMinAmount: { toNumber: (): number => 2100 },
 	paymentMaxAmount: null,
 	paymentNote: null,
-	paymentAmountPeriod: "SINGLE",
+	paymentAmountPeriod: JobPaymentAmountPeriod.MONTHLY,
 	paymentCurrency: "BRL",
-	categoryId: "cm3x-cat-1",
-	createdAt: new Date("2026-05-28T10:00:00.000Z"),
-	updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-	category: {
-		id: "cm3x-cat-1",
-		slug: "moving-help",
-		createdAt: new Date("2026-05-28T10:00:00.000Z"),
-		updatedAt: new Date("2026-05-28T10:00:00.000Z"),
-	},
-	categoryDisplayName: "Moving Help",
+	createdAt: createdAt,
+	updatedAt: createdAt,
 };
-
-function createValidDto(): CreateJobRequestDto {
-	const contact = Object.assign(new CreateJobContactInputDto(), {
-		contactMethod: JobContactMethod.WHATSAPP,
-		identifier: "+5511999999999",
+function createCompleteUpdateDto(): UpdateJobRequestDto {
+	return Object.assign(new UpdateJobRequestDto(), {
+		description: completeJob.description,
+		contact: Object.assign(new JobContactInputDto(), {
+			contactMethod: JobContactMethod.WHATSAPP,
+			identifier: "+5511999999999",
+		}),
+		location: Object.assign(new JobLocationInputDto(), {
+			street: completeJob.street,
+			neighborhood: completeJob.neighborhood,
+			city: completeJob.city,
+			state: completeJob.state,
+			country: completeJob.country,
+			latitude: -23.55,
+			longitude: -46.63,
+		}),
+		type: JobType.EMPLOYMENT,
+		payment: Object.assign(new JobPaymentInputDto(), {
+			type: JobPaymentType.FIXED,
+			minAmount: 2100,
+			amountPeriod: JobPaymentAmountPeriod.MONTHLY,
+			currency: "BRL",
+		}),
 	});
-	const locationData: Partial<CreateJobLocationInputDto> = {
-		city: "São Paulo",
-		state: "SP",
-		country: "BR",
-		street: "Rua das Flores, 123",
-		neighborhood: "Centro",
-		latitude: -23.55052,
-		longitude: -46.633308,
-	};
-	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-	const paymentData: Partial<JobPaymentInputDto> = {
-		type: JobPaymentType.FIXED,
-		minAmount: 150.0,
-		amountPeriod: JobPaymentAmountPeriod.SINGLE,
-		currency: "BRL",
-	};
-	const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-
-	const dtoData: Partial<CreateJobRequestDto> = {
-		title: "Help unload truck",
-		description: "Need someone to help unload a delivery truck.",
-		contact,
-		location,
-		type: JobType.INDIVIDUAL,
-		categoryId: "cm3x-cat-1",
-		payment,
-	};
-	return Object.assign(new CreateJobRequestDto(), dtoData);
-}
-
-function buildCreateJobDto(overrides: { type?: JobType; payment?: JobPaymentInputDto }): CreateJobRequestDto {
-	const contact = Object.assign(new CreateJobContactInputDto(), {
-		contactMethod: JobContactMethod.WHATSAPP,
-		identifier: "+5511999999999",
-	});
-	const locationData: Partial<CreateJobLocationInputDto> = {
-		city: "São Paulo",
-		state: "SP",
-		country: "BR",
-		street: "Rua das Flores, 123",
-		neighborhood: "Centro",
-		latitude: -23.55052,
-		longitude: -46.633308,
-	};
-	const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-
-	const dtoData: Partial<CreateJobRequestDto> = {
-		title: "Help unload truck",
-		description: "Need someone to help unload a delivery truck.",
-		contact,
-		location,
-		type: overrides.type ?? JobType.INDIVIDUAL,
-		categoryId: "cm3x-cat-1",
-		payment:
-			overrides.payment ??
-			Object.assign(new JobPaymentInputDto(), {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			}),
-	};
-	return Object.assign(new CreateJobRequestDto(), dtoData);
 }
 
 describe("JobService", () => {
 	let service: JobService;
-	let jobRepository: JobRepository;
-	let jobCategoryRepository: JobCategoryRepository;
-	let mapService: MapService;
-	let jobDescriptionService: { improveDescriptionSummary: ReturnType<typeof vi.fn> };
+	let jobRepository: {
+		createDraft: ReturnType<typeof vi.fn>;
+		findById: ReturnType<typeof vi.fn>;
+		findContactByIdAndJobId: ReturnType<typeof vi.fn>;
+		updateDerivedJobDataIfDescriptionUnchanged: ReturnType<typeof vi.fn>;
+		update: ReturnType<typeof vi.fn>;
+		publishDraft: ReturnType<typeof vi.fn>;
+	};
+	let aiService: { generateObject: ReturnType<typeof vi.fn> };
+	let deriveJobDataPublisher: { publish: ReturnType<typeof vi.fn> };
+	let mapService: { fuzzLocationCoordinate: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
-		vi.clearAllMocks();
-
 		jobRepository = {
-			create: vi.fn<(...args: unknown[]) => MockJobWithCategory>().mockReturnValue(mockJob),
-			findByIdLocalized: vi.fn<(...args: unknown[]) => MockJobWithCategory | null>().mockResolvedValue(mockJob),
-			findContactByIdAndJobId: vi
-				.fn<(...args: unknown[]) => MockJobContact | null>()
-				.mockResolvedValue(mockJob.contact),
-			updateDescriptionSummary: vi.fn().mockResolvedValue(undefined),
-		} as unknown as JobRepository;
-
-		jobCategoryRepository = {
-			findByIdWithLocalizedName: vi.fn().mockResolvedValue({
-				id: "cm3x-cat-1",
-				slug: "moving-help",
-				displayName: "Moving Help",
+			createDraft: vi.fn(),
+			findById: vi.fn().mockResolvedValue(null),
+			findContactByIdAndJobId: vi.fn().mockResolvedValue(null),
+			updateDerivedJobDataIfDescriptionUnchanged: vi.fn().mockResolvedValue(undefined),
+			update: vi.fn().mockResolvedValue(undefined),
+			publishDraft: vi.fn(),
+		};
+		aiService = {
+			generateObject: vi.fn().mockResolvedValue({
+				title: completeJob.title,
+				description_summary: completeJob.descriptionSummary,
 			}),
-		} as unknown as JobCategoryRepository;
-
+		};
+		deriveJobDataPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
 		mapService = {
-			getConfig: vi.fn().mockResolvedValue({
-				queryParams: "v=1&sig=abc&exp=123",
-				expiresAt: "2026-01-01T00:00:00.000Z",
-				mapVersion: "br",
-				fontstack: "inter",
-				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
-			}),
-		} as unknown as MapService;
-
-		jobDescriptionService = {
-			improveDescriptionSummary: vi.fn().mockResolvedValue(undefined),
+			fuzzLocationCoordinate: vi.fn().mockReturnValue({ latitude: -23.551, longitude: -46.631 }),
 		};
 
 		const module = await Test.createTestingModule({
 			providers: [
 				JobService,
 				{ provide: JobRepository, useValue: jobRepository },
-				{ provide: JobCategoryRepository, useValue: jobCategoryRepository },
+				{ provide: AiService, useValue: aiService },
+				{ provide: DeriveJobDataPublisher, useValue: deriveJobDataPublisher },
 				{ provide: MapService, useValue: mapService },
-				{ provide: JobDescriptionService, useValue: jobDescriptionService },
 			],
 		}).compile();
 
 		service = module.get(JobService);
 	});
 
-	describe("createJob", () => {
-		it("should create a job and return JobOutputDto", async () => {
-			const result = await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(result).toBeInstanceOf(JobOutputDto);
-			expect(result.jobId).toBe("cm3x-job-1");
-			expect(result.title).toBe("Help unload truck");
-			expect(result.status).toBe(JobStatus.ACTIVE);
+	it("should return a published job before checking for a draft", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			status: JobStatus.ACTIVE,
 		});
 
-		it("should throw CategoryNotFoundError when category does not exist", async () => {
-			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+		const result = await service.getJob({ jobId: completeJob.id, locale: "pt-BR" });
 
-			await expect(service.createJob({ dto: createValidDto(), locale: "en-US" })).rejects.toThrow(
-				CategoryNotFoundError,
-			);
-		});
-
-		it("should throw InvalidJobTypePeriodError when EMPLOYMENT has SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
-
-			await expect(service.createJob({ dto: dto, locale: "en-US" })).rejects.toThrow(InvalidJobTypePeriodError);
-		});
-
-		it("should throw InvalidJobTypePeriodError when CONTRACTOR has SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dto = buildCreateJobDto({ type: JobType.CONTRACTOR, payment });
-
-			await expect(service.createJob({ dto: dto, locale: "en-US" })).rejects.toThrow(InvalidJobTypePeriodError);
-		});
-
-		it("should not throw when EMPLOYMENT has non-SINGLE period", async () => {
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.DAILY,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dto = buildCreateJobDto({ type: JobType.EMPLOYMENT, payment });
-
-			await expect(service.createJob({ dto: dto, locale: "en-US" })).resolves.not.toThrow();
-		});
-
-		it("should call MapService.getConfig with BR region on create", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(mapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
-		});
-
-		it("should set mapConfig on createJob output location", async () => {
-			const result = await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(result.location.mapConfig.mapVersion).toBe("br");
-		});
-
-		it("should call category lookup and map config lookup before job creation (parallel)", async () => {
-			(jobCategoryRepository.findByIdWithLocalizedName as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-				id: "cm3x-cat-1",
-				slug: "moving-help",
-				displayName: "Moving Help",
-			});
-
-			(mapService.getConfig as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-				queryParams: "v=1&sig=abc&exp=123",
-				expiresAt: "2026-01-01T00:00:00.000Z",
-				mapVersion: "br",
-				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
-			});
-
-			(jobRepository.create as ReturnType<typeof vi.fn>).mockImplementation(() => {
-				throw new Error("repository.create called before async lookups");
-			});
-
-			const createPromise = service.createJob({ dto: createValidDto(), locale: "en-US" });
-			await expect(createPromise).rejects.toThrow("repository.create called before async lookups");
-		});
-
-		it("should fetch map config only once (not after job creation)", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(mapService.getConfig).toHaveBeenCalledTimes(1);
-		});
-
-		it("should set status to ACTIVE", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			const createCallData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createCallData?.status).toBe(JobStatus.ACTIVE);
-		});
-
-		it("should pass all values to the repository", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-
-			expect(createCall).toBeDefined();
-			expect(createCall.data).toEqual({
-				title: "Help unload truck",
-				description: "Need someone to help unload a delivery truck.",
-				descriptionSummary: "Need someone to help unload a delivery truck.",
-				status: JobStatus.ACTIVE,
-				street: "Rua das Flores, 123",
-				neighborhood: "Centro",
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
-				fuzzyLatitude: expect.any(Number),
-				fuzzyLongitude: expect.any(Number),
-				type: JobType.INDIVIDUAL,
-				paymentType: JobPaymentType.FIXED,
-				paymentMinAmount: 150.0,
-				paymentMaxAmount: null,
-				paymentNote: null,
-				paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
-				paymentCurrency: "BRL",
-				categoryId: "cm3x-cat-1",
-			});
-			expect(createCall.contact).toEqual({
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-		});
-
-		it("should pass real coordinates as PostGIS location point to the repository", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			const createCall = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-
-			expect(createCall?.locationPoint).toEqual({
-				latitude: -23.55052,
-				longitude: -46.633308,
-			});
-		});
-
-		it("should fuzz coordinates when street is provided", async () => {
-			const randomSpy = vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.25);
-
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			randomSpy.mockRestore();
-
-			expect({
-				latitude: createData?.fuzzyLatitude,
-				longitude: createData?.fuzzyLongitude,
-			}).not.toEqual({
-				latitude: -23.55052,
-				longitude: -46.633308,
-			});
-		});
-
-		it("should call location fuzzing with job coordinates and constants when street is provided", async () => {
-			const fuzzLocationCoordinateSpy = vi.spyOn(LocationUtils, "fuzzLocationCoordinate");
-
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(fuzzLocationCoordinateSpy).toHaveBeenCalledWith({
-				latitude: -23.55052,
-				longitude: -46.633308,
-				minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
-				maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
-			});
-			fuzzLocationCoordinateSpy.mockRestore();
-		});
-
-		it("should pass null for street when not provided", async () => {
-			const contact = Object.assign(new CreateJobContactInputDto(), {
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-			const locationData: Partial<CreateJobLocationInputDto> = {
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
-				neighborhood: "Centro",
-				latitude: -23.55052,
-				longitude: -46.633308,
-			};
-			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dtoData: Partial<CreateJobRequestDto> = {
-				title: "Test",
-				description: "Test description for the job.",
-				contact,
-				location,
-				type: JobType.INDIVIDUAL,
-				categoryId: "cm3x-cat-1",
-				payment,
-			};
-			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-
-			expect(createData).toHaveProperty("street", null);
-		});
-
-		it("should use real latitude as fuzzy latitude when street is not provided", async () => {
-			const contact = Object.assign(new CreateJobContactInputDto(), {
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-			const locationData: Partial<CreateJobLocationInputDto> = {
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
-				neighborhood: "Centro",
-				latitude: -23.55052,
-				longitude: -46.633308,
-			};
-			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dto = Object.assign(new CreateJobRequestDto(), {
-				title: "Test",
-				description: "Test description for the job.",
-				contact,
-				location,
-				type: JobType.INDIVIDUAL,
-				categoryId: "cm3x-cat-1",
-				payment,
-			});
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-
-			expect(createData?.fuzzyLatitude).toBe(-23.55052);
-		});
-
-		it("should use real coordinates as fuzzy coordinates when street is null", async () => {
-			const dto = createValidDto();
-			Object.assign(dto.location, { street: null });
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-
-			expect({
-				latitude: createData?.fuzzyLatitude,
-				longitude: createData?.fuzzyLongitude,
-			}).toEqual({
-				latitude: -23.55052,
-				longitude: -46.633308,
-			});
-		});
-
-		it("should use real coordinates as fuzzy coordinates when street is empty", async () => {
-			const dto = createValidDto();
-			Object.assign(dto.location, { street: "" });
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-
-			expect({
-				latitude: createData?.fuzzyLatitude,
-				longitude: createData?.fuzzyLongitude,
-			}).toEqual({
-				latitude: -23.55052,
-				longitude: -46.633308,
-			});
-		});
-
-		it("should use translated category name when translation exists", async () => {
-			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue({
-				id: "cm3x-cat-1",
-				slug: "moving-help",
-				displayName: "Ayuda con mudanza",
-			});
-
-			const result = await service.createJob({ dto: createValidDto(), locale: "es-MX" });
-
-			expect(result.category.name).toBe("Ayuda con mudanza");
-		});
-
-		it("should fall back to base category name when no translation exists", async () => {
-			(jobCategoryRepository.findByIdWithLocalizedName as ReturnType<typeof vi.fn>).mockResolvedValue({
-				id: "cm3x-cat-1",
-				slug: "moving-help",
-				displayName: "Moving Help",
-			});
-
-			const result = await service.createJob({ dto: createValidDto(), locale: "fr-FR" });
-
-			expect(result.category.name).toBe("Moving Help");
-		});
-
-		it("should call JobDescriptionService to improve the description summary", async () => {
-			await service.createJob({ dto: createValidDto(), locale: "en-US" });
-
-			expect(jobDescriptionService.improveDescriptionSummary).toHaveBeenCalledWith({
-				jobId: "cm3x-job-1",
-				title: "Help unload truck",
-				description: "Need someone to help unload a delivery truck.",
-			});
-		});
-
-		it("should not await description summary improvement before returning the created job", async () => {
-			jobDescriptionService.improveDescriptionSummary.mockReturnValue(new Promise<void>(() => {}));
-
-			const resultPromise = service.createJob({ dto: createValidDto(), locale: "en-US" });
-			const result = await Promise.race([
-				resultPromise,
-				new Promise<never>((_resolve, reject) =>
-					setTimeout(() => reject(new Error("createJob appears to await description summary")), 500),
-				),
-			]);
-
-			expect(result).toBeInstanceOf(JobOutputDto);
-		});
-
-		it("should store the full description while AI summary generation is pending", async () => {
-			const longDescription = "a".repeat(150);
-			const dto = createValidDto();
-			Object.assign(dto, { description: longDescription });
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createData?.descriptionSummary).toBe(longDescription);
-		});
-
-		it("should preserve description when it is exactly at DESCRIPTION_SUMMARY_MAX_LENGTH", async () => {
-			const exactDescription = "b".repeat(JobConstants.DESCRIPTION_SUMMARY_MAX_LENGTH);
-			const dto = createValidDto();
-			Object.assign(dto, { description: exactDescription });
-
-			await service.createJob({ dto: dto, locale: "en-US" });
-
-			const createData = (jobRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.data;
-			expect(createData?.descriptionSummary).toBe(exactDescription);
-		});
+		expect(result).toBeInstanceOf(JobOutputDto);
 	});
 
-	describe("getJobContact", () => {
-		it("should return JobContactOutputDto when contact exists", async () => {
-			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-				id: "cm3x-contact-1",
-				contactMethod: "WHATSAPP",
-				identifier: "+5511999999999",
-				jobId: "cm3x-job-1",
-			});
+	it("should return a draft when no published job has the ID", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
 
-			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
+		const result = await service.getJob({ jobId: completeJob.id, locale: "pt-BR" });
 
-			expect(result).toBeInstanceOf(JobContactOutputDto);
-		});
-
-		it("should pass contactId and jobId to findContactByIdAndJobId", async () => {
-			await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
-
-			expect(jobRepository.findContactByIdAndJobId).toHaveBeenCalledWith({
-				contactId: "cm3x-contact-1",
-				jobId: "cm3x-job-1",
-			});
-		});
-
-		it("should return WHATSAPP contact method on success", async () => {
-			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-				id: "cm3x-contact-1",
-				contactMethod: "WHATSAPP",
-				identifier: "+5511999999999",
-				jobId: "cm3x-job-1",
-			});
-
-			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
-
-			expect(result.contactMethod).toBe(JobContactMethod.WHATSAPP);
-		});
-
-		it("should return identifier on success", async () => {
-			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-				id: "cm3x-contact-1",
-				contactMethod: "WHATSAPP",
-				identifier: "+5511999999999",
-				jobId: "cm3x-job-1",
-			});
-
-			const result = await service.getJobContact({ contactId: "cm3x-contact-1", jobId: "cm3x-job-1" });
-
-			expect(result.identifier).toBe("+5511999999999");
-		});
-
-		it("should throw JobContactNotFoundError when contact does not exist", async () => {
-			(jobRepository.findContactByIdAndJobId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-			await expect(service.getJobContact({ contactId: "nonexistent", jobId: "cm3x-job-1" })).rejects.toThrow(
-				JobContactNotFoundError,
-			);
-		});
+		expect(result).toBeInstanceOf(JobOutputDto);
 	});
 
-	describe("getJob", () => {
-		it("should return JobOutputDto when job exists", async () => {
-			const result = await service.getJob({
-				jobId: "cm3x-job-1",
-				locale: "en-US",
-			});
+	it("should return not found when neither a published job nor draft exists", async () => {
+		await expect(service.getJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toBeInstanceOf(JobNotFoundError);
+	});
 
-			expect(result).toBeInstanceOf(JobOutputDto);
-			expect(result.jobId).toBe("cm3x-job-1");
-			expect(result.title).toBe("Help unload truck");
-			expect(result.status).toBe(JobStatus.ACTIVE);
-		});
+	it("should return a published job contact", async () => {
+		jobRepository.findContactByIdAndJobId.mockResolvedValue(contact);
 
-		it("should throw JobNotFoundError when job does not exist", async () => {
-			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+		const result = await service.getJobContact({ contactId: contact.id, jobId: completeJob.id });
 
-			await expect(service.getJob({ jobId: "nonexistent", locale: "en-US" })).rejects.toThrow(JobNotFoundError);
-		});
+		expect(result.identifier).toBe("+5511999999999");
+	});
 
-		it("should use categoryDisplayName from repository for localized name", async () => {
-			(jobRepository.findByIdLocalized as ReturnType<typeof vi.fn>).mockResolvedValue({
-				...mockJob,
-				categoryDisplayName: "Ayuda con mudanza",
-			});
+	it("should reject an unavailable job contact", async () => {
+		await expect(service.getJobContact({ contactId: contact.id, jobId: completeJob.id })).rejects.toThrow("contact");
+	});
 
-			const result = await service.getJob({
-				jobId: "cm3x-job-1",
-				locale: "es-MX",
-			});
-
-			expect(result.category.name).toBe("Ayuda con mudanza");
-		});
-
-		it("should pass jobId and locale to findByIdLocalized", async () => {
-			await service.getJob({ jobId: "cm3x-job-1", locale: "pt-BR" });
-
-			expect(jobRepository.findByIdLocalized).toHaveBeenCalledWith({
-				id: "cm3x-job-1",
+	it("should reject updates for an unknown job", async () => {
+		await expect(
+			service.updateJob({
+				jobId: completeJob.id,
+				updatedDto: Object.assign(new UpdateJobRequestDto(), { description: "Nova descrição da oportunidade." }),
 				locale: "pt-BR",
-			});
+			}),
+		).rejects.toBeInstanceOf(JobNotFoundError);
+	});
+
+	it("should persist supplied draft fields, contact, and real location together", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+
+		await service.updateJob({ jobId: completeJob.id, updatedDto: createCompleteUpdateDto(), locale: "pt-BR" });
+
+		expect(jobRepository.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: completeJob.id,
+				contact: {
+					contactMethod: JobContactMethod.WHATSAPP,
+					identifier: "+5511999999999",
+				},
+				locationPoint: {
+					latitude: -23.55,
+					longitude: -46.63,
+				},
+			}),
+		);
+	});
+
+	it("should ask the map service to fuzz an edited street location", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+
+		await service.updateJob({
+			jobId: completeJob.id,
+			updatedDto: createCompleteUpdateDto(),
+			locale: "pt-BR",
 		});
 
-		it("should call MapService.getConfig with BR region on getJob", async () => {
-			await service.getJob({ jobId: "cm3x-job-1", locale: "en-US" });
+		expect(mapService.fuzzLocationCoordinate).toHaveBeenCalledWith({
+			latitude: -23.55,
+			longitude: -46.63,
+			minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
+			maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
+		});
+	});
 
-			expect(mapService.getConfig).toHaveBeenCalledWith({ region: "BR" });
+	it("should keep exact coordinates when an edited location has no street", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		const dto = Object.assign(new UpdateJobRequestDto(), {
+			location: Object.assign(new JobLocationInputDto(), {
+				neighborhood: "Centro",
+				city: "São Paulo",
+				state: "SP",
+				country: "BR",
+				latitude: -23.55,
+				longitude: -46.63,
+			}),
 		});
 
-		it("should set mapConfig on getJob output location", async () => {
-			const result = await service.getJob({
-				jobId: "cm3x-job-1",
-				locale: "en-US",
-			});
+		await service.updateJob({ jobId: completeJob.id, updatedDto: dto, locale: "pt-BR" });
 
-			expect(result.location.mapConfig.mapVersion).toBe("br");
+		expect(jobRepository.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					fuzzyLatitude: -23.55,
+					fuzzyLongitude: -46.63,
+				}),
+			}),
+		);
+	});
+
+	it("should persist a changed description without waiting for AI derivation", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		const dto = Object.assign(new UpdateJobRequestDto(), {
+			description: "Preciso de ajuda para carregar móveis na mudança sábado.",
 		});
+
+		await service.updateJob({ jobId: completeJob.id, updatedDto: dto, locale: "pt-BR" });
+
+		expect(jobRepository.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					description: "Preciso de ajuda para carregar móveis na mudança sábado.",
+				}),
+			}),
+		);
+	});
+
+	it("should not request AI while updating a job description", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		const dto = Object.assign(new UpdateJobRequestDto(), {
+			description: "Preciso de ajuda para carregar móveis na mudança sábado.",
+		});
+
+		await service.updateJob({ jobId: completeJob.id, updatedDto: dto, locale: "pt-BR" });
+
+		expect(aiService.generateObject).not.toHaveBeenCalled();
+	});
+
+	it("should queue job data derivation after updating a job description", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		const dto = Object.assign(new UpdateJobRequestDto(), {
+			description: "Preciso de ajuda para carregar móveis na mudança sábado.",
+		});
+
+		await service.updateJob({ jobId: completeJob.id, updatedDto: dto, locale: "pt-BR" });
+
+		expect(deriveJobDataPublisher.publish.mock.calls).toEqual([[{ jobId: completeJob.id }]]);
+	});
+
+	it("should not queue job data derivation when the description was not updated", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		const dto = Object.assign(new UpdateJobRequestDto(), { type: JobType.CONTRACTOR });
+
+		await service.updateJob({ jobId: completeJob.id, updatedDto: dto, locale: "pt-BR" });
+
+		expect(deriveJobDataPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		JobStatus.DRAFT,
+		JobStatus.ACTIVE,
+		JobStatus.CLOSED,
+	])("should reject a single-payment period when editing a %s employment job", async (status) => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			status: status,
+			type: JobType.EMPLOYMENT,
+			paymentAmountPeriod: JobPaymentAmountPeriod.MONTHLY,
+		});
+
+		await expect(
+			service.updateJob({
+				jobId: completeJob.id,
+				updatedDto: Object.assign(new UpdateJobRequestDto(), {
+					payment: Object.assign(new JobPaymentInputDto(), {
+						type: JobPaymentType.FIXED,
+						minAmount: 200,
+						amountPeriod: JobPaymentAmountPeriod.SINGLE,
+						currency: "BRL",
+					}),
+				}),
+				locale: "pt-BR",
+			}),
+		).rejects.toBeInstanceOf(InvalidEmploymentPaymentError);
+	});
+
+	it("should allow a single-payment period when editing an active contractor job", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			status: JobStatus.ACTIVE,
+			type: JobType.CONTRACTOR,
+			paymentAmountPeriod: JobPaymentAmountPeriod.MONTHLY,
+		});
+
+		await service.updateJob({
+			jobId: completeJob.id,
+			updatedDto: Object.assign(new UpdateJobRequestDto(), {
+				payment: Object.assign(new JobPaymentInputDto(), {
+					type: JobPaymentType.FIXED,
+					minAmount: 200,
+					amountPeriod: JobPaymentAmountPeriod.SINGLE,
+					currency: "BRL",
+				}),
+			}),
+			locale: "pt-BR",
+		});
+
+		expect(jobRepository.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE }),
+			}),
+		);
+	});
+
+	it("should report every missing publication field before changing status", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			contact: null,
+			neighborhood: null,
+			type: null,
+			paymentType: null,
+			paymentAmountPeriod: null,
+			paymentCurrency: null,
+		});
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toThrow(
+			"contact, location, payment, type",
+		);
+	});
+
+	it("should tell the consumer when a job has already been published", async () => {
+		jobRepository.findById.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toBeInstanceOf(
+			JobAlreadyPublishedError,
+		);
+	});
+
+	it("should return job not found when the job being published does not exist", async () => {
+		jobRepository.findById.mockResolvedValue(null);
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toBeInstanceOf(
+			JobNotFoundError,
+		);
+	});
+
+	it("should require payment before publishing a draft", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			paymentType: null,
+			paymentMinAmount: null,
+			paymentMaxAmount: null,
+			paymentNote: null,
+			paymentAmountPeriod: null,
+			paymentCurrency: null,
+		});
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toThrow("payment");
+	});
+
+	it("should require a contact reference before publishing a draft", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			contact: null,
+		});
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toBeInstanceOf(
+			JobDraftIncompleteError,
+		);
+	});
+
+	it("should regenerate missing feed metadata before publication", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			descriptionSummary: null,
+		});
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(aiService.generateObject).toHaveBeenCalledOnce();
+	});
+
+	it("should persist regenerated feed metadata before publication", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			descriptionSummary: null,
+		});
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(jobRepository.update).toHaveBeenCalledWith({
+			jobId: completeJob.id,
+			data: {
+				title: completeJob.title,
+				descriptionSummary: completeJob.descriptionSummary,
+			},
+		});
+	});
+
+	it("should refresh the derived title when the summary is missing before publication", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: "Título derivado anteriormente",
+			descriptionSummary: null,
+		});
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(jobRepository.update).toHaveBeenCalledWith({
+			jobId: completeJob.id,
+			data: {
+				title: completeJob.title,
+				descriptionSummary: completeJob.descriptionSummary,
+			},
+		});
+	});
+
+	it("should refresh the derived summary when the title is missing before publication", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			descriptionSummary: "Resumo existente",
+		});
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(jobRepository.update).toHaveBeenCalledWith({
+			jobId: completeJob.id,
+			data: {
+				title: completeJob.title,
+				descriptionSummary: completeJob.descriptionSummary,
+			},
+		});
+	});
+
+	it("should return AI unavailable when publication metadata retry fails", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			descriptionSummary: null,
+		});
+		aiService.generateObject.mockRejectedValue(new JobDataDerivationUnavailableError());
+
+		await expect(service.publishJob({ jobId: completeJob.id, locale: "pt-BR" })).rejects.toBeInstanceOf(
+			JobDataDerivationUnavailableError,
+		);
+	});
+
+	it("should not activate a draft when publication metadata retry fails", async () => {
+		jobRepository.findById.mockResolvedValue({
+			...completeJob,
+			title: null,
+			descriptionSummary: null,
+		});
+		aiService.generateObject.mockRejectedValue(new JobDataDerivationUnavailableError());
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" }).catch(() => undefined);
+
+		expect(jobRepository.publishDraft).not.toHaveBeenCalled();
+	});
+
+	it("should not call AI when both feed metadata fields already exist", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(aiService.generateObject).not.toHaveBeenCalled();
+	});
+
+	it("should publish a contractor job with a single-payment period", async () => {
+		const contractorDraft = {
+			...completeJob,
+			type: JobType.CONTRACTOR,
+			paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
+		};
+		jobRepository.findById.mockResolvedValue(contractorDraft);
+		jobRepository.publishDraft.mockResolvedValue({ ...contractorDraft, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(jobRepository.publishDraft).toHaveBeenCalledWith({ jobId: completeJob.id });
+	});
+
+	it("should atomically activate a complete draft with its generated summary", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(jobRepository.publishDraft).toHaveBeenCalledWith({
+			jobId: completeJob.id,
+		});
+	});
+
+	it("should return the active job response after publication", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		const result = await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+
+		expect(result).toBeInstanceOf(JobOutputDto);
+	});
+
+	it("should return a published job with every publication requirement present", async () => {
+		jobRepository.findById.mockResolvedValue(completeJob);
+		jobRepository.publishDraft.mockResolvedValue({ ...completeJob, status: JobStatus.ACTIVE });
+
+		const result = await service.publishJob({ jobId: completeJob.id, locale: "pt-BR" });
+		const missingFields = RequiredToPublishMetadata.getFields({ dtoClass: JobOutputDto })
+			.filter(({ propertyName }) => result[propertyName] === null)
+			.map(({ publicFieldName }) => publicFieldName);
+
+		expect(missingFields).toEqual([]);
 	});
 });

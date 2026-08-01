@@ -123,5 +123,52 @@ describe("FeedRepository", () => {
 				fuzzyLongitude: true,
 			});
 		});
+
+		it("should return complete active jobs selected from the shared jobs table", async () => {
+			const activeJob = {
+				id: "12345678-1234-1234-1234-1234567890ab",
+				title: "Auxiliar",
+				createdAt: new Date("2026-07-30T12:00:00.000Z"),
+				descriptionSummary: "Resumo",
+				paymentType: "FIXED",
+				paymentMinAmount: null,
+				paymentMaxAmount: null,
+				paymentNote: null,
+				paymentAmountPeriod: "MONTHLY",
+				paymentCurrency: "BRL",
+				neighborhood: "Centro",
+				fuzzyLatitude: { toNumber: (): number => -23.55 },
+				fuzzyLongitude: { toNumber: (): number => -46.63 },
+			};
+			mockFindMany.mockResolvedValue([activeJob]);
+
+			const result = await repository.getFeedItems({ limit: 20 });
+
+			expect(result).toEqual([activeJob]);
+		});
+
+		it("should reject an active row that violates required feed-field invariants", async () => {
+			mockFindMany.mockResolvedValue([
+				{
+					id: "12345678-1234-1234-1234-1234567890ab",
+					title: null,
+					createdAt: new Date("2026-07-30T12:00:00.000Z"),
+					descriptionSummary: null,
+					paymentType: null,
+					paymentMinAmount: null,
+					paymentMaxAmount: null,
+					paymentNote: null,
+					paymentAmountPeriod: null,
+					paymentCurrency: null,
+					neighborhood: null,
+					fuzzyLatitude: null,
+					fuzzyLongitude: null,
+				},
+			]);
+
+			await expect(repository.getFeedItems({ limit: 20 })).rejects.toThrow(
+				"Active job 12345678-1234-1234-1234-1234567890ab is missing fields required by the feed.",
+			);
+		});
 	});
 });

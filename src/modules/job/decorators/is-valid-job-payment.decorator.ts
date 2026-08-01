@@ -9,7 +9,7 @@ import {
 import { JobPaymentType } from "../../../../generated/prisma/client.js";
 import type { JobPaymentInputDto } from "../../job/dto/job-payment-input.dto.js";
 
-function validateJobPayment(payment: JobPaymentInputDto): {
+function _validateJobPayment(payment: JobPaymentInputDto): {
 	isValid: boolean;
 	message: string;
 } {
@@ -62,11 +62,11 @@ function validateJobPayment(payment: JobPaymentInputDto): {
 @ValidatorConstraint({ name: "isValidJobPayment", async: false })
 export class IsValidJobPaymentConstraint implements ValidatorConstraintInterface {
 	validate(value: unknown): boolean {
-		return validateJobPayment(value as JobPaymentInputDto).isValid;
+		return _validateJobPayment(value as JobPaymentInputDto).isValid;
 	}
 
 	defaultMessage(args: ValidationArguments): string {
-		return validateJobPayment(args.value as JobPaymentInputDto).message;
+		return _validateJobPayment(args.value as JobPaymentInputDto).message;
 	}
 }
 

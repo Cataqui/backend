@@ -13,6 +13,12 @@
       "skillPath": "skills/api-security-best-practices/SKILL.md",
       "computedHash": "5a088c5b84b75ed44955e7a153b4af20b5a70b6430e86d0f0398b824cc9efb20"
     },
+    "ask-questions-if-underspecified": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/ask-questions-if-underspecified/skills/ask-questions-if-underspecified/SKILL.md",
+      "computedHash": "e78cf8dd5cb5861bd606ce450ed305051bd09998429f81c33eaab9c87db96272"
+    },
     "biome": {
       "source": "bobmatnyc/claude-mpm-skills",
       "sourceType": "github",

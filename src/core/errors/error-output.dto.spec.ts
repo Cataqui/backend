@@ -64,9 +64,9 @@ describe("ErrorOutputDto", () => {
 
 		it("should serialize timestamp as-is", () => {
 			const dto = new ErrorOutputDto(
-				ErrorCode.RATE_LIMITED,
-				"Too many",
-				429,
+				ErrorCode.INTERNAL_ERROR,
+				"Unexpected error",
+				500,
 				"req-1",
 				"2026-05-28T10:00:00.000Z",
 				"/test",

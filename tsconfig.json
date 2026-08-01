@@ -29,6 +29,6 @@
     },
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*", "test/**/*.spec.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/platform/cloudflare"]
 }

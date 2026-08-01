@@ -3,6 +3,22 @@ import { Expose } from "class-transformer";
 import { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 
 export class JobPaymentOutputDto {
+	constructor(params: {
+		paymentType: JobPaymentType;
+		paymentMinAmount: { toNumber(): number } | number | null;
+		paymentMaxAmount: { toNumber(): number } | number | null;
+		paymentNote: string | null;
+		paymentAmountPeriod: JobPaymentAmountPeriod;
+		paymentCurrency: string;
+	}) {
+		this.type = params.paymentType;
+		this.minAmount = this._toNullableNumber(params.paymentMinAmount);
+		this.maxAmount = this._toNullableNumber(params.paymentMaxAmount);
+		this.note = params.paymentNote;
+		this.amountPeriod = params.paymentAmountPeriod;
+		this.currency = params.paymentCurrency;
+	}
+
 	@Expose({ name: "type" })
 	@ApiProperty({
 		name: "type",
@@ -17,27 +33,27 @@ export class JobPaymentOutputDto {
 		name: "min_amount",
 		description: "Minimum payment amount for the job",
 		example: 150.0,
-		required: false,
+		nullable: true,
 	})
-	readonly minAmount: number | undefined;
+	readonly minAmount: number | null;
 
 	@Expose({ name: "max_amount" })
 	@ApiProperty({
 		name: "max_amount",
 		description: "Maximum payment amount for the job (in case of range)",
 		example: 200.0,
-		required: false,
+		nullable: true,
 	})
-	readonly maxAmount: number | undefined;
+	readonly maxAmount: number | null;
 
 	@Expose({ name: "note" })
 	@ApiProperty({
 		name: "note",
 		description: "A note related to the payment (e.g. how it will be done, or any additional details)",
 		example: "Commission-based",
-		required: false,
+		nullable: true,
 	})
-	readonly note: string | undefined;
+	readonly note: string | null;
 
 	@Expose({ name: "amount_period" })
 	@ApiProperty({
@@ -53,23 +69,9 @@ export class JobPaymentOutputDto {
 	@ApiProperty({ name: "currency", description: "Currency code (ISO 4217)", example: "BRL" })
 	readonly currency: string;
 
-	constructor(params: {
-		paymentType: JobPaymentType;
-		paymentMinAmount: { toNumber(): number } | number | null;
-		paymentMaxAmount: { toNumber(): number } | number | null;
-		paymentNote: string | null;
-		paymentAmountPeriod: JobPaymentAmountPeriod;
-		paymentCurrency: string;
-	}) {
-		this.type = params.paymentType;
-		this.minAmount = params.paymentMinAmount !== null ? this._toNumber(params.paymentMinAmount) : undefined;
-		this.maxAmount = params.paymentMaxAmount !== null ? this._toNumber(params.paymentMaxAmount) : undefined;
-		this.note = params.paymentNote ?? undefined;
-		this.amountPeriod = params.paymentAmountPeriod;
-		this.currency = params.paymentCurrency;
-	}
+	private _toNullableNumber(value: { toNumber(): number } | number | null): number | null {
+		if (value === null) return null;
 
-	private _toNumber(value: { toNumber(): number } | number): number {
 		return typeof value === "number" ? value : value.toNumber();
 	}
 }

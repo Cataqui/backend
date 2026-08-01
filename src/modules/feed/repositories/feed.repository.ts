@@ -55,6 +55,35 @@ export class FeedRepository {
 			},
 		});
 
-		return results;
+		return results.map((item) => {
+			if (
+				item.title === null ||
+				item.descriptionSummary === null ||
+				item.paymentType === null ||
+				item.paymentAmountPeriod === null ||
+				item.paymentCurrency === null ||
+				item.neighborhood === null ||
+				item.fuzzyLatitude === null ||
+				item.fuzzyLongitude === null
+			) {
+				throw new Error(`Active job ${item.id} is missing fields required by the feed.`);
+			}
+
+			return {
+				id: item.id,
+				title: item.title,
+				createdAt: item.createdAt,
+				descriptionSummary: item.descriptionSummary,
+				paymentType: item.paymentType,
+				paymentMinAmount: item.paymentMinAmount,
+				paymentMaxAmount: item.paymentMaxAmount,
+				paymentNote: item.paymentNote,
+				paymentAmountPeriod: item.paymentAmountPeriod,
+				paymentCurrency: item.paymentCurrency,
+				neighborhood: item.neighborhood,
+				fuzzyLatitude: item.fuzzyLatitude,
+				fuzzyLongitude: item.fuzzyLongitude,
+			};
+		});
 	}
 }

@@ -3,10 +3,10 @@ import { StringUtils } from "./string.utils";
 
 describe("StringUtils", () => {
 	describe("camelToSnake", () => {
-		it("should convert categoryId to category_id", () => {
-			const result = StringUtils.camelToSnake("categoryId");
+		it("should convert customerId to customer_id", () => {
+			const result = StringUtils.camelToSnake("customerId");
 
-			expect(result).toBe("category_id");
+			expect(result).toBe("customer_id");
 		});
 
 		it("should convert phoneNumber to phone_number", () => {
@@ -38,9 +38,9 @@ describe("StringUtils", () => {
 		});
 
 		it("should handle strings starting with uppercase", () => {
-			const result = StringUtils.camelToSnake("CategoryId");
+			const result = StringUtils.camelToSnake("CustomerId");
 
-			expect(result).toBe("category_id");
+			expect(result).toBe("customer_id");
 		});
 
 		it("should convert jobId to job_id", () => {
@@ -55,7 +55,7 @@ describe("StringUtils", () => {
 		});
 
 		it("should not modify strings that are already snake_case", () => {
-			expect(StringUtils.camelToSnake("category_id")).toBe("category_id");
+			expect(StringUtils.camelToSnake("customer_id")).toBe("customer_id");
 			expect(StringUtils.camelToSnake("phone_number")).toBe("phone_number");
 		});
 

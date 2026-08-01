@@ -9,7 +9,7 @@ import {
 	type ValidatorConstraintInterface,
 } from "class-validator";
 import { JobContactMethod } from "../../../../generated/prisma/client.js";
-import type { CreateJobContactInputDto } from "../dto/create-job-contact-input.dto.js";
+import type { JobContactInputDto } from "../dto/job-contact-input.dto.js";
 
 const _CONTACT_IDENTIFIER_VALIDATORS = {
 	[JobContactMethod.WHATSAPP]: (identifier: string) => _validatePhoneNumber(JobContactMethod.WHATSAPP, identifier),
@@ -27,7 +27,7 @@ function _validatePhoneNumber(method: JobContactMethod, identifier: string): { i
 	return { isValid: true, message: "" };
 }
 
-function validateContactInput(contact: CreateJobContactInputDto): {
+function validateContactInput(contact: JobContactInputDto): {
 	isValid: boolean;
 	message: string;
 } {
@@ -53,11 +53,11 @@ function validateContactInput(contact: CreateJobContactInputDto): {
 @ValidatorConstraint({ name: "isValidContactInput", async: false })
 export class IsValidContactInputConstraint implements ValidatorConstraintInterface {
 	validate(value: unknown): boolean {
-		return validateContactInput(value as CreateJobContactInputDto).isValid;
+		return validateContactInput(value as JobContactInputDto).isValid;
 	}
 
 	defaultMessage(args: ValidationArguments): string {
-		return validateContactInput(args.value as CreateJobContactInputDto).message;
+		return validateContactInput(args.value as JobContactInputDto).message;
 	}
 }
 

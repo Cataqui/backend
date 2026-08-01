@@ -191,6 +191,12 @@ For DTOs exposed through the API:
 - Output DTOs must be constructible through constructors.
 - Do not use `!` non-null assertions on output DTO properties.
 
+### DTO Validation Boundary
+
+DTOs must not contain validation logic. They must not assert domain invariants, reject lifecycle states, throw because fields are missing or inconsistent, or decide whether data is valid for a business operation. That responsibility belongs to the service layer.
+
+Request DTOs may declare transport-level shape constraints with decorators such as `@IsString()` or `@IsUUID()`, but they must not implement business or domain validation themselves. Output DTOs only map and serialize values, including nullable values supplied by the service.
+
 ### DTO Member Ordering
 
 Members within a DTO class must follow this order:
@@ -265,6 +271,7 @@ DTOs:
 
 - define request/response shape
 - handle transformation/serialization
+- contain no business or domain validation logic
 - must remain simple
 
 ### Private Members
@@ -412,6 +419,58 @@ type IErrorCode = ...;
 type ErrorCode = ...;
 ```
 
+### Inline Single-Use Values and Logic
+
+Use a value inline when it is used in only one place and is unlikely to be shared later. Do not introduce a local variable, module constant, or exported constant only to give a one-off literal or expression a name.
+
+Apply the same rule to functions and methods. Do not extract a helper that has only one caller when its logic is short, readable, and naturally belongs to that caller. Inline the logic so a reader does not need to jump between declarations to understand one operation.
+
+Bad — the constant adds indirection without reuse:
+
+```ts
+const DERIVE_JOB_DATA_MAX_TOKENS = 10_000;
+
+await aiService.generateObject({
+	maxTokens: DERIVE_JOB_DATA_MAX_TOKENS,
+});
+```
+
+Good — the value is clear at its only call site:
+
+```ts
+await aiService.generateObject({
+	maxTokens: 10_000,
+});
+```
+
+Extract a value only when it is reused, represents an independently important domain concept, or the expression is complex enough that naming it materially improves understanding. Test the behavior at the consumer instead of creating and testing a constant solely for a single call site.
+
+Bad — the helper is called once and only adds navigation:
+
+```ts
+function _asRecord(value: unknown): Record<string, unknown> | null {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+
+	return value as Record<string, unknown>;
+}
+
+function parseMessage(requestBody: unknown): Message | null {
+	const jobId = _asRecord(requestBody)?.["job_id"];
+	// ...
+}
+```
+
+Good — the sole consumer performs the small narrowing operation directly:
+
+```ts
+function parseMessage(requestBody: unknown): Message | null {
+	if (typeof requestBody !== "object" || requestBody === null || Array.isArray(requestBody)) return null;
+	// ...
+}
+```
+
+Extract single-use logic only when it represents independently meaningful behavior, requires focused testing, removes substantial complexity from its caller, or is expected to gain another caller imminently for a concrete requirement. A descriptive helper name alone is not enough reason to extract it.
+
 ### Constants
 
 Avoid magic numbers and repeated domain strings.
@@ -420,7 +479,7 @@ Prefer TypeScript `enum` over `const` objects for error codes, status values, an
 
 String enum values must always be UPPERCASE. Never use lowercase or snake_case string enum values.
 
-Create named constants for:
+Create named constants for shared or independently domain-critical:
 
 - limits
 - expiration windows
@@ -470,6 +529,23 @@ JobLocationConstants.JOB_LOCATION_FUZZY_MIN_DISTANCE_METERS;
 Do not leave unused code, commented-out blocks, unused imports, or speculative abstractions.
 
 Every line must exist for the current task.
+
+### Local Extensibility
+
+Design every family of related values so a new member can be added locally without a broad refactor. Adding a queue, AI task, status handler, provider, event, or similar value should require a small additive change at one clear extension point, plus its implementation and tests—not edits across scattered conditionals, duplicated mappings, or unrelated modules.
+
+Minimize the number of files and declarations that must change when extending existing behavior. Put each contract or value family in one authoritative source and derive its TypeScript types, runtime validation, dispatch, documentation, and downstream constraints from that source whenever practical. Adding a field, enum member, queue message property, or handler must not require repeating the same information manually in multiple files.
+
+Before adding another mapping, validator, interface, or duplicated literal, ask whether it can be generated or inferred from the existing source of truth. Prefer designs where changing the authoritative declaration either updates every consumer automatically or produces compile-time failures at consumers that must supply new behavior.
+
+Prefer:
+
+- one registry, router, strategy map, or handler boundary for dispatch;
+- one source of truth from which supported values, validation, documentation, and error messages are derived;
+- focused implementations behind a stable interface;
+- exhaustive tests for every registered value and the unsupported-value path.
+
+Keep the extension point proportional to the feature. Do not create speculative abstraction layers for hypothetical requirements, but when implementing a known value family, establish the smallest structure that lets the next value be added without redesigning the existing code.
 
 ### Inline Object Types Over Single-Use Interfaces
 
@@ -717,6 +793,22 @@ For new logic:
 4. Run the affected test suite.
 5. Run lint/typecheck when relevant.
 
+### Test Descriptions
+
+Always describe the expected outcome in plain English. Tests are documentation for the code: a reader should be able to understand how the code behaves by reading only the test descriptions, without inspecting the implementation or assertions.
+
+Prefer:
+
+```typescript
+it("should allow every field in UpdateJobRequestDto to be updated", () => {});
+```
+
+Avoid descriptions that only name an internal mechanism or test step:
+
+```typescript
+it("should call the repository", () => {});
+```
+
 ### DTO & Serialization Tests
 
 Because the API uses snake_case externally and camelCase internally, test DTO serialization.
@@ -895,8 +987,8 @@ Every new env var must be registered in all of these locations. Use this checkli
 4. **`.env`** — Add a local development value (gitignored, for your machine only)
 5. **`.env.example`** — Add a safe placeholder value for documentation
 6. **`vitest.config.ts`** — Add a test default value to the `test.env` block so tests never depend on your local `.env`
-7. **`worker/env.d.ts`** — Add the typed binding to the `Env` interface
-8. **`worker/container.ts`** — Forward it in the `this.envVars` object so the container receives it
+7. **`src/platform/cloudflare/env.d.ts`** — Add the typed binding to the `Env` interface
+8. **`src/platform/cloudflare/container/container-env.ts`** — Forward it to the container process environment
 9. **`.dev.vars`** — Add a local development value for `wrangler dev` (gitignored)
 10. **`.github/workflows/deploy-staging.yml`** — Add to the `secrets:` list if it's sensitive (e.g., API keys, tokens), or add to `wrangler.jsonc` `env.*.vars` if it's a non-sensitive configuration value (URLs, feature flags). Add to the `env:` block if using a GitHub secret.
 11. **`.github/workflows/deploy-production.yml`** — Same as staging

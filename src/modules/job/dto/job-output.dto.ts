@@ -2,48 +2,93 @@ import { ApiExtraModels, ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { JobStatus, JobType, Prisma } from "../../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
-import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
-import { JobCategoryOutputDto } from "./job-category-output.dto";
+import { RequiredToPublish } from "../decorators/required-to-publish.decorator";
 import { JobContactReferenceOutputDto } from "./job-contact-reference-output.dto";
 import { JobLocationOutputDto } from "./job-location-output.dto";
 
-@ApiExtraModels(JobContactReferenceOutputDto, JobLocationOutputDto, JobCategoryOutputDto, JobPaymentOutputDto)
+@ApiExtraModels(JobContactReferenceOutputDto, JobLocationOutputDto, JobPaymentOutputDto)
 export class JobOutputDto {
-	static fromDatabase(
-		job: Prisma.JobGetPayload<{ include: { category: true; contact: true } }>,
-		categoryDisplayName: string,
-		mapConfig: MapConfigOutputDto,
-	): JobOutputDto {
+	constructor(params: {
+		jobId: string;
+		title: string | null;
+		description: string;
+		descriptionSummary: string | null;
+		contactReference: JobContactReferenceOutputDto | null;
+		location: JobLocationOutputDto | null;
+		payment: JobPaymentOutputDto | null;
+		status: JobStatus;
+		type: JobType | null;
+		createdAt: string;
+		updatedAt: string;
+	}) {
+		this.jobId = params.jobId;
+		this.title = params.title;
+		this.description = params.description;
+		this.descriptionSummary = params.descriptionSummary;
+		this.contactReference = params.contactReference;
+		this.location = params.location;
+		this.payment = params.payment;
+		this.status = params.status;
+		this.type = params.type;
+		this.createdAt = params.createdAt;
+		this.updatedAt = params.updatedAt;
+	}
+
+	static fromDatabase(job: Prisma.JobGetPayload<{ include: { contact: true } }>): JobOutputDto {
+		const {
+			neighborhood,
+			city,
+			state,
+			country,
+			fuzzyLatitude,
+			fuzzyLongitude,
+			paymentType,
+			paymentAmountPeriod,
+			paymentCurrency,
+		} = job;
+
+		const hasCompleteLocation =
+			neighborhood !== null &&
+			city !== null &&
+			state !== null &&
+			country !== null &&
+			fuzzyLatitude !== null &&
+			fuzzyLongitude !== null;
+
+		const hasCompletePayment = paymentType !== null && paymentAmountPeriod !== null && paymentCurrency !== null;
+
 		return new JobOutputDto({
 			jobId: job.id,
 			title: job.title,
 			description: job.description,
-			contactReference: JobContactReferenceOutputDto.fromDatabase({
-				id: job.contact!.id,
-				contactMethod: job.contact!.contactMethod,
-			}),
-			location: new JobLocationOutputDto({
-				neighborhood: job.neighborhood,
-				city: job.city,
-				state: job.state,
-				country: job.country,
-				latitude: job.fuzzyLatitude,
-				longitude: job.fuzzyLongitude,
-				mapConfig,
-			}),
-			category: new JobCategoryOutputDto({
-				categoryId: job.category.id,
-				name: categoryDisplayName,
-				slug: job.category.slug,
-			}),
-			payment: new JobPaymentOutputDto({
-				paymentType: job.paymentType,
-				paymentMinAmount: job.paymentMinAmount,
-				paymentMaxAmount: job.paymentMaxAmount,
-				paymentNote: job.paymentNote,
-				paymentAmountPeriod: job.paymentAmountPeriod,
-				paymentCurrency: job.paymentCurrency,
-			}),
+			descriptionSummary: job.descriptionSummary,
+			contactReference:
+				job.contact === null
+					? null
+					: JobContactReferenceOutputDto.fromDatabase({
+							id: job.contact.id,
+							contactMethod: job.contact.contactMethod,
+						}),
+			location: hasCompleteLocation
+				? new JobLocationOutputDto({
+						neighborhood: neighborhood,
+						city: city,
+						state: state,
+						country: country,
+						latitude: fuzzyLatitude,
+						longitude: fuzzyLongitude,
+					})
+				: null,
+			payment: hasCompletePayment
+				? new JobPaymentOutputDto({
+						paymentType: paymentType,
+						paymentMinAmount: job.paymentMinAmount,
+						paymentMaxAmount: job.paymentMaxAmount,
+						paymentNote: job.paymentNote,
+						paymentAmountPeriod: paymentAmountPeriod,
+						paymentCurrency: paymentCurrency,
+					})
+				: null,
 			status: job.status,
 			type: job.type,
 			createdAt: job.createdAt.toISOString(),
@@ -52,12 +97,12 @@ export class JobOutputDto {
 	}
 
 	@Expose({ name: "job_id" })
-	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
+	@ApiProperty({ name: "job_id", description: "Job unique identifier", format: "uuid" })
 	readonly jobId: string;
 
 	@Expose({ name: "title" })
-	@ApiProperty({ name: "title", description: "Short Job title", example: "Help unload truck" })
-	readonly title: string;
+	@ApiProperty({ name: "title", nullable: true, description: "Short job title", example: "Help unload truck" })
+	readonly title: string | null;
 
 	@Expose({ name: "description" })
 	@ApiProperty({
@@ -67,35 +112,53 @@ export class JobOutputDto {
 	})
 	readonly description: string;
 
+	@Expose({ name: "description_summary" })
+	@ApiProperty({
+		name: "description_summary",
+		nullable: true,
+		description: "Worker-focused feed summary generated from the description",
+		example: "Paid moving help available today",
+	})
+	readonly descriptionSummary: string | null;
+
 	@Expose({ name: "contact_reference" })
 	@ApiProperty({
 		name: "contact_reference",
-		description: "Reference to the job contact",
+		nullable: true,
+		description: "Reference to the job contact, or null until supplied on a draft",
 		type: JobContactReferenceOutputDto,
 	})
 	@Type(() => JobContactReferenceOutputDto)
-	readonly contactReference: JobContactReferenceOutputDto;
+	@RequiredToPublish({ publicFieldName: "contact" })
+	readonly contactReference: JobContactReferenceOutputDto | null;
 
 	@Expose({ name: "location" })
-	@ApiProperty({ name: "location", description: "Where the job will be executed", type: JobLocationOutputDto })
+	@ApiProperty({
+		name: "location",
+		nullable: true,
+		description: "Where the job will be executed, or null until supplied on a draft",
+		type: JobLocationOutputDto,
+	})
 	@Type(() => JobLocationOutputDto)
-	readonly location: JobLocationOutputDto;
-
-	@Expose({ name: "category" })
-	@ApiProperty({ name: "category", description: "The category of the job defined as UUID", type: JobCategoryOutputDto })
-	@Type(() => JobCategoryOutputDto)
-	readonly category: JobCategoryOutputDto;
+	@RequiredToPublish()
+	readonly location: JobLocationOutputDto | null;
 
 	@Expose({ name: "payment" })
-	@ApiProperty({ name: "payment", description: "Details about how the job payment will be", type: JobPaymentOutputDto })
+	@ApiProperty({
+		name: "payment",
+		nullable: true,
+		description: "Job payment details, or null until supplied on a draft",
+		type: JobPaymentOutputDto,
+	})
 	@Type(() => JobPaymentOutputDto)
-	readonly payment: JobPaymentOutputDto;
+	@RequiredToPublish()
+	readonly payment: JobPaymentOutputDto | null;
 
 	@Expose({ name: "status" })
 	@ApiProperty({
 		name: "status",
 		enum: JobStatus,
-		description: "Define if a job accepts new proposals",
+		description: "Job lifecycle status; DRAFT responses may contain nullable fields",
 		example: JobStatus.ACTIVE,
 	})
 	readonly status: JobStatus;
@@ -104,51 +167,18 @@ export class JobOutputDto {
 	@ApiProperty({
 		name: "type",
 		enum: JobType,
-		description:
-			"Defines if a job is more employment-like (e.g cashier) or individual like (e.g unload a truck, build a wall)",
+		nullable: true,
+		description: "Job engagement type, or null until supplied on a draft",
 		example: JobType.INDIVIDUAL,
 	})
-	readonly type: JobType;
+	@RequiredToPublish()
+	readonly type: JobType | null;
 
 	@Expose({ name: "created_at" })
-	@ApiProperty({
-		name: "created_at",
-		description: "ISO 8601 timestamp of job creation",
-		example: "2026-05-28T10:00:00.000Z",
-	})
+	@ApiProperty({ name: "created_at", description: "ISO 8601 timestamp of job creation" })
 	readonly createdAt: string;
 
 	@Expose({ name: "updated_at" })
-	@ApiProperty({
-		name: "updated_at",
-		description: "ISO 8601 timestamp of last job update",
-		example: "2026-05-28T10:00:00.000Z",
-	})
+	@ApiProperty({ name: "updated_at", description: "ISO 8601 timestamp of last job update" })
 	readonly updatedAt: string;
-
-	constructor(params: {
-		jobId: string;
-		title: string;
-		description: string;
-		contactReference: JobContactReferenceOutputDto;
-		location: JobLocationOutputDto;
-		category: JobCategoryOutputDto;
-		payment: JobPaymentOutputDto;
-		status: JobStatus;
-		type: JobType;
-		createdAt: string;
-		updatedAt: string;
-	}) {
-		this.jobId = params.jobId;
-		this.title = params.title;
-		this.description = params.description;
-		this.contactReference = params.contactReference;
-		this.location = params.location;
-		this.category = params.category;
-		this.payment = params.payment;
-		this.status = params.status;
-		this.type = params.type;
-		this.createdAt = params.createdAt;
-		this.updatedAt = params.updatedAt;
-	}
 }

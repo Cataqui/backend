@@ -6,7 +6,6 @@ on:
     branches: [staging]
     paths:
       - 'src/**'
-      - 'worker/**'
       - 'prisma/**'
       - 'Dockerfile'
       - 'wrangler.jsonc'

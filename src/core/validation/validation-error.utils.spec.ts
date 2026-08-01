@@ -5,16 +5,16 @@ describe("formatValidationErrors", () => {
 	it("should convert camelCase property to snake_case in standard messages", () => {
 		const errors: ValidationError[] = [
 			{
-				property: "categoryId",
+				property: "customerId",
 				constraints: {
-					isUUID: "categoryId must be a UUID",
+					isUUID: "customerId must be a UUID",
 				},
 			},
 		];
 
 		const result = ValidationErrorUtils.formatValidationErrors(errors);
 
-		expect(result).toEqual(["category_id must be a UUID"]);
+		expect(result).toEqual(["customer_id must be a UUID"]);
 	});
 
 	it("should not modify single-word property names", () => {
@@ -53,9 +53,9 @@ describe("formatValidationErrors", () => {
 	it("should handle multiple top-level errors", () => {
 		const errors: ValidationError[] = [
 			{
-				property: "categoryId",
+				property: "customerId",
 				constraints: {
-					isUUID: "categoryId must be a UUID",
+					isUUID: "customerId must be a UUID",
 				},
 			},
 			{
@@ -68,7 +68,7 @@ describe("formatValidationErrors", () => {
 
 		const result = ValidationErrorUtils.formatValidationErrors(errors);
 
-		expect(result).toEqual(["category_id must be a UUID", "title must be longer than or equal to 3 characters"]);
+		expect(result).toEqual(["customer_id must be a UUID", "title must be longer than or equal to 3 characters"]);
 	});
 
 	it("should handle nested validation errors with property path prefix", () => {
@@ -155,7 +155,7 @@ describe("formatValidationErrors", () => {
 	it("should handle errors with no constraints and no children", () => {
 		const errors: ValidationError[] = [
 			{
-				property: "categoryId",
+				property: "customerId",
 			},
 		];
 

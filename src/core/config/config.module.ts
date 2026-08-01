@@ -1,6 +1,5 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
-import { AI_CONFIG_KEY, aiConfig } from "../ai/ai.config";
 import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
 import { IEnvSchema } from "./env.validation";
 import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
@@ -45,17 +44,7 @@ import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.con
 			provide: MAP_AUTH_CONFIG_KEY,
 			useFactory: mapAuthConfig,
 		},
-		{
-			provide: AI_CONFIG_KEY,
-			useFactory: aiConfig,
-		},
 	],
-	exports: [
-		DATABASE_CONFIG_KEY,
-		GLOBAL_THROTTLE_CONFIG_KEY,
-		REQUEST_SIZE_CONFIG_KEY,
-		MAP_AUTH_CONFIG_KEY,
-		AI_CONFIG_KEY,
-	],
+	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY, MAP_AUTH_CONFIG_KEY],
 })
 export class ConfigModule {}

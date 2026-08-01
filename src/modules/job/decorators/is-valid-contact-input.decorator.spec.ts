@@ -8,7 +8,7 @@ function makeValidationArgs(
 	return {
 		object: {},
 		property: "contact",
-		targetName: "CreateJobRequestDto",
+		targetName: "UpdateJobRequestDto",
 		value: contact,
 		constraints: [],
 	};

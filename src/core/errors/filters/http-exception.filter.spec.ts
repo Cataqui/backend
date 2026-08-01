@@ -80,18 +80,18 @@ describe("HttpExceptionFilter", () => {
 
 	it("should handle HttpException with object response containing error_code", () => {
 		const exception = new HttpException(
-			{ error_code: ErrorCode.RATE_LIMITED, message: "Too many requests" },
-			HttpStatus.TOO_MANY_REQUESTS,
+			{ error_code: ErrorCode.CORS_BLOCKED, message: "Origin is not allowed" },
+			HttpStatus.FORBIDDEN,
 		);
 
 		const { sendMock, statusMock } = createMockHost(exception);
 
-		expect(statusMock).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
+		expect(statusMock).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
 
 		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
-		expect(body).toHaveProperty("error_code", ErrorCode.RATE_LIMITED);
-		expect(body).toHaveProperty("message", "Too many requests");
-		expect(body).toHaveProperty("status", HttpStatus.TOO_MANY_REQUESTS);
+		expect(body).toHaveProperty("error_code", ErrorCode.CORS_BLOCKED);
+		expect(body).toHaveProperty("message", "Origin is not allowed");
+		expect(body).toHaveProperty("status", HttpStatus.FORBIDDEN);
 	});
 
 	it("should handle HttpException with array message (validation errors)", () => {
@@ -113,7 +113,7 @@ describe("HttpExceptionFilter", () => {
 		const exception = new HttpException(
 			{
 				message: [
-					"category_id must be a UUID",
+					"customer_id must be a UUID",
 					"contact.phone_number must be a valid phone number",
 					"min_amount must be a positive number",
 				],
@@ -127,7 +127,7 @@ describe("HttpExceptionFilter", () => {
 		expect(body).toHaveProperty("error_code", ErrorCode.INVALID_REQUEST);
 		expect(body).toHaveProperty(
 			"message",
-			"category_id must be a UUID; contact.phone_number must be a valid phone number; min_amount must be a positive number",
+			"customer_id must be a UUID; contact.phone_number must be a valid phone number; min_amount must be a positive number",
 		);
 	});
 

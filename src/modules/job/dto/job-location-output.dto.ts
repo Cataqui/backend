@@ -1,6 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose, Type } from "class-transformer";
-import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
+import { Expose } from "class-transformer";
 import { JobLocationConstants } from "../constants/job-location.constants";
 
 export class JobLocationOutputDto {
@@ -50,16 +49,6 @@ export class JobLocationOutputDto {
 	})
 	readonly areaRadius: number;
 
-	@Expose({ name: "map_config" })
-	@ApiProperty({
-		name: "map_config",
-		description:
-			"Map configuration including authentication credentials and tile settings for displaying the location on a map.",
-		type: MapConfigOutputDto,
-	})
-	@Type(() => MapConfigOutputDto)
-	readonly mapConfig: MapConfigOutputDto;
-
 	constructor(params: {
 		neighborhood: string;
 		city: string;
@@ -68,7 +57,6 @@ export class JobLocationOutputDto {
 		latitude: { toNumber(): number } | number;
 		longitude: { toNumber(): number } | number;
 		areaRadius?: number | undefined;
-		mapConfig: MapConfigOutputDto;
 	}) {
 		this.neighborhood = params.neighborhood;
 		this.city = params.city;
@@ -77,7 +65,6 @@ export class JobLocationOutputDto {
 		this.latitude = this._toNumber(params.latitude);
 		this.longitude = this._toNumber(params.longitude);
 		this.areaRadius = params.areaRadius ?? JobLocationConstants.AREA_RADIUS_METERS;
-		this.mapConfig = params.mapConfig;
 	}
 
 	private _toNumber(value: { toNumber(): number } | number): number {

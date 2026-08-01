@@ -10,7 +10,7 @@ function createDefaultMessageArgs(payment: {
 	return {
 		object: {},
 		property: "payment",
-		targetName: "CreateJobRequestDto",
+		targetName: "UpdateJobRequestDto",
 		value: payment,
 		constraints: [],
 	};

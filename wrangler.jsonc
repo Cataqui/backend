@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "cataqui-api",
-	"main": "worker/index.ts",
+	"main": "src/platform/cloudflare/index.ts",
 	"compatibility_date": "2025-12-18",
 	"compatibility_flags": ["nodejs_compat"],
 	"containers": [
@@ -18,6 +18,25 @@
 			{
 				"name": "API_CONTAINER",
 				"class_name": "ApiContainer",
+			},
+		],
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "DERIVE_JOB_DATA_QUEUE",
+				"queue": "cataqui-api-derive-job-data",
+			},
+		],
+		"consumers": [
+			{
+				"queue": "cataqui-api-derive-job-data",
+				"max_batch_size": 1,
+				"max_batch_timeout": 1,
+				"max_concurrency": 3,
+				"max_retries": 3,
+				"retry_delay": 60,
+				"dead_letter_queue": "cataqui-api-derive-job-data-dlq",
 			},
 		],
 	},
@@ -59,6 +78,25 @@
 					},
 				],
 			},
+			"queues": {
+				"producers": [
+					{
+						"binding": "DERIVE_JOB_DATA_QUEUE",
+						"queue": "cataqui-api-derive-job-data-staging",
+					},
+				],
+				"consumers": [
+					{
+						"queue": "cataqui-api-derive-job-data-staging",
+						"max_batch_size": 1,
+						"max_batch_timeout": 1,
+						"max_concurrency": 1,
+						"max_retries": 3,
+						"retry_delay": 60,
+						"dead_letter_queue": "cataqui-api-derive-job-data-staging-dlq",
+					},
+				],
+			},
 			"routes": [{ "pattern": "staging.api.cataqui.com", "custom_domain": true }],
 			"vars": {
 				"NODE_ENV": "staging",
@@ -90,6 +128,25 @@
 					{
 						"name": "API_CONTAINER",
 						"class_name": "ApiContainer",
+					},
+				],
+			},
+			"queues": {
+				"producers": [
+					{
+						"binding": "DERIVE_JOB_DATA_QUEUE",
+						"queue": "cataqui-api-derive-job-data-production",
+					},
+				],
+				"consumers": [
+					{
+						"queue": "cataqui-api-derive-job-data-production",
+						"max_batch_size": 1,
+						"max_batch_timeout": 1,
+						"max_concurrency": 3,
+						"max_retries": 3,
+						"retry_delay": 60,
+						"dead_letter_queue": "cataqui-api-derive-job-data-production-dlq",
 					},
 				],
 			},

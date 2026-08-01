@@ -22,8 +22,8 @@ export class FeedItemOutputDto {
 	@Expose({ name: "description_summary" })
 	@ApiProperty({
 		name: "description_summary",
-		description: "Short summary of the job description",
-		example: "Precisa descarregar caminhão no sábado das 8h às 14h, exige experiência com carga",
+		description: "Short worker-focused pitch with the most decision-useful grounded details from the post",
+		example: "Sem experiência, com treinamento e três opções de turno de 6 horas",
 	})
 	readonly descriptionSummary: string;
 

@@ -44,8 +44,8 @@ describe("FeedItemOutputDto", () => {
 
 			expect(dto.payment.type).toBe("FIXED");
 			expect(dto.payment.minAmount).toBe(150.0);
-			expect(dto.payment.maxAmount).toBeUndefined();
-			expect(dto.payment.note).toBeUndefined();
+			expect(dto.payment.maxAmount).toBeNull();
+			expect(dto.payment.note).toBeNull();
 			expect(dto.payment.amountPeriod).toBe("SINGLE");
 			expect(dto.payment.currency).toBe("BRL");
 		});
@@ -87,8 +87,8 @@ describe("FeedItemOutputDto", () => {
 			expect(payment).toHaveProperty("min_amount", 150.0);
 			expect(payment).toHaveProperty("amount_period", "SINGLE");
 			expect(payment).toHaveProperty("currency", "BRL");
-			expect(payment).not.toHaveProperty("max_amount");
-			expect(payment).not.toHaveProperty("note");
+			expect(payment).toHaveProperty("max_amount", null);
+			expect(payment).toHaveProperty("note", null);
 		});
 
 		it("should serialize nested location with snake_case keys", () => {
