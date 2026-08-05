@@ -22,7 +22,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 # ─── build ─────────────────────────────────────────────────────────────
 FROM deps AS build
 
-ARG DATABASE_DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ARG DATABASE_OWNER_DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
 
 COPY . .
 

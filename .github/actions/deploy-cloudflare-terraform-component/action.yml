@@ -29,17 +29,17 @@ runs:
         CLOUDFLARE_WRITE_TOKEN: ${{ inputs.cloudflare-write-api-token }}
       run: |
         if [[ -z "$HCP_TERRAFORM_TOKEN" ]]; then
-          echo "TERRAFORM_API_TOKEN must be configured in the selected GitHub environment" >&2
+          echo "TERRAFORM_API_TOKEN must be available in the selected Infisical environment" >&2
           exit 1
         fi
 
         if [[ -z "$CLOUDFLARE_READ_TOKEN" ]]; then
-          echo "CLOUDFLARE_TERRAFORM_READ_API_TOKEN must be configured in the selected GitHub environment" >&2
+          echo "CLOUDFLARE_TERRAFORM_READ_API_TOKEN must be available in the selected Infisical environment" >&2
           exit 1
         fi
 
         if [[ -z "$CLOUDFLARE_WRITE_TOKEN" ]]; then
-          echo "CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN must be configured in the selected GitHub environment" >&2
+          echo "CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN must be available in the selected Infisical environment" >&2
           exit 1
         fi
 

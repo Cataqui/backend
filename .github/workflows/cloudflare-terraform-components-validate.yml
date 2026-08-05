@@ -7,25 +7,31 @@ permissions:
   contents: read
 
 jobs:
-  discover:
-    name: Discover registered Terraform components
-    runs-on: ubuntu-latest
+  discover-cloudflare:
+    name: Discover registered Cloudflare Terraform components
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       components: ${{ steps.registry.outputs.components }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - name: Discover registered Terraform components
+      - name: Discover registered Cloudflare Terraform components
         id: registry
         uses: ./.github/actions/discover-cloudflare-terraform-components
 
-  validate-modules:
-    name: Validate reusable Terraform modules
-    runs-on: ubuntu-latest
+  validate-modules-cloudflare:
+    name: Validate reusable Cloudflare Terraform modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Read the pinned Terraform version
         id: terraform-version
@@ -57,13 +63,13 @@ jobs:
             terraform -chdir="$module_directory" test
           done
 
-  validate:
+  validate-cloudflare:
     name: Validate registered Cloudflare components
-    needs: discover
+    needs: discover-cloudflare
     strategy:
       fail-fast: false
       matrix:
-        component: ${{ fromJSON(needs.discover.outputs.components) }}
+        component: ${{ fromJSON(needs.discover-cloudflare.outputs.components) }}
     uses: ./.github/workflows/cloudflare-terraform-validate.yml
     with:
       component: ${{ matrix.component }}

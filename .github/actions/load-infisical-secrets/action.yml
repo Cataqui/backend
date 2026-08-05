@@ -1,0 +1,134 @@
+name: Load Infisical secrets
+description: Fetch and validate one isolated Cataquí deployment credential profile through GitHub OIDC
+
+inputs:
+  environment:
+    description: Infisical and GitHub deployment environment
+    required: true
+  identity-id:
+    description: Shared Infisical machine identity authenticated through GitHub OIDC
+    required: true
+  profile:
+    description: Credential profile from profiles.json required by the consuming job
+    required: true
+  project-slug:
+    description: Infisical project slug
+    required: true
+
+outputs:
+  ai_gateway_api_token:
+    description: Cloudflare AI Gateway API token
+    value: ${{ steps.action-inputs.outputs.ai_gateway_api_token }}
+  cloudflare_account_id:
+    description: Cloudflare account identifier for Terraform and Wrangler actions
+    value: ${{ steps.action-inputs.outputs.cloudflare_account_id }}
+  cloudflare_deployment_api_token:
+    description: Cloudflare deployment API token
+    value: ${{ steps.action-inputs.outputs.cloudflare_deployment_api_token }}
+  cloudflare_terraform_read_api_token:
+    description: Cloudflare read-only Terraform API token
+    value: ${{ steps.action-inputs.outputs.cloudflare_terraform_read_api_token }}
+  cloudflare_terraform_write_api_token:
+    description: Cloudflare write-capable Terraform API token
+    value: ${{ steps.action-inputs.outputs.cloudflare_terraform_write_api_token }}
+  database_owner_direct_url:
+    description: Direct PostgreSQL owner URL for database migrations only
+    value: ${{ steps.action-inputs.outputs.database_owner_direct_url }}
+  database_app_pooler_url:
+    description: Pooled PostgreSQL application-role URL for the Cloudflare runtime
+    value: ${{ steps.action-inputs.outputs.database_app_pooler_url }}
+  hcp_terraform_organization:
+    description: HCP Terraform organization
+    value: ${{ steps.action-inputs.outputs.hcp_terraform_organization }}
+  neon_api_key:
+    description: Neon management API key
+    value: ${{ steps.action-inputs.outputs.neon_api_key }}
+  neon_organization_id:
+    description: Neon organization identifier
+    value: ${{ steps.action-inputs.outputs.neon_organization_id }}
+  neon_project_id:
+    description: Neon project identifier
+    value: ${{ steps.action-inputs.outputs.neon_project_id }}
+  terraform_api_token:
+    description: HCP Terraform API token
+    value: ${{ steps.action-inputs.outputs.terraform_api_token }}
+  upstash_redis_rest_token:
+    description: Upstash Redis REST token for the Cloudflare runtime
+    value: ${{ steps.action-inputs.outputs.upstash_redis_rest_token }}
+  upstash_redis_rest_url:
+    description: Upstash Redis REST URL for the Cloudflare runtime
+    value: ${{ steps.action-inputs.outputs.upstash_redis_rest_url }}
+  upstash_terraform_api_key:
+    description: Upstash management API key
+    value: ${{ steps.action-inputs.outputs.upstash_terraform_api_key }}
+  upstash_terraform_email:
+    description: Email belonging to the Upstash management API key
+    value: ${{ steps.action-inputs.outputs.upstash_terraform_email }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify the isolated Infisical target
+      id: profile
+      shell: bash
+      env:
+        INFISICAL_ENVIRONMENT: ${{ inputs.environment }}
+        INFISICAL_IDENTITY_ID: ${{ inputs.identity-id }}
+        INFISICAL_PROFILE: ${{ inputs.profile }}
+        INFISICAL_PROJECT_SLUG: ${{ inputs.project-slug }}
+      run: |
+        set -euo pipefail
+
+        if [[ "$INFISICAL_ENVIRONMENT" != "staging" && "$INFISICAL_ENVIRONMENT" != "production" ]]; then
+          echo "environment must be staging or production" >&2
+          exit 1
+        fi
+
+        if [[ -z "$INFISICAL_IDENTITY_ID" ]]; then
+          echo "INFISICAL_IDENTITY_ID must be configured as a GitHub repository variable" >&2
+          exit 1
+        fi
+
+        if [[ -z "$INFISICAL_PROJECT_SLUG" ]]; then
+          echo "INFISICAL_PROJECT_SLUG must be configured as a GitHub repository variable" >&2
+          exit 1
+        fi
+
+        secret_path="$(jq --exit-status --raw-output --arg profile "$INFISICAL_PROFILE" '.[$profile].secretPath // empty' .github/actions/load-infisical-secrets/profiles.json)"
+
+        if [[ ! "$secret_path" =~ ^/[a-z0-9/-]+$ || "$secret_path" == "/" ]]; then
+          echo "profile must identify an isolated credential folder in .github/actions/load-infisical-secrets/profiles.json" >&2
+          exit 1
+        fi
+
+        echo "secret_path=$secret_path" >> "$GITHUB_OUTPUT"
+
+    - name: Fetch the isolated profile from Infisical
+      uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+      with:
+        method: "oidc"
+        identity-id: ${{ inputs.identity-id }}
+        oidc-audience: https://github.com/Cataqui
+        project-slug: ${{ inputs.project-slug }}
+        env-slug: ${{ inputs.environment }}
+        secret-path: ${{ steps.profile.outputs.secret_path }}
+        include-imports: false
+        recursive: false
+        export-type: file
+        file-output-path: /.infisical-secrets
+
+    - name: Validate and prepare only the selected credentials
+      id: action-inputs
+      shell: bash
+      env:
+        INFISICAL_PROFILE: ${{ inputs.profile }}
+        INFISICAL_SECRETS_FILE: ${{ github.workspace }}/.infisical-secrets
+      run: |
+        set -euo pipefail
+        chmod 600 "$INFISICAL_SECRETS_FILE"
+        node .github/actions/load-infisical-secrets/prepare-credentials.mjs
+
+    - name: Remove the plaintext Infisical handoff file
+      if: always()
+      shell: bash
+      run: rm -f -- "$GITHUB_WORKSPACE/.infisical-secrets"

@@ -1,12 +1,14 @@
 node_modules/
 dist/
 .env
+.infisical-secrets
 coverage/
 generated/
 .idea/
 *.js.map
 *.ts.map
 .DS_Store
+.pnpm-store/
 
 # Only pnpm lockfile is accepted
 package-lock.json
@@ -38,3 +40,4 @@ override.tf.json
 
 # Biome
 .biome/
+

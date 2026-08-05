@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [development, staging, main]
+    branches: [staging, main]
     paths:
       - 'src/**'
       - 'prisma/**'
@@ -13,7 +13,7 @@ on:
       - '.github/actions/**'
       - '.github/workflows/**'
   pull_request:
-    branches: [development, staging, main]
+    branches: [staging, main]
     paths:
       - 'src/**'
       - 'prisma/**'
@@ -34,9 +34,12 @@ concurrency:
 jobs:
   quality:
     name: Quality Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
@@ -51,7 +54,7 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
         env:
-          DATABASE_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          DATABASE_OWNER_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
 
       - name: Lint
         run: pnpm lint

@@ -18,6 +18,8 @@ updates:
     directories:
       - /infra/cloudflare/ai-gateway
       - /infra/cloudflare/queues
+      - /infra/neon/database
+      - /infra/upstash/redis
     schedule:
       interval: weekly
       day: monday
@@ -25,6 +27,6 @@ updates:
       timezone: America/Sao_Paulo
     open-pull-requests-limit: 5
     groups:
-      cloudflare-provider:
+      terraform-providers:
         patterns:
           - '*'

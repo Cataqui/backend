@@ -1,5 +1,5 @@
 name: Discover Cloudflare Terraform components
-description: Validates the shared component registry and exposes its registered Terraform roots
+description: Validates the Cloudflare component registry and exposes its registered Terraform roots
 
 outputs:
   components:

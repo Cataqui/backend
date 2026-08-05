@@ -1,2 +1,0 @@
--- AlterEnum: rename TASK to INDIVIDUAL in JobType
-ALTER TYPE "JobType" RENAME VALUE 'TASK' TO 'INDIVIDUAL';

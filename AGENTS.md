@@ -979,7 +979,7 @@ Do not put real Neon URLs, passwords, tokens, or production secrets in documenta
 
 ### Adding a New Environment Variable
 
-Every new env var must be registered in all of these locations. Use this checklist:
+Every new application runtime env var must be registered in all of these locations. Use this checklist:
 
 1. **`src/core/config/env.validation.ts`** — Add to the Zod schema with appropriate validation
 2. **`src/core/config/`** — Update or create a config file (e.g., `map-auth.config.ts`) with the NestJS `registerAs` config token
@@ -990,8 +990,11 @@ Every new env var must be registered in all of these locations. Use this checkli
 7. **`src/platform/cloudflare/env.d.ts`** — Add the typed binding to the `Env` interface
 8. **`src/platform/cloudflare/container/container-env.ts`** — Forward it to the container process environment
 9. **`.dev.vars`** — Add a local development value for `wrangler dev` (gitignored)
+10. **`.github/actions/load-infisical-secrets/profiles.json`** — Register deployment credentials and linked provider configuration in every consuming Infisical profile
 
-Don't skip any. Missing one means the env var won't reach the container in that context.
+Don't skip any applicable location. Missing one means the env var won't reach the container in that context.
+
+Tooling-only credentials must remain scoped to their consumer instead of following the runtime checklist. For example, `DATABASE_OWNER_DIRECT_URL` belongs in local migration tooling and the isolated database-migration Infisical profile; it must never be added to Cloudflare bindings, container forwarding, `.dev.vars`, application configuration, or application deployment profiles.
 
 ---
 

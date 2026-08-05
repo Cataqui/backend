@@ -12,9 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    name: ${{ inputs.component }} / validate
-    runs-on: ubuntu-latest
+  validate-cloudflare:
+    name: ${{ inputs.component }} / validate Cloudflare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       TERRAFORM_ROOT: infra/cloudflare/${{ inputs.component }}
       TF_IN_AUTOMATION: 'true'
@@ -22,6 +23,8 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Read the pinned Terraform version
         id: terraform-version

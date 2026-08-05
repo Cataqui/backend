@@ -2,7 +2,7 @@ name: Terraform Validate
 
 on:
   pull_request:
-    branches: [development, staging, main]
+    branches: [staging, main]
     paths:
       - 'infra/**'
       - 'wrangler.jsonc'
@@ -10,6 +10,7 @@ on:
       - '.github/actions/**'
       - '.github/workflows/cloudflare-terraform-components-validate.yml'
       - '.github/workflows/cloudflare-terraform-validate.yml'
+      - '.github/workflows/neon-terraform-validate.yml'
       - '.github/workflows/terraform-plan.yml'
       - '.github/workflows/terraform-drift.yml'
       - '.github/workflows/deploy-staging.yml'
@@ -23,6 +24,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  validate-cloudflare:
     name: Validate Cloudflare infrastructure without credentials
     uses: ./.github/workflows/cloudflare-terraform-components-validate.yml
+
+  validate-upstash:
+    name: Validate Upstash infrastructure without credentials
+    uses: ./.github/workflows/upstash-terraform-validate.yml
+
+  validate-neon:
+    name: Validate Neon infrastructure without credentials
+    uses: ./.github/workflows/neon-terraform-validate.yml
