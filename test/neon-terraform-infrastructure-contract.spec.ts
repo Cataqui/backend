@@ -62,13 +62,20 @@ describe("Neon Terraform infrastructure", () => {
 		).toBe(true);
 	});
 
-	it("should use the strongest useful Neon Free plan settings in São Paulo", () => {
+	it("should use supported Neon Free plan settings and defer the paid suspend timeout", () => {
 		expect({
 			region: /region_id\s*=\s*"aws-sa-east-1"/.test(databaseSource),
 			postgres: databaseSource.includes("pg_version = 18"),
 			minimumCompute: databaseSource.includes("autoscaling_limit_min_cu = 0.25"),
 			maximumCompute: databaseSource.includes("autoscaling_limit_max_cu = 2"),
-			scaleToZero: databaseSource.includes("suspend_timeout_seconds  = 300"),
+			paidSuspendTimeoutDeferred:
+				databaseSource.includes("# Paid Scale plan: configure the suspend timeout after upgrading.") &&
+				databaseSource.includes("# suspend_timeout_seconds = 300"),
+			freePlanDoesNotSetSuspendTimeout: !databaseSource
+				.split("\n")
+				.filter((line) => !line.trimStart().startsWith("#"))
+				.join("\n")
+				.includes("suspend_timeout_seconds"),
 			restoreHistory: /history_retention_seconds\s*=\s*21600/.test(databaseSource),
 			logicalReplicationDisabled: databaseSource.includes('enable_logical_replication = "no"'),
 		}).toEqual({
@@ -76,7 +83,8 @@ describe("Neon Terraform infrastructure", () => {
 			postgres: true,
 			minimumCompute: true,
 			maximumCompute: true,
-			scaleToZero: true,
+			paidSuspendTimeoutDeferred: true,
+			freePlanDoesNotSetSuspendTimeout: true,
 			restoreHistory: true,
 			logicalReplicationDisabled: true,
 		});

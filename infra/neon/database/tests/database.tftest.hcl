@@ -52,7 +52,7 @@ run "production_uses_the_recommended_free_plan_configuration" {
   }
 }
 
-run "every_environment_uses_free_plan_compute_and_restore_limits" {
+run "every_environment_uses_supported_free_plan_compute_and_restore_limits" {
   command = plan
 
   variables {
@@ -66,7 +66,6 @@ run "every_environment_uses_free_plan_compute_and_restore_limits" {
       neon_project.database.pg_version == 18 &&
       neon_project.database.default_endpoint_settings[0].autoscaling_limit_min_cu == 0.25 &&
       neon_project.database.default_endpoint_settings[0].autoscaling_limit_max_cu == 2 &&
-      neon_project.database.default_endpoint_settings[0].suspend_timeout_seconds == 300 &&
       neon_project.database.history_retention_seconds == 21600 &&
       neon_project.database.enable_logical_replication == "no"
     )

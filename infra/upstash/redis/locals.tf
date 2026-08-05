@@ -2,11 +2,11 @@ locals {
   redis_configuration_by_environment = {
     staging = {
       database_name = "cataqui-api-staging"
-      plan          = "free"
+      database_type = "Pay as You Go"
     }
     production = {
       database_name = "cataqui-api-production"
-      plan          = "payg"
+      database_type = "Pay as You Go"
     }
   }
 

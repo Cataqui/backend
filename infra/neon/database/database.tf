@@ -13,7 +13,9 @@ resource "neon_project" "database" {
   default_endpoint_settings {
     autoscaling_limit_min_cu = 0.25
     autoscaling_limit_max_cu = 2
-    suspend_timeout_seconds  = 300
+
+    # Paid Scale plan: configure the suspend timeout after upgrading.
+    # suspend_timeout_seconds = 300
   }
 
   history_retention_seconds  = 21600

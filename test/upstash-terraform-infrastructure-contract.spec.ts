@@ -40,17 +40,17 @@ describe("Upstash Redis Terraform infrastructure", () => {
 		});
 	});
 
-	it("should map staging to free and production to pay as you go from one environment source of truth", () => {
+	it("should require pay as you go for staging and production from one environment source of truth", () => {
 		expect({
 			stagingDatabase: localsSource.includes('database_name = "cataqui-api-staging"'),
-			stagingPlan: /staging\s*=\s*\{[\s\S]*?plan\s*=\s*"free"/.test(localsSource),
+			stagingDatabaseType: /staging\s*=\s*\{[\s\S]*?database_type\s*=\s*"Pay as You Go"/.test(localsSource),
 			productionDatabase: localsSource.includes('database_name = "cataqui-api-production"'),
-			productionPlan: /production\s*=\s*\{[\s\S]*?plan\s*=\s*"payg"/.test(localsSource),
+			productionDatabaseType: /production\s*=\s*\{[\s\S]*?database_type\s*=\s*"Pay as You Go"/.test(localsSource),
 		}).toEqual({
 			stagingDatabase: true,
-			stagingPlan: true,
+			stagingDatabaseType: true,
 			productionDatabase: true,
-			productionPlan: true,
+			productionDatabaseType: true,
 		});
 	});
 
@@ -68,11 +68,11 @@ describe("Upstash Redis Terraform infrastructure", () => {
 		});
 	});
 
-	it("should reject an account whose observed Upstash plan does not match the environment", () => {
+	it("should reject an account whose observed Upstash database type is not pay as you go", () => {
 		expect({
-			postcondition: redisSource.includes("self.database_type == local.redis_configuration.plan"),
-			stagingMismatchTest: testsSource.includes("an_upstash_account_with_the_wrong_staging_plan_is_rejected"),
-			productionMismatchTest: testsSource.includes("an_upstash_account_with_the_wrong_production_plan_is_rejected"),
+			postcondition: redisSource.includes("self.database_type == local.redis_configuration.database_type"),
+			stagingMismatchTest: testsSource.includes("a_staging_database_that_is_not_pay_as_you_go_is_rejected"),
+			productionMismatchTest: testsSource.includes("a_production_database_that_is_not_pay_as_you_go_is_rejected"),
 		}).toEqual({
 			postcondition: true,
 			stagingMismatchTest: true,

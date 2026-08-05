@@ -1,9 +1,9 @@
 output "database" {
-  description = "Non-secret identity, location, and observed plan for the environment's Upstash Redis database."
+  description = "Non-secret identity, location, and observed database type for the environment's Upstash Redis database."
   value = {
     database_id    = upstash_redis_database.auth.database_id
     database_name  = upstash_redis_database.auth.database_name
-    plan           = upstash_redis_database.auth.database_type
+    database_type  = upstash_redis_database.auth.database_type
     primary_region = upstash_redis_database.auth.primary_region
     rest_url       = "https://${upstash_redis_database.auth.endpoint}"
   }
