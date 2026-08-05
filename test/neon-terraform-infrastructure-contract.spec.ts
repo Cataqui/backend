@@ -159,6 +159,9 @@ describe("Neon Terraform infrastructure", () => {
 			policyUsesPasswordParameter: appRolePolicySource.includes(":'app_role_password'"),
 			policyIsTransactional:
 				appRolePolicySource.startsWith("BEGIN;") && appRolePolicySource.trimEnd().endsWith("COMMIT;"),
+			grantsExistingTypesIndividually:
+				appRolePolicySource.includes("GRANT USAGE ON TYPE %I.%I TO %I") && appRolePolicySource.includes("FROM pg_type"),
+			doesNotUseUnsupportedAllTypesGrant: !appRolePolicySource.includes("GRANT USAGE ON ALL TYPES"),
 			createsSqlManagedRole: appRolePolicySource.includes("CREATE ROLE %I WITH LOGIN PASSWORD %L"),
 			rejectsResidualApiCreatedAdminRole: appRolePolicySource.includes(
 				"must be removed by Terraform before SQL creates the least-privilege role",
@@ -175,6 +178,8 @@ describe("Neon Terraform infrastructure", () => {
 			policyUsesRoleParameter: true,
 			policyUsesPasswordParameter: true,
 			policyIsTransactional: true,
+			grantsExistingTypesIndividually: true,
+			doesNotUseUnsupportedAllTypesGrant: true,
 			createsSqlManagedRole: true,
 			rejectsResidualApiCreatedAdminRole: true,
 			doesNotAttemptUnauthorizedRevoke: true,

@@ -71,9 +71,17 @@ SELECT format(
 ) \gexec
 
 SELECT format(
-  'GRANT USAGE ON ALL TYPES IN SCHEMA public TO %I',
+  'GRANT USAGE ON TYPE %I.%I TO %I',
+  type_namespace.nspname,
+  database_type.typname,
   current_setting('cataqui.app_role_name')
-) \gexec
+)
+FROM pg_type AS database_type
+INNER JOIN pg_namespace AS type_namespace
+  ON type_namespace.oid = database_type.typnamespace
+WHERE type_namespace.nspname = 'public'
+  AND database_type.typrelid = 0
+  AND database_type.typelem = 0 \gexec
 
 SELECT format(
   'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I',
