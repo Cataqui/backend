@@ -6,8 +6,7 @@ import { configureApp } from "../src/core/app.factory";
 import { requestSizeConfig } from "../src/core/config/request-size.config";
 import { PrismaService } from "../src/core/prisma/prisma.service";
 
-process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
-process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 async function buildApp(): Promise<NestFastifyApplication> {

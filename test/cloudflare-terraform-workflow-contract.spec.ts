@@ -37,6 +37,35 @@ function _getActionSource(actionName: string): string {
 }
 
 describe("Cloudflare Terraform workflow security", () => {
+	it("should use repository-local api names for every HCP Terraform workspace", () => {
+		const terraformWorkspaceDeclarations = Object.values(workflowSources).flatMap((source) =>
+			[...source.matchAll(/^\s*TF_WORKSPACE:\s*(.+)$/gm)].map((match) => (match[1] ?? "").trim()),
+		);
+
+		expect({
+			hasEveryExpectedWorkspace: terraformWorkspaceDeclarations.length === 9,
+			allUseApiPrefix: terraformWorkspaceDeclarations.every((workspace) => workspace.startsWith("api-")),
+			usesRedundantProjectPrefix: terraformWorkspaceDeclarations.some((workspace) =>
+				workspace.startsWith("cataqui-api-"),
+			),
+		}).toEqual({
+			hasEveryExpectedWorkspace: true,
+			allUseApiPrefix: true,
+			usesRedundantProjectPrefix: false,
+		});
+	});
+
+	it("should pin every GitHub-hosted runner and avoid persisting checkout credentials", () => {
+		expect(
+			Object.values(workflowSources).every(
+				(source) =>
+					!source.includes("ubuntu-latest") &&
+					[...source.matchAll(/uses: actions\/checkout@[0-9a-f]{40}/g)].length ===
+						[...source.matchAll(/persist-credentials: false/g)].length,
+			),
+		).toBe(true);
+	});
+
 	it("should pin every external GitHub Action to an immutable commit SHA", () => {
 		const externalActionReferences = [...Object.values(workflowSources), ...Object.values(actionSources)].flatMap(
 			(source) =>
@@ -54,11 +83,11 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should use the descriptive Terraform API token name in every workflow", () => {
-		const combinedWorkflowSource = Object.values(workflowSources).join("\n");
+		const combinedAutomationSource = [...Object.values(workflowSources), ...Object.values(actionSources)].join("\n");
 
 		expect({
-			usesTerraformApiToken: /\bTERRAFORM_API_TOKEN\b/.test(combinedWorkflowSource),
-			usesLegacyTokenName: /\bTF_API_TOKEN\b/.test(combinedWorkflowSource),
+			usesTerraformApiToken: /\bTERRAFORM_API_TOKEN\b/.test(combinedAutomationSource),
+			usesLegacyTokenName: /\bTF_API_TOKEN\b/.test(combinedAutomationSource),
 		}).toEqual({
 			usesTerraformApiToken: true,
 			usesLegacyTokenName: false,
@@ -67,30 +96,30 @@ describe("Cloudflare Terraform workflow security", () => {
 
 	it("should read the Terraform API token only inside environment-bound infrastructure jobs", () => {
 		const workflowsUsingTerraformApiToken = Object.entries(workflowSources)
-			.filter(([, source]) => source.includes("TERRAFORM_API_TOKEN"))
+			.filter(([, source]) => source.includes("steps.infisical.outputs.terraform_api_token"))
 			.map(([fileName, source]) => ({
 				fileName: fileName,
 				hasEnvironmentBoundary: /environment:\n {6}name: (staging|production|\$\{\{ matrix\.environment \}\})/.test(
 					source,
 				),
-				forwardsToken: source.includes("TERRAFORM_API_TOKEN: $" + "{{ secrets.TERRAFORM_API_TOKEN }}"),
+				forwardsToken: source.includes("terraform-api-token: $" + "{{ steps.infisical.outputs.terraform_api_token }}"),
 			}))
 			.sort(({ fileName: firstFileName }, { fileName: secondFileName }) => firstFileName.localeCompare(secondFileName));
 
 		expect(workflowsUsingTerraformApiToken).toEqual([
 			{
 				fileName: "deploy-production.yml",
-				forwardsToken: false,
+				forwardsToken: true,
 				hasEnvironmentBoundary: true,
 			},
 			{
 				fileName: "deploy-staging.yml",
-				forwardsToken: false,
+				forwardsToken: true,
 				hasEnvironmentBoundary: true,
 			},
 			{
 				fileName: "terraform-drift.yml",
-				forwardsToken: false,
+				forwardsToken: true,
 				hasEnvironmentBoundary: true,
 			},
 		]);
@@ -105,12 +134,12 @@ describe("Cloudflare Terraform workflow security", () => {
 		expect(terraformDriftSource.includes("CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN")).toBe(false);
 	});
 
-	it("should select the Cloudflare read token through the target GitHub environment", () => {
+	it("should select the Cloudflare read token through Infisical after entering the target GitHub environment", () => {
 		const combinedWorkflowSource = Object.values(workflowSources).join("\n");
 		const terraformDriftSource = _getWorkflowSource("terraform-drift.yml");
 
 		expect({
-			usesEnvironmentScopedName: terraformDriftSource.includes("secrets.CLOUDFLARE_TERRAFORM_READ_API_TOKEN"),
+			usesEnvironmentScopedName: terraformDriftSource.includes("profile: cloudflare-terraform-drift"),
 			selectsInputEnvironment: terraformDriftSource.includes(`environment:\n      name: \${{ matrix.environment }}`),
 			doesNotCreateDeployment: terraformDriftSource.includes("deployment: false"),
 			hasEnvironmentSpecificNames: /CLOUDFLARE_TERRAFORM_(STAGING|PRODUCTION)_READ_API_TOKEN/.test(
@@ -126,7 +155,7 @@ describe("Cloudflare Terraform workflow security", () => {
 
 	it("should expose the write-capable Cloudflare token only inside the protected deployment workflow", () => {
 		const workflowsUsingEditToken = Object.entries(workflowSources)
-			.filter(([, source]) => source.includes("secrets.CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN"))
+			.filter(([, source]) => source.includes("profile: cloudflare-terraform-apply"))
 			.map(([fileName]) => fileName);
 
 		expect(workflowsUsingEditToken).toEqual(["deploy-production.yml", "deploy-staging.yml"]);
@@ -200,7 +229,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		).toBe(true);
 	});
 
-	it("should consume environment secrets in the same matrix jobs that run Terraform", () => {
+	it("should fetch Infisical credentials in the same matrix jobs that run Terraform", () => {
 		const environmentBoundTerraformSources = [
 			_getWorkflowSource("deploy-staging.yml"),
 			_getWorkflowSource("deploy-production.yml"),
@@ -211,7 +240,8 @@ describe("Cloudflare Terraform workflow security", () => {
 			environmentBoundTerraformSources.every(
 				(source) =>
 					/environment:\n {6}name: (staging|production|\$\{\{ matrix\.environment \}\})/.test(source) &&
-					source.includes("terraform-api-token: $" + "{{ secrets.TERRAFORM_API_TOKEN }}") &&
+					source.includes("uses: ./.github/actions/load-infisical-secrets") &&
+					source.includes("terraform-api-token: $" + "{{ steps.infisical.outputs.terraform_api_token }}") &&
 					!source.includes("uses: ./.github/workflows/cloudflare-terraform-"),
 			),
 		).toBe(true);
@@ -421,7 +451,9 @@ describe("Cloudflare Terraform workflow security", () => {
 			deploysInfrastructure: productionDeploymentSource.includes(
 				"uses: ./.github/actions/deploy-cloudflare-terraform-component",
 			),
-			migratesAfterInfrastructure: productionDeploymentSource.includes("needs: infrastructure"),
+			migratesAfterInfrastructure: productionDeploymentSource.includes(
+				"needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]",
+			),
 			deploysAfterMigration: productionDeploymentSource.includes("needs: migrate"),
 		}).toEqual({
 			hasPushTrigger: true,
@@ -429,6 +461,55 @@ describe("Cloudflare Terraform workflow security", () => {
 			deploysInfrastructure: true,
 			migratesAfterInfrastructure: true,
 			deploysAfterMigration: true,
+		});
+	});
+
+	it("should identify the platform in every provider-specific workflow job ID", () => {
+		const stagingDeploymentSource = _getWorkflowSource("deploy-staging.yml");
+		const productionDeploymentSource = _getWorkflowSource("deploy-production.yml");
+		const driftSource = _getWorkflowSource("terraform-drift.yml");
+		const planSource = _getWorkflowSource("terraform-plan.yml");
+		const cloudflareComponentsValidationSource = _getWorkflowSource("cloudflare-terraform-components-validate.yml");
+		const cloudflareValidationSource = _getWorkflowSource("cloudflare-terraform-validate.yml");
+		const upstashValidationSource = _getWorkflowSource("upstash-terraform-validate.yml");
+		const neonValidationSource = _getWorkflowSource("neon-terraform-validate.yml");
+
+		expect({
+			staging: [
+				"infrastructure-components-cloudflare",
+				"infrastructure-cloudflare",
+				"infrastructure-neon",
+				"infrastructure-upstash",
+			].every((jobId) => stagingDeploymentSource.includes(`  ${jobId}:`)),
+			production: [
+				"infrastructure-components-cloudflare",
+				"infrastructure-cloudflare",
+				"infrastructure-neon",
+				"infrastructure-upstash",
+			].every((jobId) => productionDeploymentSource.includes(`  ${jobId}:`)),
+			drift: ["components-cloudflare", "detect-cloudflare", "detect-neon", "detect-upstash"].every((jobId) =>
+				driftSource.includes(`  ${jobId}:`),
+			),
+			plan: ["validate-cloudflare", "validate-neon", "validate-upstash"].every((jobId) =>
+				planSource.includes(`  ${jobId}:`),
+			),
+			cloudflareComponentsValidation: [
+				"discover-cloudflare",
+				"validate-modules-cloudflare",
+				"validate-cloudflare",
+			].every((jobId) => cloudflareComponentsValidationSource.includes(`  ${jobId}:`)),
+			cloudflareValidation: cloudflareValidationSource.includes("  validate-cloudflare:"),
+			upstashValidation: upstashValidationSource.includes("  validate-upstash:"),
+			neonValidation: neonValidationSource.includes("  validate-neon:"),
+		}).toEqual({
+			staging: true,
+			production: true,
+			drift: true,
+			plan: true,
+			cloudflareComponentsValidation: true,
+			cloudflareValidation: true,
+			upstashValidation: true,
+			neonValidation: true,
 		});
 	});
 

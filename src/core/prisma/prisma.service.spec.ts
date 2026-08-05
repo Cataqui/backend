@@ -46,9 +46,9 @@ describe("PrismaService", () => {
 		expect(prismaService).toBeDefined();
 	});
 
-	it("should pass poolerUrl as connectionString to PrismaNeon", () => {
+	it("should pass appPoolerUrl as connectionString to PrismaNeon", () => {
 		expect(prismaNeonConfigs[0]).toMatchObject({
-			connectionString: MOCK_CONFIG.poolerUrl,
+			connectionString: MOCK_CONFIG.appPoolerUrl,
 		});
 	});
 

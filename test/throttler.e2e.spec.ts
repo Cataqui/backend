@@ -14,8 +14,7 @@ import { ResponseInterceptor } from "../src/core/interceptors/response.intercept
 import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
 import { PrismaService } from "../src/core/prisma/prisma.service";
 
-process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
-process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 async function buildApp(overrideConfig?: IGlobalThrottleConfig): Promise<NestFastifyApplication> {

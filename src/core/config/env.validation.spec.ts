@@ -6,22 +6,22 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "production",
 				PORT: "4000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CORS_ORIGINS: "http://localhost:3000",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				AI_GATEWAY_API_TOKEN: "test-api-token",
 				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.NODE_ENV).toBe("production");
 				expect(result.data.PORT).toBe(4000);
-				expect(result.data.DATABASE_POOLER_URL).toBe("postgresql://user:pass@localhost:5432/db");
-				expect(result.data.DATABASE_DIRECT_URL).toBe("postgresql://user:pass@localhost:5432/db");
+				expect(result.data.DATABASE_APP_POOLER_URL).toBe("postgresql://user:pass@localhost:5432/db");
 			}
 		});
 	});
@@ -30,8 +30,7 @@ describe("IEnvSchema", () => {
 		it("should require NODE_ENV", () => {
 			const result = IEnvSchema.safeParse({
 				CORS_ORIGINS: "http://localhost:3000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
 			expect(result.success).toBe(false);
@@ -41,13 +40,14 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "development",
 				CORS_ORIGINS: "http://localhost:3000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				AI_GATEWAY_API_TOKEN: "test-api-token",
 				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
@@ -61,13 +61,14 @@ describe("IEnvSchema", () => {
 				NODE_ENV: "development",
 				PORT: "8080",
 				CORS_ORIGINS: "http://localhost:3000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				AI_GATEWAY_API_TOKEN: "test-api-token",
 				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
@@ -79,28 +80,66 @@ describe("IEnvSchema", () => {
 	});
 
 	describe("validation errors", () => {
-		it("should fail when DATABASE_POOLER_URL is missing", () => {
+		it("should fail when UPSTASH_REDIS_REST_URL is missing", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "development",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				CORS_ORIGINS: "http://localhost:3000",
+				PROTOMAP_AUTH_SECRET: "test-secret",
+				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(false);
 		});
 
-		it("should fail when DATABASE_POOLER_URL is not a valid URL", () => {
+		it("should fail when UPSTASH_REDIS_REST_URL is not a valid URL", () => {
 			const result = IEnvSchema.safeParse({
-				DATABASE_POOLER_URL: "not-a-url",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				NODE_ENV: "development",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				CORS_ORIGINS: "http://localhost:3000",
+				PROTOMAP_AUTH_SECRET: "test-secret",
+				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "not-a-url",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(false);
 		});
 
-		it("should fail when DATABASE_DIRECT_URL is missing", () => {
+		it("should fail when UPSTASH_REDIS_REST_TOKEN is missing", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "development",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
+				CORS_ORIGINS: "http://localhost:3000",
+				PROTOMAP_AUTH_SECRET: "test-secret",
+				PROTOMAP_URL: "https://tiles.cataqui.com",
+				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
+				AI_GATEWAY_API_TOKEN: "test-api-token",
+				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should fail when DATABASE_APP_POOLER_URL is missing", () => {
+			const result = IEnvSchema.safeParse({
+				NODE_ENV: "development",
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should fail when DATABASE_APP_POOLER_URL is not a valid URL", () => {
+			const result = IEnvSchema.safeParse({
+				DATABASE_APP_POOLER_URL: "not-a-url",
 			});
 
 			expect(result.success).toBe(false);
@@ -110,13 +149,14 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "staging",
 				CORS_ORIGINS: "http://localhost:3000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				AI_GATEWAY_API_TOKEN: "test-api-token",
 				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
@@ -126,8 +166,7 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "invalid",
 				CORS_ORIGINS: "http://localhost:3000",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
 			expect(result.success).toBe(false);
@@ -136,8 +175,7 @@ describe("IEnvSchema", () => {
 		it("should fail when PORT is not a valid number", () => {
 			const result = IEnvSchema.safeParse({
 				PORT: "not-a-number",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
 			expect(result.success).toBe(false);
@@ -149,13 +187,14 @@ describe("IEnvSchema", () => {
 			const result = IEnvSchema.safeParse({
 				NODE_ENV: "development",
 				CORS_ORIGINS: "https://cataqui.com,https://app.cataqui.com",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				PROTOMAP_AUTH_SECRET: "test-secret",
 				PROTOMAP_URL: "https://tiles.cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				AI_GATEWAY_API_TOKEN: "test-api-token",
 				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
@@ -166,8 +205,7 @@ describe("IEnvSchema", () => {
 
 		it("should fail when CORS_ORIGINS is missing", () => {
 			const result = IEnvSchema.safeParse({
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
 			expect(result.success).toBe(false);
@@ -176,8 +214,7 @@ describe("IEnvSchema", () => {
 		it("should fail when CORS_ORIGINS is empty", () => {
 			const result = IEnvSchema.safeParse({
 				CORS_ORIGINS: "",
-				DATABASE_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
-				DATABASE_DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
+				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 			});
 
 			expect(result.success).toBe(false);

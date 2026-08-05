@@ -2,14 +2,26 @@ import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { ConfigModule } from "./core/config/config.module";
 import { PrismaModule } from "./core/prisma/prisma.module";
+import { RedisModule } from "./core/redis/redis.module";
 import { ThrottleModule } from "./core/throttle/throttle.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { FeedModule } from "./modules/feed/feed.module";
 import { HealthModule } from "./modules/health/health.module";
 import { JobModule } from "./modules/job/job.module";
 import { MapModule } from "./modules/map/map.module";
 
 @Module({
-	imports: [ConfigModule, PrismaModule, HealthModule, JobModule, FeedModule, MapModule, ThrottleModule],
+	imports: [
+		ConfigModule,
+		PrismaModule,
+		RedisModule,
+		HealthModule,
+		JobModule,
+		FeedModule,
+		MapModule,
+		AuthModule,
+		ThrottleModule,
+	],
 	controllers: [AppController],
 })
 export class AppModule {}
