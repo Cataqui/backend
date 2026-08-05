@@ -2,7 +2,6 @@ import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
 import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
 import { IEnvSchema } from "./env.validation";
-import { MAP_AUTH_CONFIG_KEY, mapAuthConfig } from "./map-auth.config";
 import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
 import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
 import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.config";
@@ -13,7 +12,7 @@ import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.co
 		NestConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: ".env",
-			load: [globalThrottleConfig, requestSizeConfig, mapAuthConfig, upstashRedisConfig],
+			load: [globalThrottleConfig, requestSizeConfig, upstashRedisConfig],
 			validate: (config: Record<string, unknown>) => {
 				const result = IEnvSchema.safeParse(config);
 
@@ -42,20 +41,10 @@ import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.co
 			useFactory: requestSizeConfig,
 		},
 		{
-			provide: MAP_AUTH_CONFIG_KEY,
-			useFactory: mapAuthConfig,
-		},
-		{
 			provide: UPSTASH_REDIS_CONFIG_KEY,
 			useFactory: upstashRedisConfig,
 		},
 	],
-	exports: [
-		DATABASE_CONFIG_KEY,
-		GLOBAL_THROTTLE_CONFIG_KEY,
-		REQUEST_SIZE_CONFIG_KEY,
-		MAP_AUTH_CONFIG_KEY,
-		UPSTASH_REDIS_CONFIG_KEY,
-	],
+	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY, UPSTASH_REDIS_CONFIG_KEY],
 })
 export class ConfigModule {}

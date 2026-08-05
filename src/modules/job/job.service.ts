@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { JobPaymentAmountPeriod, JobStatus, JobType, type Prisma } from "../../../generated/prisma/client.js";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
-import { MapService } from "../map/map.service";
 import { JobLocationConstants } from "./constants/job-location.constants";
 import { RequiredToPublishMetadata } from "./decorators/required-to-publish.decorator";
 import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
@@ -16,6 +15,7 @@ import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobDraftIncompleteError } from "./errors/job-draft-incomplete.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobLocationService } from "./job-location.service";
 import { JobDataDerivationPrompts } from "./prompts/job-data-derivation-prompts";
 import { JobRepository } from "./repositories/job.repository";
 import { JobDerivedDataSchema } from "./schemas/job-derived-data.schema.js";
@@ -26,7 +26,7 @@ export class JobService {
 		private readonly _jobRepository: JobRepository,
 		private readonly _aiService: AiService,
 		private readonly _deriveJobDataPublisher: DeriveJobDataPublisher,
-		private readonly _mapService: MapService,
+		private readonly _jobLocationService: JobLocationService,
 	) {}
 
 	async createDraft(params: { dto: CreateJobDraftRequestDto }): Promise<JobOutputDto> {
@@ -238,7 +238,7 @@ export class JobService {
 			return { latitude: params.location.latitude, longitude: params.location.longitude };
 		}
 
-		return this._mapService.fuzzLocationCoordinate({
+		return this._jobLocationService.fuzzLocationCoordinate({
 			latitude: params.location.latitude,
 			longitude: params.location.longitude,
 			minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,

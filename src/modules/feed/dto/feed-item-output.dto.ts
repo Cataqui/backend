@@ -2,10 +2,9 @@ import { ApiExtraModels, ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import type { JobPaymentAmountPeriod, JobPaymentType } from "../../../../generated/prisma/client.js";
 import { JobPaymentOutputDto } from "../../../shared/dto/job/job-payment-output.dto";
-import { MapConfigOutputDto } from "../../map/dto/map-config-output.dto";
 import { FeedLocationOutputDto } from "./feed-location-output.dto";
 
-@ApiExtraModels(JobPaymentOutputDto, FeedLocationOutputDto, MapConfigOutputDto)
+@ApiExtraModels(JobPaymentOutputDto, FeedLocationOutputDto)
 export class FeedItemOutputDto {
 	@Expose({ name: "job_id" })
 	@ApiProperty({ name: "job_id", description: "Job unique identifier", example: "cm3x..." })
@@ -53,24 +52,21 @@ export class FeedItemOutputDto {
 		this.location = params.location;
 	}
 
-	static fromDatabase(
-		job: {
-			id: string;
-			title: string;
-			createdAt: Date;
-			descriptionSummary: string;
-			paymentType: JobPaymentType;
-			paymentMinAmount: { toNumber(): number } | number | null;
-			paymentMaxAmount: { toNumber(): number } | number | null;
-			paymentNote: string | null;
-			paymentAmountPeriod: JobPaymentAmountPeriod;
-			paymentCurrency: string;
-			neighborhood: string;
-			fuzzyLatitude: { toNumber(): number } | number;
-			fuzzyLongitude: { toNumber(): number } | number;
-		},
-		mapConfig: MapConfigOutputDto,
-	): FeedItemOutputDto {
+	static fromDatabase(job: {
+		id: string;
+		title: string;
+		createdAt: Date;
+		descriptionSummary: string;
+		paymentType: JobPaymentType;
+		paymentMinAmount: { toNumber(): number } | number | null;
+		paymentMaxAmount: { toNumber(): number } | number | null;
+		paymentNote: string | null;
+		paymentAmountPeriod: JobPaymentAmountPeriod;
+		paymentCurrency: string;
+		neighborhood: string;
+		fuzzyLatitude: { toNumber(): number } | number;
+		fuzzyLongitude: { toNumber(): number } | number;
+	}): FeedItemOutputDto {
 		return new FeedItemOutputDto({
 			jobId: job.id,
 			title: job.title,
@@ -88,7 +84,6 @@ export class FeedItemOutputDto {
 				neighborhood: job.neighborhood,
 				latitude: job.fuzzyLatitude,
 				longitude: job.fuzzyLongitude,
-				mapConfig,
 			}),
 		});
 	}

@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
 import { PaginationOutputDto } from "../../shared/dto/pagination-output.dto";
-import { MapService } from "../map/map.service";
 import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
 import type { FeedSort } from "./enums/feed-sort.enum";
 import { DEFAULT_FEED_SORT, FEED_ITEMS_RESPONSE_LIMIT } from "./feed.constants";
@@ -10,10 +9,7 @@ import { CursorUtils } from "./utils/cursor.utils";
 
 @Injectable()
 export class FeedService {
-	constructor(
-		private readonly _feedRepository: FeedRepository,
-		private readonly _mapService: MapService,
-	) {}
+	constructor(private readonly _feedRepository: FeedRepository) {}
 
 	async getFeed(params: {
 		cursor?: string | undefined;
@@ -40,8 +36,7 @@ export class FeedService {
 			});
 		}
 
-		const mapConfig = await this._mapService.getConfig({ region: "BR" });
-		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item, mapConfig));
+		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item));
 		return new PaginatedResponseDto(items, new PaginationOutputDto(hasMore, nextCursor));
 	}
 }

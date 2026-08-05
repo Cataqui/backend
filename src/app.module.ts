@@ -8,20 +8,9 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { FeedModule } from "./modules/feed/feed.module";
 import { HealthModule } from "./modules/health/health.module";
 import { JobModule } from "./modules/job/job.module";
-import { MapModule } from "./modules/map/map.module";
 
 @Module({
-	imports: [
-		ConfigModule,
-		PrismaModule,
-		RedisModule,
-		HealthModule,
-		JobModule,
-		FeedModule,
-		MapModule,
-		AuthModule,
-		ThrottleModule,
-	],
+	imports: [ConfigModule, PrismaModule, RedisModule, HealthModule, JobModule, FeedModule, AuthModule, ThrottleModule],
 	controllers: [AppController],
 })
 export class AppModule {}

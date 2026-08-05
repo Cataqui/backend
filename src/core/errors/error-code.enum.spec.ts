@@ -21,7 +21,6 @@ describe("ErrorCode", () => {
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
-			"MAP_REGION_NOT_FOUND",
 			"AUTH_INTENT_CREATION_UNAVAILABLE",
 		] as const;
 
@@ -39,6 +38,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(22);
+		expect(Object.keys(ErrorCode)).toHaveLength(21);
 	});
 });
