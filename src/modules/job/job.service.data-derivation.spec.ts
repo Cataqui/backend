@@ -2,11 +2,11 @@ import { Test } from "@nestjs/testing";
 import { JobStatus } from "../../../generated/prisma/client.js";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
-import { MapService } from "../map/map.service";
 import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
 import { CreateJobDraftRequestDto } from "./dto/create-job-draft-request.dto";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobService } from "./job.service";
+import { JobLocationService } from "./job-location.service";
 import { JobRepository } from "./repositories/job.repository";
 
 const createdAt = new Date("2026-07-30T12:00:00.000Z");
@@ -62,7 +62,7 @@ describe("JobService job data derivation", () => {
 				{ provide: AiService, useValue: aiService },
 				{ provide: DeriveJobDataPublisher, useValue: deriveJobDataPublisher },
 				{ provide: JobRepository, useValue: jobRepository },
-				{ provide: MapService, useValue: { fuzzLocationCoordinate: vi.fn() } },
+				{ provide: JobLocationService, useValue: { fuzzLocationCoordinate: vi.fn() } },
 			],
 		}).compile();
 

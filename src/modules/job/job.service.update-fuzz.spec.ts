@@ -6,10 +6,10 @@ import { getMetadataStorage, validateSync, ValidateNested } from "class-validato
 import fc, { type Arbitrary } from "fast-check";
 import { JobPaymentAmountPeriod, JobStatus, JobType } from "../../../generated/prisma/client.js";
 import { AiService } from "../ai/ai.service";
-import { MapService } from "../map/map.service";
 import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
 import { UpdateJobRequestDto } from "./dto/update-job-request.dto";
 import { JobService } from "./job.service";
+import { JobLocationService } from "./job-location.service";
 import { JobRepository } from "./repositories/job.repository";
 
 type PersistedPrimitive = boolean | null | number | string;
@@ -466,7 +466,7 @@ describe("Updating every field in UpdateJobRequestDto", () => {
 		update: ReturnType<typeof vi.fn>;
 	};
 	let aiService: { generateObject: ReturnType<typeof vi.fn> };
-	let mapService: { fuzzLocationCoordinate: ReturnType<typeof vi.fn> };
+	let jobLocationService: { fuzzLocationCoordinate: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		jobRepository = {
@@ -474,7 +474,7 @@ describe("Updating every field in UpdateJobRequestDto", () => {
 			update: vi.fn().mockResolvedValue(undefined),
 		};
 		aiService = { generateObject: vi.fn() };
-		mapService = {
+		jobLocationService = {
 			fuzzLocationCoordinate: vi.fn((params: { latitude: number; longitude: number }) => ({
 				latitude: params.latitude,
 				longitude: params.longitude,
@@ -487,7 +487,7 @@ describe("Updating every field in UpdateJobRequestDto", () => {
 				{ provide: JobRepository, useValue: jobRepository },
 				{ provide: AiService, useValue: aiService },
 				{ provide: DeriveJobDataPublisher, useValue: { publish: vi.fn() } },
-				{ provide: MapService, useValue: mapService },
+				{ provide: JobLocationService, useValue: jobLocationService },
 			],
 		}).compile();
 

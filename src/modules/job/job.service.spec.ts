@@ -7,7 +7,6 @@ import {
 	JobType,
 } from "../../../generated/prisma/client.js";
 import { AiService } from "../ai/ai.service";
-import { MapService } from "../map/map.service";
 import { JobLocationConstants } from "./constants/job-location.constants";
 import { RequiredToPublishMetadata } from "./decorators/required-to-publish.decorator";
 import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
@@ -21,6 +20,7 @@ import { JobAlreadyPublishedError } from "./errors/job-already-published.error";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobDraftIncompleteError } from "./errors/job-draft-incomplete.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
+import { JobLocationService } from "./job-location.service";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 
@@ -98,7 +98,7 @@ describe("JobService", () => {
 	};
 	let aiService: { generateObject: ReturnType<typeof vi.fn> };
 	let deriveJobDataPublisher: { publish: ReturnType<typeof vi.fn> };
-	let mapService: { fuzzLocationCoordinate: ReturnType<typeof vi.fn> };
+	let jobLocationService: { fuzzLocationCoordinate: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		jobRepository = {
@@ -116,7 +116,7 @@ describe("JobService", () => {
 			}),
 		};
 		deriveJobDataPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
-		mapService = {
+		jobLocationService = {
 			fuzzLocationCoordinate: vi.fn().mockReturnValue({ latitude: -23.551, longitude: -46.631 }),
 		};
 
@@ -126,7 +126,7 @@ describe("JobService", () => {
 				{ provide: JobRepository, useValue: jobRepository },
 				{ provide: AiService, useValue: aiService },
 				{ provide: DeriveJobDataPublisher, useValue: deriveJobDataPublisher },
-				{ provide: MapService, useValue: mapService },
+				{ provide: JobLocationService, useValue: jobLocationService },
 			],
 		}).compile();
 
@@ -198,7 +198,7 @@ describe("JobService", () => {
 		);
 	});
 
-	it("should ask the map service to fuzz an edited street location", async () => {
+	it("should ask the job location service to fuzz an edited street location", async () => {
 		jobRepository.findById.mockResolvedValue(completeJob);
 
 		await service.updateJob({
@@ -207,7 +207,7 @@ describe("JobService", () => {
 			locale: "pt-BR",
 		});
 
-		expect(mapService.fuzzLocationCoordinate).toHaveBeenCalledWith({
+		expect(jobLocationService.fuzzLocationCoordinate).toHaveBeenCalledWith({
 			latitude: -23.55,
 			longitude: -46.63,
 			minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
