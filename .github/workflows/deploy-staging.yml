@@ -251,6 +251,7 @@ jobs:
           branch_name: staging-deploy-${{ github.run_id }}
           parent_branch: staging
           database: cataqui-staging
+          role: cataqui_staging_owner
           api_key: ${{ steps.infisical.outputs.neon_api_key }}
 
       - name: Test migrations on branch

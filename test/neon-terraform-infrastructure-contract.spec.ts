@@ -203,6 +203,15 @@ describe("Neon Terraform infrastructure", () => {
 		).toBe(true);
 	});
 
+	it("should create migration test branches with each environment's managed owner role", () => {
+		expect(
+			[
+				{ environment: "staging", source: stagingWorkflowSource },
+				{ environment: "production", source: productionWorkflowSource },
+			].every(({ environment, source }) => source.includes(`role: cataqui_${environment}_owner`)),
+		).toBe(true);
+	});
+
 	it("should synchronize runtime and migration values only to their isolated Infisical folders", () => {
 		expect({
 			applicationFolder: syncActionSource.includes('--path="/application/deploy"'),
