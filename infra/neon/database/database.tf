@@ -27,12 +27,8 @@ resource "neon_project" "database" {
   }
 }
 
-resource "neon_role" "app" {
-  project_id = neon_project.database.id
-  branch_id  = neon_project.database.default_branch_id
-  name       = local.database_configuration.app_role_name
-
-  lifecycle {
-    prevent_destroy = true
-  }
+resource "random_password" "app" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*+-.:<=>?@^_~"
 }

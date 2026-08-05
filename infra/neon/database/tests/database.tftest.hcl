@@ -1,4 +1,5 @@
 mock_provider "neon" {}
+mock_provider "random" {}
 
 override_resource {
   target          = neon_project.database
@@ -26,7 +27,7 @@ run "staging_uses_the_recommended_free_plan_configuration" {
       neon_project.database.branch[0].name == "staging" &&
       neon_project.database.branch[0].database_name == "cataqui-staging" &&
       neon_project.database.branch[0].role_name == "cataqui_staging_owner" &&
-      neon_role.app.name == "cataqui_staging_app"
+      local.database_configuration.app_role_name == "cataqui_staging_app"
     )
     error_message = "Staging must use its independent Cataquí project, branch, database, and owner."
   }
@@ -46,7 +47,7 @@ run "production_uses_the_recommended_free_plan_configuration" {
       neon_project.database.branch[0].name == "production" &&
       neon_project.database.branch[0].database_name == "cataqui-production" &&
       neon_project.database.branch[0].role_name == "cataqui_production_owner" &&
-      neon_role.app.name == "cataqui_production_app"
+      local.database_configuration.app_role_name == "cataqui_production_app"
     )
     error_message = "Production must use its independent Cataquí project, branch, database, and owner."
   }
@@ -70,6 +71,23 @@ run "every_environment_uses_supported_free_plan_compute_and_restore_limits" {
       neon_project.database.enable_logical_replication == "no"
     )
     error_message = "Every project must stay within the recommended Neon Free plan configuration."
+  }
+}
+
+run "application_credentials_are_generated_for_a_sql_created_role" {
+  command = plan
+
+  variables {
+    environment          = "production"
+    neon_organization_id = "org-cataqui"
+  }
+
+  assert {
+    condition = (
+      random_password.app.length == 32 &&
+      random_password.app.special
+    )
+    error_message = "The SQL-created application role must receive a strong Terraform-managed password."
   }
 }
 

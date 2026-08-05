@@ -1,8 +1,35 @@
+BEGIN;
+
 SELECT set_config('cataqui.app_role_name', :'app_role_name', false);
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_roles
+    WHERE rolname = current_setting('cataqui.app_role_name')
+      AND pg_has_role(oid, 'neon_superuser', 'MEMBER')
+  ) THEN
+    RAISE EXCEPTION '% is still managed by the Neon API and must be removed by Terraform before SQL creates the least-privilege role', current_setting('cataqui.app_role_name');
+  END IF;
+END
+$$;
+
 SELECT format(
-  'REVOKE neon_superuser FROM %I',
-  current_setting('cataqui.app_role_name')
+  'CREATE ROLE %I WITH LOGIN PASSWORD %L',
+  current_setting('cataqui.app_role_name'),
+  :'app_role_password'
+)
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM pg_roles
+  WHERE rolname = current_setting('cataqui.app_role_name')
+) \gexec
+
+SELECT format(
+  'ALTER ROLE %I WITH LOGIN PASSWORD %L',
+  current_setting('cataqui.app_role_name'),
+  :'app_role_password'
 ) \gexec
 
 SELECT format(
@@ -77,3 +104,5 @@ BEGIN
   END IF;
 END
 $$;
+
+COMMIT;

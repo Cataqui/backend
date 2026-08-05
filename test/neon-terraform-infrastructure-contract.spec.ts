@@ -41,10 +41,14 @@ describe("Neon Terraform infrastructure", () => {
 		expect({
 			provider: versionsSource.includes('source  = "kislerdm/neon"'),
 			providerVersion: versionsSource.includes('version = "~> 0.14.0"'),
+			randomProvider: versionsSource.includes('source  = "hashicorp/random"'),
+			randomProviderVersion: versionsSource.includes('version = "~> 3.7.0"'),
 			terraformVersion: versionsSource.includes('required_version = "~> 1.15.0"'),
 		}).toEqual({
 			provider: true,
 			providerVersion: true,
+			randomProvider: true,
+			randomProviderVersion: true,
 			terraformVersion: true,
 		});
 	});
@@ -99,35 +103,35 @@ describe("Neon Terraform infrastructure", () => {
 		}).toEqual({ preventDestroy: true, allEnvironmentsTested: true });
 	});
 
-	it("should expose only the project identity and role-specific sensitive connection URLs", () => {
+	it("should expose the project identity and only the sensitive credentials required by deployment", () => {
 		expect({
 			projectId: outputsSource.includes("project_id"),
 			ownerDirectUrl: outputsSource.includes('output "database_owner_direct_url"'),
 			appPoolerUrl: outputsSource.includes('output "database_app_pooler_url"'),
 			directSensitive: /output\s+"database_owner_direct_url"\s*\{[\s\S]*?sensitive\s*=\s*true/.test(outputsSource),
 			pooledSensitive: /output\s+"database_app_pooler_url"\s*\{[\s\S]*?sensitive\s*=\s*true/.test(outputsSource),
-			passwordOutput: /output\s+".*password/.test(outputsSource),
+			appPassword: /output\s+"database_app_password"\s*\{[\s\S]*?sensitive\s*=\s*true/.test(outputsSource),
 		}).toEqual({
 			projectId: true,
 			ownerDirectUrl: true,
 			appPoolerUrl: true,
 			directSensitive: true,
 			pooledSensitive: true,
-			passwordOutput: false,
+			appPassword: true,
 		});
 	});
 
 	it("should provision a dedicated application login separately from the database owner", () => {
 		expect({
-			appRole: databaseSource.includes('resource "neon_role" "app"'),
-			appRoleName: databaseSource.includes("name       = local.database_configuration.app_role_name"),
+			noApiCreatedAppRole: !databaseSource.includes('resource "neon_role" "app"'),
+			appPassword: databaseSource.includes('resource "random_password" "app"'),
 			appPoolerHost: outputsSource.includes("neon_project.database.database_host_pooler"),
-			appPoolerPassword: outputsSource.includes("neon_role.app.password"),
-			appPoolerUser: outputsSource.includes("neon_role.app.name"),
+			appPoolerPassword: outputsSource.includes("random_password.app.result"),
+			appPoolerUser: outputsSource.includes("local.database_configuration.app_role_name"),
 			ownerDirectUrl: outputsSource.includes("neon_project.database.connection_uri"),
 		}).toEqual({
-			appRole: true,
-			appRoleName: true,
+			noApiCreatedAppRole: true,
+			appPassword: true,
 			appPoolerHost: true,
 			appPoolerPassword: true,
 			appPoolerUser: true,
@@ -150,14 +154,31 @@ describe("Neon Terraform infrastructure", () => {
 			passesTerraformRole: deployActionSource.includes('--set=app_role_name="$app_role_name"'),
 			readsTerraformRole:
 				deployActionSource.includes("terraform output -json project") && deployActionSource.includes(".app_role"),
+			passesTerraformPassword: deployActionSource.includes('--set=app_role_password="$app_role_password"'),
 			policyUsesRoleParameter: appRolePolicySource.includes(":'app_role_name'"),
+			policyUsesPasswordParameter: appRolePolicySource.includes(":'app_role_password'"),
+			policyIsTransactional:
+				appRolePolicySource.startsWith("BEGIN;") && appRolePolicySource.trimEnd().endsWith("COMMIT;"),
+			createsSqlManagedRole: appRolePolicySource.includes("CREATE ROLE %I WITH LOGIN PASSWORD %L"),
+			rejectsResidualApiCreatedAdminRole: appRolePolicySource.includes(
+				"must be removed by Terraform before SQL creates the least-privilege role",
+			),
+			doesNotAttemptUnauthorizedRevoke: !appRolePolicySource.includes("REVOKE neon_superuser"),
+			doesNotAttemptUnauthorizedDrop: !appRolePolicySource.includes("DROP ROLE"),
 			policyHasNoSharedRoleLiteral: !appRolePolicySource.includes("cataqui_app"),
 		}).toEqual({
 			beforeExport: true,
 			executesPolicy: true,
 			passesTerraformRole: true,
 			readsTerraformRole: true,
+			passesTerraformPassword: true,
 			policyUsesRoleParameter: true,
+			policyUsesPasswordParameter: true,
+			policyIsTransactional: true,
+			createsSqlManagedRole: true,
+			rejectsResidualApiCreatedAdminRole: true,
+			doesNotAttemptUnauthorizedRevoke: true,
+			doesNotAttemptUnauthorizedDrop: true,
 			policyHasNoSharedRoleLiteral: true,
 		});
 	});

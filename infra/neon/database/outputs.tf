@@ -7,7 +7,7 @@ output "project" {
     branch_name  = local.database_configuration.branch_name
     database     = neon_project.database.database_name
     owner_role   = neon_project.database.database_user
-    app_role     = neon_role.app.name
+    app_role     = local.database_configuration.app_role_name
     region       = neon_project.database.region_id
     pg_version   = neon_project.database.pg_version
   }
@@ -23,10 +23,16 @@ output "database_app_pooler_url" {
   description = "Sensitive pooled PostgreSQL URL for the least-privilege Cloudflare application role."
   value = format(
     "postgresql://%s:%s@%s/%s?sslmode=require&channel_binding=require",
-    urlencode(neon_role.app.name),
-    urlencode(neon_role.app.password),
+    urlencode(local.database_configuration.app_role_name),
+    urlencode(random_password.app.result),
     neon_project.database.database_host_pooler,
     neon_project.database.database_name,
   )
   sensitive = true
+}
+
+output "database_app_password" {
+  description = "Sensitive password used only while creating or reconciling the SQL-managed application role."
+  value       = random_password.app.result
+  sensitive   = true
 }

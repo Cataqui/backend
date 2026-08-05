@@ -29,15 +29,16 @@ describe("Infisical Upstash credential synchronization", () => {
 		});
 	});
 
-	it("should install an exact official Infisical CLI release after verifying its checksum", () => {
+	it("should install an exact official Infisical CLI release from npm", () => {
 		expect({
 			usesSharedSetup: synchronizationActionSource.includes("uses: ./.github/actions/setup-infisical-cli"),
-			pinsVersion: setupInfisicalCliActionSource.includes("INFISICAL_CLI_VERSION: 0.43.114"),
-			pinsChecksum: setupInfisicalCliActionSource.includes(
-				"INFISICAL_CLI_SHA256: c35cdd1c4908b3ea6c0773279f8ae6993f9ec03b5e2d4a7cdc2f38ce89eb33d0",
+			installsPinnedOfficialPackage: setupInfisicalCliActionSource.includes(
+				"npm install --global @infisical/cli@0.43.114",
 			),
-			verifiesChecksum: setupInfisicalCliActionSource.includes("sha256sum --check --status"),
-		}).toEqual({ usesSharedSetup: true, pinsVersion: true, pinsChecksum: true, verifiesChecksum: true });
+			verifiesInstalledVersion: setupInfisicalCliActionSource.includes(
+				'test "$(infisical --version)" = "infisical version 0.43.114"',
+			),
+		}).toEqual({ usesSharedSetup: true, installsPinnedOfficialPackage: true, verifiesInstalledVersion: true });
 	});
 
 	it("should create or update both runtime credentials with the official Infisical CLI", () => {

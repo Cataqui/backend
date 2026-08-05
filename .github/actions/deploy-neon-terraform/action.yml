@@ -166,16 +166,19 @@ runs:
 
         database_owner_direct_url="$(terraform output -raw database_owner_direct_url)"
         app_role_name="$(terraform output -json project | jq --exit-status --raw-output '.app_role | select(type == "string" and length > 0)')"
+        app_role_password="$(terraform output -raw database_app_password)"
 
-        if [[ -z "$database_owner_direct_url" || ! "$app_role_name" =~ ^[a-z][a-z0-9_]{0,62}$ ]]; then
-          echo "Terraform returned an invalid database owner URL or application role name" >&2
+        if [[ -z "$database_owner_direct_url" || ! "$app_role_name" =~ ^[a-z][a-z0-9_]{0,62}$ || -z "$app_role_password" ]]; then
+          echo "Terraform returned an invalid database owner URL, application role name, or application role password" >&2
           exit 1
         fi
 
         echo "::add-mask::$database_owner_direct_url"
+        echo "::add-mask::$app_role_password"
         psql "$database_owner_direct_url" \
           --set=ON_ERROR_STOP=1 \
           --set=app_role_name="$app_role_name" \
+          --set=app_role_password="$app_role_password" \
           --file="$GITHUB_ACTION_PATH/enforce-app-role-privileges.sql"
 
     - name: Prepare generated database configuration for secure synchronization
