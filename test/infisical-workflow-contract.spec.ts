@@ -272,11 +272,11 @@ describe("Infisical GitHub Actions integration", () => {
 				.slice(0, 2)
 				.every((source) =>
 					[
-						"AI_GATEWAY_API_TOKEN: $" + "{{ steps.infisical.outputs.ai_gateway_api_token }}",
-						"DATABASE_APP_POOLER_URL: $" + "{{ steps.infisical.outputs.database_app_pooler_url }}",
-						"apiToken: $" + "{{ steps.infisical.outputs.cloudflare_deployment_api_token }}",
-						"UPSTASH_REDIS_REST_TOKEN: $" + "{{ steps.infisical.outputs.upstash_redis_rest_token }}",
-						"UPSTASH_REDIS_REST_URL: $" + "{{ steps.infisical.outputs.upstash_redis_rest_url }}",
+						"ai-gateway-api-token: $" + "{{ steps.infisical.outputs.ai_gateway_api_token }}",
+						"database-app-pooler-url: $" + "{{ steps.infisical.outputs.database_app_pooler_url }}",
+						"cloudflare-api-token: $" + "{{ steps.infisical.outputs.cloudflare_deployment_api_token }}",
+						"upstash-redis-rest-token: $" + "{{ steps.infisical.outputs.upstash_redis_rest_token }}",
+						"upstash-redis-rest-url: $" + "{{ steps.infisical.outputs.upstash_redis_rest_url }}",
 					].every((mapping) => source.includes(mapping)),
 				),
 		).toBe(true);
@@ -285,7 +285,7 @@ describe("Infisical GitHub Actions integration", () => {
 	it("should never expose the database owner credential to application deployment jobs", () => {
 		expect(
 			authenticatedWorkflowSources.slice(0, 2).every((source) => {
-				const cloudflareDeploymentPosition = source.indexOf("- name: Deploy to Cloudflare");
+				const cloudflareDeploymentPosition = source.indexOf("- name: Deploy and verify the Cloudflare application");
 
 				return !source.slice(cloudflareDeploymentPosition).includes("DATABASE_OWNER_DIRECT_URL");
 			}),

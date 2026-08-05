@@ -66,6 +66,7 @@
 					"image": "./Dockerfile",
 					"max_instances": 3,
 					"instance_type": "basic",
+					"rollout_step_percentage": [10, 50, 100],
 				},
 			],
 			"durable_objects": {
@@ -117,6 +118,7 @@
 					"image": "./Dockerfile",
 					"max_instances": 10,
 					"instance_type": "standard-1",
+					"rollout_step_percentage": [10, 25, 50, 100],
 				},
 			],
 			"durable_objects": {

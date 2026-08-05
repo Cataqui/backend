@@ -4,6 +4,7 @@ import { OutboundHandlers } from "./outbound/outbound-handlers";
 
 export class ApiContainer extends Container<Env> {
 	defaultPort = 3000;
+	pingEndpoint = "localhost/v1/health";
 
 	constructor(ctx: ConstructorParameters<typeof Container<Env>>[0], env: Env) {
 		super(ctx, env);

@@ -4,6 +4,17 @@ import { DeriveJobDataQueueConstants } from "../queues/derive-job-data/derive-jo
 import { ApiContainer } from "./api-container";
 
 describe("ApiContainer request boundary", () => {
+	it("should use the complete API readiness endpoint for container startup checks", () => {
+		const container = new ApiContainer(
+			{} as never,
+			{
+				SLEEP_AFTER: "5m",
+			} as Env,
+		);
+
+		expect(container.pingEndpoint).toBe("localhost/v1/health");
+	});
+
 	it("should hide internal paths from externally forwarded requests", async () => {
 		const containerFetch = vi.fn();
 		const container = { containerFetch: containerFetch } as unknown as ApiContainer;

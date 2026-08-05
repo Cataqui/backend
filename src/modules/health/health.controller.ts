@@ -7,6 +7,7 @@ import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
 import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
+import { RedisHealthIndicator } from "./redis-health.indicator";
 
 @ApiTags("health")
 @Controller("health")
@@ -17,6 +18,7 @@ export class HealthController {
 		private readonly _health: HealthCheckService,
 		private readonly _prismaHealth: PrismaHealthIndicator,
 		private readonly _prisma: PrismaService,
+		private readonly _redisHealth: RedisHealthIndicator,
 	) {}
 
 	@Get()
@@ -37,7 +39,10 @@ export class HealthController {
 		let details: Record<string, HealthIndicatorDetailDto>;
 
 		try {
-			const result = await this._health.check([() => this._prismaHealth.pingCheck("database", this._prisma)]);
+			const result = await this._health.check([
+				() => this._prismaHealth.pingCheck("database", this._prisma),
+				() => this._redisHealth.pingCheck(),
+			]);
 
 			healthStatus = result.status as HealthCheckStatus;
 
@@ -60,7 +65,7 @@ export class HealthController {
 
 			healthStatus = HealthCheckStatus.ERROR;
 			details = {
-				error: new HealthIndicatorDetailDto(HealthIndicatorStatus.DOWN, "Database connection failed"),
+				error: new HealthIndicatorDetailDto(HealthIndicatorStatus.DOWN, "Dependency health check failed"),
 			};
 		}
 

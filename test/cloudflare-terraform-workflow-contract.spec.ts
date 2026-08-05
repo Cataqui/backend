@@ -464,6 +464,42 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
+	it("should gradually roll out containers and roll back unhealthy application deployments", () => {
+		const deploymentWorkflowSources = [
+			_getWorkflowSource("deploy-staging.yml"),
+			_getWorkflowSource("deploy-production.yml"),
+		];
+		const applicationDeploymentActionSource = _getActionSource("deploy-cloudflare-application");
+		const wranglerSource = readFileSync(resolve(process.cwd(), "wrangler.jsonc"), "utf8");
+
+		expect({
+			usesSharedApplicationDeploymentAction: deploymentWorkflowSources.every((source) =>
+				source.includes("uses: ./.github/actions/deploy-cloudflare-application"),
+			),
+			usesStrictGradualContainerDeployment: applicationDeploymentActionSource.includes(
+				"deploy --strict --containers-rollout gradual",
+			),
+			protectsEphemeralSecrets:
+				applicationDeploymentActionSource.includes("umask 077") &&
+				applicationDeploymentActionSource.includes("jq -n '{") &&
+				applicationDeploymentActionSource.includes('run: rm -f -- "$SECRETS_FILE"'),
+			verifiesReadiness: applicationDeploymentActionSource.includes("/v1/health"),
+			rollsBackFailedReadiness:
+				applicationDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
+				applicationDeploymentActionSource.includes("rollback --env"),
+			usesProgressiveContainerSteps:
+				wranglerSource.includes('"rollout_step_percentage": [10, 50, 100]') &&
+				wranglerSource.includes('"rollout_step_percentage": [10, 25, 50, 100]'),
+		}).toEqual({
+			usesSharedApplicationDeploymentAction: true,
+			usesStrictGradualContainerDeployment: true,
+			protectsEphemeralSecrets: true,
+			verifiesReadiness: true,
+			rollsBackFailedReadiness: true,
+			usesProgressiveContainerSteps: true,
+		});
+	});
+
 	it("should identify the platform in every provider-specific workflow job ID", () => {
 		const stagingDeploymentSource = _getWorkflowSource("deploy-staging.yml");
 		const productionDeploymentSource = _getWorkflowSource("deploy-production.yml");

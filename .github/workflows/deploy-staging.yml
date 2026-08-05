@@ -311,20 +311,14 @@ jobs:
           profile: application-deploy
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
 
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
-        env:
-          AI_GATEWAY_API_TOKEN: ${{ steps.infisical.outputs.ai_gateway_api_token }}
-          DATABASE_APP_POOLER_URL: ${{ steps.infisical.outputs.database_app_pooler_url }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ steps.infisical.outputs.upstash_redis_rest_token }}
-          UPSTASH_REDIS_REST_URL: ${{ steps.infisical.outputs.upstash_redis_rest_url }}
+      - name: Deploy and verify the Cloudflare application
+        uses: ./.github/actions/deploy-cloudflare-application
         with:
-          apiToken: ${{ steps.infisical.outputs.cloudflare_deployment_api_token }}
-          accountId: ${{ steps.infisical.outputs.cloudflare_account_id }}
-          command: deploy --env staging
           environment: staging
-          secrets: |
-            DATABASE_APP_POOLER_URL
-            AI_GATEWAY_API_TOKEN
-            UPSTASH_REDIS_REST_URL
-            UPSTASH_REDIS_REST_TOKEN
+          health-url: https://staging.api.cataqui.com/v1/health
+          cloudflare-api-token: ${{ steps.infisical.outputs.cloudflare_deployment_api_token }}
+          cloudflare-account-id: ${{ steps.infisical.outputs.cloudflare_account_id }}
+          database-app-pooler-url: ${{ steps.infisical.outputs.database_app_pooler_url }}
+          ai-gateway-api-token: ${{ steps.infisical.outputs.ai_gateway_api_token }}
+          upstash-redis-rest-url: ${{ steps.infisical.outputs.upstash_redis_rest_url }}
+          upstash-redis-rest-token: ${{ steps.infisical.outputs.upstash_redis_rest_token }}

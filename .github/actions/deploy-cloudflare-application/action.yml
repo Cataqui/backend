@@ -1,0 +1,132 @@
+name: Deploy Cloudflare application safely
+description: Gradually roll out the API container, verify readiness, and roll back an unhealthy Worker deployment
+
+inputs:
+  environment:
+    description: Protected Cloudflare deployment environment
+    required: true
+  health-url:
+    description: Public versioned API readiness endpoint
+    required: true
+  cloudflare-api-token:
+    description: Cloudflare deployment API token
+    required: true
+  cloudflare-account-id:
+    description: Cloudflare account ID
+    required: true
+  database-app-pooler-url:
+    description: Application-role Neon pooler URL
+    required: true
+  ai-gateway-api-token:
+    description: Cloudflare AI Gateway token used by the API container
+    required: true
+  upstash-redis-rest-url:
+    description: Upstash Redis REST endpoint used by the API container
+    required: true
+  upstash-redis-rest-token:
+    description: Upstash Redis REST token used by the API container
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify the application deployment target
+      shell: bash
+      env:
+        DEPLOYMENT_ENVIRONMENT: ${{ inputs.environment }}
+        HEALTH_URL: ${{ inputs.health-url }}
+      run: |
+        case "$DEPLOYMENT_ENVIRONMENT" in
+          staging)
+            expected_health_url="https://staging.api.cataqui.com/v1/health"
+            ;;
+          production)
+            expected_health_url="https://api.cataqui.com/v1/health"
+            ;;
+          *)
+            echo "Cloudflare application deployments support only staging and production." >&2
+            exit 1
+            ;;
+        esac
+
+        if [[ "$HEALTH_URL" != "$expected_health_url" ]]; then
+          echo "The health URL does not match the protected $DEPLOYMENT_ENVIRONMENT endpoint." >&2
+          exit 1
+        fi
+
+    - name: Create the ephemeral Wrangler secrets file
+      id: secrets-file
+      shell: bash
+      env:
+        DATABASE_APP_POOLER_URL: ${{ inputs.database-app-pooler-url }}
+        AI_GATEWAY_API_TOKEN: ${{ inputs.ai-gateway-api-token }}
+        UPSTASH_REDIS_REST_URL: ${{ inputs.upstash-redis-rest-url }}
+        UPSTASH_REDIS_REST_TOKEN: ${{ inputs.upstash-redis-rest-token }}
+      run: |
+        umask 077
+        secrets_file="$RUNNER_TEMP/cataqui-cloudflare-secrets-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+
+        jq -n '{
+          DATABASE_APP_POOLER_URL: env.DATABASE_APP_POOLER_URL,
+          AI_GATEWAY_API_TOKEN: env.AI_GATEWAY_API_TOKEN,
+          UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
+          UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN
+        }' > "$secrets_file"
+
+        echo "path=$secrets_file" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy the Worker and gradually roll out its Containers
+      id: deploy
+      uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+      with:
+        apiToken: ${{ inputs.cloudflare-api-token }}
+        accountId: ${{ inputs.cloudflare-account-id }}
+        packageManager: pnpm
+        command: >-
+          deploy --strict --containers-rollout gradual
+          --env ${{ inputs.environment }}
+          --secrets-file ${{ steps.secrets-file.outputs.path }}
+          --tag ${{ github.sha }}
+          --message "GitHub Actions run ${{ github.run_id }}"
+
+    - name: Remove the ephemeral Wrangler secrets file
+      if: always() && steps.secrets-file.outputs.path != ''
+      shell: bash
+      env:
+        SECRETS_FILE: ${{ steps.secrets-file.outputs.path }}
+      run: rm -f -- "$SECRETS_FILE"
+
+    - name: Verify the deployed API readiness
+      id: readiness
+      if: steps.deploy.outcome == 'success'
+      shell: bash
+      env:
+        HEALTH_URL: ${{ inputs.health-url }}
+      run: >-
+        curl --fail --silent --show-error --output /dev/null
+        --connect-timeout 5 --max-time 15
+        --retry 30 --retry-all-errors --retry-delay 10 --retry-max-time 300
+        "$HEALTH_URL"
+
+    - name: Roll back an unhealthy Worker deployment
+      id: rollback
+      if: failure() && steps.deploy.outcome == 'success' && steps.readiness.outcome == 'failure'
+      uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+      with:
+        apiToken: ${{ inputs.cloudflare-api-token }}
+        accountId: ${{ inputs.cloudflare-account-id }}
+        packageManager: pnpm
+        command: >-
+          rollback --env ${{ inputs.environment }} --yes
+          --message "Automatic rollback after failed readiness check in GitHub Actions run ${{ github.run_id }}"
+
+    - name: Verify API readiness after rollback
+      if: failure() && steps.rollback.outcome == 'success'
+      shell: bash
+      env:
+        HEALTH_URL: ${{ inputs.health-url }}
+      run: >-
+        curl --fail --silent --show-error --output /dev/null
+        --connect-timeout 5 --max-time 15
+        --retry 12 --retry-all-errors --retry-delay 10 --retry-max-time 120
+        "$HEALTH_URL"

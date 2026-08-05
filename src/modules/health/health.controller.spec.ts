@@ -8,6 +8,7 @@ import { HealthCheckOutputDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
 import { HealthController } from "./health.controller";
+import { RedisHealthIndicator } from "./redis-health.indicator";
 
 describe("HealthController", () => {
 	let controller: HealthController;
@@ -24,6 +25,10 @@ describe("HealthController", () => {
 			imports: [TerminusModule],
 			controllers: [HealthController],
 			providers: [
+				{
+					provide: RedisHealthIndicator,
+					useValue: { pingCheck: vi.fn() },
+				},
 				{
 					provide: PrismaService,
 					useValue: {
@@ -50,6 +55,20 @@ describe("HealthController", () => {
 		expect(result.status).toBe(HealthCheckStatus.OK);
 		expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.UP);
 		expect(mockReply.header).toHaveBeenCalledWith("Cache-Control", "no-cache, no-store, must-revalidate");
+	});
+
+	it("should register both database and Redis readiness checks", async () => {
+		const check = vi.spyOn(healthCheckService, "check").mockResolvedValue({
+			status: "ok",
+			details: {
+				database: { status: "up" },
+				redis: { status: "up" },
+			},
+		} as never);
+
+		await controller.check(mockReply);
+
+		expect(check.mock.calls[0]?.[0]).toHaveLength(2);
 	});
 
 	describe("when a dependency is down", () => {
@@ -96,9 +115,9 @@ describe("HealthController", () => {
 			expect(result.details["error"]?.status).toBe(HealthIndicatorStatus.DOWN);
 		});
 
-		it("should return generic database connection failed message", async () => {
+		it("should return a generic dependency health failure message", async () => {
 			const result = await controller.check(mockReply);
-			expect(result.details["error"]?.message).toBe("Database connection failed");
+			expect(result.details["error"]?.message).toBe("Dependency health check failed");
 		});
 
 		it("should set response status to 503", async () => {
