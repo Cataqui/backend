@@ -21,12 +21,12 @@ output "database_owner_direct_url" {
 
 output "database_app_pooler_url" {
   description = "Sensitive pooled PostgreSQL URL for the least-privilege Cloudflare application role."
-  value       = format(
+  value = format(
     "postgresql://%s:%s@%s/%s?sslmode=require&channel_binding=require",
     urlencode(neon_role.app.name),
     urlencode(neon_role.app.password),
     neon_project.database.database_host_pooler,
     neon_project.database.database_name,
   )
-  sensitive   = true
+  sensitive = true
 }

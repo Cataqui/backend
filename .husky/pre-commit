@@ -1,1 +1,1 @@
-pnpm lint && pnpm lint:check && pnpm typecheck && pnpm test
+terraform fmt -check -recursive infra && pnpm lint && pnpm lint:check && pnpm typecheck && pnpm test
