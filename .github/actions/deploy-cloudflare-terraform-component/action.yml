@@ -136,6 +136,26 @@ runs:
       run: terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
       working-directory: ${{ env.TERRAFORM_ROOT }}
 
+    - name: Reject Cloudflare imports that would also change live resources
+      shell: bash
+      run: |
+        mutating_imports="$(
+          terraform show -json tfplan | jq --raw-output '
+            .resource_changes[]?
+            | select(.provider_name == "registry.terraform.io/cloudflare/cloudflare")
+            | select(.change.importing != null)
+            | select(.change.actions != ["no-op"])
+            | "\(.address): \(.change.actions | join(", "))"
+          '
+        )"
+
+        if [[ -n "$mutating_imports" ]]; then
+          echo "A first Cloudflare import cannot also change the live resource. Reconcile the declared configuration with the live resource and review a no-op import plan before applying." >&2
+          echo "$mutating_imports" >&2
+          exit 1
+        fi
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+
     - name: Apply the exact plan with write-capable Cloudflare access
       shell: bash
       run: terraform apply -input=false -lock-timeout=5m tfplan

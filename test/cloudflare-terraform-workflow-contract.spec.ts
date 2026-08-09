@@ -235,6 +235,31 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
+	it("should reject a first Cloudflare import that would also change the live resource", () => {
+		const terraformDeploySource = _getActionSource("deploy-cloudflare-terraform-component");
+		const mutatingImportGuardPosition = terraformDeploySource.indexOf(
+			"Reject Cloudflare imports that would also change live resources",
+		);
+		const applyPosition = terraformDeploySource.indexOf("terraform apply -input=false -lock-timeout=5m tfplan");
+
+		expect({
+			checksCloudflareProvider: terraformDeploySource.includes(
+				'select(.provider_name == "registry.terraform.io/cloudflare/cloudflare")',
+			),
+			checksImportMetadata: terraformDeploySource.includes("select(.change.importing != null)"),
+			rejectsMutatingActions: terraformDeploySource.includes('select(.change.actions != ["no-op"])'),
+			failsBeforeApply:
+				mutatingImportGuardPosition > -1 &&
+				mutatingImportGuardPosition < applyPosition &&
+				terraformDeploySource.includes("A first Cloudflare import cannot also change the live resource"),
+		}).toEqual({
+			checksCloudflareProvider: true,
+			checksImportMetadata: true,
+			rejectsMutatingActions: true,
+			failsBeforeApply: true,
+		});
+	});
+
 	it("should discover every Terraform component from one shared registry", () => {
 		const componentWorkflowSources = [
 			_getWorkflowSource("deploy-staging.yml"),
@@ -360,7 +385,10 @@ describe("Cloudflare Terraform workflow security", () => {
 			resolve(cloudflareInfrastructureDirectory, ".terraform-version"),
 			"utf8",
 		).trim();
-		const rootVersionConstraints = ["ai-gateway", "queues"].map((component) =>
+		const registeredComponents = JSON.parse(
+			readFileSync(resolve(cloudflareInfrastructureDirectory, "components.json"), "utf8"),
+		) as string[];
+		const rootVersionConstraints = registeredComponents.map((component) =>
 			readFileSync(resolve(cloudflareInfrastructureDirectory, component, "versions.tf"), "utf8"),
 		);
 		const reusableModuleVersionConstraints = readdirSync(resolve(cloudflareInfrastructureDirectory, "modules"))
