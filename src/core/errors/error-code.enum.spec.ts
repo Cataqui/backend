@@ -21,7 +21,11 @@ describe("ErrorCode", () => {
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
-			"AUTH_INTENT_CREATION_UNAVAILABLE",
+			"AUTH_INTENT_CREATION_COLLISION",
+			"AUTH_INTENT_NOT_FOUND",
+			"AUTH_SESSION_UNAVAILABLE",
+			"ACCESS_TOKEN_REQUIRED",
+			"INVALID_REFRESH_TOKEN",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -38,6 +42,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(21);
+		expect(Object.keys(ErrorCode)).toHaveLength(25);
 	});
 });

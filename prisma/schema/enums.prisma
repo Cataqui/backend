@@ -30,3 +30,7 @@ enum JobContactMethod {
   WHATSAPP
   PHONE_CALL
 }
+
+enum AuthIdentityProvider {
+  WHATSAPP
+}

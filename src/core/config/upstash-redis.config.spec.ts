@@ -1,4 +1,4 @@
-import { type IUpstashRedisConfig, UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.config";
+import { type IUpstashRedisConfig, upstashRedisConfig } from "./upstash-redis.config";
 
 describe("upstashRedisConfig", () => {
 	const originalEnv = process.env;
@@ -12,7 +12,7 @@ describe("upstashRedisConfig", () => {
 	});
 
 	it("should expose the Upstash Redis config key", () => {
-		expect(UPSTASH_REDIS_CONFIG_KEY).toBe("upstashRedis");
+		expect(upstashRedisConfig.KEY).toBe("CONFIGURATION(upstashRedis)");
 	});
 
 	it("should load the REST URL and token from the environment", () => {

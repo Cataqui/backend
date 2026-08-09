@@ -4,7 +4,6 @@ import { HealthCheckService, TerminusModule } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
 import type { FastifyReply } from "fastify";
 import { PrismaService } from "../../core/prisma/prisma.service";
-import { HealthCheckOutputDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
 import { HealthController } from "./health.controller";
@@ -51,10 +50,7 @@ describe("HealthController", () => {
 
 		const result = await controller.check(mockReply);
 
-		expect(result).toBeInstanceOf(HealthCheckOutputDto);
-		expect(result.status).toBe(HealthCheckStatus.OK);
-		expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.UP);
-		expect(mockReply.header).toHaveBeenCalledWith("Cache-Control", "no-cache, no-store, must-revalidate");
+		expect(result).toEqual({ status: HealthCheckStatus.OK, details: { database: { status: "up" } } });
 	});
 
 	it("should register both database and Redis readiness checks", async () => {
@@ -69,6 +65,14 @@ describe("HealthController", () => {
 		await controller.check(mockReply);
 
 		expect(check.mock.calls[0]?.[0]).toHaveLength(2);
+	});
+
+	it("should not check dependencies for process liveness", () => {
+		const check = vi.spyOn(healthCheckService, "check");
+
+		controller.liveness();
+
+		expect(check).not.toHaveBeenCalled();
 	});
 
 	describe("when a dependency is down", () => {

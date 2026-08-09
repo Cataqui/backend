@@ -1,11 +1,6 @@
 import { Test, type TestingModule } from "@nestjs/testing";
-import { plainToInstance } from "class-transformer";
 import { vi } from "vitest";
-import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
-import { PaginationOutputDto } from "../../shared/dto/pagination-output.dto";
-import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
-import { FeedRequestQueryDto } from "./dto/feed-request-query.dto";
-import type { FeedSort } from "./enums/feed-sort.enum";
+import { PaginatedResult } from "../../shared/results/paginated-result";
 import { FeedController } from "./feed.controller";
 import { FeedService } from "./feed.service";
 
@@ -27,39 +22,43 @@ describe("FeedController", () => {
 	});
 
 	describe("getFeed", () => {
-		it("should call service with cursor and sort params", async () => {
-			mockService.getFeed.mockResolvedValue(new PaginatedResponseDto([], new PaginationOutputDto(false, null)));
+		it("should call the service with the cursor", async () => {
+			mockService.getFeed.mockResolvedValue(
+				PaginatedResult.create({ data: [], pagination: { hasMore: false, nextCursor: null } }),
+			);
 
-			await controller.getFeed({ cursor: "abc", sort: "LATEST" as FeedSort });
+			await controller.getFeed({ cursor: "abc" });
 
-			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: "abc", sort: "LATEST" });
+			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: "abc" });
 		});
 
 		it("should call service with undefined values for missing params", async () => {
-			mockService.getFeed.mockResolvedValue(new PaginatedResponseDto([], new PaginationOutputDto(false, null)));
+			mockService.getFeed.mockResolvedValue(
+				PaginatedResult.create({ data: [], pagination: { hasMore: false, nextCursor: null } }),
+			);
 
-			await controller.getFeed(plainToInstance(FeedRequestQueryDto, {}));
+			await controller.getFeed({});
 
-			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: undefined, sort: undefined });
+			expect(mockService.getFeed).toHaveBeenCalledWith({ cursor: undefined });
 		});
 
-		it("should return PaginatedResponseDto from service", async () => {
-			const expected = new PaginatedResponseDto(
-				[
-					new FeedItemOutputDto({
+		it("should return the paginated result from the service", async () => {
+			const expected = PaginatedResult.create({
+				data: [
+					{
 						jobId: "abc",
 						title: "Test",
 						createdAt: "2026-01-01T00:00:00.000Z",
 						descriptionSummary: "",
-						payment: {} as never,
-						location: {} as never,
-					}),
+						payment: {},
+						location: {},
+					},
 				],
-				new PaginationOutputDto(false, null),
-			);
+				pagination: { hasMore: false, nextCursor: null },
+			});
 			mockService.getFeed.mockResolvedValue(expected);
 
-			const result = await controller.getFeed(plainToInstance(FeedRequestQueryDto, {}));
+			const result = await controller.getFeed({});
 
 			expect(result).toBe(expected);
 		});

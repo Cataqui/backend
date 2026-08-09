@@ -1,7 +1,5 @@
 import { registerAs } from "@nestjs/config";
 
-export const AI_CONFIG_KEY = "ai";
-
 export interface IAiConfig {
 	cloudflareAccountId: string;
 	aiApiToken: string;
@@ -9,7 +7,7 @@ export interface IAiConfig {
 }
 
 export const aiConfig = registerAs(
-	AI_CONFIG_KEY,
+	"ai",
 	(): IAiConfig => ({
 		cloudflareAccountId: process.env["CLOUDFLARE_ACCOUNT_ID"]!,
 		aiApiToken: process.env["AI_GATEWAY_API_TOKEN"]!,

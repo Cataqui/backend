@@ -40,8 +40,10 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).not.toHaveBeenCalled();
-			expect(send).not.toHaveBeenCalled();
+			expect({ codeCalls: code.mock.calls.length, sendCalls: send.mock.calls.length }).toEqual({
+				codeCalls: 0,
+				sendCalls: 0,
+			});
 		});
 
 		it("should reject when Content-Length exceeds limit", async () => {
@@ -59,11 +61,13 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).toHaveBeenCalledWith(413);
-			expect(send).toHaveBeenCalled();
+			expect({ status: code.mock.calls[0]?.[0], sendCalls: send.mock.calls.length }).toEqual({
+				status: 413,
+				sendCalls: 1,
+			});
 		});
 
-		it("should return envelope with PAYLOAD_TOO_LARGE error_code for oversized body", async () => {
+		it("should return envelope with PAYLOAD_TOO_LARGE errorCode for oversized body", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
 			registerRequestSizeHooks(app, config);
@@ -79,12 +83,14 @@ describe("registerRequestSizeHooks", () => {
 			await hook(request, reply);
 
 			const body = send.mock.calls[0]![0] as Record<string, unknown>;
-			expect(body).toHaveProperty("error_code", ErrorCode.PAYLOAD_TOO_LARGE);
-			expect(body).toHaveProperty("message", "Request body exceeds the maximum allowed size.");
-			expect(body).toHaveProperty("status", 413);
-			expect(body).toHaveProperty("request_id", expect.any(String));
-			expect(body).toHaveProperty("timestamp", expect.any(String));
-			expect(body).toHaveProperty("endpoint", "/v1/test");
+			expect(body).toEqual({
+				errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
+				message: "Request body exceeds the maximum allowed size.",
+				status: 413,
+				requestId: expect.any(String),
+				timestamp: expect.any(String),
+				endpoint: "/v1/test",
+			});
 		});
 
 		it("should allow request when Content-Length is missing", async () => {
@@ -100,8 +106,10 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).not.toHaveBeenCalled();
-			expect(send).not.toHaveBeenCalled();
+			expect({ codeCalls: code.mock.calls.length, sendCalls: send.mock.calls.length }).toEqual({
+				codeCalls: 0,
+				sendCalls: 0,
+			});
 		});
 
 		it("should allow request when Content-Length is non-numeric", async () => {
@@ -119,8 +127,10 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).not.toHaveBeenCalled();
-			expect(send).not.toHaveBeenCalled();
+			expect({ codeCalls: code.mock.calls.length, sendCalls: send.mock.calls.length }).toEqual({
+				codeCalls: 0,
+				sendCalls: 0,
+			});
 		});
 	});
 
@@ -138,8 +148,10 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).not.toHaveBeenCalled();
-			expect(send).not.toHaveBeenCalled();
+			expect({ codeCalls: code.mock.calls.length, sendCalls: send.mock.calls.length }).toEqual({
+				codeCalls: 0,
+				sendCalls: 0,
+			});
 		});
 
 		it("should reject when URL exceeds limit", async () => {
@@ -156,11 +168,13 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).toHaveBeenCalledWith(414);
-			expect(send).toHaveBeenCalled();
+			expect({ status: code.mock.calls[0]?.[0], sendCalls: send.mock.calls.length }).toEqual({
+				status: 414,
+				sendCalls: 1,
+			});
 		});
 
-		it("should return envelope with URI_TOO_LONG error_code for long URL", async () => {
+		it("should return envelope with URI_TOO_LONG errorCode for long URL", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
 			registerRequestSizeHooks(app, config);
@@ -175,12 +189,14 @@ describe("registerRequestSizeHooks", () => {
 			await hook(request, reply);
 
 			const body = send.mock.calls[0]![0] as Record<string, unknown>;
-			expect(body).toHaveProperty("error_code", ErrorCode.URI_TOO_LONG);
-			expect(body).toHaveProperty("message", "Request URL exceeds the maximum allowed length.");
-			expect(body).toHaveProperty("status", 414);
-			expect(body).toHaveProperty("request_id", expect.any(String));
-			expect(body).toHaveProperty("timestamp", expect.any(String));
-			expect(body).toHaveProperty("endpoint", longUrl);
+			expect(body).toEqual({
+				errorCode: ErrorCode.URI_TOO_LONG,
+				message: "Request URL exceeds the maximum allowed length.",
+				status: 414,
+				requestId: expect.any(String),
+				timestamp: expect.any(String),
+				endpoint: longUrl,
+			});
 		});
 	});
 
@@ -202,13 +218,12 @@ describe("registerRequestSizeHooks", () => {
 
 			await hook(request, reply);
 
-			expect(code).toHaveBeenCalledWith(413);
-			expect(code).not.toHaveBeenCalledWith(414);
+			expect(code.mock.calls.map((call) => call[0])).toEqual([413]);
 		});
 	});
 
 	describe("serialization", () => {
-		it("should expose snake_case keys via instanceToPlain", async () => {
+		it("should expose camelCase keys directly from the Zod output schema", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
 			registerRequestSizeHooks(app, config);
@@ -224,10 +239,7 @@ describe("registerRequestSizeHooks", () => {
 			await hook(request, reply);
 
 			const body = send.mock.calls[0]![0] as Record<string, unknown>;
-			expect(body).toHaveProperty("error_code");
-			expect(body).toHaveProperty("request_id");
-			expect(body).not.toHaveProperty("errorCode");
-			expect(body).not.toHaveProperty("requestId");
+			expect(Object.keys(body)).toEqual(["errorCode", "message", "status", "requestId", "timestamp", "endpoint"]);
 		});
 	});
 });

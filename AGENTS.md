@@ -13,7 +13,7 @@ This repository powers user-facing actions such as:
 - viewing post details
 - contacting posters through WhatsApp
 - reporting unsafe or low-quality posts
-- managing lightweight user identity later
+- managing lightweight user identity
 
 This API is **not** the admin/moderation API. Admin workflows must live in a separate admin API or clearly isolated admin module if temporarily colocated.
 
@@ -96,14 +96,16 @@ Always optimize for:
 
 ### Runtime & Package Manager
 
-- Runtime: **Node.js LTS**
+- Runtime: **Node.js 24.x**
 - Package manager: **pnpm**
+- Language: **TypeScript 6**
 - Framework: **NestJS**
 - HTTP adapter: **Fastify adapter**
 - ORM: **Prisma**
 - Database: **PostgreSQL on Neon**
+- Shared ephemeral state: **Upstash Redis**
+- Edge and asynchronous infrastructure: **Cloudflare Workers, Containers, and Queues**
 - File/media storage: **Cloudflare R2** or S3-compatible storage
-- Edge/security layer: **Cloudflare DNS/CDN/WAF/Turnstile**
 - Test framework: **Vitest**
 
 ### Package Manager Rules
@@ -159,17 +161,17 @@ All user-facing routes must be versioned:
 
 ### Wire Format
 
-External API payloads must use `snake_case`.
+All owned API, Queue, and internal-service payloads must use `camelCase`, matching internal TypeScript code.
 
-Internal TypeScript code must use `camelCase`.
+Provider-owned payloads keep the provider's exact field names at the integration boundary. For example, Meta webhook payloads remain `snake_case`, but the normalized Cataquí Queue message is `camelCase`.
 
 Example:
 
 ```json
 {
-	"post_id": "...",
-	"created_at": "...",
-	"whatsapp_url": "..."
+	"postId": "...",
+	"createdAt": "...",
+	"whatsappUrl": "..."
 }
 ```
 
@@ -181,47 +183,26 @@ createdAt;
 whatsappUrl;
 ```
 
-### DTO Serialization
+### API Contract Serialization
 
-For DTOs exposed through the API:
+For API contracts:
 
-- Use explicit DTO classes.
-- Use `@Expose({ name: "snake_case" })` for external field names.
-- Use `@ApiProperty({ name: "snake_case" })` for Swagger documentation.
-- Output DTOs must be constructible through constructors.
-- Do not use `!` non-null assertions on output DTO properties.
+- Keep one authoritative schema per schema file. Each `*.schema.ts` file must define and export exactly one top-level schema, and the file name must match that schema's domain name.
+- Define the authoritative runtime contract with Zod.
+- For request bodies, query parameters, and route parameters, attach the schema directly to the Nest decorator and use `z.infer<typeof InputSchema>` directly at the parameter or service boundary. Do not create an empty transport class or a type alias that only repeats the inferred schema type.
+- Name every owned schema for incoming data `*InputSchema` and its file `*-input.schema.ts`, regardless of whether the value currently comes from an HTTP body, query string, route parameters, Queue message, or another boundary. Never encode transport-specific words such as `Request`, `Body`, `Query`, or `Params` in a reusable input schema name. Provider-owned payload contracts may retain the provider's terminology at the integration boundary.
+- For outputs, return plain objects typed directly as `z.infer<typeof OutputSchema>`. Do not create output transport classes, constructor-only wrappers, or inferred output type aliases.
+- Keep database-to-API conversion explicit. Put substantial or reused conversion in a focused `*-output.mapper.ts` file as a top-level named `to*Output` function; do not wrap it in a mapper class, object, or namespace. Keep trivial one-use mapping inline at the service boundary. Output conversion returns plain schema-inferred objects and must never return Prisma records directly.
+- Attach input schemas directly to Nest decorators such as `@Body({ schema })`, `@Query({ schema })`, and `@Param({ schema })`.
+- Use Nest's native `StandardSchemaValidationPipe`, `StandardSchemaSerializerInterceptor`, and `@SerializeOptions({ schema })` for request and response contracts.
+- Generate Swagger schemas from the same Zod contract through Nest Swagger's Standard Schema support and `zod-openapi`; do not duplicate fields with manual property decorators.
+- Do not use class identity or `instanceof` to distinguish response outcomes. Use discriminated unions or explicit internal result contracts.
 
-### DTO Validation Boundary
+### Contract Validation Boundary
 
-DTOs must not contain validation logic. They must not assert domain invariants, reject lifecycle states, throw because fields are missing or inconsistent, or decide whether data is valid for a business operation. That responsibility belongs to the service layer.
+Request Zod schemas must validate every rule that can be decided exclusively from the request itself. This includes field formats, conditional required fields, relationships between request fields, and other self-contained input invariants. Use Zod features such as `refine`, `superRefine`, and discriminated unions instead of repeating those checks in services.
 
-Request DTOs may declare transport-level shape constraints with decorators such as `@IsString()` or `@IsUUID()`, but they must not implement business or domain validation themselves. Output DTOs only map and serialize values, including nullable values supplied by the service.
-
-### DTO Member Ordering
-
-Members within a DTO class must follow this order:
-
-1. Constructor
-2. `static` factory methods
-3. Variables / properties (including `readonly`)
-4. Utility methods
-5. Private helpers (prefixed `_`)
-
-Example:
-
-```ts
-export class JobContactOutputDto {
-	constructor(params: { ... }) { ... }
-
-	static fromDatabase(...): JobOutputDto { ... }
-
-	readonly contactMethod: JobContactMethod;
-
-	getIdentifier(): string { ... }
-
-	private _buildCursor(): string { ... }
-}
-```
+Services validate rules that require shared or external context, including current database state, lifecycle state, another service, or a provider response. Do not move a rule into a service when the request schema has all the information needed to decide it. Output schemas only define and serialize the public contract; they do not contain business rules.
 
 ### Cursor Pagination
 
@@ -230,13 +211,13 @@ Infinite feeds must use cursor pagination, not offset pagination.
 Good:
 
 ```txt
-GET /v1/feed?cursor=...&limit=20
+GET /v1/resources?cursor=...&limit=20
 ```
 
 Avoid:
 
 ```txt
-GET /v1/feed?page=10
+GET /v1/resources?page=10
 ```
 
 ---
@@ -249,14 +230,14 @@ Controllers:
 
 - parse inputs
 - call application services
-- return DTOs
+- return schema-inferred plain objects
 - contain no business logic
 - never call Prisma directly
 
 Services:
 
 - orchestrate business logic
-- validate domain rules
+- validate rules that depend on database state, lifecycle state, other services, or providers
 - coordinate repositories/providers
 - never access Prisma directly — all data access must go through repositories
 
@@ -267,11 +248,12 @@ Repositories:
 - expose intention-revealing methods
 - are the only layer that calls Prisma directly
 
-DTOs:
+Schemas and output conversion:
 
 - define request/response shape
-- handle transformation/serialization
-- contain no business or domain validation logic
+- validate every request rule that can be decided exclusively from the request through Zod
+- map database/provider representations to explicit public output objects
+- rely on the response serializer for final transport validation and transformation
 - must remain simple
 
 ### Private Members
@@ -294,11 +276,68 @@ Do not instantiate services manually unless there is a clear technical reason.
 
 ## 5. Coding Conventions
 
+### Keep Instructions Beside Their Scope
+
+Keep the repository-root `AGENTS.md` limited to guidance that applies across the repository.
+
+When an instruction describes the architecture, boundary, workflow, tooling, or conventions of one specific directory, put it in an `AGENTS.md` at that directory's narrowest shared scope instead of adding it to the root file. Nested `AGENTS.md` files supplement the instructions inherited from their parents.
+
+When existing root guidance becomes specific to one directory, move it to that directory's `AGENTS.md`; do not duplicate it in both places.
+
+### Keep Guidance Independent of Source Layout
+
+Do not mention concrete repository paths, source filenames, or inventories of currently implemented routes in `AGENTS.md`, documentation, or other guidance files. Describe stable ownership, responsibilities, naming conventions, and discovery rules instead.
+
+Guidance must remain correct when an implementation file moves, splits, is renamed, or when another route is added. Refer to concepts such as the owning module, Queue manifest, environment-validation boundary, generated Worker environment type, or deployment workflow rather than the file that currently implements them.
+
+Exact commands, public contracts, and filename patterns may be documented when the exact spelling is itself a stable interface. Do not use them merely as navigation shortcuts or as a snapshot of the current codebase.
+
 ### Clarity Over Cleverness
 
 Code must be boring, explicit, and easy to review.
 
+Never use ambiguous names. Choose simple, descriptive names for variables, functions, methods, classes, types, files, and modules so a reader can understand what each thing does from its name alone, without reading its implementation or searching for additional context.
+
+Before naming any class, enum, type, variable, function, method, or file, ask whether the same concept can be reused by another known or likely use case. If its meaning and behavior are independent of the current transport, provider, or feature, use a generic domain name so adding the next use case does not require renaming the shared concept. For example, use `AuthIntentStatus` when the lifecycle applies equally to WhatsApp, email, or another authentication transport.
+
+When a concept is inherently tied to one integration or transport, make that ownership explicit in its name. For example, Meta webhook verification tokens and WhatsApp phone-number IDs must retain provider-specific names because their meaning does not generalize beyond that integration.
+
 Variable and function names must describe both the **input format** and the **transformation/output**. Reading the name alone must reveal what value you pass in and what comes out — no implementation-reading required.
+
+Names must also describe the operation the implementation actually performs. Do not use verbs that imply validation, authentication, mutation, or orchestration when the function only queries and returns a value. Query-only methods should use verbs such as `find` or `get`; reserve names such as `authenticate`, `validate`, `create`, or `rotate` for functions that actually perform those actions.
+
+Name functions and methods after their caller-visible outcome, not the internal steps used to produce it. A name should state the single most important result. Mention two outcomes only when both must happen together as one operation and separating them would make the behavior incorrect. Make alternative outcomes explicit when they are part of the contract, such as `OrNull` for a lookup that may not find a value.
+
+Avoid implementation-oriented names that merely say work occurs:
+
+```ts
+processMessage();
+handleWebhook();
+runAuthenticationFlow();
+```
+
+Prefer the outcome visible to the caller:
+
+```ts
+verifyWhatsappAuthCode();
+enqueueAuthMessagesFromWebhook();
+getCodeOrNull();
+verifyAuthMessageAndReply(); // Two inseparable outcomes: verification always produces the reply.
+```
+
+Framework-mandated method names such as `canActivate` and shared interface methods such as a Queue handler's `handle` may keep the required contract name.
+
+Bad — implies that the repository performs the complete authentication operation:
+
+```ts
+authenticateAccessToken({ accessTokenHash: accessTokenHash });
+```
+
+Good — describes that the repository finds and returns the matching access-token session:
+
+```ts
+findActiveAccessToken({ accessTokenHash: accessTokenHash });
+```
 
 Bad — vague transformation, unknown input format:
 ```ts
@@ -389,6 +428,41 @@ function formatContactMethod(method: JobContactMethod): string {
 
 Adding a new enum value without a case here will cause a compile error, forcing you to handle the new case or explicitly decide what to do.
 
+### Explicit Behavior Per Variant
+
+When validation or behavior depends on an enum, discriminator, provider, channel, contact method, status, or similar value family, define the accepted behavior explicitly for each supported member. Do not put a broad condition before variant-specific handling when that condition could accidentally authorize a future member.
+
+Prefer closed designs such as:
+
+- Zod discriminated unions with one branch per supported input variant;
+- exhaustive `switch` statements without `default`;
+- mappings checked with `satisfies Record<DomainEnum, ...>` when every enum member must be implemented.
+
+A newly added value must either produce a compile-time failure or remain rejected at runtime until its rules are deliberately implemented. It must never silently inherit another member's validation, authorization, serialization, or business behavior.
+
+Bad — every current or future contact method accepts a phone number before its own rules run:
+
+```ts
+if (isValidPhoneNumber(contact.identifier)) return;
+
+if (contact.contactMethod === JobContactMethod.WHATSAPP && isWhatsappUsername(contact.identifier)) return;
+```
+
+Good — each supported contact method owns its complete validation contract:
+
+```ts
+const ContactInputSchema = z.discriminatedUnion("contactMethod", [
+	z.object({
+		contactMethod: z.literal(JobContactMethod.WHATSAPP),
+		identifier: WhatsappContactIdentifierSchema,
+	}),
+	z.object({
+		contactMethod: z.literal(JobContactMethod.PHONE_CALL),
+		identifier: PhoneNumberSchema,
+	}),
+]);
+```
+
 ### Type Safety
 
 Do not use `any`.
@@ -396,7 +470,7 @@ Do not use `any`.
 Prefer:
 
 - explicit interfaces
-- DTOs
+- Zod-inferred contract types
 - Prisma-generated types
 - `unknown` plus narrowing when input is truly unknown
 
@@ -421,7 +495,37 @@ type ErrorCode = ...;
 
 ### Inline Single-Use Values and Logic
 
-Use a value inline when it is used in only one place and is unlikely to be shared later. Do not introduce a local variable, module constant, or exported constant only to give a one-off literal or expression a name.
+Choose the narrowest scope that matches actual reuse:
+
+- If a value is used once, keep it inline at its consumer.
+- If a value is used more than once within one function or method, use a function-local variable instead of extracting it to a module or exported constant.
+- Use a module or exported constant only when the value is shared across consumers or represents independently important domain configuration.
+
+Bad — the function-local variable still adds indirection for a single use:
+
+```ts
+function requestPage(): Promise<Response> {
+	const pageSize = 20;
+	return client.get({ limit: pageSize });
+}
+```
+
+Good — the single-use value stays at its consumer:
+
+```ts
+function requestPage(): Promise<Response> {
+	return client.get({ limit: 20 });
+}
+```
+
+Good — a value repeated only inside one function remains local:
+
+```ts
+function generateCode(): string {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	return alphabet.charAt(randomInt(alphabet.length));
+}
+```
 
 Apply the same rule to functions and methods. Do not extract a helper that has only one caller when its logic is short, readable, and naturally belongs to that caller. Inline the logic so a reader does not need to jump between declarations to understand one operation.
 
@@ -443,7 +547,7 @@ await aiService.generateObject({
 });
 ```
 
-Extract a value only when it is reused, represents an independently important domain concept, or the expression is complex enough that naming it materially improves understanding. Test the behavior at the consumer instead of creating and testing a constant solely for a single call site.
+Extract a value beyond its function only when it is reused across consumers or represents an independently important domain concept. Test the behavior at the consumer instead of creating and testing a constant solely for a single call site.
 
 Bad — the helper is called once and only adds navigation:
 
@@ -455,7 +559,7 @@ function _asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function parseMessage(requestBody: unknown): Message | null {
-	const jobId = _asRecord(requestBody)?.["job_id"];
+	const jobId = _asRecord(requestBody)?.["jobId"];
 	// ...
 }
 ```
@@ -472,6 +576,8 @@ function parseMessage(requestBody: unknown): Message | null {
 Extract single-use logic only when it represents independently meaningful behavior, requires focused testing, removes substantial complexity from its caller, or is expected to gain another caller imminently for a concrete requirement. A descriptive helper name alone is not enough reason to extract it.
 
 ### Constants
+
+Do not repeat an obvious domain prefix inside a constants object when the object name already supplies that context. For example, use `AuthSessionConstants.SESSION_TOKEN_BYTES`, not `AuthSessionConstants.AUTH_SESSION_TOKEN_BYTES`.
 
 Avoid magic numbers and repeated domain strings.
 
@@ -602,33 +708,21 @@ export const ValidationErrorFormatter = {
 
 Do not create a separate utility or helper file for logic that is only used in one place. Keep the logic in the module where it is used, typically as a private method on a service or a module-private function.
 
-Utility files and exported namespaces are for logic shared across multiple modules or files. Single-use logic should stay co-located with its consumer.
+Utility files are for logic shared across multiple modules or files. Single-use logic should stay co-located with its consumer.
 
 ### Utility Functions
 
-Do not export bare standalone utility functions and do not inline function logic directly inside the namespace object.
-
-Define each function as a standalone declaration first, then group them under an exported namespace.
+Export reusable utility functions directly as named function exports. Do not wrap functions in a `*Utils` object solely to create a namespace; ES module imports already provide clear ownership and allow consumers to import only what they use.
 
 Good:
 
 ```ts
-function filterUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+export function filterUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
 	return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
-
-export const ObjectUtils = {
-	filterUndefined,
-} as const;
 ```
 
 Bad:
-
-```ts
-export function filterUndefined() {}
-```
-
-Also bad — inline inside namespace:
 
 ```ts
 export const ObjectUtils = {
@@ -636,25 +730,9 @@ export const ObjectUtils = {
 } as const;
 ```
 
-### Use class-validator Built-ins Before Custom Validation
+### Use Zod and Domain-Library Built-ins Before Custom Validation
 
-Always check if `class-validator` has a built-in validator (decorator or standalone function) before writing custom validation logic. This applies to both DTO property decorators (`@IsPhoneNumber`, `@Matches`, etc.) and standalone functions used inside custom decorators (`isPhoneNumber`, `isString`, etc.).
-
-The library exports standalone validation functions alongside the decorators — use them instead of raw inline checks.
-
-Good — using the built-in standalone function:
-```ts
-import { isPhoneNumber } from "class-validator";
-
-if (!isPhoneNumber(identifier)) { ... }
-```
-
-Avoid — reinventing it inline:
-```ts
-if (!identifier.startsWith("+") || identifier.length < 8) { ... }
-```
-
-Checking `class-validator` first ensures consistent validation semantics, keeps the codebase small, and reduces review surface for validation logic.
+Always check whether Zod or an authoritative domain library already provides the validation before writing custom logic. Use Zod primitives such as `z.uuid()` and `z.iso.datetime()` for transport shape, and use focused libraries such as `libphonenumber-js` for domain formats instead of recreating them with ad hoc checks.
 
 ### Derive Enum Values From the Code, Never Hardcode
 
@@ -676,6 +754,14 @@ This ensures that adding a new enum value automatically updates all derived mess
 ---
 
 ## 6. Error Handling
+
+### Try/Catch Boundaries
+
+Only add `try/catch` when the catch block performs meaningful recovery or cleanup, or translates an expected failure into a typed error that helps the client understand and act on the problem.
+
+Do not catch internal database, cache, provider, or tooling failures merely to replace them with another generic error. Let unexpected internal failures propagate to the global exception filter, which is responsible for logging them and returning the safe generic error response.
+
+Do not use an empty `catch {}` when the original exception is needed for diagnostics.
 
 ### Domain Errors
 
@@ -711,7 +797,7 @@ Example:
 
 ```json
 {
-	"error_code": "POST_NOT_FOUND",
+	"errorCode": "POST_NOT_FOUND",
 	"message": "The requested post was not found."
 }
 ```
@@ -735,6 +821,13 @@ A good error message lets the developer fix the problem without reading any docs
 Cataquí operates in a high-risk marketplace category.
 
 Trust and safety must be treated as core product infrastructure, not a later feature.
+
+### Rate Limiting
+
+- Cloudflare owns volumetric and IP-oriented protection. Do not add a global NestJS IP rate limiter.
+- Use the Redis-backed `@RateLimit` only on authenticated operations where repeated use can create material cost or harm.
+- `@RateLimit` must require the access token before running `UserRateLimitGuard`, which tracks `session.userId` and shares the limit across that user's devices, sessions, and containers. Do not pair `@RateLimit` with a separate `@AccessTokenRequired()` decorator. Never key an application limit by IP address, session ID, or access-token hash.
+- If Redis cannot enforce a protected operation's limit, fail closed before the expensive or harmful operation runs.
 
 ---
 
@@ -800,7 +893,7 @@ Always describe the expected outcome in plain English. Tests are documentation f
 Prefer:
 
 ```typescript
-it("should allow every field in UpdateJobRequestDto to be updated", () => {});
+it("should allow every field in UpdateJobInputSchema to be updated", () => {});
 ```
 
 Avoid descriptions that only name an internal mechanism or test step:
@@ -809,15 +902,15 @@ Avoid descriptions that only name an internal mechanism or test step:
 it("should call the repository", () => {});
 ```
 
-### DTO & Serialization Tests
+### Schema & Serialization Tests
 
-Because the API uses snake_case externally and camelCase internally, test DTO serialization.
+Because Zod is the authoritative runtime and documentation contract, test validation and serialization through the schema.
 
 Verify that:
 
-- response DTOs expose snake_case
-- internal constructors use camelCase safely
-- request DTOs validate snake_case payloads
+- output schemas expose the declared camelCase contract
+- output mappers convert database representations without exposing private fields
+- request schemas validate camelCase payloads
 
 ### Bug Fixes
 
@@ -831,6 +924,14 @@ The regression test must:
 - be named after the scenario
 
 Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
+
+### Non-Obvious Correctness Invariants
+
+Always add a focused regression test when correctness depends on a relationship that is easy to break during an otherwise reasonable refactor. Examples include operation ordering, database persistence before Queue publication, atomic state transitions, authorization scope, idempotency, retry behavior, and cleanup after partial failure.
+
+Do not consider the invariant covered merely because separate tests prove that each operation occurred. Assert the important relationship directly. For example, if a Queue consumer must never observe state before it is persisted, record the completed operations and assert that persistence finishes before Queue publication.
+
+Test these invariants as caller-visible correctness guarantees, not arbitrary implementation details. The test description must explain the failure being prevented so a future contributor understands why the ordering or relationship must remain unchanged.
 
 ### Property-Based / Fuzz Testing
 
@@ -852,7 +953,7 @@ Fixed example values are still allowed for:
 
 - regression tests for a known bug
 - exact edge cases that document intended behavior
-- DTO construction and test setup
+- schema construction and test setup
 - mocks and spies
 - snapshots or serialization examples
 - tests where a single literal value is the behavior being specified
@@ -926,9 +1027,11 @@ A feature is not complete until its test suite proves every line and every state
 
 ## 9. API Documentation
 
-Every endpoint must have Swagger documentation.
+Every public NestJS API endpoint must have Swagger documentation.
 
-Each controller endpoint must have a dedicated docs decorator or clearly separated docs helper.
+Each public controller endpoint must have a dedicated docs decorator or clearly separated docs helper.
+
+Container-only Queue controllers must not be exposed in public Swagger. Their contract is owned by the Queue manifest and its Zod message schema. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
 
 Swagger docs must explain:
 
@@ -967,7 +1070,7 @@ Never commit secrets.
 Use environment variables for:
 
 - database URLs
-- JWT secrets
+- authentication HMAC and signing keys
 - provider API keys
 - R2 credentials
 - Cloudflare credentials
@@ -979,22 +1082,32 @@ Do not put real Neon URLs, passwords, tokens, or production secrets in documenta
 
 ### Adding a New Environment Variable
 
-Every new application runtime env var must be registered in all of these locations. Use this checklist:
+First identify the runtime that owns the value. Production delivery remains isolated by runtime; the shared local `.env` may contain development values for NestJS and both Workers.
 
-1. **`src/core/config/env.validation.ts`** — Add to the Zod schema with appropriate validation
-2. **`src/core/config/`** — Update or create a config file (e.g., `map-auth.config.ts`) with the NestJS `registerAs` config token
-3. **`src/core/config/config.module.ts`** — Register the config provider and export the token
-4. **`.env`** — Add a local development value (gitignored, for your machine only)
-5. **`.env.example`** — Add a safe placeholder value for documentation
-6. **`vitest.config.ts`** — Add a test default value to the `test.env` block so tests never depend on your local `.env`
-7. **`src/platform/cloudflare/env.d.ts`** — Add the typed binding to the `Env` interface
-8. **`src/platform/cloudflare/container/container-env.ts`** — Forward it to the container process environment
-9. **`.dev.vars`** — Add a local development value for `wrangler dev` (gitignored)
-10. **`.github/actions/load-infisical-secrets/profiles.json`** — Register deployment credentials and linked provider configuration in every consuming Infisical profile
+For a value consumed by NestJS inside the API container:
 
-Don't skip any applicable location. Missing one means the env var won't reach the container in that context.
+1. Add it to the application's environment-validation boundary.
+2. Put its `registerAs` configuration beside the owning feature, or in shared configuration only when multiple features own it. Register and export it from the owning module.
+3. Add safe local and documented development values.
+4. Add a deterministic test value to the test environment.
+5. Declare it in the API Worker's Wrangler configuration through the appropriate non-secret variable or secret-delivery path.
+6. Regenerate the API Worker's environment type with `pnpm cf:types`; never edit generated bindings manually.
+7. Explicitly allowlist and forward it from the API container boundary into NestJS.
+8. Follow the GitHub automation guidance for Infisical profiles and deployment delivery.
 
-Tooling-only credentials must remain scoped to their consumer instead of following the runtime checklist. For example, `DATABASE_OWNER_DIRECT_URL` belongs in local migration tooling and the isolated database-migration Infisical profile; it must never be added to Cloudflare bindings, container forwarding, `.dev.vars`, application configuration, or application deployment profiles.
+For a value consumed only by the Webhooks Worker:
+
+1. Declare it in the Webhooks Worker's Wrangler configuration through the appropriate non-secret variable or secret-delivery path.
+2. Add safe local and documented development values.
+3. Regenerate the Webhooks Worker's environment type with `pnpm cf:types`; never edit generated bindings manually.
+4. Follow the GitHub automation guidance for the isolated Webhooks runtime delivery path.
+5. Do not add it to NestJS environment validation, Nest config, API container forwarding, or the API runtime profile unless NestJS independently consumes the same value.
+
+Worker-only bindings and configuration—such as Queues, Durable Objects, container pool sizing, and sleep settings—stay in the owning Wrangler configuration and generated Worker environment type. Do not forward them into the NestJS process.
+
+`ApiContainer.envVars` is a security allowlist. Keep every forwarded value explicit; never spread or automatically forward `Cloudflare.Env`, because it also contains Worker-only bindings and secrets that the application does not need.
+
+Tooling-only credentials remain scoped to their consumer. For example, `DATABASE_OWNER_DIRECT_URL` belongs in local migration tooling and the isolated database-migration profile; it must never be added to Cloudflare bindings, container forwarding, Worker development variables, or application configuration.
 
 ---
 
@@ -1004,9 +1117,11 @@ Tooling-only credentials must remain scoped to their consumer instead of followi
 
 1. Understand the requested change.
 2. Inspect existing files and patterns.
-3. Check available scripts in `package.json`.
-4. Check `.agents/skills/` for relevant project-specific skills.
-5. Make the smallest safe change.
+3. Research the established convention before introducing or changing an API, architecture, security flow, data model, naming pattern, or operational behavior. Start with current standards and official documentation, then compare how mature, high-scale engineering teams apply them in practice.
+4. Follow the strongest convention that fits Cataquí's actual constraints. Do not copy a popular pattern without understanding its purpose, tradeoffs, and failure modes. If the project deliberately differs from the convention, make the reason explicit.
+5. Check the package manifest for available scripts.
+6. Check the installed project skills for relevant guidance.
+7. Make the smallest safe change.
 
 ### During Changes
 
@@ -1018,17 +1133,19 @@ Tooling-only credentials must remain scoped to their consumer instead of followi
 
 ### Before Finishing
 
-Before closing a task, always run linting and type checking — in addition to tests. A change is not complete until `pnpm lint`, `pnpm typecheck`, and `pnpm test` all pass. Do not skip these even for small changes.
+Before closing a task, always run non-mutating linting and type checking in addition to tests. A change is not complete until `pnpm lint:check`, `pnpm typecheck`, and `pnpm test` all pass. Do not use the write-mode `pnpm lint` as a validation command because it can modify unrelated files in a dirty worktree.
 
 Run the relevant checks in order:
 
 ```bash
-pnpm lint
+pnpm lint:check
 pnpm typecheck
 pnpm test
 ```
 
-If the repository has more specific scripts, prefer the smallest relevant module-level checks first, then broader checks when needed.
+Run `pnpm build` when build configuration, compiled assets, runtime startup, or deployment packaging changes. Use `pnpm cf:types:check` through the standard typecheck when Wrangler bindings change.
+
+Prefer the smallest relevant module-level checks first, then run the broader required checks. Preserve unrelated staged and unstaged work; never use a write-mode validation command across the whole dirty repository.
 
 If a command cannot be run, clearly state why.
 
@@ -1073,6 +1190,28 @@ Use the accented brand name in human-facing docs when appropriate:
 Use ASCII-safe names in code, package names, domains, schemas, and identifiers:
 
 - `cataqui`
+
+### Brand Names in Code
+
+Treat every brand name as a single word when it appears in a code identifier. Capitalize only the first letter of the complete brand name in PascalCase, or lowercase the complete brand name in camelCase. Do not preserve the brand's internal capitalization because it misleadingly suggests separate words in the identifier.
+
+Good:
+
+```ts
+class WhatsappAuthService {}
+
+const whatsappPhoneNumberId = "...";
+```
+
+Bad — `WhatsApp` can be misread as the separate words "Whats" and "App":
+
+```ts
+class WhatsAppAuthService {}
+
+const whatsAppPhoneNumberId = "...";
+```
+
+Preserve the official brand spelling only in human-facing prose and display strings, where `WhatsApp` is correct.
 
 ### Domain Language
 

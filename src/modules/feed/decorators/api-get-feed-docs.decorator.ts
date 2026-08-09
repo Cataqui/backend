@@ -1,18 +1,21 @@
-import { applyDecorators, HttpStatus } from "@nestjs/common";
+import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { FeedItemOutputDto } from "../dto/feed-item-output.dto";
+import { createPaginatedSuccessResponseSchema } from "../../../shared/schemas/paginated-success-response.schema";
+import { FeedItemOutputSchema } from "../schemas/feed-item-output.schema";
 
 export function ApiGetFeedDocs(): MethodDecorator & ClassDecorator {
+	const responseSchema = createPaginatedSuccessResponseSchema({ itemSchema: FeedItemOutputSchema });
+
 	return applyDecorators(
+		SerializeOptions({ schema: responseSchema }),
 		ApiOperation({
 			summary: "Get feed of active jobs",
-			description: "Returns a paginated feed of active jobs. Supports cursor-based pagination and sort modes.",
+			description: "Returns a cursor-paginated feed of active jobs in the server-defined order.",
 		}),
 		ApiResponse({
 			status: HttpStatus.OK,
 			description: "Feed items retrieved successfully",
-			type: FeedItemOutputDto,
-			isArray: true,
+			standardSchema: responseSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.BAD_REQUEST,

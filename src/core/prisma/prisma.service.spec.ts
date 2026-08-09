@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { DATABASE_CONFIG_KEY, databaseConfig } from "../config/database.config";
+import { databaseConfig } from "../config/database.config";
 import { PrismaService } from "./prisma.service";
 
 let prismaNeonConfigs: Record<string, unknown>[] = [];
@@ -32,7 +32,7 @@ describe("PrismaService", () => {
 		const module = await Test.createTestingModule({
 			providers: [
 				{
-					provide: DATABASE_CONFIG_KEY,
+					provide: databaseConfig.KEY,
 					useValue: MOCK_CONFIG,
 				},
 				PrismaService,

@@ -5,7 +5,6 @@ function _parseInfisicalCredentialFile({ expectedCredentials, secretFile }) {
 		throw new Error("empty Infisical credential file");
 	}
 
-	const expectedCredentialNames = new Set(expectedCredentials);
 	const credentialValues = new Map();
 
 	for (const [lineIndex, line] of secretFile.split("\n").entries()) {
@@ -19,10 +18,6 @@ function _parseInfisicalCredentialFile({ expectedCredentials, secretFile }) {
 
 		if (credentialValues.has(credentialName)) {
 			throw new Error(`duplicate Infisical credential: ${credentialName}`);
-		}
-
-		if (!expectedCredentialNames.has(credentialName)) {
-			throw new Error(`unexpected Infisical credential in isolated profile: ${credentialName}`);
 		}
 
 		credentialValues.set(credentialName, credentialValue);

@@ -37,6 +37,37 @@ function _getActionSource(actionName: string): string {
 }
 
 describe("Cloudflare Terraform workflow security", () => {
+	it("should run quality checks when any application build contract changes", () => {
+		const continuousIntegrationSource = _getWorkflowSource("ci.yml");
+		const requiredPaths = [
+			"src/**",
+			"prisma/**",
+			"infra/**",
+			"Dockerfile",
+			"package.json",
+			"pnpm-lock.yaml",
+			"pnpm-workspace.yaml",
+			"nest-cli.json",
+			"tsconfig.json",
+			"test/**",
+			".github/actions/**",
+			".github/workflows/**",
+		];
+
+		expect(requiredPaths.every((path) => continuousIntegrationSource.split(`- '${path}'`).length - 1 === 2)).toBe(true);
+	});
+
+	it("should enforce non-mutating lint, TypeScript checking, coverage, and a production build in CI", () => {
+		const continuousIntegrationSource = _getWorkflowSource("ci.yml");
+
+		expect({
+			lint: continuousIntegrationSource.includes("run: pnpm lint:check"),
+			typecheck: continuousIntegrationSource.includes("run: pnpm typecheck\n"),
+			coverage: continuousIntegrationSource.includes("run: pnpm test:cov"),
+			build: continuousIntegrationSource.includes("run: pnpm build"),
+		}).toEqual({ lint: true, typecheck: true, coverage: true, build: true });
+	});
+
 	it("should use repository-local api names for every HCP Terraform workspace", () => {
 		const terraformWorkspaceDeclarations = Object.values(workflowSources).flatMap((source) =>
 			[...source.matchAll(/^\s*TF_WORKSPACE:\s*(.+)$/gm)].map((match) => (match[1] ?? "").trim()),
@@ -464,39 +495,98 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
-	it("should gradually roll out containers and roll back unhealthy application deployments", () => {
+	it("should redeploy when any container build contract changes", () => {
 		const deploymentWorkflowSources = [
 			_getWorkflowSource("deploy-staging.yml"),
 			_getWorkflowSource("deploy-production.yml"),
 		];
-		const applicationDeploymentActionSource = _getActionSource("deploy-cloudflare-application");
-		const wranglerSource = readFileSync(resolve(process.cwd(), "wrangler.jsonc"), "utf8");
+		const containerBuildContracts = [
+			"'Dockerfile'",
+			"'package.json'",
+			"'pnpm-lock.yaml'",
+			"'pnpm-workspace.yaml'",
+			"'nest-cli.json'",
+			"'tsconfig.json'",
+		];
+
+		expect(
+			deploymentWorkflowSources.every((source) =>
+				containerBuildContracts.every((buildContract) => source.includes(buildContract)),
+			),
+		).toBe(true);
+	});
+
+	it("should deploy the API and webhook Workers with isolated secrets and resource-appropriate recovery", () => {
+		const deploymentWorkflowSources = [
+			_getWorkflowSource("deploy-staging.yml"),
+			_getWorkflowSource("deploy-production.yml"),
+		];
+		const apiDeploymentActionSource = _getActionSource("deploy-cloudflare-api-worker");
+		const webhooksDeploymentActionSource = _getActionSource("deploy-cloudflare-webhooks-worker");
+		const apiWranglerSource = readFileSync(
+			resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
+			"utf8",
+		);
 
 		expect({
-			usesSharedApplicationDeploymentAction: deploymentWorkflowSources.every((source) =>
-				source.includes("uses: ./.github/actions/deploy-cloudflare-application"),
+			describesApiDeploymentWithAutomaticRollback:
+				apiDeploymentActionSource.startsWith("name: Deploy and verify Cloudflare API Worker\n") &&
+				apiDeploymentActionSource.includes("roll back an unhealthy Worker and Container deployment"),
+			usesBothDeploymentActions: deploymentWorkflowSources.every(
+				(source) =>
+					source.includes("uses: ./.github/actions/deploy-cloudflare-api-worker") &&
+					source.includes("uses: ./.github/actions/deploy-cloudflare-webhooks-worker"),
 			),
-			usesStrictGradualContainerDeployment: applicationDeploymentActionSource.includes(
-				"deploy --strict --containers-rollout gradual",
+			usesStrictImmediateContainerDeployment: apiDeploymentActionSource.includes(
+				"deploy --strict --cwd src/platform/cloudflare/workers/api\n          --config wrangler.jsonc --containers-rollout immediate",
 			),
-			protectsEphemeralSecrets:
-				applicationDeploymentActionSource.includes("umask 077") &&
-				applicationDeploymentActionSource.includes("jq -n '{") &&
-				applicationDeploymentActionSource.includes('run: rm -f -- "$SECRETS_FILE"'),
-			verifiesReadiness: applicationDeploymentActionSource.includes("/v1/health"),
-			rollsBackFailedReadiness:
-				applicationDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				applicationDeploymentActionSource.includes("rollback --env"),
-			usesProgressiveContainerSteps:
-				wranglerSource.includes('"rollout_step_percentage": [10, 50, 100]') &&
-				wranglerSource.includes('"rollout_step_percentage": [10, 25, 50, 100]'),
+			protectsBothEphemeralSecretFiles: [apiDeploymentActionSource, webhooksDeploymentActionSource].every(
+				(source) =>
+					source.includes("umask 077") &&
+					source.includes("jq -n '{") &&
+					source.includes('run: rm -f -- "$SECRETS_FILE"'),
+			),
+			isolatesWhatsappSecrets:
+				!apiDeploymentActionSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN") &&
+				!apiDeploymentActionSource.includes("META_APP_SECRET: env.META_APP_SECRET") &&
+				webhooksDeploymentActionSource.includes("META_APP_SECRET: env.META_APP_SECRET") &&
+				webhooksDeploymentActionSource.includes(
+					"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN: env.WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN",
+				) &&
+				!webhooksDeploymentActionSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN"),
+			deploysRefreshTokenHmacKeyV1Base64url: apiDeploymentActionSource.includes(
+				"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: env.AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+			),
+			keepsRedisCredentialsOutOfWebhooks: !webhooksDeploymentActionSource.includes("UPSTASH_REDIS"),
+			verifiesBothReadinessContracts:
+				apiDeploymentActionSource.includes("/v1/health") &&
+				webhooksDeploymentActionSource.includes('response_status" == "403"'),
+			rollsBackFailedApiReadiness:
+				apiDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
+				apiDeploymentActionSource.includes("rollback --cwd src/platform/cloudflare/workers/api"),
+			verifiesApiReadinessAfterRollback:
+				apiDeploymentActionSource.includes("Verify the API readiness after rollback") &&
+				apiDeploymentActionSource.includes("steps.rollback.outcome == 'success'") &&
+				apiDeploymentActionSource.includes("The API remained unhealthy after rollback"),
+			rollsBackFailedWebhooksReadiness:
+				webhooksDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
+				webhooksDeploymentActionSource.includes("rollback --cwd src/platform/cloudflare/workers/webhooks"),
+			keepsProgressiveContainerStepsAvailableForLaterDeployments:
+				apiWranglerSource.includes('"rollout_step_percentage": [10, 50, 100]') &&
+				apiWranglerSource.includes('"rollout_step_percentage": [10, 25, 50, 100]'),
 		}).toEqual({
-			usesSharedApplicationDeploymentAction: true,
-			usesStrictGradualContainerDeployment: true,
-			protectsEphemeralSecrets: true,
-			verifiesReadiness: true,
-			rollsBackFailedReadiness: true,
-			usesProgressiveContainerSteps: true,
+			describesApiDeploymentWithAutomaticRollback: true,
+			usesBothDeploymentActions: true,
+			usesStrictImmediateContainerDeployment: true,
+			protectsBothEphemeralSecretFiles: true,
+			isolatesWhatsappSecrets: true,
+			deploysRefreshTokenHmacKeyV1Base64url: true,
+			keepsRedisCredentialsOutOfWebhooks: true,
+			verifiesBothReadinessContracts: true,
+			rollsBackFailedApiReadiness: true,
+			verifiesApiReadinessAfterRollback: true,
+			rollsBackFailedWebhooksReadiness: true,
+			keepsProgressiveContainerStepsAvailableForLaterDeployments: true,
 		});
 	});
 

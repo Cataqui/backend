@@ -14,11 +14,11 @@ describe("InvalidJobTypePeriodError", () => {
 		const response = error.getResponse() as Record<string, unknown>;
 
 		expect(response["message"] as string).toBe(
-			`payment.amount_period cannot be ${JobPaymentAmountPeriod.SINGLE} when type is ${JobType.EMPLOYMENT}. Employment must use a recurring payment period (${Object.values(
+			`payment.amountPeriod cannot be ${JobPaymentAmountPeriod.SINGLE} when type is ${JobType.EMPLOYMENT}. Employment must use a recurring payment period (${Object.values(
 				JobPaymentAmountPeriod,
 			)
 				.filter((period) => period !== JobPaymentAmountPeriod.SINGLE)
-				.join(", ")}). Example: type=${JobType.EMPLOYMENT}, payment.amount_period=${JobPaymentAmountPeriod.MONTHLY}.`,
+				.join(", ")}). Example: type=${JobType.EMPLOYMENT}, payment.amountPeriod=${JobPaymentAmountPeriod.MONTHLY}.`,
 		);
 	});
 });

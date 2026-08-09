@@ -2,6 +2,7 @@
 dist/
 generated/
 coverage/
+.wrangler/
 
 # Dependencies (rebuilt inside Docker)
 node_modules/
@@ -35,6 +36,8 @@ docker-compose.yml
 .dockerignore
 
 # CI & meta
+.github/
+infra/
 commitlint.config.mjs
 LICENSE
 .editorconfig

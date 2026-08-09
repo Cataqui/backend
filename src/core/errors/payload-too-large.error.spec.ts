@@ -1,4 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
+import { DomainError } from "./domain-error";
 import { ErrorCode } from "./error-code.enum";
 import { PayloadTooLargeError } from "./payload-too-large.error";
 
@@ -26,12 +27,11 @@ describe("PayloadTooLargeError", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with error_code and message", () => {
+		it("should return object with errorCode and message", () => {
 			const error = new PayloadTooLargeError("body too big");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.PAYLOAD_TOO_LARGE);
-			expect(response).toHaveProperty("message", "body too big");
+			expect(response).toEqual({ errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: "body too big" });
 		});
 	});
 
@@ -43,7 +43,7 @@ describe("PayloadTooLargeError", () => {
 
 		it("should be an instance of DomainError", () => {
 			const error = new PayloadTooLargeError();
-			expect(error).toBeInstanceOf(Error);
+			expect(error).toBeInstanceOf(DomainError);
 		});
 	});
 });

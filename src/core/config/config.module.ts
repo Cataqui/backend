@@ -1,10 +1,9 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
-import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
-import { IEnvSchema } from "./env.validation";
-import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "./request-size.config";
-import { GLOBAL_THROTTLE_CONFIG_KEY, globalThrottleConfig } from "./throttle.config";
-import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.config";
+import { databaseConfig } from "./database.config";
+import { EnvSchema } from "./env.validation";
+import { requestSizeConfig } from "./request-size.config";
+import { upstashRedisConfig } from "./upstash-redis.config";
 
 @Global()
 @Module({
@@ -12,9 +11,9 @@ import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.co
 		NestConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: ".env",
-			load: [globalThrottleConfig, requestSizeConfig, upstashRedisConfig],
+			load: [requestSizeConfig, upstashRedisConfig],
 			validate: (config: Record<string, unknown>) => {
-				const result = IEnvSchema.safeParse(config);
+				const result = EnvSchema.safeParse(config);
 
 				if (!result.success) {
 					const details = result.error.issues
@@ -29,22 +28,18 @@ import { UPSTASH_REDIS_CONFIG_KEY, upstashRedisConfig } from "./upstash-redis.co
 	],
 	providers: [
 		{
-			provide: DATABASE_CONFIG_KEY,
+			provide: databaseConfig.KEY,
 			useFactory: databaseConfig,
 		},
 		{
-			provide: GLOBAL_THROTTLE_CONFIG_KEY,
-			useFactory: globalThrottleConfig,
-		},
-		{
-			provide: REQUEST_SIZE_CONFIG_KEY,
+			provide: requestSizeConfig.KEY,
 			useFactory: requestSizeConfig,
 		},
 		{
-			provide: UPSTASH_REDIS_CONFIG_KEY,
+			provide: upstashRedisConfig.KEY,
 			useFactory: upstashRedisConfig,
 		},
 	],
-	exports: [DATABASE_CONFIG_KEY, GLOBAL_THROTTLE_CONFIG_KEY, REQUEST_SIZE_CONFIG_KEY, UPSTASH_REDIS_CONFIG_KEY],
+	exports: [databaseConfig.KEY, requestSizeConfig.KEY, upstashRedisConfig.KEY],
 })
 export class ConfigModule {}

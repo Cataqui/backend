@@ -214,15 +214,15 @@ describe("Neon Terraform infrastructure", () => {
 
 	it("should synchronize runtime and migration values only to their isolated Infisical folders", () => {
 		expect({
-			applicationFolder: syncActionSource.includes('--path="/application/deploy"'),
-			migrationFolder: syncActionSource.includes('--path="/database/migration"'),
+			runtimeFolder: syncActionSource.includes('--path="/runtime"'),
+			databaseFolder: syncActionSource.includes('--path="/database"'),
 			projectId: syncActionSource.includes('"NEON_PROJECT_ID=$NEON_PROJECT_ID"'),
 			ownerDirectUrl: syncActionSource.includes('"DATABASE_OWNER_DIRECT_URL=$DATABASE_OWNER_DIRECT_URL"'),
 			appPoolerUrl: syncActionSource.includes('"DATABASE_APP_POOLER_URL=$DATABASE_APP_POOLER_URL"'),
 			migrationApiKey: syncActionSource.includes('"NEON_API_KEY=$NEON_API_KEY"'),
 		}).toEqual({
-			applicationFolder: true,
-			migrationFolder: true,
+			runtimeFolder: true,
+			databaseFolder: true,
 			projectId: true,
 			ownerDirectUrl: true,
 			appPoolerUrl: true,

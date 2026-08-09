@@ -1,7 +1,6 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { vi } from "vitest";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import { FeedSort } from "../enums/feed-sort.enum";
 import { CursorUtils } from "../utils/cursor.utils";
 import { FeedRepository } from "./feed.repository";
 
@@ -34,15 +33,24 @@ describe("FeedRepository", () => {
 	});
 
 	describe("getFeedItems", () => {
-		it("should query ACTIVE jobs", async () => {
+		it("should query only complete ACTIVE jobs", async () => {
 			mockFindMany.mockResolvedValue([]);
 
 			await repository.getFeedItems({ limit: 20 });
 
 			const where = getWhere(0);
 
-			expect(where["status"]).toBe("ACTIVE");
-			expect(where["expiresAt"]).toBeUndefined();
+			expect(where).toEqual({
+				status: "ACTIVE",
+				title: { not: null },
+				descriptionSummary: { not: null },
+				paymentType: { not: null },
+				paymentAmountPeriod: { not: null },
+				paymentCurrency: { not: null },
+				neighborhood: { not: null },
+				fuzzyLatitude: { not: null },
+				fuzzyLongitude: { not: null },
+			});
 		});
 
 		it("should order by createdAt DESC and id DESC", async () => {
@@ -68,26 +76,25 @@ describe("FeedRepository", () => {
 		it("should include cursor condition when cursor is provided", async () => {
 			mockFindMany.mockResolvedValue([]);
 
-			const cursor = CursorUtils.decodeCursor(
-				CursorUtils.encodeCursor({
-					sort: FeedSort.LATEST,
+			const cursor = CursorUtils.decodeCursor({
+				cursor: CursorUtils.encodeCursor({
 					createdAt: "2026-05-28T10:00:00.000Z",
-					jobId: "12345678-1234-1234-1234-1234567890ab",
+					jobId: "12345678-1234-4234-8234-1234567890ab",
 				}),
-				FeedSort.LATEST,
-			);
+			});
 
-			await repository.getFeedItems({ cursor, limit: 20 });
+			await repository.getFeedItems({ cursor: cursor, limit: 20 });
 
 			const where = getWhere(0);
 			const orConditions = where["OR"] as Record<string, unknown>[];
 
-			expect(orConditions).toBeDefined();
-			expect(orConditions[0]).toEqual({ createdAt: { lt: new Date("2026-05-28T10:00:00.000Z") } });
-			expect(orConditions[1]).toEqual({
-				createdAt: new Date("2026-05-28T10:00:00.000Z"),
-				id: { lt: "12345678-1234-1234-1234-1234567890ab" },
-			});
+			expect(orConditions).toEqual([
+				{ createdAt: { lt: new Date("2026-05-28T10:00:00.000Z") } },
+				{
+					createdAt: new Date("2026-05-28T10:00:00.000Z"),
+					id: { lt: "12345678-1234-4234-8234-1234567890ab" },
+				},
+			]);
 		});
 
 		it("should not include cursor condition when cursor is not provided", async () => {
@@ -126,7 +133,7 @@ describe("FeedRepository", () => {
 
 		it("should return complete active jobs selected from the shared jobs table", async () => {
 			const activeJob = {
-				id: "12345678-1234-1234-1234-1234567890ab",
+				id: "12345678-1234-4234-8234-1234567890ab",
 				title: "Auxiliar",
 				createdAt: new Date("2026-07-30T12:00:00.000Z"),
 				descriptionSummary: "Resumo",
@@ -150,7 +157,7 @@ describe("FeedRepository", () => {
 		it("should reject an active row that violates required feed-field invariants", async () => {
 			mockFindMany.mockResolvedValue([
 				{
-					id: "12345678-1234-1234-1234-1234567890ab",
+					id: "12345678-1234-4234-8234-1234567890ab",
 					title: null,
 					createdAt: new Date("2026-07-30T12:00:00.000Z"),
 					descriptionSummary: null,
@@ -167,7 +174,7 @@ describe("FeedRepository", () => {
 			]);
 
 			await expect(repository.getFeedItems({ limit: 20 })).rejects.toThrow(
-				"Active job 12345678-1234-1234-1234-1234567890ab is missing fields required by the feed.",
+				"Active job 12345678-1234-4234-8234-1234567890ab is missing fields required by the feed.",
 			);
 		});
 	});

@@ -1,4 +1,4 @@
-import { DATABASE_CONFIG_KEY, databaseConfig } from "./database.config";
+import { databaseConfig } from "./database.config";
 
 describe("databaseConfig", () => {
 	const TEST_POOLER_URL = "postgresql://user:pass@ep-example-pooler.us-east-2.aws.neon.tech/db?sslmode=require";
@@ -12,7 +12,7 @@ describe("databaseConfig", () => {
 	});
 
 	it("should have the correct config key", () => {
-		expect(DATABASE_CONFIG_KEY).toBe("database");
+		expect(databaseConfig.KEY).toBe("CONFIGURATION(database)");
 	});
 
 	it("should return appPoolerUrl from env vars", () => {

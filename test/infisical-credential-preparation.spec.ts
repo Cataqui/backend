@@ -105,7 +105,7 @@ describe("Infisical credential preparation", () => {
 		expect(result.stderr).toContain("duplicate Infisical credential: DATABASE_OWNER_DIRECT_URL");
 	});
 
-	it("should reject a credential that does not belong to the selected profile", () => {
+	it("should ignore credentials from the shared folder that do not belong to the selected profile", () => {
 		const result = _runCredentialPreparation({
 			profile: "database-migration",
 			secretFile: [
@@ -116,7 +116,7 @@ describe("Infisical credential preparation", () => {
 			].join("\n"),
 		});
 
-		expect(result.stderr).toContain("unexpected Infisical credential in isolated profile");
+		expect(result.githubOutput).not.toContain("cloudflare_deployment_api_token");
 	});
 
 	it("should reject a missing credential from the selected profile", () => {

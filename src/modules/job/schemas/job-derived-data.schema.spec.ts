@@ -35,13 +35,13 @@ describe("JobDataDerivationSchema", () => {
 		expect(result).toEqual({ title: "A", description_summary: "B" });
 	});
 
-	it("should accept generated strings without display-length limits", () => {
-		const result = JobDerivedDataSchema.safeParse({
-			title: "A".repeat(500),
-			description_summary: "B".repeat(1_000),
-		});
-
-		expect(result.success).toBe(true);
+	it("should not enforce maximum lengths because brevity is model guidance rather than a hard output contract", () => {
+		expect(
+			JobDerivedDataSchema.safeParse({
+				title: "A".repeat(1_000),
+				description_summary: "B".repeat(10_000),
+			}).success,
+		).toBe(true);
 	});
 
 	it("should reject whitespace-only generated strings", () => {

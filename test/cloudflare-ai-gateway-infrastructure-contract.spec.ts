@@ -16,7 +16,10 @@ const aiGatewayTerraformSource = aiGatewayTerraformDirectories
 const cloudflareComponents = JSON.parse(
 	readFileSync(resolve(process.cwd(), "infra/cloudflare/components.json"), "utf8"),
 ) as string[];
-const wranglerConfig = ts.readConfigFile(resolve(process.cwd(), "wrangler.jsonc"), ts.sys.readFile).config as {
+const wranglerConfig = ts.readConfigFile(
+	resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
+	ts.sys.readFile,
+).config as {
 	env: Record<"staging" | "production", { vars: { CLOUDFLARE_AI_GATEWAY_ID: string } }>;
 };
 
@@ -25,12 +28,12 @@ describe("Cloudflare AI Gateway infrastructure contract", () => {
 		expect(cloudflareComponents).toContain("ai-gateway");
 	});
 
-	it.each([
-		"staging",
-		"production",
-	] as const)("should derive the %s AI Gateway ID from the Terraform environment", (environment) => {
-		expect(wranglerConfig.env[environment].vars.CLOUDFLARE_AI_GATEWAY_ID).toBe(environment);
-	});
+	it.each(["staging", "production"] as const)(
+		"should derive the %s AI Gateway ID from the Terraform environment",
+		(environment) => {
+			expect(wranglerConfig.env[environment].vars.CLOUDFLARE_AI_GATEWAY_ID).toBe(environment);
+		},
+	);
 
 	it("should keep BYOK credentials outside Terraform state", () => {
 		expect(aiGatewayTerraformSource).not.toMatch(/secrets_store|google_vertex|deepseek|provider_config/i);

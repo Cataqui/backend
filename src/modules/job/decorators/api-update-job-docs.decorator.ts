@@ -1,39 +1,57 @@
-import { applyDecorators, HttpStatus } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
-import { ErrorOutputDto } from "../../../core/errors/error-output.dto";
-import { JobOutputDto } from "../dto/job-output.dto";
-import { UpdateJobRequestDto } from "../dto/update-job-request.dto";
+import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
+import { ErrorOutputSchema } from "../../../core/errors/error-output";
+import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { PublicJobOutputSchema } from "../schemas/public-job-output.schema";
 
 export function ApiUpdateJobDocs(): MethodDecorator & ClassDecorator {
+	const responseSchema = createSuccessResponseSchema({ dataSchema: PublicJobOutputSchema });
+
 	return applyDecorators(
+		SerializeOptions({ schema: responseSchema }),
+		ApiBearerAuth(),
 		ApiOperation({
-			summary: "Update a job",
+			summary: "Update a public job",
 			description:
-				"Updates the fields supplied in the request and leaves all other fields unchanged. This works for both drafts and published jobs",
+				"Updates an active or closed public job and leaves omitted fields unchanged. A description change refreshes its derived metadata before saving, so the public response always matches the current description. Each authenticated user may submit up to 60 public-job updates per hour.",
 		}),
 		ApiParam({
-			name: "job_id",
-			description: "ID of the draft or published job to update.",
+			name: "jobId",
+			description: "ID of the public job to update.",
 			type: String,
 			format: "uuid",
 		}),
-		ApiBody({ type: UpdateJobRequestDto }),
 		ApiResponse({
 			status: HttpStatus.OK,
-			description:
-				"The job was updated. When the description changes, the title other derived info may still be refreshing.",
-			type: JobOutputDto,
+			description: "The public job was updated and returned with complete public fields.",
+			standardSchema: responseSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.BAD_REQUEST,
 			description:
 				"The request is invalid in some way, e.g. an invalid field, incomplete nested object, etc. No changes were saved.",
-			type: ErrorOutputDto,
+			standardSchema: ErrorOutputSchema,
+		}),
+		ApiResponse({
+			status: HttpStatus.UNAUTHORIZED,
+			description: "A valid bearer access token is required.",
+			standardSchema: ErrorOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.NOT_FOUND,
-			description: "No job exists with the supplied job_id.",
-			type: ErrorOutputDto,
+			description: "No public job owned by the authenticated user exists with the supplied jobId.",
+			standardSchema: ErrorOutputSchema,
+		}),
+		ApiResponse({
+			status: HttpStatus.TOO_MANY_REQUESTS,
+			description: "The authenticated user has submitted 60 job updates during the current one-hour window.",
+			headers: {
+				"Retry-After": {
+					description: "Seconds until another job-update request may be attempted.",
+					schema: { type: "integer", example: 300 },
+				},
+			},
+			standardSchema: ErrorOutputSchema,
 		}),
 	);
 }

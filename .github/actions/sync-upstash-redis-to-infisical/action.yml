@@ -1,9 +1,9 @@
 name: Synchronize Upstash Redis credentials to Infisical
-description: Write Terraform-generated Upstash Redis REST credentials to the application deployment folder
+description: Write Terraform-generated Upstash Redis REST credentials to the runtime folder
 
 inputs:
   environment:
-    description: Infisical environment containing the application deployment folder
+    description: Protected deployment environment whose Infisical runtime folder receives the credentials
     required: true
   identity-id:
     description: Infisical machine identity authenticated through GitHub OIDC
@@ -91,7 +91,7 @@ runs:
           "UPSTASH_REDIS_REST_TOKEN=$UPSTASH_REDIS_REST_TOKEN" \
           --domain="$INFISICAL_API_URL" \
           --env="$INFISICAL_ENVIRONMENT" \
-          --path="/application/deploy" \
+          --path="/runtime" \
           --projectId="$INFISICAL_PROJECT_ID" \
           --silent \
           --telemetry=false

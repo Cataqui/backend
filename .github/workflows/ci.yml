@@ -7,8 +7,12 @@ on:
       - 'src/**'
       - 'prisma/**'
       - 'infra/**'
+      - 'Dockerfile'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
       - 'test/**'
       - '.github/actions/**'
       - '.github/workflows/**'
@@ -18,8 +22,12 @@ on:
       - 'src/**'
       - 'prisma/**'
       - 'infra/**'
+      - 'Dockerfile'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
       - 'test/**'
       - '.github/actions/**'
       - '.github/workflows/**'
@@ -47,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
@@ -57,12 +65,15 @@ jobs:
           DATABASE_OWNER_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint:check
 
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Test with coverage
+        run: pnpm test:cov
         env:
           CORS_ORIGINS: http://localhost:3000
+
+      - name: Build
+        run: pnpm build

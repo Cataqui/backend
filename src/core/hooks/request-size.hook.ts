@@ -1,25 +1,24 @@
-import { instanceToPlain } from "class-transformer";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { z } from "zod";
 import { RequestUtils } from "../../shared/utils/request.utils";
 import { IRequestSizeConfig } from "../config/request-size.config";
 import { ErrorCode } from "../errors/error-code.enum";
-import { ErrorOutputDto } from "../errors/error-output.dto";
+import { ErrorOutputSchema, toErrorOutput } from "../errors/error-output";
 
 function _buildErrorResponse(
 	errorCode: ErrorCode,
 	message: string,
 	status: number,
 	request: FastifyRequest,
-): Record<string, unknown> {
-	const dto = new ErrorOutputDto(
-		errorCode,
-		message,
-		status,
-		RequestUtils.resolveRequestId(request),
-		new Date().toISOString(),
-		RequestUtils.resolveEndpoint(request),
-	);
-	return instanceToPlain(dto, { exposeUnsetFields: false });
+): z.infer<typeof ErrorOutputSchema> {
+	return toErrorOutput({
+		errorCode: errorCode,
+		message: message,
+		status: status,
+		requestId: RequestUtils.resolveRequestId(request),
+		timestamp: new Date().toISOString(),
+		endpoint: RequestUtils.resolveEndpoint(request),
+	});
 }
 
 function _isContentLengthTooLarge(request: FastifyRequest, config: IRequestSizeConfig): boolean {

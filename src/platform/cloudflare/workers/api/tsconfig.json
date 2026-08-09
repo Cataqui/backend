@@ -1,0 +1,5 @@
+{
+	"extends": "../../tsconfig.json",
+	"include": ["./**/*.ts", "../../containers/**/*.ts", "../../queues/**/*.ts"],
+	"exclude": ["../webhooks"]
+}

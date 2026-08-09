@@ -58,15 +58,23 @@ describe("Infisical GitHub Actions integration", () => {
 	it("should define the exact Infisical credentials required by every deployment responsibility", () => {
 		expect(infisicalProfiles).toEqual({
 			"application-deploy": {
+				credentials: ["CLOUDFLARE_DEPLOYMENT_API_TOKEN"],
+				secretPath: "/deploy",
+			},
+			"api-runtime": {
 				credentials: [
 					"AI_GATEWAY_API_TOKEN",
+					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
 					"CLOUDFLARE_ACCOUNT_ID",
-					"CLOUDFLARE_DEPLOYMENT_API_TOKEN",
 					"DATABASE_APP_POOLER_URL",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"UPSTASH_REDIS_REST_URL",
 				],
-				secretPath: "/application/deploy",
+				secretPath: "/runtime",
+			},
+			"webhooks-runtime": {
+				credentials: ["CLOUDFLARE_ACCOUNT_ID", "META_APP_SECRET", "WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"],
+				secretPath: "/runtime",
 			},
 			"cloudflare-terraform-apply": {
 				credentials: [
@@ -89,7 +97,7 @@ describe("Infisical GitHub Actions integration", () => {
 			},
 			"database-migration": {
 				credentials: ["DATABASE_OWNER_DIRECT_URL", "NEON_API_KEY", "NEON_PROJECT_ID"],
-				secretPath: "/database/migration",
+				secretPath: "/database",
 			},
 			"neon-terraform-apply": {
 				credentials: ["HCP_TERRAFORM_ORGANIZATION", "NEON_API_KEY", "NEON_ORGANIZATION_ID", "TERRAFORM_API_TOKEN"],
@@ -136,6 +144,13 @@ describe("Infisical GitHub Actions integration", () => {
 		});
 	});
 
+	it("should pass the protected environment directly to the matching Infisical slug", () => {
+		expect({
+			usesProtectedEnvironment: loadInfisicalSecretsActionSource.includes("env-slug: $" + "{{ inputs.environment }}"),
+			usesLegacyProductionSlug: loadInfisicalSecretsActionSource.includes('infisical_environment="prod"'),
+		}).toEqual({ usesProtectedEnvironment: true, usesLegacyProductionSlug: false });
+	});
+
 	it("should keep fetched secrets out of the job-wide environment", () => {
 		expect({
 			usesFileExport: loadInfisicalSecretsActionSource.includes("export-type: file"),
@@ -148,9 +163,9 @@ describe("Infisical GitHub Actions integration", () => {
 		});
 	});
 
-	it("should reject missing, empty, duplicate, malformed, and unexpected profile credentials", () => {
+	it("should reject missing, empty, duplicate, and malformed profile credentials", () => {
 		expect(
-			["missing", "empty", "duplicate", "malformed", "unexpected"].every((failure) =>
+			["missing", "empty", "duplicate", "malformed"].every((failure) =>
 				prepareInfisicalCredentialsSource.includes(`${failure} Infisical`),
 			),
 		).toBe(true);
@@ -224,9 +239,16 @@ describe("Infisical GitHub Actions integration", () => {
 			authenticatedWorkflowSources.slice(0, 2).every((source) => {
 				const installIndex = source.lastIndexOf("pnpm install --frozen-lockfile");
 				const buildxIndex = source.lastIndexOf("docker/setup-buildx-action@");
-				const applicationCredentialsIndex = source.indexOf("profile: application-deploy");
+				const apiRuntimeCredentialsIndex = source.indexOf("profile: api-runtime");
+				const webhooksRuntimeCredentialsIndex = source.indexOf("profile: webhooks-runtime");
+				const applicationDeploymentCredentialsIndex = source.indexOf("profile: application-deploy");
 
-				return installIndex < applicationCredentialsIndex && buildxIndex < applicationCredentialsIndex;
+				return (
+					installIndex < apiRuntimeCredentialsIndex &&
+					buildxIndex < apiRuntimeCredentialsIndex &&
+					apiRuntimeCredentialsIndex < webhooksRuntimeCredentialsIndex &&
+					webhooksRuntimeCredentialsIndex < applicationDeploymentCredentialsIndex
+				);
 			}),
 		).toBe(true);
 	});
@@ -266,19 +288,26 @@ describe("Infisical GitHub Actions integration", () => {
 		).toBe(true);
 	});
 
-	it("should pass each application credential only to the final Cloudflare deployment step", () => {
+	it("should pass each isolated runtime credential only to its owning Worker deployment step", () => {
 		expect(
-			authenticatedWorkflowSources
-				.slice(0, 2)
-				.every((source) =>
-					[
-						"ai-gateway-api-token: $" + "{{ steps.infisical.outputs.ai_gateway_api_token }}",
-						"database-app-pooler-url: $" + "{{ steps.infisical.outputs.database_app_pooler_url }}",
-						"cloudflare-api-token: $" + "{{ steps.infisical.outputs.cloudflare_deployment_api_token }}",
-						"upstash-redis-rest-token: $" + "{{ steps.infisical.outputs.upstash_redis_rest_token }}",
-						"upstash-redis-rest-url: $" + "{{ steps.infisical.outputs.upstash_redis_rest_url }}",
-					].every((mapping) => source.includes(mapping)),
-				),
+			authenticatedWorkflowSources.slice(0, 2).every((source) => {
+				const apiMappings = [
+					"ai-gateway-api-token: $" + "{{ steps.api-runtime-credentials.outputs.ai_gateway_api_token }}",
+					"auth-refresh-token-hmac-key-v1-base64url: $" +
+						"{{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}",
+					"database-app-pooler-url: $" + "{{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}",
+					"cloudflare-api-token: $" + "{{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}",
+					"upstash-redis-rest-token: $" + "{{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}",
+					"upstash-redis-rest-url: $" + "{{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}",
+				];
+				const webhookMappings = [
+					"meta-app-secret: $" + "{{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}",
+					"whatsapp-auth-webhook-verify-token: $" +
+						"{{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}",
+				];
+
+				return [...apiMappings, ...webhookMappings].every((mapping) => source.includes(mapping));
+			}),
 		).toBe(true);
 	});
 
@@ -290,14 +319,6 @@ describe("Infisical GitHub Actions integration", () => {
 				return !source.slice(cloudflareDeploymentPosition).includes("DATABASE_OWNER_DIRECT_URL");
 			}),
 		).toBe(true);
-	});
-
-	it("should not load or deploy Protomap credentials", () => {
-		expect(
-			[loadInfisicalSecretsActionSource, JSON.stringify(infisicalProfiles), ...authenticatedWorkflowSources].some(
-				(source) => /protomap/i.test(source),
-			),
-		).toBe(false);
 	});
 
 	it("should not read deployment credentials from GitHub Actions secrets", () => {

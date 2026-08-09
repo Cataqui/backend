@@ -1,14 +1,13 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../../generated/prisma/client.js";
-import type { IDatabaseConfig } from "../config/database.config";
-import { DATABASE_CONFIG_KEY } from "../config/database.config";
+import { type IDatabaseConfig, databaseConfig } from "../config/database.config";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
 	private readonly _logger = new Logger(PrismaService.name);
 
-	constructor(@Inject(DATABASE_CONFIG_KEY) private readonly _databaseConfig: IDatabaseConfig) {
+	constructor(@Inject(databaseConfig.KEY) private readonly _databaseConfig: IDatabaseConfig) {
 		const adapter = new PrismaNeon({
 			connectionString: _databaseConfig.appPoolerUrl,
 			statement_timeout: _databaseConfig.statementTimeoutMs,

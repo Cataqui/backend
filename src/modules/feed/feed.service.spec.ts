@@ -1,6 +1,5 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { type Mock, vi } from "vitest";
-import { FeedSort } from "./enums/feed-sort.enum";
 import { InvalidCursorError } from "./errors/invalid-cursor.error";
 import { FeedService } from "./feed.service";
 import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
@@ -51,7 +50,7 @@ describe("FeedService", () => {
 			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(expect.objectContaining({ limit: PAGE_SIZE + 1 }));
 		});
 
-		it("should use default sort LATEST when not provided", async () => {
+		it("should query without a cursor when pagination has not started", async () => {
 			mockRepository.getFeedItems.mockResolvedValue([]);
 
 			await service.getFeed({});
@@ -69,25 +68,26 @@ describe("FeedService", () => {
 			mockRepository.getFeedItems.mockResolvedValue(items);
 
 			const encodedCursor = CursorUtils.encodeCursor({
-				sort: FeedSort.LATEST,
 				createdAt: "2026-05-28T10:00:00.000Z",
-				jobId: "12345678-1234-1234-1234-1234567890ab",
+				jobId: "12345678-1234-4234-8234-1234567890ab",
 			});
 
 			const result = await service.getFeed({
 				cursor: encodedCursor,
 			});
 
-			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				expect.objectContaining({
+			expect({
+				repositoryParams: mockRepository.getFeedItems.mock.calls[0]?.[0],
+				itemCount: result.data.length,
+			}).toEqual({
+				repositoryParams: expect.objectContaining({
 					cursor: expect.objectContaining({
 						createdAt: "2026-05-28T10:00:00.000Z",
-						jobId: "12345678-1234-1234-1234-1234567890ab",
+						jobId: "12345678-1234-4234-8234-1234567890ab",
 					}),
 				}),
-			);
-			expect(result.data).toHaveLength(5);
+				itemCount: 5,
+			});
 		});
 
 		it("should return hasMore true and build nextCursor when more results exist", async () => {
@@ -102,9 +102,10 @@ describe("FeedService", () => {
 
 			const result = await service.getFeed({});
 
-			expect(result.data).toHaveLength(PAGE_SIZE);
-			expect(result.pagination.hasMore).toBe(true);
-			expect(result.pagination.nextCursor).toBeTruthy();
+			expect({ itemCount: result.data.length, pagination: result.pagination }).toEqual({
+				itemCount: PAGE_SIZE,
+				pagination: { hasMore: true, nextCursor: expect.any(String) },
+			});
 		});
 
 		it("should return hasMore false and null cursor when no more results", async () => {
@@ -119,16 +120,17 @@ describe("FeedService", () => {
 
 			const result = await service.getFeed({});
 
-			expect(result.data).toHaveLength(PAGE_SIZE - 5);
-			expect(result.pagination.hasMore).toBe(false);
-			expect(result.pagination.nextCursor).toBeNull();
+			expect({ itemCount: result.data.length, pagination: result.pagination }).toEqual({
+				itemCount: PAGE_SIZE - 5,
+				pagination: { hasMore: false, nextCursor: null },
+			});
 		});
 
 		it("should throw on invalid cursor", async () => {
 			await expect(service.getFeed({ cursor: "invalid-cursor" })).rejects.toThrow(InvalidCursorError);
 		});
 
-		it("should map raw results to FeedItemOutputDto", async () => {
+		it("should map raw database results to the feed-item output contract", async () => {
 			const items = [
 				createMockFeedItemRaw({
 					id: "job-1",
@@ -139,22 +141,20 @@ describe("FeedService", () => {
 
 			const result = await service.getFeed({});
 
-			expect(result.data[0]!.jobId).toBe("job-1");
-			expect(result.data[0]!.title).toBe("Help unload truck");
-			expect(result.data[0]!.payment.type).toBe("FIXED");
-			expect(result.data[0]!.payment.minAmount).toBe(150.0);
-			expect(result.data[0]!.location.neighborhood).toBe("Centro");
+			expect(result.data[0]).toMatchObject({
+				jobId: "job-1",
+				title: "Help unload truck",
+				payment: { type: "FIXED", minAmount: 150 },
+				location: { neighborhood: "Centro" },
+			});
 		});
 
-		it("should return PaginatedResponseDto structure", async () => {
+		it("should return data with pagination metadata", async () => {
 			mockRepository.getFeedItems.mockResolvedValue([]);
 
 			const result = await service.getFeed({});
 
-			expect(result).toHaveProperty("data");
-			expect(result).toHaveProperty("pagination");
-			expect(result.pagination).toHaveProperty("hasMore");
-			expect(result.pagination).toHaveProperty("nextCursor");
+			expect(result).toMatchObject({ data: [], pagination: { hasMore: false, nextCursor: null } });
 		});
 	});
 });

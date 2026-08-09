@@ -19,6 +19,12 @@
       "skillPath": "plugins/ask-questions-if-underspecified/skills/ask-questions-if-underspecified/SKILL.md",
       "computedHash": "e78cf8dd5cb5861bd606ce450ed305051bd09998429f81c33eaab9c87db96272"
     },
+    "backend-architect": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/backend-architect/SKILL.md",
+      "computedHash": "54823d87ab527c8080d13e98229fd473d271295dc84a01eef09c683af66a3642"
+    },
     "biome": {
       "source": "bobmatnyc/claude-mpm-skills",
       "sourceType": "github",
@@ -30,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/.curated/cloudflare-deploy/SKILL.md",
       "computedHash": "72e2f6fec78aecc84994c1c23e74fcd7f09328c8ab61ff12d957a956e1784179"
+    },
+    "database-optimizer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/database-optimizer/SKILL.md",
+      "computedHash": "2feb5b0765151417dab90bf014df41514386e4bdb25aad9ab38498c0bd18a1d8"
     },
     "docker-expert": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -72,6 +84,12 @@
       "sourceType": "github",
       "skillPath": "skills/nestjs-expert/SKILL.md",
       "computedHash": "0775f4ba14e4f372b894cc86feb0bf58a51b2038bc98b3ff18f2021565cea494"
+    },
+    "performance-engineer": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/performance-engineer/SKILL.md",
+      "computedHash": "bf844ba60df30fe294541fe22e90eed18b4341d3270dc8599f0c4bfcf5e40c58"
     },
     "pnpm": {
       "source": "antfu/skills",

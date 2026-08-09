@@ -1,15 +1,16 @@
 import { Module } from "@nestjs/common";
 import { AiModule } from "../ai/ai.module";
-import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
+import { AuthModule } from "../auth/auth.module";
+import { LocationModule } from "../location/location.module";
+import { UserModule } from "../user/user.module";
 import { JobController } from "./job.controller";
-import { JobInternalController } from "./job.internal-controller";
-import { JobLocationService } from "./job-location.service";
+import { JobQueueController } from "./job.queue.controller";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 
 @Module({
-	imports: [AiModule],
-	controllers: [JobController, JobInternalController],
-	providers: [JobRepository, DeriveJobDataPublisher, JobLocationService, JobService],
+	imports: [AiModule, AuthModule, LocationModule, UserModule],
+	controllers: [JobController, JobQueueController],
+	providers: [JobRepository, JobService],
 })
 export class JobModule {}

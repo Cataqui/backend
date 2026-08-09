@@ -1,15 +1,22 @@
+import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { JobStatus } from "../../../generated/prisma/client.js";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
-import { DeriveJobDataPublisher } from "./derive-job-data.publisher";
-import { CreateJobDraftRequestDto } from "./dto/create-job-draft-request.dto";
+import { LocationService } from "../location/location.service";
+import { UserService } from "../user/user.service";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobService } from "./job.service";
-import { JobLocationService } from "./job-location.service";
 import { JobRepository } from "./repositories/job.repository";
 
+const outboundCallMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../platform/cloudflare/containers/api/outbound/api-container-outbound", () => ({
+	outboundCall: outboundCallMock,
+}));
+
 const createdAt = new Date("2026-07-30T12:00:00.000Z");
+const posterUserId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const persistedDraft = {
 	id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 	title: null,
@@ -39,7 +46,6 @@ const persistedDraft = {
 describe("JobService job data derivation", () => {
 	let service: JobService;
 	let aiService: { generateObject: ReturnType<typeof vi.fn> };
-	let deriveJobDataPublisher: { publish: ReturnType<typeof vi.fn> };
 	let jobRepository: {
 		createDraft: ReturnType<typeof vi.fn>;
 		findById: ReturnType<typeof vi.fn>;
@@ -48,8 +54,8 @@ describe("JobService job data derivation", () => {
 
 	beforeEach(async () => {
 		vi.restoreAllMocks();
+		outboundCallMock.mockReset().mockResolvedValue(new Response(null, { status: 204 }));
 		aiService = { generateObject: vi.fn() };
-		deriveJobDataPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
 		jobRepository = {
 			createDraft: vi.fn(),
 			findById: vi.fn(),
@@ -60,9 +66,12 @@ describe("JobService job data derivation", () => {
 			providers: [
 				JobService,
 				{ provide: AiService, useValue: aiService },
-				{ provide: DeriveJobDataPublisher, useValue: deriveJobDataPublisher },
 				{ provide: JobRepository, useValue: jobRepository },
-				{ provide: JobLocationService, useValue: { fuzzLocationCoordinate: vi.fn() } },
+				{
+					provide: UserService,
+					useValue: { getOrAddContact: vi.fn() },
+				},
+				{ provide: LocationService, useValue: { fuzzCoordinate: vi.fn() } },
 			],
 		}).compile();
 
@@ -73,7 +82,8 @@ describe("JobService job data derivation", () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 
 		const result = await service.createDraft({
-			dto: Object.assign(new CreateJobDraftRequestDto(), { description: persistedDraft.description }),
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
 		expect(result).toMatchObject({ title: null, descriptionSummary: null });
@@ -83,7 +93,8 @@ describe("JobService job data derivation", () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 
 		await service.createDraft({
-			dto: Object.assign(new CreateJobDraftRequestDto(), { description: persistedDraft.description }),
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
 		expect(aiService.generateObject).not.toHaveBeenCalled();
@@ -93,17 +104,82 @@ describe("JobService job data derivation", () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 
 		await service.createDraft({
-			dto: Object.assign(new CreateJobDraftRequestDto(), { description: persistedDraft.description }),
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
-		expect(deriveJobDataPublisher.publish).toHaveBeenCalledWith({ jobId: persistedDraft.id });
+		expect(outboundCallMock).toHaveBeenCalledWith({
+			host: "derive-job-data.queue",
+			body: { jobId: persistedDraft.id },
+		});
+	});
+
+	it("should not fail draft creation when the Queue operation is unavailable", async () => {
+		jobRepository.createDraft.mockResolvedValue(persistedDraft);
+		outboundCallMock.mockResolvedValue(new Response(null, { status: 503 }));
+		vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await expect(
+			service.createDraft({
+				posterUserId: posterUserId,
+				dto: Object.assign({}, { description: persistedDraft.description }),
+			}),
+		).resolves.toBeDefined();
+	});
+
+	it("should log an unsuccessful Queue operation without its response body", async () => {
+		jobRepository.createDraft.mockResolvedValue(persistedDraft);
+		outboundCallMock.mockResolvedValue(new Response("private body", { status: 503 }));
+		const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await service.createDraft({
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
+		});
+
+		expect(loggerError).toHaveBeenCalledWith({
+			event: "job_data_derivation.queue_publish_failed",
+			jobId: persistedDraft.id,
+			status: 503,
+		});
+	});
+
+	it("should not fail draft creation when the outbound host cannot be reached", async () => {
+		jobRepository.createDraft.mockResolvedValue(persistedDraft);
+		outboundCallMock.mockRejectedValue(new Error("outbound host unavailable"));
+		vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await expect(
+			service.createDraft({
+				posterUserId: posterUserId,
+				dto: Object.assign({}, { description: persistedDraft.description }),
+			}),
+		).resolves.toBeDefined();
+	});
+
+	it("should log outbound transport failures without their error details", async () => {
+		jobRepository.createDraft.mockResolvedValue(persistedDraft);
+		outboundCallMock.mockRejectedValue(new Error("private transport details"));
+		const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await service.createDraft({
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
+		});
+
+		expect(loggerError).toHaveBeenCalledWith({
+			event: "job_data_derivation.queue_publish_failed",
+			jobId: persistedDraft.id,
+			status: null,
+		});
 	});
 
 	it("should not write feed metadata while creating a draft", async () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 
 		await service.createDraft({
-			dto: Object.assign(new CreateJobDraftRequestDto(), { description: persistedDraft.description }),
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
 		expect(jobRepository.updateDerivedJobDataIfDescriptionUnchanged).not.toHaveBeenCalled();
@@ -277,6 +353,28 @@ describe("JobService job data derivation", () => {
 		const result = await service.getDerivedJobDataFromDescription({ description: "Uma descrição válida." });
 
 		expect(result.descriptionSummary).toBe("A".repeat(116));
+	});
+
+	it("should preserve a generated title longer than the preferred display length", async () => {
+		aiService.generateObject.mockResolvedValue({
+			title: "A".repeat(161),
+			description_summary: "Resumo válido",
+		});
+
+		const result = await service.getDerivedJobDataFromDescription({ description: "Uma descrição válida." });
+
+		expect(result.title).toBe("A".repeat(161));
+	});
+
+	it("should preserve a generated summary longer than the preferred display length", async () => {
+		aiService.generateObject.mockResolvedValue({
+			title: "Título válido",
+			description_summary: "A".repeat(501),
+		});
+
+		const result = await service.getDerivedJobDataFromDescription({ description: "Uma descrição válida." });
+
+		expect(result.descriptionSummary).toBe("A".repeat(501));
 	});
 
 	it("should reject a non-object generated value", async () => {

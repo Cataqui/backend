@@ -1,7 +1,5 @@
 import { registerAs } from "@nestjs/config";
 
-export const DATABASE_CONFIG_KEY = "database";
-
 export interface IDatabaseConfig {
 	appPoolerUrl: string;
 	statementTimeoutMs: number;
@@ -11,7 +9,7 @@ export interface IDatabaseConfig {
 }
 
 export const databaseConfig = registerAs(
-	DATABASE_CONFIG_KEY,
+	"database",
 	(): IDatabaseConfig => ({
 		appPoolerUrl: process.env["DATABASE_APP_POOLER_URL"]!,
 		statementTimeoutMs: 5_000,

@@ -53,8 +53,8 @@ describe("Infisical Upstash credential synchronization", () => {
 		});
 	});
 
-	it("should write generated credentials only to the application deployment folder", () => {
-		expect(synchronizationActionSource.match(/--path="\/application\/deploy"/g)?.length).toBe(1);
+	it("should write generated credentials only to the runtime folder", () => {
+		expect(synchronizationActionSource.match(/--path="\/runtime"/g)?.length).toBe(1);
 	});
 
 	it("should mask sensitive values and avoid custom Infisical REST requests", () => {

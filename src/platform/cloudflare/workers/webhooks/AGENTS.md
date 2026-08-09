@@ -1,0 +1,68 @@
+# AGENTS.md — Webhooks Worker
+
+## 1. Runtime Behavior Over Test Workarounds
+
+Do not change production code or introduce a compatibility workaround merely because the current test runtime cannot execute a Cloudflare Workers API.
+
+The deployed Cloudflare Workers runtime is authoritative for this subproject. When an API is supported by Workers but unavailable in Node.js, Vitest, or another local test environment:
+
+- do not replace it with a Node-specific alternative;
+- do not add a package, polyfill, adapter, fallback, or production indirection solely for tests;
+- do not duplicate the runtime primitive's implementation inside tests;
+- leave that primitive without direct unit coverage when it cannot be exercised in its real runtime;
+- test the surrounding application behavior at a legitimate boundary without pretending to test the unavailable primitive.
+
+Prefer a real `workerd` integration test only when the behavior warrants the additional infrastructure. Test limitations never override correct production behavior.
+
+## 2. Cloudflare-Native APIs First
+
+Before implementing custom Worker logic, always research whether Cloudflare Workers or the web-platform runtime already provides the required capability.
+
+- Check current official Cloudflare Workers documentation, runtime compatibility information, and changelog before writing a custom implementation.
+- Prefer a supported Cloudflare or standard web-platform API over handwritten encoding, cryptography, request handling, streaming, routing, limits, or compatibility logic.
+- Confirm that the configured Worker compatibility date supports the native API before adopting it.
+- Do not add a dependency, polyfill, Node-specific alternative, or custom implementation when the deployed Workers runtime already provides the capability.
+- Keep custom logic only when no suitable native capability exists or when the domain behavior is specific to Cataquí.
+
+## Worker Purpose
+
+This Hono Worker is Cataquí's public ingress for provider webhooks. It authenticates provider requests at the edge, rejects irrelevant or unsafe traffic, normalizes accepted events into owned contracts, and publishes them to Cloudflare Queues.
+
+The Worker must remain an ingress boundary. It must not create users, mutate durable application state, execute payment or authentication business rules, call API containers synchronously, or send provider replies.
+
+Each provider owns its public webhook route, signature boundary, provider payload schemas, and provider-to-Cataquí parsing. Business modules such as inbound-message authentication remain route-free and operate only on normalized provider data. A provider route may invoke several business modules so one callback can support multiple use cases without provider behavior leaking into those modules. Do not scaffold a module before its integration is being implemented.
+
+## Provider Boundaries
+
+- Verify provider signatures against the exact raw request bytes before parsing the payload.
+- Keep provider-owned payload field names unchanged at the provider boundary.
+- Convert accepted events into the shared camelCase Queue contract before publication.
+- Never enqueue raw provider bodies, plaintext authentication codes, unrelated message text, or unnecessary provider data.
+- Keep provider-specific parsing, identifiers, secrets, and validation inside the owning provider module.
+- Share a utility only when its contract genuinely applies across provider modules.
+
+## Security and Logging
+
+- Use Cloudflare Workers runtime APIs directly when they provide the required security primitive.
+- Keep secrets in Worker bindings and never hardcode or log them.
+- Log only structured event names, counts, response statuses, and safe operational measurements.
+- Never log request bodies, signatures, authentication codes, access tokens, sender identifiers, phone numbers, or secrets.
+- Return quickly after durable Queue publication; application work belongs to Queue consumers.
+
+## Error Boundaries
+
+- Let unexpected request-stream, runtime, cryptographic, Queue-binding, and internal failures propagate to Hono's global error boundary.
+- Do not add a local `try/catch` merely to log another event and return the same generic `500` response as the global boundary.
+- Add a local `try/catch` only when it performs meaningful recovery or cleanup, translates an expected provider failure into a deliberately different response, or preserves required retry or acknowledgement semantics.
+- Do not misclassify programming errors, previously consumed request bodies, or runtime failures as ordinary provider input failures.
+
+## Validation
+
+Run focused tests for the changed module, then validate the complete Worker and repository with:
+
+```bash
+pnpm typecheck
+pnpm lint:check
+```
+
+Use `pnpm cf:dev:webhooks` for isolated Webhooks Worker behavior when a runtime-specific API cannot execute under the standard Vitest environment. Use `pnpm cf:dev` when the behavior must cross the local Queue into the API Worker and container.

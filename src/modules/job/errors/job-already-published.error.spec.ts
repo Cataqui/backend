@@ -3,7 +3,7 @@ import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { JobAlreadyPublishedError } from "./job-already-published.error";
 
 describe("JobAlreadyPublishedError", () => {
-	it("should explain that only draft jobs can be published", () => {
+	it("should explain why a closed job cannot be published again", () => {
 		const error = new JobAlreadyPublishedError();
 
 		expect({
@@ -13,7 +13,8 @@ describe("JobAlreadyPublishedError", () => {
 		}).toEqual({
 			code: ErrorCode.JOB_ALREADY_PUBLISHED,
 			status: HttpStatus.CONFLICT,
-			message: "The job cannot be published because it was already published. Only draft jobs can be published.",
+			message:
+				"The job cannot be published because it is closed. Repeating publication is allowed only while the job remains active.",
 		});
 	});
 });

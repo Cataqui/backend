@@ -7,6 +7,7 @@ export default defineConfig({
 		include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
 		env: {
 			NODE_ENV: "test",
+			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
 			DATABASE_APP_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",
@@ -18,7 +19,7 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			include: ["src/**/*.ts"],
-			exclude: ["src/main.ts", "src/app.module.ts", "src/**/index.ts", "src/**/*.module.ts"],
+			exclude: ["src/main.ts", "src/bootstrap.ts", "src/app.module.ts", "src/**/index.ts", "src/**/*.module.ts"],
 			thresholds: {
 				lines: 90,
 				functions: 90,

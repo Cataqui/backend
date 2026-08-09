@@ -33,20 +33,18 @@ describe("DomainError", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with error_code and message", () => {
+		it("should return object with errorCode and message", () => {
 			const error = new TestNotFoundError("Item not found");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.NOT_FOUND);
-			expect(response).toHaveProperty("message", "Item not found");
+			expect(response).toEqual({ errorCode: ErrorCode.NOT_FOUND, message: "Item not found" });
 		});
 
-		it("should return snake_case keys, not camelCase", () => {
+		it("should return camelCase keys", () => {
 			const error = new TestValidationError("Bad input");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code");
-			expect(response).not.toHaveProperty("errorCode");
+			expect(Object.keys(response)).toEqual(["errorCode", "message"]);
 		});
 	});
 

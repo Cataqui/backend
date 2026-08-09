@@ -10,7 +10,7 @@ import {
 import { type AiGateway, createAiGateway } from "ai-gateway-provider";
 import { createUnified } from "ai-gateway-provider/providers/unified";
 import { AiTask } from "./ai-task.enum";
-import { AI_CONFIG_KEY, aiConfig } from "./ai.config";
+import { aiConfig } from "./ai.config";
 
 @Injectable()
 export class AiService {
@@ -18,7 +18,7 @@ export class AiService {
 	private readonly _unifiedProvider: ReturnType<typeof createUnified>;
 
 	constructor(
-		@Inject(AI_CONFIG_KEY)
+		@Inject(aiConfig.KEY)
 		config: ConfigType<typeof aiConfig>,
 	) {
 		this._gateway = createAiGateway({

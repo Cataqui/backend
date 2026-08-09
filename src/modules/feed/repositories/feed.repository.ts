@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { JobPaymentAmountPeriod, JobPaymentType, JobStatus } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import type { IFeedPaginationCursor } from "../interfaces/feed-pagination-cursor.interface";
+import type { FeedPaginationCursor } from "../schemas/feed-pagination-cursor.schema";
 
 export interface FeedItemRaw {
 	id: string;
@@ -23,10 +23,18 @@ export interface FeedItemRaw {
 export class FeedRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async getFeedItems(params: { cursor?: IFeedPaginationCursor | undefined; limit: number }): Promise<FeedItemRaw[]> {
+	async getFeedItems(params: { cursor?: FeedPaginationCursor | undefined; limit: number }): Promise<FeedItemRaw[]> {
 		const results = await this._prisma.job.findMany({
 			where: {
 				status: JobStatus.ACTIVE,
+				title: { not: null },
+				descriptionSummary: { not: null },
+				paymentType: { not: null },
+				paymentAmountPeriod: { not: null },
+				paymentCurrency: { not: null },
+				neighborhood: { not: null },
+				fuzzyLatitude: { not: null },
+				fuzzyLongitude: { not: null },
 				...(params.cursor
 					? {
 							OR: [

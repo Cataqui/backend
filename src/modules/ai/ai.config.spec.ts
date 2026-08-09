@@ -1,4 +1,4 @@
-import { AI_CONFIG_KEY, aiConfig, type IAiConfig } from "./ai.config";
+import { aiConfig, type IAiConfig } from "./ai.config";
 
 describe("aiConfig", () => {
 	const originalEnv = process.env;
@@ -12,7 +12,7 @@ describe("aiConfig", () => {
 	});
 
 	it("should return the correct config key", () => {
-		expect(AI_CONFIG_KEY).toBe("ai");
+		expect(aiConfig.KEY).toBe("CONFIGURATION(ai)");
 	});
 
 	it("should load cloudflareAccountId from CLOUDFLARE_ACCOUNT_ID", () => {

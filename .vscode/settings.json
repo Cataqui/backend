@@ -3,8 +3,10 @@
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"source.fixAll.biome": "always",
-		    "source.organizeImports.biome": "explicit"
+		"source.organizeImports.biome": "explicit"
 	},
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+	"typescript.tsdk": "node_modules/typescript/lib",
 	"[prisma]": {
 		"editor.defaultFormatter": "Prisma.prisma"
 	}

@@ -5,7 +5,7 @@ on:
     branches: [staging, main]
     paths:
       - 'infra/**'
-      - 'wrangler.jsonc'
+      - 'src/platform/cloudflare/workers/**/wrangler.jsonc'
       - '.github/dependabot.yml'
       - '.github/actions/**'
       - '.github/workflows/cloudflare-terraform-components-validate.yml'

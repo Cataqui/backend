@@ -2,7 +2,7 @@
 
 ## Scope
 
-These instructions apply to every file under `infra/` and supplement the repository root instructions.
+These instructions apply to the infrastructure scope containing this file and supplement the repository root instructions.
 
 ## Terraform Type Safety
 

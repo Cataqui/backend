@@ -1,5 +1,5 @@
 name: Load Infisical secrets
-description: Fetch and validate one isolated Cataquí deployment credential profile through GitHub OIDC
+description: Fetch a Cataquí secret folder and expose only the credentials selected by a deployment profile
 
 inputs:
   environment:
@@ -16,6 +16,9 @@ inputs:
     required: true
 
 outputs:
+  auth_refresh_token_hmac_key_v1_base64url:
+    description: Environment-specific base64url-encoded V1 refresh-token HMAC key
+    value: ${{ steps.action-inputs.outputs.auth_refresh_token_hmac_key_v1_base64url }}
   ai_gateway_api_token:
     description: Cloudflare AI Gateway API token
     value: ${{ steps.action-inputs.outputs.ai_gateway_api_token }}
@@ -37,6 +40,15 @@ outputs:
   database_app_pooler_url:
     description: Pooled PostgreSQL application-role URL for the Cloudflare runtime
     value: ${{ steps.action-inputs.outputs.database_app_pooler_url }}
+  whatsapp_auth_access_token:
+    description: Meta WhatsApp Cloud API access token
+    value: ${{ steps.action-inputs.outputs.whatsapp_auth_access_token }}
+  meta_app_secret:
+    description: Meta application secret used to authenticate WhatsApp webhooks
+    value: ${{ steps.action-inputs.outputs.meta_app_secret }}
+  whatsapp_auth_webhook_verify_token:
+    description: Shared token used for Meta WhatsApp webhook registration
+    value: ${{ steps.action-inputs.outputs.whatsapp_auth_webhook_verify_token }}
   hcp_terraform_organization:
     description: HCP Terraform organization
     value: ${{ steps.action-inputs.outputs.hcp_terraform_organization }}
@@ -68,7 +80,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Verify the isolated Infisical target
+    - name: Verify the Infisical target
       id: profile
       shell: bash
       env:
@@ -97,13 +109,13 @@ runs:
         secret_path="$(jq --exit-status --raw-output --arg profile "$INFISICAL_PROFILE" '.[$profile].secretPath // empty' .github/actions/load-infisical-secrets/profiles.json)"
 
         if [[ ! "$secret_path" =~ ^/[a-z0-9/-]+$ || "$secret_path" == "/" ]]; then
-          echo "profile must identify an isolated credential folder in .github/actions/load-infisical-secrets/profiles.json" >&2
+          echo "profile must identify a credential folder in .github/actions/load-infisical-secrets/profiles.json" >&2
           exit 1
         fi
 
         echo "secret_path=$secret_path" >> "$GITHUB_OUTPUT"
 
-    - name: Fetch the isolated profile from Infisical
+    - name: Fetch the profile folder from Infisical
       uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
       with:
         method: "oidc"

@@ -8,8 +8,11 @@ on:
       - 'prisma/**'
       - 'infra/**'
       - 'Dockerfile'
-      - 'wrangler.jsonc'
+      - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
       - '.github/actions/**'
       - '.github/workflows/deploy-production.yml'
 
@@ -229,7 +232,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
@@ -295,15 +298,33 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
+      - name: Load API runtime credentials from Infisical
+        id: api-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: api-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Load webhooks runtime credentials from Infisical
+        id: webhooks-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: webhooks-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
       - name: Load application deployment credentials from Infisical
-        id: infisical
+        id: deployment-credentials
         uses: ./.github/actions/load-infisical-secrets
         with:
           environment: production
@@ -311,14 +332,25 @@ jobs:
           profile: application-deploy
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
 
-      - name: Deploy and verify the Cloudflare application
-        uses: ./.github/actions/deploy-cloudflare-application
+      - name: Deploy and verify the Cloudflare API Worker
+        uses: ./.github/actions/deploy-cloudflare-api-worker
         with:
           environment: production
           health-url: https://api.cataqui.com/v1/health
-          cloudflare-api-token: ${{ steps.infisical.outputs.cloudflare_deployment_api_token }}
-          cloudflare-account-id: ${{ steps.infisical.outputs.cloudflare_account_id }}
-          database-app-pooler-url: ${{ steps.infisical.outputs.database_app_pooler_url }}
-          ai-gateway-api-token: ${{ steps.infisical.outputs.ai_gateway_api_token }}
-          upstash-redis-rest-url: ${{ steps.infisical.outputs.upstash_redis_rest_url }}
-          upstash-redis-rest-token: ${{ steps.infisical.outputs.upstash_redis_rest_token }}
+          cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
+          cloudflare-account-id: ${{ steps.api-runtime-credentials.outputs.cloudflare_account_id }}
+          database-app-pooler-url: ${{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}
+          ai-gateway-api-token: ${{ steps.api-runtime-credentials.outputs.ai_gateway_api_token }}
+          auth-refresh-token-hmac-key-v1-base64url: ${{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}
+          upstash-redis-rest-url: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}
+          upstash-redis-rest-token: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}
+
+      - name: Deploy and verify the webhooks Worker
+        uses: ./.github/actions/deploy-cloudflare-webhooks-worker
+        with:
+          environment: production
+          readiness-url: https://webhooks.cataqui.com/whatsapp
+          cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
+          cloudflare-account-id: ${{ steps.webhooks-runtime-credentials.outputs.cloudflare_account_id }}
+          meta-app-secret: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
+          whatsapp-auth-webhook-verify-token: ${{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}

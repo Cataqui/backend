@@ -1,16 +1,21 @@
 import { Body, Controller, type INestApplication, Param, Patch } from "@nestjs/common";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
-import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from "@nestjs/swagger";
+import type { OpenAPIObject } from "@nestjs/swagger";
 import { Test } from "@nestjs/testing";
-import { GetJobRequestParamsDto } from "../dto/get-job-request-params.dto";
-import { UpdateJobRequestDto } from "../dto/update-job-request.dto";
+import type { z } from "zod";
+import { AppSwagger } from "../../../core/app.swagger";
+import { GetJobInputSchema } from "../schemas/get-job-input.schema";
+import { UpdateJobInputSchema } from "../schemas/update-job-input.schema";
 import { ApiUpdateJobDocs } from "./api-update-job-docs.decorator";
 
-@Controller("job")
+@Controller("jobs")
 class UpdateJobDocsTestController {
-	@Patch(":job_id")
+	@Patch(":jobId")
 	@ApiUpdateJobDocs()
-	update(@Param() _params: GetJobRequestParamsDto, @Body() _dto: UpdateJobRequestDto): void {}
+	update(
+		@Param({ schema: GetJobInputSchema }) _params: z.infer<typeof GetJobInputSchema>,
+		@Body({ schema: UpdateJobInputSchema }) _dto: z.infer<typeof UpdateJobInputSchema>,
+	): void {}
 }
 
 describe("ApiUpdateJobDocs", () => {
@@ -20,7 +25,9 @@ describe("ApiUpdateJobDocs", () => {
 	beforeAll(async () => {
 		const module = await Test.createTestingModule({ controllers: [UpdateJobDocsTestController] }).compile();
 		app = module.createNestApplication(new FastifyAdapter());
-		document = SwaggerModule.createDocument(app, new DocumentBuilder().build());
+		const swaggerDocument = AppSwagger.setup(app);
+		if (swaggerDocument === undefined) throw new Error("Swagger must be enabled while testing its documentation");
+		document = swaggerDocument;
 	});
 
 	afterAll(async () => {
@@ -28,59 +35,86 @@ describe("ApiUpdateJobDocs", () => {
 	});
 
 	it("should explain how consumers partially update a job and every documented outcome", () => {
-		const operation = document.paths["/job/{job_id}"]?.patch;
+		const operation = document.paths["/jobs/{jobId}"]?.patch;
+		const jobIdParameter = operation?.parameters?.[0];
 
 		expect({
 			summary: operation?.summary,
 			description: operation?.description,
-			jobIdParameter: operation?.parameters?.[0],
+			jobIdParameter:
+				jobIdParameter && "in" in jobIdParameter
+					? {
+							name: jobIdParameter.name,
+							required: jobIdParameter.required,
+							in: jobIdParameter.in,
+							description: jobIdParameter.description,
+						}
+					: jobIdParameter,
 			requestBody: operation?.requestBody,
 			responses: operation?.responses,
 		}).toEqual({
-			summary: "Update a job",
+			summary: "Update a public job",
 			description:
-				"Updates the fields supplied in the request and leaves all other fields unchanged. This works for both drafts and published jobs",
+				"Updates an active or closed public job and leaves omitted fields unchanged. A description change refreshes its derived metadata before saving, so the public response always matches the current description. Each authenticated user may submit up to 60 public-job updates per hour.",
 			jobIdParameter: {
-				name: "job_id",
+				name: "jobId",
 				required: true,
 				in: "path",
-				description: "ID of the draft or published job to update.",
-				schema: {
-					type: "string",
-					format: "uuid",
-					example: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-				},
+				description: "ID of the public job to update.",
 			},
 			requestBody: {
 				required: true,
 				content: {
 					"application/json": {
-						schema: { $ref: "#/components/schemas/UpdateJobRequestDto" },
+						schema: { $ref: "#/components/schemas/UpdateJobInput" },
 					},
 				},
 			},
 			responses: {
 				200: {
-					description:
-						"The job was updated. When the description changes, the title other derived info may still be refreshing.",
+					description: "The public job was updated and returned with complete public fields.",
 					content: {
-						"application/json": { schema: { $ref: "#/components/schemas/JobOutputDto" } },
+						"application/json": { schema: { $ref: "#/components/schemas/PublicJobOutputSuccessResponse" } },
 					},
 				},
 				400: {
 					description:
 						"The request is invalid in some way, e.g. an invalid field, incomplete nested object, etc. No changes were saved.",
 					content: {
-						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutputDto" } },
+						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } },
+					},
+				},
+				401: {
+					description: "A valid bearer access token is required.",
+					content: {
+						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } },
 					},
 				},
 				404: {
-					description: "No job exists with the supplied job_id.",
+					description: "No public job owned by the authenticated user exists with the supplied jobId.",
 					content: {
-						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutputDto" } },
+						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } },
+					},
+				},
+				429: {
+					description: "The authenticated user has submitted 60 job updates during the current one-hour window.",
+					headers: {
+						"Retry-After": {
+							description: "Seconds until another job-update request may be attempted.",
+							schema: { type: "integer", example: 300 },
+						},
+					},
+					content: {
+						"application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } },
 					},
 				},
 			},
 		});
+	});
+
+	it("should document bearer authentication for job updates", () => {
+		const operation = document.paths["/jobs/{jobId}"]?.patch;
+
+		expect(operation?.security).toEqual([{ bearer: [] }]);
 	});
 });

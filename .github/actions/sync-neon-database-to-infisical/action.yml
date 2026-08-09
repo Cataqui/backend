@@ -100,7 +100,7 @@ runs:
           "DATABASE_APP_POOLER_URL=$DATABASE_APP_POOLER_URL" \
           --domain="$INFISICAL_API_URL" \
           --env="$INFISICAL_ENVIRONMENT" \
-          --path="/application/deploy" \
+          --path="/runtime" \
           --projectId="$INFISICAL_PROJECT_ID" \
           --silent \
           --telemetry=false
@@ -111,7 +111,7 @@ runs:
           "NEON_PROJECT_ID=$NEON_PROJECT_ID" \
           --domain="$INFISICAL_API_URL" \
           --env="$INFISICAL_ENVIRONMENT" \
-          --path="/database/migration" \
+          --path="/database" \
           --projectId="$INFISICAL_PROJECT_ID" \
           --silent \
           --telemetry=false

@@ -34,10 +34,10 @@ describe("RequestUtils", () => {
 			expect(result).toBe("/v1/posts/abc123");
 		});
 
-		it("should return request.url with query string", () => {
-			const request = createMockRequest({}, "/v1/feed?cursor=abc&limit=20");
+		it("should remove query values from the resolved endpoint", () => {
+			const request = createMockRequest({}, "/v1/feed?cursor=secret-token");
 			const result = RequestUtils.resolveEndpoint(request);
-			expect(result).toBe("/v1/feed?cursor=abc&limit=20");
+			expect(result).toBe("/v1/feed");
 		});
 	});
 

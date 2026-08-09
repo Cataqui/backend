@@ -6,7 +6,7 @@ export class JobAlreadyPublishedError extends DomainError {
 	constructor() {
 		super(
 			ErrorCode.JOB_ALREADY_PUBLISHED,
-			"The job cannot be published because it was already published. Only draft jobs can be published.",
+			"The job cannot be published because it is closed. Repeating publication is allowed only while the job remains active.",
 			HttpStatus.CONFLICT,
 		);
 	}

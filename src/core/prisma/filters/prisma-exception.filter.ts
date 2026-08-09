@@ -1,10 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from "@nestjs/common";
-import { instanceToPlain } from "class-transformer";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { RequestUtils } from "../../../shared/utils/request.utils";
 import { ErrorCode } from "../../errors/error-code.enum.js";
-import { ErrorOutputDto } from "../../errors/error-output.dto.js";
+import { toErrorOutput } from "../../errors/error-output.js";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
@@ -53,23 +52,22 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
 		const mapping = PRISMA_ERROR_MAP[exception.code];
 		const sanitizedMeta = this._sanitizeMeta(exception.meta);
+		const endpoint = RequestUtils.resolveEndpoint(request);
 
 		const logMetadata = {
 			code: exception.code,
 			meta: sanitizedMeta,
 			method: request.method,
-			url: request.url,
-			message: exception.message,
+			endpoint: endpoint,
 		};
 
 		if (mapping) {
 			this._logger.warn(
-				`Prisma error ${exception.code} on ${request.method} ${request.url} - Meta: ${JSON.stringify(sanitizedMeta)}`,
+				`Prisma error ${exception.code} on ${request.method} ${endpoint} - Meta: ${JSON.stringify(sanitizedMeta)}`,
 			);
 		} else {
 			this._logger.error(
-				`Unhandled Prisma database error ${exception.code} on ${request.method} ${request.url}`,
-				exception.stack,
+				`Unhandled Prisma database error ${exception.code} on ${request.method} ${endpoint}`,
 				JSON.stringify(logMetadata),
 			);
 		}
@@ -78,15 +76,15 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
 		const userMessage = mapping?.message ?? "An unexpected database error occurred.";
 
-		const body = new ErrorOutputDto(
-			errorCode,
-			userMessage,
-			status,
-			RequestUtils.resolveRequestId(request),
-			new Date().toISOString(),
-			RequestUtils.resolveEndpoint(request),
-		);
+		const body = toErrorOutput({
+			errorCode: errorCode,
+			message: userMessage,
+			status: status,
+			requestId: RequestUtils.resolveRequestId(request),
+			timestamp: new Date().toISOString(),
+			endpoint: RequestUtils.resolveEndpoint(request),
+		});
 
-		response.status(status).send(instanceToPlain(body));
+		response.status(status).send(body);
 	}
 }

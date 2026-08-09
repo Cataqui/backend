@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { JobStatus, type JobContactMethod, type Prisma } from "../../../../generated/prisma/client.js";
+import { JobStatus, type Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 
 @Injectable()
@@ -13,10 +13,83 @@ export class JobRepository {
 		});
 	}
 
-	async createDraft(params: { description: string }): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
+	async findPublicById(params: {
+		jobId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }> | null> {
+		return this._prisma.job.findFirst({
+			where: {
+				id: params.jobId,
+				status: { not: JobStatus.DRAFT },
+			},
+			include: { contact: true },
+		});
+	}
+
+	async findActiveJobContact(params: {
+		contactId: string;
+		jobId: string;
+	}): Promise<Prisma.JobContactGetPayload<Record<string, never>> | null> {
+		const job = await this._prisma.job.findFirst({
+			where: {
+				id: params.jobId,
+				contactId: params.contactId,
+				status: JobStatus.ACTIVE,
+			},
+			select: { contact: true },
+		});
+
+		return job?.contact ?? null;
+	}
+
+	async findByIdFromPoster(params: {
+		jobId: string;
+		posterUserId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }> | null> {
+		return this._prisma.job.findFirst({
+			where: {
+				id: params.jobId,
+				posterUserId: params.posterUserId,
+			},
+			include: { contact: true },
+		});
+	}
+
+	async findDraftByIdFromPoster(params: {
+		jobId: string;
+		posterUserId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }> | null> {
+		return this._prisma.job.findFirst({
+			where: {
+				id: params.jobId,
+				posterUserId: params.posterUserId,
+				status: JobStatus.DRAFT,
+			},
+			include: { contact: true },
+		});
+	}
+
+	async findPublicByIdFromPoster(params: {
+		jobId: string;
+		posterUserId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }> | null> {
+		return this._prisma.job.findFirst({
+			where: {
+				id: params.jobId,
+				posterUserId: params.posterUserId,
+				status: { not: JobStatus.DRAFT },
+			},
+			include: { contact: true },
+		});
+	}
+
+	async createDraft(params: {
+		description: string;
+		posterUserId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
 		return this._prisma.job.create({
 			data: {
 				description: params.description,
+				posterUserId: params.posterUserId,
 				descriptionSummary: null,
 				title: null,
 				status: JobStatus.DRAFT,
@@ -53,73 +126,52 @@ export class JobRepository {
 
 	async update(params: {
 		jobId: string;
+		posterUserId: string;
 		data: Prisma.JobUncheckedUpdateInput;
-		contact?: {
-			contactMethod: JobContactMethod;
-			identifier: string;
-		};
 		locationPoint?: {
 			latitude: number;
 			longitude: number;
 		};
-	}): Promise<void> {
-		await this._prisma.$transaction(async (tx) => {
-			await tx.job.update({
-				where: { id: params.jobId },
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
+		return this._prisma.$transaction(async (tx) => {
+			const updatedJob = await tx.job.update({
+				where: {
+					id: params.jobId,
+					posterUserId: params.posterUserId,
+				},
 				data: {
 					...params.data,
-					...(params.contact && {
-						contact: {
-							upsert: {
-								create: {
-									contactMethod: params.contact.contactMethod,
-									identifier: params.contact.identifier,
-								},
-								update: {
-									contactMethod: params.contact.contactMethod,
-									identifier: params.contact.identifier,
-								},
-							},
-						},
-					}),
 				},
+				include: { contact: true },
 			});
 
-			if (!params.locationPoint) return;
+			if (!params.locationPoint) return updatedJob;
 
 			await tx.$executeRaw`
 				UPDATE "jobs"
 				SET "location_point" = ST_SetSRID(ST_MakePoint(${params.locationPoint.longitude}, ${params.locationPoint.latitude}), 4326)
 				WHERE "id" = ${params.jobId}::uuid
+				AND "poster_user_id" = ${params.posterUserId}::uuid
 			`;
+
+			return updatedJob;
 		});
 	}
 
-	async publishDraft(params: { jobId: string }): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
+	async publishDraft(params: {
+		jobId: string;
+		posterUserId: string;
+	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
 		return this._prisma.job.update({
 			where: {
 				id: params.jobId,
+				posterUserId: params.posterUserId,
 				status: JobStatus.DRAFT,
 			},
 			data: {
 				status: JobStatus.ACTIVE,
 			},
 			include: { contact: true },
-		});
-	}
-
-	async findContactByIdAndJobId(params: {
-		contactId: string;
-		jobId: string;
-	}): Promise<Prisma.JobContactGetPayload<Record<string, never>> | null> {
-		return this._prisma.jobContact.findFirst({
-			where: {
-				id: params.contactId,
-				jobId: params.jobId,
-				job: {
-					status: { not: JobStatus.DRAFT },
-				},
-			},
 		});
 	}
 }

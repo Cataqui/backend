@@ -16,10 +16,8 @@ yarn.lock
 bun.lock
 bun.lockb
 
-# Cloudflare Worker
+# Cloudflare Workers
 .wrangler/
-.dev.vars
-.dev.vars.*
 
 # Terraform
 .terraform/
@@ -40,4 +38,3 @@ override.tf.json
 
 # Biome
 .biome/
-

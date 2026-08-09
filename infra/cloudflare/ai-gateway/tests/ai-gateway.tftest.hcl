@@ -14,7 +14,7 @@ run "staging_uses_the_gateway_id_configured_in_the_worker" {
 
   assert {
     condition     = output.gateway_id == "staging"
-    error_message = "The staging AI Gateway ID must match the Gateway configured in wrangler.jsonc."
+    error_message = "The staging AI Gateway ID must match the Gateway configured in the API Worker's wrangler.jsonc."
   }
 }
 
@@ -28,7 +28,7 @@ run "production_uses_the_gateway_id_configured_in_the_worker" {
 
   assert {
     condition     = output.gateway_id == "production"
-    error_message = "The production AI Gateway ID must match the Gateway configured in wrangler.jsonc."
+    error_message = "The production AI Gateway ID must match the Gateway configured in the API Worker's wrangler.jsonc."
   }
 }
 

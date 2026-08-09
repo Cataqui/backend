@@ -3,4 +3,4 @@
 /.github/dependabot.yml @Cataqui/security
 /.github/actions/ @Cataqui/ci-cd
 /.github/workflows/ @Cataqui/ci-cd
-/wrangler.jsonc @Cataqui/backend
+/src/platform/cloudflare/workers/*/wrangler.jsonc @Cataqui/backend
