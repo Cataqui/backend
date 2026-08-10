@@ -5,6 +5,7 @@ import ts from "typescript";
 type WorkerEnvironment = {
 	name: string;
 	workers_dev?: boolean;
+	containers?: Array<{ constraints?: { regions?: string[] } }>;
 	observability?: { logs?: { enabled?: boolean; head_sampling_rate?: number; invocation_logs?: boolean } };
 	vars: { API_CONTAINER_POOL_SIZE?: string; WHATSAPP_AUTH_PHONE_NUMBER_ID?: string };
 	queues?: {
@@ -24,7 +25,6 @@ type WorkerEnvironment = {
 
 type WorkerConfig = WorkerEnvironment & {
 	main: string;
-	containers?: unknown[];
 	durable_objects?: unknown;
 	env: Record<"staging" | "production", WorkerEnvironment>;
 };
@@ -181,6 +181,14 @@ describe("Webhooks Worker configuration", () => {
 			api: apiConfig.env.production.observability?.logs?.invocation_logs,
 			webhooks: webhooksConfig.env.production.observability?.logs?.invocation_logs,
 		}).toEqual({ api: false, webhooks: false });
+	});
+
+	it("should keep every API container close to the South American application data", () => {
+		expect(
+			[apiConfig, apiConfig.env.staging, apiConfig.env.production].map(
+				(config) => config.containers?.[0]?.constraints?.regions,
+			),
+		).toEqual([["SAM"], ["SAM"], ["SAM"]]);
 	});
 
 	it("should configure API container pool sizes without forwarding the Worker-only size to Nest", () => {
