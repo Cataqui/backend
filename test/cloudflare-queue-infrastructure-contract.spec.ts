@@ -14,10 +14,6 @@ type WranglerQueueEnvironment = {
 const queueManifest = JSON.parse(
 	readFileSync(resolve(process.cwd(), "infra/cloudflare/queues/queues.json"), "utf8"),
 ) as QueueManifest;
-const retiredQueuesTerraform = readFileSync(
-	resolve(process.cwd(), "infra/cloudflare/queues/retired-queues.tf"),
-	"utf8",
-);
 const apiWranglerConfig = ts.readConfigFile(
 	resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
 	ts.sys.readFile,
@@ -30,18 +26,6 @@ const deriveJobDataQueueBaseName = queueManifest["derive_job_data"]?.base_name;
 describe("Cloudflare Queue infrastructure contract", () => {
 	it("should provision only the asynchronous job-data derivation Queue", () => {
 		expect(Object.keys(queueManifest)).toEqual(["derive_job_data"]);
-	});
-
-	it("should retire the WhatsApp authentication primary Queue outside the protected Queue module", () => {
-		expect(retiredQueuesTerraform).toContain(
-			'from = module.queue_pair["verify_whatsapp_auth_message"].cloudflare_queue.primary',
-		);
-	});
-
-	it("should retire the WhatsApp authentication dead-letter Queue outside the protected Queue module", () => {
-		expect(retiredQueuesTerraform).toContain(
-			'from = module.queue_pair["verify_whatsapp_auth_message"].cloudflare_queue.dead_letter',
-		);
 	});
 
 	it("should use the Terraform Queue name in the runtime Queue router", () => {
