@@ -62,7 +62,7 @@ describe("ApiExchangeInboundMessageAuthIntentDocs", () => {
 					headers: {
 						"Retry-After": {
 							description: "Seconds the client should wait before polling this endpoint again.",
-							schema: { type: "integer", example: 2 },
+							schema: { type: "integer", example: 1 },
 						},
 					},
 					content: {
