@@ -1,15 +1,17 @@
 # Move the retired WhatsApp authentication Queues out of the protected shared
-# module before destroying them. The remaining registered Queues keep their
-# prevent_destroy lifecycle through module.queue_pair.
+# module while the previously deployed Workers release their bindings. A
+# follow-up deployment removes the retained resources after the new Workers
+# are live. The remaining registered Queues keep their prevent_destroy
+# lifecycle through module.queue_pair.
 resource "cloudflare_queue" "retired_whatsapp_auth_primary" {
-  count = 0
+  count = 1
 
   account_id = var.cloudflare_account_id
   queue_name = "cataqui-api-verify-whatsapp-auth-message-${var.environment}"
 }
 
 resource "cloudflare_queue" "retired_whatsapp_auth_dead_letter" {
-  count = 0
+  count = 1
 
   account_id = var.cloudflare_account_id
   queue_name = "cataqui-api-verify-whatsapp-auth-message-${var.environment}-dlq"
