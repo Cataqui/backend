@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { enqueueMessages } from "../../../../queues/queue";
-import { getInboundMessageAuthQueueMessageOrNull } from "../inbound-message-auth/inbound-message-auth.utils";
+import { inboundCall } from "../../../../containers/api/inbound/api-container-inbound";
 import { isWebhookFromMeta } from "../../shared/meta.utils";
+import { getInboundMessageAuthInputOrNull } from "../inbound-message-auth/inbound-message-auth.utils";
 import { getTextMessagesFromWhatsappWebhook } from "./whatsapp-messages-webhook.parser";
 
 export const whatsappRoutes = new Hono<{ Bindings: WebhooksWorkerEnv }>();
@@ -55,11 +55,12 @@ whatsappRoutes.post("/", async (context) => {
 	const receivedTextMessages = getTextMessagesFromWhatsappWebhook({
 		requestBody: JSON.parse(new TextDecoder().decode(rawBody)),
 	});
-	const authQueueMessageCandidates = await Promise.all(
+
+	const authMessageCandidates = await Promise.all(
 		receivedTextMessages
 			.filter((message) => message.recipientPhoneNumberId === context.env.WHATSAPP_AUTH_PHONE_NUMBER_ID)
 			.map((message) =>
-				getInboundMessageAuthQueueMessageOrNull({
+				getInboundMessageAuthInputOrNull({
 					providerMessageId: message.providerMessageId,
 					providerSenderId: message.providerSenderId,
 					providerContactIdentifier: message.providerContactIdentifier,
@@ -67,14 +68,21 @@ whatsappRoutes.post("/", async (context) => {
 				}),
 			),
 	);
-	const authQueueMessages = authQueueMessageCandidates.filter((message) => message !== null);
+	const authMessages = authMessageCandidates.filter((message) => message !== null);
 
-	if (authQueueMessages.length === 0) return context.body(null, 200);
+	if (authMessages.length === 0) return context.body(null, 200);
 
-	await enqueueMessages({
-		messages: authQueueMessages,
-		queue: context.env.VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE,
-	});
+	const responses = await Promise.all(
+		authMessages.map((message) =>
+			inboundCall({
+				worker: context.env.API_WORKER,
+				receiver: "verify-whatsapp-auth-message",
+				body: message,
+			}),
+		),
+	);
+
+	if (responses.some((response) => !response.ok)) throw new Error("API Worker rejected WhatsApp authentication");
 
 	return context.body(null, 200);
 });

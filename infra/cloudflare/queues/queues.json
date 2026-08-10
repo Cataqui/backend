@@ -3,10 +3,5 @@
 		"base_name": "cataqui-api-derive-job-data",
 		"primary_message_retention_seconds": 345600,
 		"dead_letter_message_retention_seconds": 1209600
-	},
-	"verify_whatsapp_auth_message": {
-		"base_name": "cataqui-api-verify-whatsapp-auth-message",
-		"primary_message_retention_seconds": 900,
-		"dead_letter_message_retention_seconds": 86400
 	}
 }

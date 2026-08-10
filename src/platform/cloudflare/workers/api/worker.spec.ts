@@ -7,11 +7,21 @@ vi.mock("@cloudflare/containers", () => ({
 	getRandom: getRandomMock,
 }));
 
+vi.mock("cloudflare:workers", () => ({
+	WorkerEntrypoint: class {
+		protected env: unknown;
+
+		constructor(_context: unknown, environment: unknown) {
+			this.env = environment;
+		}
+	},
+}));
+
 vi.mock("../../queues/queue", () => ({
 	routeQueueBatch: routeMock,
 }));
 
-import worker from "./worker";
+import worker, { ApiContainerInboundEntrypoint } from "./worker";
 
 describe("API Worker", () => {
 	beforeEach(() => {
@@ -100,5 +110,79 @@ describe("API Worker", () => {
 		);
 
 		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/example", { method: "POST" });
+	});
+
+	it("should deliver a valid WhatsApp authentication message directly to a random API container", async () => {
+		const containerFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+		const apiContainerBinding = {};
+		getRandomMock.mockResolvedValue({ containerFetch: containerFetch });
+		const entrypoint = new ApiContainerInboundEntrypoint(
+			{} as never,
+			{
+				API_CONTAINER: apiContainerBinding,
+				API_CONTAINER_POOL_SIZE: "3",
+			} as never,
+		);
+		const message = {
+			providerMessageId: "wamid.message",
+			providerSenderId: "provider-sender-id",
+			providerContactIdentifier: "+5511999999999",
+			authCodeHash: "a".repeat(64),
+		};
+
+		await entrypoint.deliverInbound({ receiver: "verify-whatsapp-auth-message", body: message });
+
+		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/inbound/verify-whatsapp-auth-message", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(message),
+		});
+	});
+
+	it("should reject an invalid direct WhatsApp authentication message before selecting a container", async () => {
+		const entrypoint = new ApiContainerInboundEntrypoint(
+			{} as never,
+			{
+				API_CONTAINER: {},
+				API_CONTAINER_POOL_SIZE: "3",
+			} as never,
+		);
+
+		const response = await entrypoint.deliverInbound({
+			receiver: "verify-whatsapp-auth-message",
+			body: {
+				providerMessageId: "wamid.message",
+				providerSenderId: "provider-sender-id",
+				providerContactIdentifier: "+5511999999999",
+				authCodeHash: "plaintext-code",
+			},
+		});
+
+		expect(response.status).toBe(400);
+	});
+
+	it("should return the container rejection to the calling Webhooks Worker", async () => {
+		getRandomMock.mockResolvedValue({
+			containerFetch: vi.fn().mockResolvedValue(new Response(null, { status: 500 })),
+		});
+		const entrypoint = new ApiContainerInboundEntrypoint(
+			{} as never,
+			{
+				API_CONTAINER: {},
+				API_CONTAINER_POOL_SIZE: "3",
+			} as never,
+		);
+
+		const response = await entrypoint.deliverInbound({
+			receiver: "verify-whatsapp-auth-message",
+			body: {
+				providerMessageId: "wamid.message",
+				providerSenderId: "provider-sender-id",
+				providerContactIdentifier: "+5511999999999",
+				authCodeHash: "a".repeat(64),
+			},
+		});
+
+		expect(response.status).toBe(500);
 	});
 });

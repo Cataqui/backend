@@ -3,6 +3,11 @@
 	"compilerOptions": {
 		"lib": ["ESNext"]
 	},
-	"include": ["./**/*.ts", "../../queues/inbound-message-auth/**/*.ts"],
+	"files": ["../api/api-worker-env.d.ts"],
+	"include": [
+		"./**/*.ts",
+		"../../containers/api/inbound/**/*.ts",
+		"../../contracts/**/*.ts"
+	],
 	"exclude": ["../api"]
 }

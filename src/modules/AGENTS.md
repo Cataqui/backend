@@ -29,12 +29,10 @@ Prefer:
 Updates the supplied draft fields and leaves omitted fields unchanged.
 ```
 
-## Internal Controller File Names
+## Container Controller File Names
 
-- Name every NestJS Queue-consumer controller with the `*.queue.controller.ts` filename pattern.
-- Name its corresponding colocated test `*.queue.controller.spec.ts`.
-- Queue controllers may directly coordinate a small, single-use Queue delivery workflow across existing application and provider services. Keep database access, Redis operations, reusable domain rules, and substantial provider behavior in their owning services or repositories.
-- Do not create a service whose only purpose is to mirror one Queue endpoint. Extract the workflow when it becomes substantial, gains another caller, or represents independently meaningful domain behavior.
-- Reserve `*.internal-controller.ts` for a container-callable internal controller that is not a Queue consumer.
-- Name its corresponding colocated test `*.internal-controller.spec.ts`.
+- Name every controller reached through the API container inbound boundary with the `*.inbound.controller.ts` filename pattern and its colocated test `*.inbound.controller.spec.ts`, regardless of whether the Worker received the work synchronously or from a Queue.
+- Use `@InboundController()` and `@InboundReceiver(...)` for inbound controllers. Keep their request schema explicit on `@Body({ schema })` and infer the parameter type directly from that Zod schema.
+- Inbound controllers may directly coordinate a small, single-use delivery workflow across existing application and provider services. Keep database access, Redis operations, reusable domain rules, and substantial provider behavior in their owning services or repositories.
+- Do not create a service whose only purpose is to mirror one inbound receiver. Extract the workflow when it becomes substantial, gains another caller, or represents independently meaningful domain behavior.
 - Keep public or externally called controllers on the standard `*.controller.ts` pattern.

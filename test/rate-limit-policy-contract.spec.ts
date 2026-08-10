@@ -5,11 +5,11 @@ import { AppController } from "../src/app.controller";
 import { RateLimitConstants } from "../src/core/throttle/rate-limit.constants";
 import { AuthSessionController } from "../src/modules/auth/auth-session.controller";
 import { InboundMessageAuthController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.controller";
-import { InboundMessageAuthQueueController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.queue.controller";
+import { InboundMessageAuthInboundController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.inbound.controller";
 import { FeedController } from "../src/modules/feed/feed.controller";
 import { HealthController } from "../src/modules/health/health.controller";
 import { JobController } from "../src/modules/job/job.controller";
-import { JobQueueController } from "../src/modules/job/job.queue.controller";
+import { JobInboundController } from "../src/modules/job/job.inbound.controller";
 
 const reflector = new Reflector();
 
@@ -52,8 +52,8 @@ describe("endpoint rate-limit policy contract", () => {
 		["session inspection", AuthSessionController, "getCurrentSession"],
 		["current-session logout", AuthSessionController, "logoutCurrentSession"],
 		["all-session revocation", AuthSessionController, "revokeAllSessions"],
-		["queued job derivation", JobQueueController, "deriveData"],
-		["queued WhatsApp auth verification", InboundMessageAuthQueueController, "verifyWhatsappAuthMessage"],
+		["inbound job derivation", JobInboundController, "deriveData"],
+		["direct WhatsApp auth verification", InboundMessageAuthInboundController, "verifyWhatsappAuthMessage"],
 	] as const)("should leave %s without an application-level request budget", (_name, controller, method) => {
 		expect(_getPolicy(controller, method)).toEqual({ requests: undefined, milliseconds: undefined });
 	});

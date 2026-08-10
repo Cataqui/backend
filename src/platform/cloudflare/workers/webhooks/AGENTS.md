@@ -26,9 +26,9 @@ Before implementing custom Worker logic, always research whether Cloudflare Work
 
 ## Worker Purpose
 
-This Hono Worker is Cataquí's public ingress for provider webhooks. It authenticates provider requests at the edge, rejects irrelevant or unsafe traffic, normalizes accepted events into owned contracts, and publishes them to Cloudflare Queues.
+This Hono Worker is Cataquí's public ingress for provider webhooks. It authenticates provider requests at the edge, rejects irrelevant or unsafe traffic, and normalizes accepted events into owned contracts.
 
-The Worker must remain an ingress boundary. It must not create users, mutate durable application state, execute payment or authentication business rules, call API containers synchronously, or send provider replies.
+The Worker must remain an ingress boundary. It must not create users, mutate durable application state, execute payment or authentication business rules, or send provider replies. Latency-sensitive delivery may call a narrowly scoped named API Worker entrypoint through a private Service Binding. Use a Queue only when the workflow explicitly requires buffering or durable asynchronous retries.
 
 Each provider owns its public webhook route, signature boundary, provider payload schemas, and provider-to-Cataquí parsing. Business modules such as inbound-message authentication remain route-free and operate only on normalized provider data. A provider route may invoke several business modules so one callback can support multiple use cases without provider behavior leaking into those modules. Do not scaffold a module before its integration is being implemented.
 
@@ -36,8 +36,8 @@ Each provider owns its public webhook route, signature boundary, provider payloa
 
 - Verify provider signatures against the exact raw request bytes before parsing the payload.
 - Keep provider-owned payload field names unchanged at the provider boundary.
-- Convert accepted events into the shared camelCase Queue contract before publication.
-- Never enqueue raw provider bodies, plaintext authentication codes, unrelated message text, or unnecessary provider data.
+- Convert accepted events into a shared camelCase Cataquí contract before delivery.
+- Never deliver raw provider bodies, plaintext authentication codes, unrelated message text, or unnecessary provider data beyond this boundary.
 - Keep provider-specific parsing, identifiers, secrets, and validation inside the owning provider module.
 - Share a utility only when its contract genuinely applies across provider modules.
 
@@ -47,11 +47,11 @@ Each provider owns its public webhook route, signature boundary, provider payloa
 - Keep secrets in Worker bindings and never hardcode or log them.
 - Log only structured event names, counts, response statuses, and safe operational measurements.
 - Never log request bodies, signatures, authentication codes, access tokens, sender identifiers, phone numbers, or secrets.
-- Return quickly after durable Queue publication; application work belongs to Queue consumers.
+- Await direct application delivery before acknowledging a latency-sensitive provider event. Let delivery failures reach the global error boundary so the provider receives a retryable server error.
 
 ## Error Boundaries
 
-- Let unexpected request-stream, runtime, cryptographic, Queue-binding, and internal failures propagate to Hono's global error boundary.
+- Let unexpected request-stream, runtime, cryptographic, binding, and internal failures propagate to Hono's global error boundary.
 - Do not add a local `try/catch` merely to log another event and return the same generic `500` response as the global boundary.
 - Add a local `try/catch` only when it performs meaningful recovery or cleanup, translates an expected provider failure into a deliberately different response, or preserves required retry or acknowledgement semantics.
 - Do not misclassify programming errors, previously consumed request bodies, or runtime failures as ordinary provider input failures.

@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { getInboundMessageAuthQueueMessageOrNull } from "./inbound-message-auth.utils";
+import { getInboundMessageAuthInputOrNull } from "./inbound-message-auth.utils";
 
 function _createMessage(params?: { text?: string; providerContactIdentifier?: string | undefined }) {
 	return {
@@ -13,7 +13,7 @@ function _createMessage(params?: { text?: string; providerContactIdentifier?: st
 	};
 }
 
-describe("getInboundMessageAuthQueueMessageOrNull", () => {
+describe("getInboundMessageAuthInputOrNull", () => {
 	const originalToHex = Object.getOwnPropertyDescriptor(Uint8Array.prototype, "toHex");
 
 	beforeAll(() => {
@@ -32,10 +32,8 @@ describe("getInboundMessageAuthQueueMessageOrNull", () => {
 		Object.defineProperty(Uint8Array.prototype, "toHex", originalToHex);
 	});
 
-	it("should build a normalized Queue message from one case-insensitive authentication code", async () => {
-		const result = await getInboundMessageAuthQueueMessageOrNull(
-			_createMessage({ text: "Meu código é auth-k7f9q2m8vd." }),
-		);
+	it("should build normalized authentication input from one case-insensitive authentication code", async () => {
+		const result = await getInboundMessageAuthInputOrNull(_createMessage({ text: "Meu código é auth-k7f9q2m8vd." }));
 
 		expect(result).toEqual({
 			providerMessageId: "provider-message-id",
@@ -46,28 +44,26 @@ describe("getInboundMessageAuthQueueMessageOrNull", () => {
 	});
 
 	it("should ignore text without an authentication code", async () => {
-		const result = await getInboundMessageAuthQueueMessageOrNull(_createMessage({ text: "Olá" }));
+		const result = await getInboundMessageAuthInputOrNull(_createMessage({ text: "Olá" }));
 
 		expect(result).toBeNull();
 	});
 
 	it("should ignore text containing more than one authentication code", async () => {
-		const result = await getInboundMessageAuthQueueMessageOrNull(
-			_createMessage({ text: "AUTH-K7F9Q2M8VD AUTH-AAAAAAAAAA" }),
-		);
+		const result = await getInboundMessageAuthInputOrNull(_createMessage({ text: "AUTH-K7F9Q2M8VD AUTH-AAAAAAAAAA" }));
 
 		expect(result).toBeNull();
 	});
 
 	it("should ignore malformed authentication-like text", async () => {
-		const result = await getInboundMessageAuthQueueMessageOrNull(_createMessage({ text: "AUTH-INVALID" }));
+		const result = await getInboundMessageAuthInputOrNull(_createMessage({ text: "AUTH-INVALID" }));
 
 		expect(result).toBeNull();
 	});
 
 	it("should require a contact identifier only after identifying an authentication code", async () => {
 		await expect(
-			getInboundMessageAuthQueueMessageOrNull(_createMessage({ providerContactIdentifier: undefined })),
+			getInboundMessageAuthInputOrNull(_createMessage({ providerContactIdentifier: undefined })),
 		).rejects.toThrow("Inbound-message authentication requires a provider contact identifier");
 	});
 
@@ -79,8 +75,7 @@ describe("getInboundMessageAuthQueueMessageOrNull", () => {
 					minLength: 10,
 					maxLength: 10,
 				}),
-				async (suffix) =>
-					(await getInboundMessageAuthQueueMessageOrNull(_createMessage({ text: `AUTH-${suffix}` }))) !== null,
+				async (suffix) => (await getInboundMessageAuthInputOrNull(_createMessage({ text: `AUTH-${suffix}` }))) !== null,
 			),
 		);
 	});

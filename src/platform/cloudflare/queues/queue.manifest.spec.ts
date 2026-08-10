@@ -1,9 +1,11 @@
-import { getQueueConsumerPath } from "./queue.manifest";
+import { queueManifest } from "./queue.manifest";
 
-describe("getQueueConsumerPath", () => {
-	it("should derive the internal consumer path from a Queue declared in the manifest", () => {
-		expect(getQueueConsumerPath({ queueName: "cataqui-api-derive-job-data" })).toBe(
-			"internal/queues/cataqui-api-derive-job-data",
-		);
+describe("queueManifest", () => {
+	it("should use each Queue base name as its manifest key", () => {
+		expect(Object.keys(queueManifest)).toEqual(["cataqui-api-derive-job-data"]);
+	});
+
+	it("should map every Queue to its typed inbound receiver", () => {
+		expect(queueManifest["cataqui-api-derive-job-data"].inboundReceiver).toBe("derive-job-data");
 	});
 });

@@ -1,12 +1,12 @@
 import type { z } from "zod";
-import { InboundMessageAuthQueueMessageSchema } from "../../../../queues/schemas/inbound-message-auth-queue-message.schema";
+import { VerifyInboundMessageAuthInputSchema } from "../../../../containers/api/inbound/schemas/verify-inbound-message-auth-input.schema";
 
-export async function getInboundMessageAuthQueueMessageOrNull(params: {
+export async function getInboundMessageAuthInputOrNull(params: {
 	providerMessageId: string;
 	providerSenderId: string;
 	providerContactIdentifier: string | undefined;
 	text: string;
-}): Promise<z.infer<typeof InboundMessageAuthQueueMessageSchema> | null> {
+}): Promise<z.infer<typeof VerifyInboundMessageAuthInputSchema> | null> {
 	const authCode = _extractAuthCodeFromText(params.text);
 	if (authCode === null) return null;
 	if (params.providerContactIdentifier === undefined) {

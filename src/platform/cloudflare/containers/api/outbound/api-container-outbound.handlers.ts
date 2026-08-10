@@ -33,8 +33,8 @@ function _createOutboundHandler<BodySchema extends z.ZodType>(params: {
 }
 
 export const apiContainerOutboundHandlers = Object.fromEntries(
-	apiContainerOutboundManifest.map((definition) => [
-		definition.outboundHost,
+	Object.entries(apiContainerOutboundManifest).map(([outboundHost, definition]) => [
+		outboundHost,
 		_createOutboundHandler({ definition: definition }),
 	]),
 ) as Record<ApiContainerOutboundHost, OutboundHandler<ApiWorkerEnv>>;

@@ -108,6 +108,52 @@ Always optimize for:
 - File/media storage: **Cloudflare R2** or S3-compatible storage
 - Test framework: **Vitest**
 
+### Container Communication Model
+
+Treat **inbound** and **outbound** as directions relative to the API container:
+
+```txt
+Public client → API Worker → API container       public HTTP request
+Trusted Worker or Queue → inbound → API container
+API container → outbound → Cloudflare binding or external destination
+```
+
+These names describe a trust and runtime boundary, not a business feature.
+
+#### Public HTTP Requests
+
+- Public clients call the API Worker, which selects an API container and forwards the request through the container's public request boundary.
+- Public NestJS controllers expose versioned user-facing routes normally.
+- Public requests must never reach `/internal` routes. The container boundary rejects the entire internal prefix before forwarding a request to NestJS.
+- Do not use an inbound receiver merely to call another service inside the same NestJS process; use normal dependency injection for in-process calls.
+
+#### Inbound Calls — Work Entering the Container
+
+Use the inbound boundary when trusted Cloudflare infrastructure needs to invoke application behavior inside the API container.
+
+- For a synchronous call from another Worker, call `inboundCall({ worker, receiver, body })`. The `worker` is the caller's private API Worker Service Binding, and the call uses the API Worker's named RPC entrypoint. Never construct a synthetic URL, public HTTP request, or shared-secret header for Worker-to-Worker delivery.
+- For asynchronous work, publish to the Queue normally. The Queue manifest maps the Queue name to a typed `inboundReceiver`; the API Worker owns batching, acknowledgement, retry, and dead-letter behavior before delivering the validated message through the same inbound container boundary.
+- The inbound manifest is the authoritative source for receiver names, input schemas, and the shared internal path prefix. A receiver name passed anywhere must be inferred from this manifest, never repeated as an unrelated string type.
+- `@InboundReceiver("receiver-name")` owns the complete `internal/inbound/receiver-name` route. `@InboundController()` marks the controller boundary but does not contribute a route prefix.
+- NestJS receives inbound work only through controllers marked with `@InboundController()` and methods marked with `@InboundReceiver(...)`. Their files use the `*.inbound.controller.ts` pattern.
+- Inbound controllers may orchestrate application services, but Cloudflare Workers and manifests must not contain NestJS business logic.
+
+#### Outbound Calls — Work Leaving the Container
+
+Use the outbound boundary when NestJS code running inside the container needs a Cloudflare binding or another destination that only the API Worker runtime can access.
+
+- Call `outboundCall({ host, body })` from NestJS. The host must be a typed key from the outbound manifest; never call a virtual outbound hostname with raw `fetch` from feature code.
+- The outbound manifest is the single declaration for each virtual host, its body schema, and its `execute` implementation. The container intercepts that host and runs the implementation in the API Worker runtime, where generated Worker bindings are available.
+- Do not import Worker environment bindings into NestJS modules, forward all Worker bindings into the container, or create feature-specific publisher wrappers around a one-line `outboundCall`.
+
+#### Choosing the Direction
+
+- User or public API request: use a normal public controller.
+- Another Worker needs an immediate application result: use `inboundCall` through its Service Binding.
+- Work must survive, retry, or run asynchronously: publish to a Queue mapped to an `inboundReceiver`.
+- Container code needs to publish to a Queue or use another Worker-only binding: use `outboundCall`.
+- Code is already inside the NestJS process: call the owning service directly through dependency injection.
+
 ### Package Manager Rules
 
 Always use pnpm.
@@ -1031,7 +1077,7 @@ Every public NestJS API endpoint must have Swagger documentation.
 
 Each public controller endpoint must have a dedicated docs decorator or clearly separated docs helper.
 
-Container-only Queue controllers must not be exposed in public Swagger. Their contract is owned by the Queue manifest and its Zod message schema. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
+Container-only inbound controllers must not be exposed in public Swagger. Their contracts are owned by the inbound manifest and its Zod input schemas. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
 
 Swagger docs must explain:
 

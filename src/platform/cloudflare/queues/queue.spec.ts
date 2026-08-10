@@ -1,4 +1,4 @@
-import { enqueueMessages, routeQueueBatch } from "./queue";
+import { routeQueueBatch } from "./queue";
 
 function _buildQueueMessage(params: { body: unknown }) {
 	return {
@@ -10,33 +10,6 @@ function _buildQueueMessage(params: { body: unknown }) {
 		retry: vi.fn(),
 	};
 }
-
-describe("enqueueMessages", () => {
-	it("should enqueue every message", async () => {
-		const send = vi.fn().mockResolvedValue({ metadata: { metrics: {} } });
-
-		await enqueueMessages({ messages: ["first", "second"], queue: { send: send } as never });
-
-		expect(send.mock.calls.map(([message]) => message)).toEqual(["first", "second"]);
-	});
-
-	it("should attempt every message when one Queue publication fails", async () => {
-		const send = vi.fn().mockRejectedValueOnce(new Error("Queue unavailable")).mockResolvedValueOnce({});
-
-		await enqueueMessages({ messages: ["first", "second"], queue: { send: send } as never }).catch(() => undefined);
-
-		expect(send).toHaveBeenCalledTimes(2);
-	});
-
-	it("should throw when any Queue publication fails", async () => {
-		await expect(
-			enqueueMessages({
-				messages: ["message"],
-				queue: { send: vi.fn().mockRejectedValue(new Error("Queue unavailable")) } as never,
-			}),
-		).rejects.toThrow("One or more messages could not be queued");
-	});
-});
 
 describe("routeQueueBatch", () => {
 	beforeEach(() => {
@@ -60,29 +33,6 @@ describe("routeQueueBatch", () => {
 		},
 	);
 
-	it.each(["development", "staging", "production"] as const)(
-		"should deliver WhatsApp-auth messages in %s",
-		async (environment) => {
-			const deliver = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-			const message = _buildQueueMessage({
-				body: {
-					providerMessageId: "wamid.message",
-					providerSenderId: "5511999999999",
-					providerContactIdentifier: "+5511999999999",
-					authCodeHash: "a".repeat(64),
-				},
-			});
-
-			await routeQueueBatch({
-				batch: { queue: `cataqui-api-verify-whatsapp-auth-message-${environment}`, messages: [message] } as never,
-				environment: environment,
-				deliver: deliver,
-			});
-
-			expect(deliver).toHaveBeenCalledOnce();
-		},
-	);
-
 	it("should deliver derive-job-data messages as JSON to the configured internal endpoint", async () => {
 		const deliver = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 		const message = _buildQueueMessage({ body: { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" } });
@@ -94,7 +44,7 @@ describe("routeQueueBatch", () => {
 		});
 
 		expect(deliver).toHaveBeenCalledWith({
-			url: "http://localhost/internal/queues/cataqui-api-derive-job-data",
+			url: "http://localhost/internal/inbound/derive-job-data",
 			requestOptions: {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -115,36 +65,6 @@ describe("routeQueueBatch", () => {
 
 		expect(JSON.parse(deliver.mock.calls[0]?.[0]?.requestOptions.body as string)).toEqual({
 			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-		});
-	});
-
-	it("should deliver WhatsApp-auth messages as JSON to the configured internal endpoint", async () => {
-		const deliver = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-		const message = _buildQueueMessage({
-			body: {
-				providerContactIdentifier: "+5511999999999",
-				providerMessageId: "wamid.message",
-				providerSenderId: "5511999999999",
-				authCodeHash: "a".repeat(64),
-			},
-		});
-
-		await routeQueueBatch({
-			batch: { queue: "cataqui-api-verify-whatsapp-auth-message-development", messages: [message] } as never,
-			environment: "development",
-			deliver: deliver,
-		});
-
-		expect({
-			url: deliver.mock.calls[0]?.[0]?.url,
-			method: deliver.mock.calls[0]?.[0]?.requestOptions.method,
-			headers: deliver.mock.calls[0]?.[0]?.requestOptions.headers,
-			body: JSON.parse(deliver.mock.calls[0]?.[0]?.requestOptions.body as string),
-		}).toEqual({
-			url: "http://localhost/internal/queues/cataqui-api-verify-whatsapp-auth-message",
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: message.body,
 		});
 	});
 
@@ -172,21 +92,6 @@ describe("routeQueueBatch", () => {
 		expect(message.retry).toHaveBeenCalledOnce();
 	});
 
-	it("should not deliver a message rejected by its Queue schema", async () => {
-		const deliver = vi.fn();
-
-		await routeQueueBatch({
-			batch: {
-				queue: "cataqui-api-verify-whatsapp-auth-message-development",
-				messages: [_buildQueueMessage({ body: { type: "unsupported" } })],
-			} as never,
-			environment: "development",
-			deliver: deliver,
-		});
-
-		expect(deliver).not.toHaveBeenCalled();
-	});
-
 	it("should retry a message when the internal endpoint rejects delivery", async () => {
 		const message = _buildQueueMessage({ body: { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" } });
 
@@ -197,21 +102,6 @@ describe("routeQueueBatch", () => {
 		});
 
 		expect(message.retry).toHaveBeenCalledOnce();
-	});
-
-	it("should not attempt a legacy endpoint when the registered endpoint is not found", async () => {
-		const deliver = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
-
-		await routeQueueBatch({
-			batch: {
-				queue: "cataqui-api-derive-job-data-development",
-				messages: [_buildQueueMessage({ body: { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" } })],
-			} as never,
-			environment: "development",
-			deliver: deliver,
-		});
-
-		expect(deliver).toHaveBeenCalledOnce();
 	});
 
 	it("should retry a message when container transport fails", async () => {
@@ -242,11 +132,7 @@ describe("routeQueueBatch", () => {
 		const deliver = vi.fn();
 
 		await routeQueueBatch({
-			batch: {
-				queue: "cataqui-api-verify-whatsapp-auth-message-staging",
-				messages: [],
-				retryAll: vi.fn(),
-			} as never,
+			batch: { queue: "cataqui-api-derive-job-data-staging", messages: [], retryAll: vi.fn() } as never,
 			environment: "production",
 			deliver: deliver,
 		});

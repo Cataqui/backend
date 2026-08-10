@@ -6,14 +6,13 @@
 	"compatibility_date": "2026-08-08",
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": true,
-	"queues": {
-		"producers": [
-			{
-				"binding": "VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE",
-				"queue": "cataqui-api-verify-whatsapp-auth-message-development",
-			},
-		],
-	},
+	"services": [
+		{
+			"binding": "API_WORKER",
+			"service": "cataqui-api-development",
+			"entrypoint": "ApiContainerInboundEntrypoint",
+		},
+	],
 	"vars": {
 		"WHATSAPP_AUTH_PHONE_NUMBER_ID": "1211194405413752",
 	},
@@ -28,14 +27,13 @@
 		"staging": {
 			"name": "cataqui-webhooks-staging",
 			"workers_dev": false,
-			"queues": {
-				"producers": [
-					{
-						"binding": "VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE",
-						"queue": "cataqui-api-verify-whatsapp-auth-message-staging",
-					},
-				],
-			},
+			"services": [
+				{
+					"binding": "API_WORKER",
+					"service": "cataqui-api-staging",
+					"entrypoint": "ApiContainerInboundEntrypoint",
+				},
+			],
 			"routes": [
 				{
 					"pattern": "staging.webhooks.cataqui.com",
@@ -56,14 +54,13 @@
 		"production": {
 			"name": "cataqui-webhooks-production",
 			"workers_dev": false,
-			"queues": {
-				"producers": [
-					{
-						"binding": "VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE",
-						"queue": "cataqui-api-verify-whatsapp-auth-message-production",
-					},
-				],
-			},
+			"services": [
+				{
+					"binding": "API_WORKER",
+					"service": "cataqui-api-production",
+					"entrypoint": "ApiContainerInboundEntrypoint",
+				},
+			],
 			"routes": [
 				{
 					"pattern": "webhooks.cataqui.com",

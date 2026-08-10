@@ -57,12 +57,12 @@ function _buildPayload(params?: {
 	};
 }
 
-function _buildEnv(queueSend: ReturnType<typeof vi.fn>): WebhooksWorkerEnv {
+function _buildEnv(deliverInbound: ReturnType<typeof vi.fn>): WebhooksWorkerEnv {
 	return {
 		META_APP_SECRET: webhookSigningSecret,
 		WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN: "verify-token",
 		WHATSAPP_AUTH_PHONE_NUMBER_ID: "1234567890",
-		VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE: { send: queueSend },
+		API_WORKER: { deliverInbound: deliverInbound },
 	} as never;
 }
 
@@ -176,76 +176,90 @@ describe("WhatsApp routes", () => {
 		expect(response.status).toBe(401);
 	});
 
-	it("should acknowledge unrelated WhatsApp text without contacting the Queue", async () => {
+	it("should acknowledge unrelated WhatsApp text without contacting the API Worker", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
-		const queueSend = vi.fn();
+		const deliverInbound = vi.fn();
 
 		const response = await whatsappRoutes.fetch(
 			_buildPostRequest(JSON.stringify(_buildPayload({ body: "Olá" }))),
-			_buildEnv(queueSend),
+			_buildEnv(deliverInbound),
 		);
 
-		expect({ status: response.status, queueCalls: queueSend.mock.calls.length }).toEqual({
+		expect({ status: response.status, verificationCalls: deliverInbound.mock.calls.length }).toEqual({
 			status: 200,
-			queueCalls: 0,
+			verificationCalls: 0,
 		});
 	});
 
-	it("should acknowledge malformed authentication text without contacting the Queue", async () => {
+	it("should acknowledge malformed authentication text without contacting the API Worker", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
-		const queueSend = vi.fn();
+		const deliverInbound = vi.fn();
 
 		const response = await whatsappRoutes.fetch(
 			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD AUTH-AAAAAAAAAA" }))),
-			_buildEnv(queueSend),
+			_buildEnv(deliverInbound),
 		);
 
-		expect({ status: response.status, queueCalls: queueSend.mock.calls.length }).toEqual({
+		expect({ status: response.status, verificationCalls: deliverInbound.mock.calls.length }).toEqual({
 			status: 200,
-			queueCalls: 0,
+			verificationCalls: 0,
 		});
 	});
 
-	it("should enqueue a normalized authentication message received by the configured WhatsApp number", async () => {
+	it("should send a normalized authentication message directly to the API Worker", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
-		const queueSend = vi.fn().mockResolvedValue(undefined);
+		const deliverInbound = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 
 		await whatsappRoutes.fetch(
 			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
-			_buildEnv(queueSend),
+			_buildEnv(deliverInbound),
 		);
 
-		expect(queueSend).toHaveBeenCalledWith({
-			providerMessageId: "wamid.message",
-			providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
-			providerContactIdentifier: "cataqui.user",
-			authCodeHash: "a".repeat(64),
+		expect(deliverInbound).toHaveBeenCalledWith({
+			receiver: "verify-whatsapp-auth-message",
+			body: {
+				providerMessageId: "wamid.message",
+				providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+				providerContactIdentifier: "cataqui.user",
+				authCodeHash: "a".repeat(64),
+			},
 		});
 	});
 
 	it("should ignore authentication messages received by a different WhatsApp number", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
-		const queueSend = vi.fn();
+		const deliverInbound = vi.fn();
 
 		const response = await whatsappRoutes.fetch(
 			_buildPostRequest(
 				JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD", phoneNumberId: "different-phone-number-id" })),
 			),
-			_buildEnv(queueSend),
+			_buildEnv(deliverInbound),
 		);
 
-		expect({ status: response.status, queueCalls: queueSend.mock.calls.length }).toEqual({
+		expect({ status: response.status, verificationCalls: deliverInbound.mock.calls.length }).toEqual({
 			status: 200,
-			queueCalls: 0,
+			verificationCalls: 0,
 		});
 	});
 
-	it("should return 500 when a valid authentication message cannot be queued", async () => {
+	it("should return 500 when the API Worker cannot verify a valid authentication message", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 
 		const response = await whatsappRoutes.fetch(
 			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
-			_buildEnv(vi.fn().mockRejectedValue(new Error("Queue unavailable"))),
+			_buildEnv(vi.fn().mockRejectedValue(new Error("API unavailable"))),
+		);
+
+		expect(response.status).toBe(500);
+	});
+
+	it("should return 500 when the API Worker rejects a valid authentication message", async () => {
+		isWebhookFromMetaMock.mockResolvedValue(true);
+
+		const response = await whatsappRoutes.fetch(
+			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
+			_buildEnv(vi.fn().mockResolvedValue(new Response(null, { status: 500 }))),
 		);
 
 		expect(response.status).toBe(500);

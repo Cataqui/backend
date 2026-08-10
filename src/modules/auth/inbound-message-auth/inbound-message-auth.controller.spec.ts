@@ -66,7 +66,7 @@ describe("InboundMessageAuthController", () => {
 	});
 
 	it("should return 202 and a polling delay while the intent is pending", async () => {
-		const pending = { status: "PENDING" as const, retryAfterSeconds: 2 };
+		const pending = { status: "PENDING" as const, retryAfterSeconds: 1 };
 		inboundMessageAuthService.exchangeIntentForSession.mockResolvedValue(pending);
 		const reply = { header: vi.fn(), status: vi.fn() };
 
@@ -81,7 +81,7 @@ describe("InboundMessageAuthController", () => {
 			statusCalls: reply.status.mock.calls,
 		}).toEqual({
 			result: pending,
-			retryAfterHeader: ["Retry-After", "2"],
+			retryAfterHeader: ["Retry-After", "1"],
 			statusCalls: [],
 		});
 	});
@@ -157,7 +157,7 @@ describe("InboundMessageAuthController", () => {
 	});
 
 	it("should return the existing pending polling contract", async () => {
-		inboundMessageAuthService.exchangeIntentForSession.mockResolvedValue({ status: "PENDING", retryAfterSeconds: 2 });
+		inboundMessageAuthService.exchangeIntentForSession.mockResolvedValue({ status: "PENDING", retryAfterSeconds: 1 });
 		const module = await Test.createTestingModule({
 			controllers: [InboundMessageAuthController],
 			providers: [{ provide: InboundMessageAuthService, useValue: inboundMessageAuthService }],
@@ -188,8 +188,8 @@ describe("InboundMessageAuthController", () => {
 		}).toEqual({
 			statusCode: 202,
 			cacheControl: "no-store",
-			retryAfter: "2",
-			data: { status: "PENDING", retryAfterSeconds: 2 },
+			retryAfter: "1",
+			data: { status: "PENDING", retryAfterSeconds: 1 },
 		});
 	});
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const InboundMessageAuthQueueMessageSchema = z
+export const VerifyInboundMessageAuthInputSchema = z
 	.object({
 		providerMessageId: z.string().min(1).max(512),
 		providerSenderId: z.string().min(1).max(512),

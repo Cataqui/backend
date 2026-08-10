@@ -1,13 +1,9 @@
-import { getQueueConsumerPath, queueManifest } from "./queue.manifest";
+import { apiContainerInboundManifest } from "../containers/api/inbound/api-container-inbound.manifest";
+import { getInboundCallUrl } from "../containers/api/inbound/utils";
+import { queueManifest, type QueueName } from "./queue.manifest";
 
-export async function enqueueMessages<MessageBody>(params: {
-	messages: MessageBody[];
-	queue: Queue<MessageBody>;
-}): Promise<void> {
-	const results = await Promise.allSettled(params.messages.map((message) => params.queue.send(message)));
-	if (results.every((result) => result.status === "fulfilled")) return;
-
-	throw new Error("One or more messages could not be queued");
+function _isQueueName(value: string | null): value is QueueName {
+	return value !== null && Object.hasOwn(queueManifest, value);
 }
 
 export async function routeQueueBatch(params: {
@@ -20,11 +16,12 @@ export async function routeQueueBatch(params: {
 		? params.batch.queue.slice(0, -environmentSuffix.length)
 		: null;
 
-	const queueManifestEntry = queueManifest.find((entry) => entry.queueBaseName === queueBaseName);
+	if (_isQueueName(queueBaseName)) {
+		const queueManifestEntry = queueManifest[queueBaseName];
+		const inboundManifestEntry = apiContainerInboundManifest[queueManifestEntry.inboundReceiver];
 
-	if (queueManifestEntry !== undefined) {
 		for (const message of params.batch.messages) {
-			const messageResult = queueManifestEntry.messageSchema.safeParse(message.body);
+			const messageResult = inboundManifestEntry.bodySchema.safeParse(message.body);
 
 			if (!messageResult.success) {
 				console.error({ event: "queue.message_invalid", queue: params.batch.queue, messageId: message.id });
@@ -37,7 +34,7 @@ export async function routeQueueBatch(params: {
 
 			try {
 				const response = await params.deliver({
-					url: `http://localhost/${getQueueConsumerPath({ queueName: queueManifestEntry.queueBaseName })}`,
+					url: getInboundCallUrl({ receiver: queueManifestEntry.inboundReceiver }),
 					requestOptions: {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },

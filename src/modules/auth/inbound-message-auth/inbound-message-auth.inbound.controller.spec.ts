@@ -1,45 +1,32 @@
 import { VERSION_NEUTRAL, VersioningType } from "@nestjs/common";
-import { PATH_METADATA, VERSION_METADATA } from "@nestjs/common/constants";
+import { VERSION_METADATA } from "@nestjs/common/constants";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { InboundMessageAuthChannel } from "./enums/inbound-message-auth-channel.enum";
-import { InboundMessageAuthQueueController } from "./inbound-message-auth.queue.controller";
+import { InboundMessageAuthInboundController } from "./inbound-message-auth.inbound.controller";
 import { InboundMessageAuthService } from "./inbound-message-auth.service";
 
-describe("InboundMessageAuthQueueController", () => {
-	let controller: InboundMessageAuthQueueController;
+describe("InboundMessageAuthInboundController", () => {
+	let controller: InboundMessageAuthInboundController;
 	let testingModule: TestingModule;
 	let inboundMessageAuthService: { verifyAuthMessage: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		inboundMessageAuthService = { verifyAuthMessage: vi.fn() };
 		testingModule = await Test.createTestingModule({
-			controllers: [InboundMessageAuthQueueController],
+			controllers: [InboundMessageAuthInboundController],
 			providers: [{ provide: InboundMessageAuthService, useValue: inboundMessageAuthService }],
 		}).compile();
-		controller = testingModule.get(InboundMessageAuthQueueController);
+		controller = testingModule.get(InboundMessageAuthInboundController);
 	});
 
-	it("should expose WhatsApp delivery at its typed Queue consumer route", () => {
-		expect({
-			controllerPath: Reflect.getMetadata(PATH_METADATA, InboundMessageAuthQueueController),
-			methodPath: Reflect.getMetadata(
-				PATH_METADATA,
-				InboundMessageAuthQueueController.prototype.verifyWhatsappAuthMessage,
-			),
-		}).toEqual({
-			controllerPath: "internal/queues",
-			methodPath: "cataqui-api-verify-whatsapp-auth-message",
-		});
-	});
-
-	it("should keep Queue delivery outside public URI versioning", () => {
+	it("should keep direct Worker delivery outside public URI versioning", () => {
 		expect(
-			Reflect.getMetadata(VERSION_METADATA, InboundMessageAuthQueueController.prototype.verifyWhatsappAuthMessage),
+			Reflect.getMetadata(VERSION_METADATA, InboundMessageAuthInboundController.prototype.verifyWhatsappAuthMessage),
 		).toBe(VERSION_NEUTRAL);
 	});
 
-	it("should accept the exact unversioned path called by the Queue consumer", async () => {
+	it("should accept the exact unversioned path called by the API Worker", async () => {
 		inboundMessageAuthService.verifyAuthMessage.mockResolvedValue(undefined);
 		const app = testingModule.createNestApplication(new FastifyAdapter());
 		app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
@@ -50,7 +37,7 @@ describe("InboundMessageAuthQueueController", () => {
 			.getInstance()
 			.inject({
 				method: "POST",
-				url: "/internal/queues/cataqui-api-verify-whatsapp-auth-message",
+				url: "/internal/inbound/verify-whatsapp-auth-message",
 				payload: {
 					providerMessageId: "wamid.message",
 					providerSenderId: "5511999999999",
@@ -63,7 +50,7 @@ describe("InboundMessageAuthQueueController", () => {
 		expect(response.statusCode).toBe(204);
 	});
 
-	it("should pass the authentication code to the shared verification workflow without sending a reply", async () => {
+	it("should pass the WhatsApp identity and authentication code to the shared verification workflow", async () => {
 		inboundMessageAuthService.verifyAuthMessage.mockResolvedValue(undefined);
 
 		await controller.verifyWhatsappAuthMessage({
@@ -82,7 +69,7 @@ describe("InboundMessageAuthQueueController", () => {
 		});
 	});
 
-	it("should propagate verification failures so Queue delivery can retry", async () => {
+	it("should propagate verification failures to the Webhooks Worker", async () => {
 		inboundMessageAuthService.verifyAuthMessage.mockRejectedValue(new Error("redis unavailable"));
 
 		await expect(

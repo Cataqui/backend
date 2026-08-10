@@ -21,16 +21,13 @@ const apiWranglerConfig = ts.readConfigFile(
 	queues: WranglerQueueEnvironment["queues"];
 	env: Record<"staging" | "production", WranglerQueueEnvironment>;
 };
-const webhookWranglerConfig = ts.readConfigFile(
-	resolve(process.cwd(), "src/platform/cloudflare/workers/webhooks/wrangler.jsonc"),
-	ts.sys.readFile,
-).config as {
-	queues: Pick<WranglerQueueEnvironment["queues"], "producers">;
-	env: Record<"staging" | "production", { queues: Pick<WranglerQueueEnvironment["queues"], "producers"> }>;
-};
 const deriveJobDataQueueBaseName = queueManifest["derive_job_data"]?.base_name;
 
 describe("Cloudflare Queue infrastructure contract", () => {
+	it("should provision only the asynchronous job-data derivation Queue", () => {
+		expect(Object.keys(queueManifest)).toEqual(["derive_job_data"]);
+	});
+
 	it("should use the Terraform Queue name in the runtime Queue router", () => {
 		expect("cataqui-api-derive-job-data").toBe(deriveJobDataQueueBaseName);
 	});
@@ -68,17 +65,4 @@ describe("Cloudflare Queue infrastructure contract", () => {
 			deadLetter: `${deriveJobDataQueueBaseName}-development-dlq`,
 		});
 	});
-
-	it.each(["staging", "production"] as const)(
-		"should bind the %s WhatsApp Queue producer to the webhook Worker and consumer to the API Worker",
-		(environment) => {
-			expect({
-				producer: webhookWranglerConfig.env[environment].queues.producers[0]?.queue,
-				consumer: apiWranglerConfig.env[environment].queues.consumers[1]?.queue,
-			}).toEqual({
-				producer: `cataqui-api-verify-whatsapp-auth-message-${environment}`,
-				consumer: `cataqui-api-verify-whatsapp-auth-message-${environment}`,
-			});
-		},
-	);
 });

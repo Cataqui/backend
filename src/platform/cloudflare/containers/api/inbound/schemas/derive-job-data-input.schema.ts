@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DeriveJobDataQueueMessageSchema = z.union([
+export const DeriveJobDataInputSchema = z.union([
 	z.object({ jobId: z.uuid() }).strict(),
 	z
 		.object({ job_id: z.uuid() })

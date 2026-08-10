@@ -53,7 +53,7 @@ describe("ApiContainer request boundary", () => {
 
 		const response = await ApiContainer.prototype.fetch.call(
 			container,
-			new Request("https://api.cataqui.com/internal/queues/cataqui-api-derive-job-data", {
+			new Request("https://api.cataqui.com/internal/inbound/derive-job-data", {
 				method: "POST",
 			}),
 		);
@@ -67,7 +67,7 @@ describe("ApiContainer request boundary", () => {
 
 		await ApiContainer.prototype.fetch.call(
 			container,
-			new Request("https://api.cataqui.com/internal/queues/cataqui-api-derive-job-data", {
+			new Request("https://api.cataqui.com/internal/inbound/derive-job-data", {
 				method: "POST",
 			}),
 		);
@@ -80,7 +80,7 @@ describe("ApiContainer request boundary", () => {
 
 		const response = await ApiContainer.prototype.fetch.call(
 			container,
-			new Request("https://api.cataqui.com/%69nternal/queues/cataqui-api-verify-whatsapp-auth-message", {
+			new Request("https://api.cataqui.com/%69nternal/inbound/verify-whatsapp-auth-message", {
 				method: "POST",
 			}),
 		);

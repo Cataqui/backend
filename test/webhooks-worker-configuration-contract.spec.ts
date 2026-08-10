@@ -20,6 +20,7 @@ type WorkerEnvironment = {
 			dead_letter_queue: string;
 		}>;
 	};
+	services?: Array<{ binding: string; service: string; entrypoint?: string }>;
 	routes?: Array<{ pattern: string; custom_domain: boolean }>;
 };
 
@@ -75,62 +76,43 @@ describe("Webhooks Worker configuration", () => {
 		});
 	});
 
-	it("should bind the WhatsApp Queue producer only to the Webhooks Worker", () => {
-		expect({
-			apiProducers: [apiConfig, apiConfig.env.staging, apiConfig.env.production].flatMap(
-				(config) =>
-					config.queues?.producers?.filter((producer) => producer.binding === "VERIFY_WHATSAPP_AUTH_MESSAGE_QUEUE") ??
-					[],
-			).length,
-			webhooksQueues: [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].map(
-				(config) => config.queues?.producers?.[0]?.queue,
-			),
-		}).toEqual({
-			apiProducers: 0,
-			webhooksQueues: [
-				"cataqui-api-verify-whatsapp-auth-message-development",
-				"cataqui-api-verify-whatsapp-auth-message-staging",
-				"cataqui-api-verify-whatsapp-auth-message-production",
-			],
-		});
+	it("should deliver WhatsApp authentication directly through a private API Worker entrypoint", () => {
+		expect(
+			[webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].map((config) => config.services?.[0]),
+		).toEqual([
+			{
+				binding: "API_WORKER",
+				service: "cataqui-api-development",
+				entrypoint: "ApiContainerInboundEntrypoint",
+			},
+			{
+				binding: "API_WORKER",
+				service: "cataqui-api-staging",
+				entrypoint: "ApiContainerInboundEntrypoint",
+			},
+			{
+				binding: "API_WORKER",
+				service: "cataqui-api-production",
+				entrypoint: "ApiContainerInboundEntrypoint",
+			},
+		]);
 	});
 
-	it("should bind the WhatsApp Queue consumer only to the API Worker", () => {
-		expect({
-			apiQueues: [apiConfig, apiConfig.env.staging, apiConfig.env.production].map(
-				(config) => config.queues?.consumers?.[1]?.queue,
-			),
-			webhooksConsumers: [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].some(
-				(config) => (config.queues?.consumers?.length ?? 0) > 0,
-			),
-		}).toEqual({
-			apiQueues: [
-				"cataqui-api-verify-whatsapp-auth-message-development",
-				"cataqui-api-verify-whatsapp-auth-message-staging",
-				"cataqui-api-verify-whatsapp-auth-message-production",
-			],
-			webhooksConsumers: false,
-		});
-	});
-
-	it("should keep WhatsApp Queue deliveries low latency with bounded retries and environment concurrency", () => {
-		const consumers = [apiConfig, apiConfig.env.staging, apiConfig.env.production].map(
-			(config) => config.queues?.consumers?.[1],
-		);
+	it("should keep WhatsApp authentication out of Cloudflare Queues", () => {
+		const allWorkerConfigurations = [
+			apiConfig,
+			apiConfig.env.staging,
+			apiConfig.env.production,
+			webhooksConfig,
+			webhooksConfig.env.staging,
+			webhooksConfig.env.production,
+		];
 
 		expect(
-			consumers.map((consumer) => ({
-				batchSize: consumer?.max_batch_size,
-				batchTimeout: consumer?.max_batch_timeout,
-				concurrency: consumer?.max_concurrency,
-				retries: consumer?.max_retries,
-				retryDelay: consumer?.retry_delay,
-			})),
-		).toEqual([
-			{ batchSize: 1, batchTimeout: 0, concurrency: 1, retries: 10, retryDelay: 30 },
-			{ batchSize: 1, batchTimeout: 0, concurrency: 6, retries: 10, retryDelay: 30 },
-			{ batchSize: 1, batchTimeout: 0, concurrency: 50, retries: 10, retryDelay: 30 },
-		]);
+			allWorkerConfigurations.some((config) =>
+				JSON.stringify(config.queues ?? {}).includes("verify-whatsapp-auth-message"),
+			),
+		).toBe(false);
 	});
 
 	it("should expose the Webhooks Worker through dedicated custom domains", () => {
@@ -232,6 +214,15 @@ describe("Webhooks Worker configuration", () => {
 			webhooksHasWebhookSecrets: true,
 			webhooksHasRedisCredentials: false,
 		});
+	});
+
+	it("should generate the API Worker RPC methods from both Worker configurations", () => {
+		const webhooksEnvSource = readFileSync(
+			resolve(process.cwd(), "src/platform/cloudflare/workers/webhooks/webhooks-worker-env.d.ts"),
+			"utf8",
+		);
+
+		expect(webhooksEnvSource).toContain('Service<typeof import("../api/worker").ApiContainerInboundEntrypoint>');
 	});
 
 	it("should load the shared root environment file for local Worker development", () => {

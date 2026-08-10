@@ -4,13 +4,13 @@ import { AuthModule } from "../auth/auth.module";
 import { LocationModule } from "../location/location.module";
 import { UserModule } from "../user/user.module";
 import { JobController } from "./job.controller";
-import { JobQueueController } from "./job.queue.controller";
+import { JobInboundController } from "./job.inbound.controller";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 
 @Module({
 	imports: [AiModule, AuthModule, LocationModule, UserModule],
-	controllers: [JobController, JobQueueController],
+	controllers: [JobController, JobInboundController],
 	providers: [JobRepository, JobService],
 })
 export class JobModule {}

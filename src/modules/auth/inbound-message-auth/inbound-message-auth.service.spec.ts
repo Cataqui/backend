@@ -194,7 +194,7 @@ describe("InboundMessageAuthService", () => {
 			intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
 		});
 
-		expect(result).toEqual({ status: InboundMessageAuthIntentStatus.PENDING, retryAfterSeconds: 2 });
+		expect(result).toEqual({ status: InboundMessageAuthIntentStatus.PENDING, retryAfterSeconds: 1 });
 	});
 
 	it("should tell the mobile client to poll again while the intent is processing", async () => {
@@ -208,7 +208,7 @@ describe("InboundMessageAuthService", () => {
 			intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
 		});
 
-		expect(result).toEqual({ status: InboundMessageAuthIntentStatus.PENDING, retryAfterSeconds: 2 });
+		expect(result).toEqual({ status: InboundMessageAuthIntentStatus.PENDING, retryAfterSeconds: 1 });
 	});
 
 	it("should locate the intent using only the SHA-256 hash of the supplied token", async () => {
