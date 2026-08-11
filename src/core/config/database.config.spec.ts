@@ -20,6 +20,7 @@ describe("databaseConfig", () => {
 
 		expect(config).toEqual({
 			appPoolerUrl: TEST_POOLER_URL,
+			minimumPoolConnections: 1,
 			statementTimeoutMs: 5_000,
 			queryTimeoutMs: 6_000,
 			lockTimeoutMs: 1_000,

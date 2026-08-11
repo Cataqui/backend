@@ -39,9 +39,21 @@ export class InboundMessageAuthController {
 		body: z.infer<typeof ExchangeInboundMessageAuthIntentInputSchema>,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<z.infer<typeof AuthIntentExchangeOutputSchema>> {
-		const result = await this._inboundMessageAuthService.exchangeIntentForSession({
-			intentToken: body.intentToken,
-		});
+		const exchangeAbortController = new AbortController();
+		const abortExchangeWhenClientDisconnects = () => exchangeAbortController.abort();
+
+		reply.raw.once("close", abortExchangeWhenClientDisconnects);
+
+		let result: z.infer<typeof AuthIntentExchangeOutputSchema>;
+
+		try {
+			result = await this._inboundMessageAuthService.exchangeIntentForSession({
+				abortSignal: exchangeAbortController.signal,
+				intentToken: body.intentToken,
+			});
+		} finally {
+			reply.raw.off("close", abortExchangeWhenClientDisconnects);
+		}
 
 		if ("status" in result) {
 			reply.header("Retry-After", String(result.retryAfterSeconds));

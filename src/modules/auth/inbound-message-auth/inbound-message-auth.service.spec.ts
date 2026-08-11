@@ -1,7 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
 import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
-import { UserService } from "../../user/user.service";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.error";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
@@ -23,32 +22,29 @@ describe("InboundMessageAuthService", () => {
 	let service: InboundMessageAuthService;
 	let repository: {
 		createIntent: ReturnType<typeof vi.fn>;
-		findIntentByTokenHash: ReturnType<typeof vi.fn>;
+		findIntentByTokenHashAfterWaitingForVerification: ReturnType<typeof vi.fn>;
 		getIntentOrNullAndMarkAsProcessing: ReturnType<typeof vi.fn>;
 		markProcessingIntentAsVerified: ReturnType<typeof vi.fn>;
 		markProcessingIntentAsPending: ReturnType<typeof vi.fn>;
 	};
-	let identityRepository: { upsertIdentity: ReturnType<typeof vi.fn> };
-	let userService: { getOrAddContact: ReturnType<typeof vi.fn> };
+	let identityRepository: { saveVerifiedIdentityAndContact: ReturnType<typeof vi.fn> };
 	let authSessionService: { create: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		repository = {
 			createIntent: vi.fn(),
-			findIntentByTokenHash: vi.fn(),
+			findIntentByTokenHashAfterWaitingForVerification: vi.fn(),
 			getIntentOrNullAndMarkAsProcessing: vi.fn(),
 			markProcessingIntentAsVerified: vi.fn(),
 			markProcessingIntentAsPending: vi.fn(),
 		};
-		identityRepository = { upsertIdentity: vi.fn() };
-		userService = { getOrAddContact: vi.fn() };
+		identityRepository = { saveVerifiedIdentityAndContact: vi.fn() };
 		authSessionService = { create: vi.fn() };
 		const module = await Test.createTestingModule({
 			providers: [
 				InboundMessageAuthService,
 				{ provide: InboundMessageAuthRepository, useValue: repository },
 				{ provide: AuthIdentityRepository, useValue: identityRepository },
-				{ provide: UserService, useValue: userService },
 				{ provide: AuthSessionService, useValue: authSessionService },
 			],
 		}).compile();
@@ -60,6 +56,7 @@ describe("InboundMessageAuthService", () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it("should create a code with the AUTH prefix and ten uppercase alphanumeric characters", async () => {
@@ -174,7 +171,7 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should expose the same error for an unknown or expired intent token", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue(null);
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue(null);
 
 		await expect(
 			service.exchangeIntentForSession({
@@ -184,10 +181,9 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should tell the mobile client to poll again while the intent is pending", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: InboundMessageAuthIntentStatus.PENDING,
-			userId: null,
 		});
 
 		const result = await service.exchangeIntentForSession({
@@ -198,10 +194,9 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should tell the mobile client to poll again while the intent is processing", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: InboundMessageAuthIntentStatus.PROCESSING,
-			userId: null,
 		});
 
 		const result = await service.exchangeIntentForSession({
@@ -212,23 +207,40 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should locate the intent using only the SHA-256 hash of the supplied token", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: InboundMessageAuthIntentStatus.PENDING,
-			userId: null,
 		});
 
 		await service.exchangeIntentForSession({
 			intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
 		});
 
-		expect(repository.findIntentByTokenHash).toHaveBeenCalledWith({
+		expect(repository.findIntentByTokenHashAfterWaitingForVerification).toHaveBeenCalledWith({
 			intentTokenHash: createHash("sha256").update("kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI").digest("hex"),
 		});
 	});
 
-	it("should return the session issued from a verified intent", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+	it("should pass request cancellation to the verification wait", async () => {
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
+			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
+			status: InboundMessageAuthIntentStatus.PENDING,
+		});
+		const abortController = new AbortController();
+
+		await service.exchangeIntentForSession({
+			abortSignal: abortController.signal,
+			intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
+		});
+
+		expect(repository.findIntentByTokenHashAfterWaitingForVerification).toHaveBeenCalledWith({
+			abortSignal: abortController.signal,
+			intentTokenHash: createHash("sha256").update("kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI").digest("hex"),
+		});
+	});
+
+	it("should return a randomly issued session from a verified intent", async () => {
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			status: InboundMessageAuthIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
@@ -251,7 +263,7 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should issue a session using the verified intent's candidate session identifier", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			status: InboundMessageAuthIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
@@ -276,7 +288,7 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should propagate session issuance failures", async () => {
-		repository.findIntentByTokenHash.mockResolvedValue({
+		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
 			status: InboundMessageAuthIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
@@ -320,13 +332,13 @@ describe("InboundMessageAuthService", () => {
 			authCodeHash: "a".repeat(64),
 		});
 
-		expect(identityRepository.upsertIdentity).not.toHaveBeenCalled();
+		expect(identityRepository.saveVerifiedIdentityAndContact).not.toHaveBeenCalled();
 	});
 
 	it("should derive the WhatsApp identity provider from the inbound-message channel", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.upsertIdentity.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
 
 		await service.verifyAuthMessage({
 			channel: InboundMessageAuthChannel.WHATSAPP,
@@ -336,18 +348,19 @@ describe("InboundMessageAuthService", () => {
 			authCodeHash: "a".repeat(64),
 		});
 
-		expect(identityRepository.upsertIdentity).toHaveBeenCalledWith({
+		expect(identityRepository.saveVerifiedIdentityAndContact).toHaveBeenCalledWith({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
 		});
 	});
 
-	it("should save the observed WhatsApp identifier as a reusable contact", async () => {
+	it("should save the observed WhatsApp identifier in the same database operation as the identity", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.upsertIdentity.mockResolvedValue("user-id");
-		userService.getOrAddContact.mockResolvedValue({});
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
 
 		await service.verifyAuthMessage({
 			channel: InboundMessageAuthChannel.WHATSAPP,
@@ -357,30 +370,29 @@ describe("InboundMessageAuthService", () => {
 			authCodeHash: "a".repeat(64),
 		});
 
-		expect(userService.getOrAddContact).toHaveBeenCalledWith({
-			userId: "user-id",
-			contact: {
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			},
+		expect(identityRepository.saveVerifiedIdentityAndContact).toHaveBeenCalledWith({
+			provider: AuthIdentityProvider.WHATSAPP,
+			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
 		});
 	});
 
-	it("should wait for contact persistence before making the intent exchangeable", async () => {
+	it("should wait for atomic identity and contact persistence before making the intent exchangeable", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.upsertIdentity.mockResolvedValue("user-id");
-		let resolveContactPersistence!: (value: unknown) => void;
-		const contactPersistence = new Promise<unknown>((resolve) => {
-			resolveContactPersistence = resolve;
+		let resolveIdentityAndContactPersistence!: (value: string) => void;
+		const identityAndContactPersistence = new Promise<string>((resolve) => {
+			resolveIdentityAndContactPersistence = resolve;
 		});
-		let markContactPersistenceAsStarted!: () => void;
-		const contactPersistenceStarted = new Promise<void>((resolve) => {
-			markContactPersistenceAsStarted = resolve;
+		let markIdentityAndContactPersistenceAsStarted!: () => void;
+		const identityAndContactPersistenceStarted = new Promise<void>((resolve) => {
+			markIdentityAndContactPersistenceAsStarted = resolve;
 		});
-		userService.getOrAddContact.mockImplementation(() => {
-			markContactPersistenceAsStarted();
-			return contactPersistence;
+		identityRepository.saveVerifiedIdentityAndContact.mockImplementation(() => {
+			markIdentityAndContactPersistenceAsStarted();
+			return identityAndContactPersistence;
 		});
 
 		const verification = service.verifyAuthMessage({
@@ -390,18 +402,19 @@ describe("InboundMessageAuthService", () => {
 			contactIdentifier: "+5511999999999",
 			authCodeHash: "a".repeat(64),
 		});
-		await contactPersistenceStarted;
-		const verificationStartedBeforeContactPersisted = repository.markProcessingIntentAsVerified.mock.calls.length > 0;
-		resolveContactPersistence({});
+		await identityAndContactPersistenceStarted;
+		const verificationStartedBeforeIdentityAndContactPersisted =
+			repository.markProcessingIntentAsVerified.mock.calls.length > 0;
+		resolveIdentityAndContactPersistence("user-id");
 		await verification;
 
-		expect(verificationStartedBeforeContactPersisted).toBe(false);
+		expect(verificationStartedBeforeIdentityAndContactPersisted).toBe(false);
 	});
 
 	it("should make the processing intent exchangeable after resolving its identity", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.upsertIdentity.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
 
 		await service.verifyAuthMessage({
 			channel: InboundMessageAuthChannel.WHATSAPP,
@@ -438,7 +451,7 @@ describe("InboundMessageAuthService", () => {
 	it("should return the processing intent to pending when identity creation fails", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsPending.mockResolvedValue(undefined);
-		identityRepository.upsertIdentity.mockRejectedValue(new Error("database unavailable"));
+		identityRepository.saveVerifiedIdentityAndContact.mockRejectedValue(new Error("database unavailable"));
 
 		const error = await service
 			.verifyAuthMessage({
@@ -462,7 +475,7 @@ describe("InboundMessageAuthService", () => {
 		repository.markProcessingIntentAsVerified.mockRejectedValue(
 			new Error("Inbound-message authentication intent processing ownership was lost"),
 		);
-		identityRepository.upsertIdentity.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
 
 		await expect(
 			service.verifyAuthMessage({

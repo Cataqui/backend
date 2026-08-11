@@ -10,6 +10,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 	constructor(@Inject(databaseConfig.KEY) private readonly _databaseConfig: IDatabaseConfig) {
 		const adapter = new PrismaNeon({
 			connectionString: _databaseConfig.appPoolerUrl,
+			min: _databaseConfig.minimumPoolConnections,
 			statement_timeout: _databaseConfig.statementTimeoutMs,
 			query_timeout: _databaseConfig.queryTimeoutMs,
 			lock_timeout: _databaseConfig.lockTimeoutMs,

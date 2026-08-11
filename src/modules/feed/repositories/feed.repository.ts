@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { JobPaymentAmountPeriod, JobPaymentType, JobStatus } from "../../../../generated/prisma/client.js";
+import { JobPaymentAmountPeriod, JobPaymentType, JobStatus, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import type { FeedPaginationCursor } from "../schemas/feed-pagination-cursor.schema";
 
@@ -9,14 +9,14 @@ export interface FeedItemRaw {
 	createdAt: Date;
 	descriptionSummary: string;
 	paymentType: JobPaymentType;
-	paymentMinAmount: { toNumber(): number } | null;
-	paymentMaxAmount: { toNumber(): number } | null;
+	paymentMinAmount: Prisma.Decimal | null;
+	paymentMaxAmount: Prisma.Decimal | null;
 	paymentNote: string | null;
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
 	neighborhood: string;
-	fuzzyLatitude: { toNumber(): number };
-	fuzzyLongitude: { toNumber(): number };
+	fuzzyLatitude: Prisma.Decimal;
+	fuzzyLongitude: Prisma.Decimal;
 }
 
 @Injectable()
@@ -24,44 +24,66 @@ export class FeedRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
 	async getFeedItems(params: { cursor?: FeedPaginationCursor | undefined; limit: number }): Promise<FeedItemRaw[]> {
-		const results = await this._prisma.job.findMany({
-			where: {
-				status: JobStatus.ACTIVE,
-				title: { not: null },
-				descriptionSummary: { not: null },
-				paymentType: { not: null },
-				paymentAmountPeriod: { not: null },
-				paymentCurrency: { not: null },
-				neighborhood: { not: null },
-				fuzzyLatitude: { not: null },
-				fuzzyLongitude: { not: null },
-				...(params.cursor
-					? {
-							OR: [
-								{ createdAt: { lt: new Date(params.cursor.createdAt) } },
-								{ createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } },
-							],
-						}
-					: {}),
-			},
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: params.limit,
-			select: {
-				id: true,
-				title: true,
-				createdAt: true,
-				descriptionSummary: true,
-				paymentType: true,
-				paymentMinAmount: true,
-				paymentMaxAmount: true,
-				paymentNote: true,
-				paymentAmountPeriod: true,
-				paymentCurrency: true,
-				neighborhood: true,
-				fuzzyLatitude: true,
-				fuzzyLongitude: true,
-			},
-		});
+		const results = params.cursor
+			? await this._prisma.$queryRaw<FeedItemRaw[]>(Prisma.sql`
+					SELECT
+						"id",
+						"title",
+						"created_at" AS "createdAt",
+						"description_summary" AS "descriptionSummary",
+						"payment_type" AS "paymentType",
+						"payment_min_amount" AS "paymentMinAmount",
+						"payment_max_amount" AS "paymentMaxAmount",
+						"payment_note" AS "paymentNote",
+						"payment_amount_period" AS "paymentAmountPeriod",
+						"payment_currency" AS "paymentCurrency",
+						"neighborhood",
+						"fuzzy_latitude" AS "fuzzyLatitude",
+						"fuzzy_longitude" AS "fuzzyLongitude"
+					FROM "public"."jobs"
+					WHERE "status" = ${JobStatus.ACTIVE}::"public"."JobStatus"
+						AND "title" IS NOT NULL
+						AND "description_summary" IS NOT NULL
+						AND "payment_type" IS NOT NULL
+						AND "payment_amount_period" IS NOT NULL
+						AND "payment_currency" IS NOT NULL
+						AND "neighborhood" IS NOT NULL
+						AND "fuzzy_latitude" IS NOT NULL
+						AND "fuzzy_longitude" IS NOT NULL
+						AND ("created_at", "id") < (${new Date(params.cursor.createdAt)}, ${params.cursor.jobId}::uuid)
+					ORDER BY "created_at" DESC, "id" DESC
+					LIMIT ${params.limit}
+				`)
+			: await this._prisma.job.findMany({
+					where: {
+						status: JobStatus.ACTIVE,
+						title: { not: null },
+						descriptionSummary: { not: null },
+						paymentType: { not: null },
+						paymentAmountPeriod: { not: null },
+						paymentCurrency: { not: null },
+						neighborhood: { not: null },
+						fuzzyLatitude: { not: null },
+						fuzzyLongitude: { not: null },
+					},
+					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+					take: params.limit,
+					select: {
+						id: true,
+						title: true,
+						createdAt: true,
+						descriptionSummary: true,
+						paymentType: true,
+						paymentMinAmount: true,
+						paymentMaxAmount: true,
+						paymentNote: true,
+						paymentAmountPeriod: true,
+						paymentCurrency: true,
+						neighborhood: true,
+						fuzzyLatitude: true,
+						fuzzyLongitude: true,
+					},
+				});
 
 		return results.map((item) => {
 			if (

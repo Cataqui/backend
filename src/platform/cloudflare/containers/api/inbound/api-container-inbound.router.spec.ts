@@ -33,6 +33,32 @@ describe("routeInboundCall", () => {
 		});
 	});
 
+	it("should preserve delivery from a legacy Webhooks Worker during a rolling deployment", async () => {
+		const deliver = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+		const legacyMessage = {
+			providerMessageId: "wamid.legacy-message",
+			providerSenderId: "provider-sender-id",
+			providerContactIdentifier: "+5511999999999",
+			authCodeHash: "a".repeat(64),
+		};
+
+		const response = await routeInboundCall({
+			receiver: "verify-whatsapp-auth-message",
+			body: legacyMessage,
+			deliver: deliver,
+		});
+
+		expect(response.status).toBe(204);
+		expect(deliver).toHaveBeenCalledWith({
+			url: "http://localhost/internal/inbound/verify-whatsapp-auth-message",
+			requestOptions: {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(legacyMessage),
+			},
+		});
+	});
+
 	it("should return the response produced by container delivery", async () => {
 		const expectedResponse = new Response(null, { status: 503 });
 

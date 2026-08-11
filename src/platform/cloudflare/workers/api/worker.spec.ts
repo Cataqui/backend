@@ -132,6 +132,7 @@ describe("API Worker", () => {
 
 		await entrypoint.deliverInbound({ receiver: "verify-whatsapp-auth-message", body: message });
 
+		expect(getRandomMock).toHaveBeenCalledWith(apiContainerBinding, 3);
 		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/inbound/verify-whatsapp-auth-message", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

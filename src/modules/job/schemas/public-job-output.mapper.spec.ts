@@ -74,8 +74,10 @@ describe("toPublicJobOutput", () => {
 		expect(output.payment.minAmount).toBe(150);
 	});
 
-	it("should reject a public database row with incomplete payment", () => {
-		expect(() => toPublicJobOutput({ ..._createPublicDatabaseJob(), paymentType: null })).toThrow();
+	it("should leave incomplete payment validation to the response schema", () => {
+		const output = toPublicJobOutput({ ..._createPublicDatabaseJob(), paymentType: null });
+
+		expect(PublicJobOutputSchema.safeParse(output).success).toBe(false);
 	});
 
 	it("should reject a public database row with incomplete location", () => {
@@ -84,6 +86,12 @@ describe("toPublicJobOutput", () => {
 
 	it("should reject an active public database row without contact", () => {
 		expect(() => toPublicJobOutput({ ..._createPublicDatabaseJob(), contact: null })).toThrow();
+	});
+
+	it("should reject a draft database row before mapping a public response", () => {
+		expect(() => toPublicJobOutput({ ..._createPublicDatabaseJob(), status: JobStatus.DRAFT })).toThrow(
+			"Draft job afdfd9b2-203d-4528-8a1c-82b6b139039b cannot be mapped to the public contract.",
+		);
 	});
 
 	it("should return camelCase identifiers and ISO timestamps", () => {

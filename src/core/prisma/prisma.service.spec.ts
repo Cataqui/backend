@@ -52,6 +52,12 @@ describe("PrismaService", () => {
 		});
 	});
 
+	it("should keep the configured minimum number of warm Neon pool connections", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			min: MOCK_CONFIG.minimumPoolConnections,
+		});
+	});
+
 	it("should pass statement_timeout from config to PrismaNeon", () => {
 		expect(prismaNeonConfigs[0]).toMatchObject({
 			statement_timeout: MOCK_CONFIG.statementTimeoutMs,

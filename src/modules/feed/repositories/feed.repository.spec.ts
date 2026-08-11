@@ -1,23 +1,26 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { vi } from "vitest";
+import { Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { CursorUtils } from "../utils/cursor.utils";
 import { FeedRepository } from "./feed.repository";
 
 const mockFindMany = vi.fn();
+const mockQueryRaw = vi.fn();
 
 const mockPrisma = {
+	$queryRaw: mockQueryRaw,
 	job: {
 		findMany: mockFindMany,
 	},
 };
 
-function getCallArgs(callIndex: number): Record<string, unknown> {
+function _getCallArgs(callIndex: number): Record<string, unknown> {
 	return mockFindMany.mock.calls[callIndex]![0] as Record<string, unknown>;
 }
 
-function getWhere(callIndex: number): Record<string, unknown> {
-	return (getCallArgs(callIndex)["where"] ?? {}) as Record<string, unknown>;
+function _getWhere(callIndex: number): Record<string, unknown> {
+	return (_getCallArgs(callIndex)["where"] ?? {}) as Record<string, unknown>;
 }
 
 describe("FeedRepository", () => {
@@ -38,7 +41,7 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ limit: 20 });
 
-			const where = getWhere(0);
+			const where = _getWhere(0);
 
 			expect(where).toEqual({
 				status: "ACTIVE",
@@ -58,7 +61,7 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ limit: 20 });
 
-			const callArgs = getCallArgs(0);
+			const callArgs = _getCallArgs(0);
 
 			expect(callArgs["orderBy"]).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
 		});
@@ -68,13 +71,13 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ limit: 21 });
 
-			const callArgs = getCallArgs(0);
+			const callArgs = _getCallArgs(0);
 
 			expect(callArgs["take"]).toBe(21);
 		});
 
 		it("should include cursor condition when cursor is provided", async () => {
-			mockFindMany.mockResolvedValue([]);
+			mockQueryRaw.mockResolvedValue([]);
 
 			const cursor = CursorUtils.decodeCursor({
 				cursor: CursorUtils.encodeCursor({
@@ -85,16 +88,50 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ cursor: cursor, limit: 20 });
 
-			const where = getWhere(0);
-			const orConditions = where["OR"] as Record<string, unknown>[];
+			const query: unknown = mockQueryRaw.mock.calls[0]?.[0];
+			expect(query).toBeInstanceOf(Prisma.Sql);
+			if (!(query instanceof Prisma.Sql)) throw new Error("Expected the cursor query to use parameterized Prisma SQL");
 
-			expect(orConditions).toEqual([
-				{ createdAt: { lt: new Date("2026-05-28T10:00:00.000Z") } },
-				{
-					createdAt: new Date("2026-05-28T10:00:00.000Z"),
-					id: { lt: "12345678-1234-4234-8234-1234567890ab" },
-				},
+			expect(query.text).toContain('("created_at", "id") < (');
+			expect(query.text).not.toContain("12345678-1234-4234-8234-1234567890ab");
+			expect(query.values).toEqual([
+				"ACTIVE",
+				new Date("2026-05-28T10:00:00.000Z"),
+				"12345678-1234-4234-8234-1234567890ab",
+				20,
 			]);
+			expect(mockFindMany).not.toHaveBeenCalled();
+		});
+
+		it("should preserve Decimal values returned by the parameterized cursor query", async () => {
+			const cursorJob = {
+				id: "12345678-1234-4234-8234-1234567890ab",
+				title: "Auxiliar",
+				createdAt: new Date("2026-05-28T09:59:00.000Z"),
+				descriptionSummary: "Resumo",
+				paymentType: "FIXED",
+				paymentMinAmount: new Prisma.Decimal("150.00"),
+				paymentMaxAmount: null,
+				paymentNote: null,
+				paymentAmountPeriod: "DAILY",
+				paymentCurrency: "BRL",
+				neighborhood: "Centro",
+				fuzzyLatitude: new Prisma.Decimal("-23.550000"),
+				fuzzyLongitude: new Prisma.Decimal("-46.630000"),
+			};
+			mockQueryRaw.mockResolvedValue([cursorJob]);
+
+			const result = await repository.getFeedItems({
+				cursor: CursorUtils.decodeCursor({
+					cursor: CursorUtils.encodeCursor({
+						createdAt: "2026-05-28T10:00:00.000Z",
+						jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+					}),
+				}),
+				limit: 20,
+			});
+
+			expect(result).toEqual([cursorJob]);
 		});
 
 		it("should not include cursor condition when cursor is not provided", async () => {
@@ -102,7 +139,7 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ limit: 20 });
 
-			const where = getWhere(0);
+			const where = _getWhere(0);
 
 			expect(where["OR"]).toBeUndefined();
 		});
@@ -112,7 +149,7 @@ describe("FeedRepository", () => {
 
 			await repository.getFeedItems({ limit: 20 });
 
-			const callArgs = getCallArgs(0);
+			const callArgs = _getCallArgs(0);
 
 			expect(callArgs["select"]).toEqual({
 				id: true,

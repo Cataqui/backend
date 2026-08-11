@@ -1,6 +1,5 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { UserModule } from "../user/user.module";
 import { AuthSessionController } from "./auth-session.controller";
 import { authConfig } from "./auth.config";
 import { AuthSessionService } from "./auth-session.service";
@@ -16,7 +15,7 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 
 @Global()
 @Module({
-	imports: [ConfigModule.forFeature(authConfig), UserModule],
+	imports: [ConfigModule.forFeature(authConfig)],
 	controllers: [AuthSessionController, InboundMessageAuthController, InboundMessageAuthInboundController],
 	providers: [
 		InboundMessageAuthRepository,

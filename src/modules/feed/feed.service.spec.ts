@@ -1,25 +1,26 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { type Mock, vi } from "vitest";
+import { Prisma } from "../../../generated/prisma/client.js";
 import { InvalidCursorError } from "./errors/invalid-cursor.error";
 import { FeedService } from "./feed.service";
 import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
 import { CursorUtils } from "./utils/cursor.utils";
 
-function createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
+function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
 	return {
 		id: overrides.id,
 		title: overrides.title ?? "Help unload truck",
 		createdAt: overrides.createdAt,
 		descriptionSummary: overrides.descriptionSummary ?? "",
 		paymentType: overrides.paymentType ?? ("FIXED" as const),
-		paymentMinAmount: overrides.paymentMinAmount ?? { toNumber: () => 150.0 },
+		paymentMinAmount: overrides.paymentMinAmount ?? new Prisma.Decimal("150.00"),
 		paymentMaxAmount: overrides.paymentMaxAmount ?? null,
 		paymentNote: overrides.paymentNote ?? null,
 		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
 		neighborhood: overrides.neighborhood ?? "Centro",
-		fuzzyLatitude: overrides.fuzzyLatitude ?? { toNumber: () => -23.55 },
-		fuzzyLongitude: overrides.fuzzyLongitude ?? { toNumber: () => -46.63 },
+		fuzzyLatitude: overrides.fuzzyLatitude ?? new Prisma.Decimal("-23.550000"),
+		fuzzyLongitude: overrides.fuzzyLongitude ?? new Prisma.Decimal("-46.630000"),
 	};
 }
 
@@ -60,7 +61,7 @@ describe("FeedService", () => {
 
 		it("should pass cursor to repository when provided", async () => {
 			const items = Array.from({ length: 5 }, (_, i) =>
-				createMockFeedItemRaw({
+				_createMockFeedItemRaw({
 					id: `job-${i}`,
 					createdAt: new Date(`2026-05-2${8 - i}T10:00:00.000Z`),
 				}),
@@ -93,7 +94,7 @@ describe("FeedService", () => {
 		it("should return hasMore true and build nextCursor when more results exist", async () => {
 			const now = new Date("2026-05-28T10:00:00.000Z");
 			const items = Array.from({ length: PAGE_SIZE + 1 }, (_, i) =>
-				createMockFeedItemRaw({
+				_createMockFeedItemRaw({
 					id: `job-${i}`,
 					createdAt: new Date(now.getTime() - i * 60000),
 				}),
@@ -111,7 +112,7 @@ describe("FeedService", () => {
 		it("should return hasMore false and null cursor when no more results", async () => {
 			const now = new Date("2026-05-28T10:00:00.000Z");
 			const items = Array.from({ length: PAGE_SIZE - 5 }, (_, i) =>
-				createMockFeedItemRaw({
+				_createMockFeedItemRaw({
 					id: `job-${i}`,
 					createdAt: new Date(now.getTime() - i * 60000),
 				}),
@@ -132,7 +133,7 @@ describe("FeedService", () => {
 
 		it("should map raw database results to the feed-item output contract", async () => {
 			const items = [
-				createMockFeedItemRaw({
+				_createMockFeedItemRaw({
 					id: "job-1",
 					createdAt: new Date("2026-05-28T10:00:00.000Z"),
 				}),

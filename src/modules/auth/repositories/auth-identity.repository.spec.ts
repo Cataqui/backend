@@ -1,98 +1,113 @@
 import { Test } from "@nestjs/testing";
-import { AuthIdentityProvider, Prisma } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { AuthIdentityRepository } from "./auth-identity.repository";
 
 describe("AuthIdentityRepository", () => {
-	it("should atomically create or reuse the WhatsApp identity and return its user", async () => {
-		const prisma = { authIdentity: { upsert: vi.fn().mockResolvedValue({ userId: "user-id" }) } };
+	it("should save the verified identity and reusable contact with one parameterized database-function call", async () => {
+		const queryRaw = vi.fn().mockResolvedValue([{ userId: "user-id" }]);
 		const module = await Test.createTestingModule({
-			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: prisma }],
+			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: { $queryRaw: queryRaw } }],
 		}).compile();
 
-		const result = await module.get(AuthIdentityRepository).upsertIdentity({
+		const result = await module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
 		});
 
-		expect({ result: result, call: prisma.authIdentity.upsert.mock.calls[0]?.[0] }).toEqual({
-			result: "user-id",
-			call: {
-				where: {
-					provider_providerSubject: {
-						provider: AuthIdentityProvider.WHATSAPP,
-						providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
-					},
-				},
-				update: {
-					lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-				},
-				create: {
-					provider: AuthIdentityProvider.WHATSAPP,
-					providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
-					lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-					user: { create: {} },
-				},
-				select: { userId: true },
-			},
-		});
+		expect(result).toBe("user-id");
+		expect(queryRaw).toHaveBeenCalledTimes(1);
+
+		const query: unknown = queryRaw.mock.calls[0]?.[0];
+		expect(query).toBeInstanceOf(Prisma.Sql);
+		if (!(query instanceof Prisma.Sql)) throw new Error("Expected verified identity persistence to use Prisma SQL");
+
+		expect(query.text).toContain('SELECT "public"."save_verified_identity_and_contact"(');
+		expect(query.text).not.toContain("user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6");
+		expect(query.text).not.toContain("+5511999999999");
+
+		expect(query.values).toEqual([
+			AuthIdentityProvider.WHATSAPP,
+			"user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+			new Date("2026-08-05T15:00:00.000Z"),
+			JobContactMethod.WHATSAPP,
+			"+5511999999999",
+			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+		]);
 	});
 
-	it("should reuse the winning user when concurrent identity creation reaches the unique constraint", async () => {
-		const prisma = {
-			authIdentity: {
-				upsert: vi.fn().mockRejectedValue(
-					new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
-						code: "P2002",
-						clientVersion: "7.8.0",
-					}),
-				),
-				update: vi.fn().mockResolvedValue({ userId: "winning-user-id" }),
-			},
-		};
+	it("should give each first-time verification attempt independent candidate identifiers", async () => {
+		const queryRaw = vi.fn().mockResolvedValue([{ userId: "winning-user-id" }]);
 		const module = await Test.createTestingModule({
-			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: prisma }],
+			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: { $queryRaw: queryRaw } }],
 		}).compile();
 
-		const result = await module.get(AuthIdentityRepository).upsertIdentity({
+		const repository = module.get(AuthIdentityRepository);
+		const input = {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "+5511999999999",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
+		};
+		await Promise.all([
+			repository.saveVerifiedIdentityAndContact(input),
+			repository.saveVerifiedIdentityAndContact(input),
+		]);
+
+		const queries: unknown[] = queryRaw.mock.calls.map((call) => call[0]);
+		const candidateIdentifiers = queries.flatMap((query) => {
+			if (!(query instanceof Prisma.Sql)) {
+				throw new Error("Expected verified identity persistence to use Prisma SQL");
+			}
+
+			return query.values.slice(5);
 		});
 
-		expect({ result: result, update: prisma.authIdentity.update.mock.calls[0]?.[0] }).toEqual({
-			result: "winning-user-id",
-			update: {
-				where: {
-					provider_providerSubject: {
-						provider: AuthIdentityProvider.WHATSAPP,
-						providerSubject: "+5511999999999",
-					},
-				},
-				data: { lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z") },
-				select: { userId: true },
-			},
-		});
+		expect(new Set(candidateIdentifiers).size).toBe(6);
 	});
 
-	it("should preserve database failures unrelated to concurrent identity creation", async () => {
-		const prisma = {
-			authIdentity: {
-				upsert: vi.fn().mockRejectedValue(new Error("database unavailable")),
-				update: vi.fn(),
-			},
-		};
+	it("should fail if the database cannot resolve exactly one verified identity", async () => {
 		const module = await Test.createTestingModule({
-			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: prisma }],
+			providers: [
+				AuthIdentityRepository,
+				{ provide: PrismaService, useValue: { $queryRaw: vi.fn().mockResolvedValue([]) } },
+			],
 		}).compile();
 
-		const result = module.get(AuthIdentityRepository).upsertIdentity({
+		const result = module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "+5511999999999",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
 		});
 
-		await expect(result).rejects.toThrow("database unavailable");
+		await expect(result).rejects.toThrow("Verified identity and contact persistence returned no user");
+	});
+
+	it("should preserve database failures for the global error boundary", async () => {
+		const databaseError = new Error("database unavailable");
+		const module = await Test.createTestingModule({
+			providers: [
+				AuthIdentityRepository,
+				{ provide: PrismaService, useValue: { $queryRaw: vi.fn().mockRejectedValue(databaseError) } },
+			],
+		}).compile();
+
+		const result = module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
+			provider: AuthIdentityProvider.WHATSAPP,
+			providerSubject: "+5511999999999",
+			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
+			contactMethod: JobContactMethod.WHATSAPP,
+			contactIdentifier: "+5511999999999",
+		});
+
+		await expect(result).rejects.toBe(databaseError);
 	});
 });

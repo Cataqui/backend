@@ -1,21 +1,59 @@
-import { JobStatus } from "../../../../generated/prisma/client.js";
+import {
+	JobContactMethod,
+	JobPaymentAmountPeriod,
+	JobPaymentType,
+	JobStatus,
+	JobType,
+	Prisma,
+} from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { JobRepository } from "./job.repository";
 
+function _createPublicJobDatabaseRow() {
+	return {
+		id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+		title: "Auxiliar de evento",
+		description: "Ajude na organização de um evento local.",
+		descriptionSummary: "Trabalho rápido em evento no centro.",
+		contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+		contactMethod: JobContactMethod.WHATSAPP,
+		neighborhood: "Centro",
+		city: "São Paulo",
+		state: "SP",
+		country: "BR",
+		fuzzyLatitude: new Prisma.Decimal("-23.550000"),
+		fuzzyLongitude: new Prisma.Decimal("-46.630000"),
+		paymentType: JobPaymentType.FIXED,
+		paymentMinAmount: new Prisma.Decimal("150.00"),
+		paymentMaxAmount: null,
+		paymentNote: null,
+		paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
+		paymentCurrency: "BRL",
+		status: JobStatus.ACTIVE,
+		type: JobType.INDIVIDUAL,
+		createdAt: new Date("2026-08-10T12:00:00.000Z"),
+		updatedAt: new Date("2026-08-10T12:30:00.000Z"),
+	};
+}
+
 describe("JobRepository lifecycle persistence", () => {
 	let repository: JobRepository;
+	let queryRaw: ReturnType<typeof vi.fn>;
 	let jobCreate: ReturnType<typeof vi.fn>;
 	let jobFindUnique: ReturnType<typeof vi.fn>;
 	let jobFindFirst: ReturnType<typeof vi.fn>;
+	let jobContactFindFirst: ReturnType<typeof vi.fn>;
 	let jobUpdate: ReturnType<typeof vi.fn>;
 	let jobUpdateMany: ReturnType<typeof vi.fn>;
 	let executeRaw: ReturnType<typeof vi.fn>;
 	let transaction: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
+		queryRaw = vi.fn().mockResolvedValue([]);
 		jobCreate = vi.fn().mockResolvedValue({});
 		jobFindUnique = vi.fn().mockResolvedValue(null);
 		jobFindFirst = vi.fn().mockResolvedValue(null);
+		jobContactFindFirst = vi.fn().mockResolvedValue(null);
 		jobUpdate = vi.fn().mockResolvedValue({});
 		jobUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
 		executeRaw = vi.fn().mockResolvedValue(1);
@@ -24,6 +62,7 @@ describe("JobRepository lifecycle persistence", () => {
 				callback({ job: { update: jobUpdate }, $executeRaw: executeRaw }),
 		);
 		repository = new JobRepository({
+			$queryRaw: queryRaw,
 			job: {
 				create: jobCreate,
 				findFirst: jobFindFirst,
@@ -31,20 +70,79 @@ describe("JobRepository lifecycle persistence", () => {
 				update: jobUpdate,
 				updateMany: jobUpdateMany,
 			},
+			jobContact: {
+				findFirst: jobContactFindFirst,
+			},
 			$transaction: transaction,
 		} as unknown as PrismaService);
 	});
 
-	it("should exclude draft jobs from public job lookup", async () => {
+	it("should execute one parameterized query that excludes draft jobs from public lookup", async () => {
 		await repository.findPublicById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
 
-		expect(jobFindFirst).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				status: { not: JobStatus.DRAFT },
+		expect(queryRaw).toHaveBeenCalledTimes(1);
+		expect(jobFindFirst).not.toHaveBeenCalled();
+
+		const query: unknown = queryRaw.mock.calls[0]?.[0];
+		expect(query).toBeInstanceOf(Prisma.Sql);
+		if (!(query instanceof Prisma.Sql)) throw new Error("Expected public job lookup to use parameterized Prisma SQL");
+
+		expect(query.text).toContain('LEFT JOIN "public"."job_contact_methods"');
+		expect(query.text).toContain('job."status" <> ');
+		expect(query.text).not.toContain("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+		expect(query.text).not.toContain(JobStatus.DRAFT);
+		expect(query.values).toEqual(["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", JobStatus.DRAFT]);
+	});
+
+	it("should map the one-query database row to the exact public job shape", async () => {
+		const databaseJob = _createPublicJobDatabaseRow();
+		queryRaw.mockResolvedValue([databaseJob]);
+
+		const result = await repository.findPublicById({ jobId: databaseJob.id });
+
+		expect(result).toEqual({
+			id: databaseJob.id,
+			title: databaseJob.title,
+			description: databaseJob.description,
+			descriptionSummary: databaseJob.descriptionSummary,
+			contact: {
+				id: databaseJob.contactId,
+				contactMethod: databaseJob.contactMethod,
 			},
-			include: { contact: true },
+			neighborhood: databaseJob.neighborhood,
+			city: databaseJob.city,
+			state: databaseJob.state,
+			country: databaseJob.country,
+			fuzzyLatitude: databaseJob.fuzzyLatitude,
+			fuzzyLongitude: databaseJob.fuzzyLongitude,
+			paymentType: databaseJob.paymentType,
+			paymentMinAmount: databaseJob.paymentMinAmount,
+			paymentMaxAmount: databaseJob.paymentMaxAmount,
+			paymentNote: databaseJob.paymentNote,
+			paymentAmountPeriod: databaseJob.paymentAmountPeriod,
+			paymentCurrency: databaseJob.paymentCurrency,
+			status: databaseJob.status,
+			type: databaseJob.type,
+			createdAt: databaseJob.createdAt,
+			updatedAt: databaseJob.updatedAt,
 		});
+	});
+
+	it("should map a database row without a joined contact to null", async () => {
+		const databaseJob = { ..._createPublicJobDatabaseRow(), contactId: null, contactMethod: null };
+		queryRaw.mockResolvedValue([databaseJob]);
+
+		const result = await repository.findPublicById({ jobId: databaseJob.id });
+
+		expect(result?.contact).toBeNull();
+	});
+
+	it("should return null when the public job query finds no row", async () => {
+		queryRaw.mockResolvedValue([]);
+
+		const result = await repository.findPublicById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
+
+		expect(result).toBeNull();
 	});
 
 	it("should find a contact only through the active job that references it", async () => {
@@ -53,32 +151,36 @@ describe("JobRepository lifecycle persistence", () => {
 			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 		});
 
-		expect(jobFindFirst).toHaveBeenCalledWith({
+		expect(jobContactFindFirst).toHaveBeenCalledWith({
 			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-				status: JobStatus.ACTIVE,
+				id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				jobs: {
+					some: {
+						id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+						status: JobStatus.ACTIVE,
+					},
+				},
 			},
-			select: { contact: true },
+			select: {
+				contactMethod: true,
+				identifier: true,
+			},
 		});
 	});
 
 	it("should return the contact selected by an active job", async () => {
-		const contact = {
-			id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-			userId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+		const selectedContact = {
 			contactMethod: "WHATSAPP",
 			identifier: "@cataqui.poster",
-			createdAt: new Date("2026-08-09T12:00:00.000Z"),
 		};
-		jobFindFirst.mockResolvedValue({ contact: contact });
+		jobContactFindFirst.mockResolvedValue(selectedContact);
 
 		const result = await repository.findActiveJobContact({
-			contactId: contact.id,
+			contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 		});
 
-		expect(result).toBe(contact);
+		expect(result).toBe(selectedContact);
 	});
 
 	it("should scope poster job lookup to the authenticated user", async () => {

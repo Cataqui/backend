@@ -13,6 +13,24 @@ import { InboundMessageAuthChannel } from "./enums/inbound-message-auth-channel.
 import { InboundMessageAuthController } from "./inbound-message-auth.controller";
 import { InboundMessageAuthService } from "./inbound-message-auth.service";
 
+function _createFastifyReplyTestDouble() {
+	let closeListener: (() => void) | undefined;
+
+	return {
+		disconnectClient: () => closeListener?.(),
+		header: vi.fn(),
+		raw: {
+			off: vi.fn((event: string, listener: () => void) => {
+				if (event === "close" && closeListener === listener) closeListener = undefined;
+			}),
+			once: vi.fn((event: string, listener: () => void) => {
+				if (event === "close") closeListener = listener;
+			}),
+		},
+		status: vi.fn(),
+	};
+}
+
 describe("InboundMessageAuthController", () => {
 	let controller: InboundMessageAuthController;
 	let inboundMessageAuthService: {
@@ -68,7 +86,7 @@ describe("InboundMessageAuthController", () => {
 	it("should return 202 and a polling delay while the intent is pending", async () => {
 		const pending = { status: "PENDING" as const, retryAfterSeconds: 1 };
 		inboundMessageAuthService.exchangeIntentForSession.mockResolvedValue(pending);
-		const reply = { header: vi.fn(), status: vi.fn() };
+		const reply = _createFastifyReplyTestDouble();
 
 		const result = await controller.exchangeIntentForSession(
 			{ intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI" },
@@ -96,7 +114,7 @@ describe("InboundMessageAuthController", () => {
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
 		};
 		inboundMessageAuthService.exchangeIntentForSession.mockResolvedValue(session);
-		const reply = { header: vi.fn(), status: vi.fn() };
+		const reply = _createFastifyReplyTestDouble();
 
 		const result = await controller.exchangeIntentForSession(
 			{ intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI" },
@@ -104,6 +122,34 @@ describe("InboundMessageAuthController", () => {
 		);
 
 		expect({ result: result, status: reply.status.mock.calls[0]?.[0] }).toEqual({ result: session, status: 201 });
+	});
+
+	it("should abort the verification wait when the client disconnects and remove the close listener", async () => {
+		let receivedAbortSignal: AbortSignal | undefined;
+		inboundMessageAuthService.exchangeIntentForSession.mockImplementation(
+			(params: { abortSignal: AbortSignal }) =>
+				new Promise((resolve) => {
+					receivedAbortSignal = params.abortSignal;
+					params.abortSignal.addEventListener(
+						"abort",
+						() => resolve({ status: "PENDING" as const, retryAfterSeconds: 1 }),
+						{ once: true },
+					);
+				}),
+		);
+		const reply = _createFastifyReplyTestDouble();
+
+		const exchange = controller.exchangeIntentForSession(
+			{ intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI" },
+			reply as never,
+		);
+		reply.disconnectClient();
+		await exchange;
+
+		expect({ aborted: receivedAbortSignal?.aborted, closeListenerRemoval: reply.raw.off.mock.calls[0]?.[0] }).toEqual({
+			aborted: true,
+			closeListenerRemoval: "close",
+		});
 	});
 
 	it("should accept camelCase intent input and expose the existing response contract", async () => {

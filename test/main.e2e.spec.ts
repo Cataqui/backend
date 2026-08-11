@@ -1,11 +1,13 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
+import { getStorageToken, ThrottlerStorageService } from "@nestjs/throttler";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/core/app.factory";
 import { requestSizeConfig } from "../src/core/config/request-size.config";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
 import { PrismaService } from "../src/core/prisma/prisma.service";
+import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
 process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
@@ -16,6 +18,10 @@ async function buildApp(): Promise<NestFastifyApplication> {
 	})
 		.overrideProvider(PrismaService)
 		.useValue({})
+		.overrideProvider(InboundMessageAuthRepository)
+		.useValue({})
+		.overrideProvider(getStorageToken())
+		.useValue(new ThrottlerStorageService())
 		.overrideProvider(HealthCheckService)
 		.useValue({
 			check: vi.fn().mockResolvedValue({

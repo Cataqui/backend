@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
-import { UserService } from "../../user/user.service";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
 import { InboundMessageAuthChannel } from "./enums/inbound-message-auth-channel.enum";
@@ -19,7 +18,6 @@ export class InboundMessageAuthService {
 	constructor(
 		private readonly _inboundMessageAuthRepository: InboundMessageAuthRepository,
 		private readonly _authIdentityRepository: AuthIdentityRepository,
-		private readonly _userService: UserService,
 		private readonly _authSessionService: AuthSessionService,
 	) {}
 
@@ -60,9 +58,11 @@ export class InboundMessageAuthService {
 	}
 
 	async exchangeIntentForSession(params: {
+		abortSignal?: AbortSignal;
 		intentToken: string;
 	}): Promise<z.infer<typeof AuthIntentExchangeOutputSchema>> {
-		const intent = await this._inboundMessageAuthRepository.findIntentByTokenHash({
+		const intent = await this._inboundMessageAuthRepository.findIntentByTokenHashAfterWaitingForVerification({
+			...(params.abortSignal === undefined ? {} : { abortSignal: params.abortSignal }),
 			intentTokenHash: createHash("sha256").update(params.intentToken).digest("hex"),
 		});
 
@@ -74,8 +74,6 @@ export class InboundMessageAuthService {
 				retryAfterSeconds: InboundMessageAuthConstants.INTENT_EXCHANGE_POLL_RETRY_SECONDS,
 			};
 		}
-
-		if (intent.userId === null) throw new AuthIntentNotFoundError();
 
 		return this._authSessionService.create({
 			sessionId: intent.candidateSessionId,
@@ -90,28 +88,24 @@ export class InboundMessageAuthService {
 		contactIdentifier: string;
 		authCodeHash: string;
 	}): Promise<void> {
+		const verificationStartedAt = new Date();
+
 		const processingIntent = await this._inboundMessageAuthRepository.getIntentOrNullAndMarkAsProcessing({
 			authCodeHash: params.authCodeHash,
 			providerMessageId: params.providerMessageId,
-			nowMilliseconds: Date.now(),
+			nowMilliseconds: verificationStartedAt.getTime(),
 			channel: params.channel,
 		});
 
 		if (processingIntent === null) return;
 
 		try {
-			const userId = await this._authIdentityRepository.upsertIdentity({
-				provider: authIdentityProviderByChannel[params.channel],
+			const userId = await this._authIdentityRepository.saveVerifiedIdentityAndContact({
+				provider: _authIdentityProviderByChannel[params.channel],
 				providerSubject: params.providerSubject,
-				lastVerifiedAt: new Date(),
-			});
-
-			await this._userService.getOrAddContact({
-				userId: userId,
-				contact: {
-					contactMethod: contactMethodByChannel[params.channel],
-					identifier: params.contactIdentifier,
-				},
+				lastVerifiedAt: verificationStartedAt,
+				contactMethod: _contactMethodByChannel[params.channel],
+				contactIdentifier: params.contactIdentifier,
 			});
 
 			await this._inboundMessageAuthRepository.markProcessingIntentAsVerified({
@@ -133,10 +127,10 @@ export class InboundMessageAuthService {
 	}
 }
 
-const authIdentityProviderByChannel = {
+const _authIdentityProviderByChannel = {
 	[InboundMessageAuthChannel.WHATSAPP]: AuthIdentityProvider.WHATSAPP,
 } satisfies Record<InboundMessageAuthChannel, AuthIdentityProvider>;
 
-const contactMethodByChannel = {
+const _contactMethodByChannel = {
 	[InboundMessageAuthChannel.WHATSAPP]: JobContactMethod.WHATSAPP,
 } satisfies Record<InboundMessageAuthChannel, JobContactMethod>;

@@ -1,54 +1,36 @@
 import { Injectable } from "@nestjs/common";
-import { AuthIdentityProvider, Prisma } from "../../../../generated/prisma/client.js";
+import { randomUUID } from "node:crypto";
+import { type AuthIdentityProvider, type JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 
 @Injectable()
 export class AuthIdentityRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async upsertIdentity(params: {
+	async saveVerifiedIdentityAndContact(params: {
 		provider: AuthIdentityProvider;
 		providerSubject: string;
 		lastVerifiedAt: Date;
+		contactMethod: JobContactMethod;
+		contactIdentifier: string;
 	}): Promise<string> {
-		try {
-			const identity = await this._prisma.authIdentity.upsert({
-				where: {
-					provider_providerSubject: {
-						provider: params.provider,
-						providerSubject: params.providerSubject,
-					},
-				},
-				update: {
-					lastVerifiedAt: params.lastVerifiedAt,
-				},
-				create: {
-					provider: params.provider,
-					providerSubject: params.providerSubject,
-					lastVerifiedAt: params.lastVerifiedAt,
-					user: { create: {} },
-				},
-				select: { userId: true },
-			});
+		const [verifiedIdentity] = await this._prisma.$queryRaw<{ userId: string }[]>(Prisma.sql`
+			SELECT "public"."save_verified_identity_and_contact"(
+				${params.provider}::"public"."AuthIdentityProvider",
+				${params.providerSubject}::text,
+				${params.lastVerifiedAt}::timestamp(3),
+				${params.contactMethod}::"public"."JobContactMethod",
+				${params.contactIdentifier}::text,
+				${randomUUID()}::uuid,
+				${randomUUID()}::uuid,
+				${randomUUID()}::uuid
+			) AS "userId"
+		`);
 
-			return identity.userId;
-		} catch (error) {
-			if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-
-			const identity = await this._prisma.authIdentity.update({
-				where: {
-					provider_providerSubject: {
-						provider: params.provider,
-						providerSubject: params.providerSubject,
-					},
-				},
-				data: {
-					lastVerifiedAt: params.lastVerifiedAt,
-				},
-				select: { userId: true },
-			});
-
-			return identity.userId;
+		if (verifiedIdentity === undefined) {
+			throw new Error("Verified identity and contact persistence returned no user");
 		}
+
+		return verifiedIdentity.userId;
 	}
 }
