@@ -79,30 +79,10 @@ export class InboundMessageAuthService {
 			};
 		}
 
-		const exchangeClaimId = randomUUID();
-		const claimedIntent = await this._inboundMessageAuthRepository.getVerifiedIntentOrNullAndClaimExchange({
-			exchangeClaimId: exchangeClaimId,
-			intentTokenHash: intentTokenHash,
+		return this._authSessionService.create({
+			sessionId: intent.candidateSessionId,
+			userId: intent.userId,
 		});
-
-		if (claimedIntent === null) {
-			return {
-				status: InboundMessageAuthIntentStatus.PENDING,
-				retryAfterSeconds: InboundMessageAuthConstants.INTENT_EXCHANGE_POLL_RETRY_SECONDS,
-			};
-		}
-
-		try {
-			return await this._authSessionService.create({
-				sessionId: claimedIntent.candidateSessionId,
-				userId: claimedIntent.userId,
-			});
-		} finally {
-			await this._inboundMessageAuthRepository.releaseVerifiedIntentExchangeClaim({
-				exchangeClaimId: exchangeClaimId,
-				intentTokenHash: intentTokenHash,
-			});
-		}
 	}
 
 	async verifyAuthMessage(params: {

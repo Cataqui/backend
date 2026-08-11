@@ -24,9 +24,7 @@ describe("InboundMessageAuthService", () => {
 	let repository: {
 		createIntent: ReturnType<typeof vi.fn>;
 		findIntentByTokenHashAfterWaitingForVerification: ReturnType<typeof vi.fn>;
-		getVerifiedIntentOrNullAndClaimExchange: ReturnType<typeof vi.fn>;
 		getIntentOrNullAndMarkAsProcessing: ReturnType<typeof vi.fn>;
-		releaseVerifiedIntentExchangeClaim: ReturnType<typeof vi.fn>;
 		markProcessingIntentAsVerified: ReturnType<typeof vi.fn>;
 		markProcessingIntentAsPending: ReturnType<typeof vi.fn>;
 	};
@@ -37,12 +35,7 @@ describe("InboundMessageAuthService", () => {
 		repository = {
 			createIntent: vi.fn(),
 			findIntentByTokenHashAfterWaitingForVerification: vi.fn(),
-			getVerifiedIntentOrNullAndClaimExchange: vi.fn().mockResolvedValue({
-				candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
-				userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
-			}),
 			getIntentOrNullAndMarkAsProcessing: vi.fn(),
-			releaseVerifiedIntentExchangeClaim: vi.fn(),
 			markProcessingIntentAsVerified: vi.fn(),
 			markProcessingIntentAsPending: vi.fn(),
 		};
@@ -309,29 +302,6 @@ describe("InboundMessageAuthService", () => {
 			sessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
 		});
-		expect(repository.releaseVerifiedIntentExchangeClaim).toHaveBeenCalledWith({
-			exchangeClaimId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-			intentTokenHash: createHash("sha256").update("kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI").digest("hex"),
-		});
-	});
-
-	it("should return pending while another exchange owns the verified intent claim", async () => {
-		repository.findIntentByTokenHashAfterWaitingForVerification.mockResolvedValue({
-			status: InboundMessageAuthIntentStatus.VERIFIED,
-			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
-			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
-		});
-		repository.getVerifiedIntentOrNullAndClaimExchange.mockResolvedValue(null);
-
-		const result = await service.exchangeIntentForSession({
-			intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
-		});
-
-		expect(result).toEqual({
-			status: InboundMessageAuthIntentStatus.PENDING,
-			retryAfterSeconds: 1,
-		});
-		expect(authSessionService.create).not.toHaveBeenCalled();
 	});
 
 	it("should allow a verified intent retry to rotate the same session after a lost response", async () => {
@@ -368,7 +338,6 @@ describe("InboundMessageAuthService", () => {
 		expect(firstResult).toMatchObject({ accessToken: "first-access-token" });
 		expect(retryResult).toMatchObject({ accessToken: "replacement-access-token" });
 		expect(authSessionService.create).toHaveBeenCalledTimes(2);
-		expect(repository.releaseVerifiedIntentExchangeClaim).toHaveBeenCalledTimes(2);
 	});
 
 	it("should propagate session issuance failures", async () => {
@@ -384,10 +353,6 @@ describe("InboundMessageAuthService", () => {
 				intentToken: "kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI",
 			}),
 		).rejects.toThrow(AuthSessionUnavailableError);
-		expect(repository.releaseVerifiedIntentExchangeClaim).toHaveBeenCalledWith({
-			exchangeClaimId: expect.any(String),
-			intentTokenHash: createHash("sha256").update("kJ3YFf0SYkZp6gWlMTq3up5ELXWRw_zTuF8j0M5tJgI").digest("hex"),
-		});
 	});
 
 	it("should claim the matching intent using channel-neutral message details", async () => {
