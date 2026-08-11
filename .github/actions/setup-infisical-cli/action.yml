@@ -1,0 +1,13 @@
+name: Set up Infisical CLI
+description: Install an exact official Infisical CLI release from npm
+
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned Infisical CLI release
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        npm install --global @infisical/cli@0.43.114
+        test "$(infisical --version)" = "infisical version 0.43.114"

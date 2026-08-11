@@ -1,15 +1,16 @@
 import { Module } from "@nestjs/common";
-import { AiModule } from "../../core/ai/ai.module";
-import { MapModule } from "../map/map.module";
-import { JobDescriptionService } from "./job-description.service";
+import { AiModule } from "../ai/ai.module";
+import { AuthModule } from "../auth/auth.module";
+import { LocationModule } from "../location/location.module";
+import { UserModule } from "../user/user.module";
 import { JobController } from "./job.controller";
+import { JobInboundController } from "./job.inbound.controller";
 import { JobService } from "./job.service";
-import { JobCategoryRepository } from "./repositories/job-category.repository";
 import { JobRepository } from "./repositories/job.repository";
 
 @Module({
-	imports: [MapModule, AiModule],
-	controllers: [JobController],
-	providers: [JobRepository, JobCategoryRepository, JobDescriptionService, JobService],
+	imports: [AiModule, AuthModule, LocationModule, UserModule],
+	controllers: [JobController, JobInboundController],
+	providers: [JobRepository, JobService],
 })
 export class JobModule {}

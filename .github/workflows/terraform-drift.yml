@@ -1,0 +1,189 @@
+name: Terraform Drift Detection
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-drift
+  cancel-in-progress: false
+
+jobs:
+  authorize-drift-ref:
+    name: Authorize the Terraform drift ref
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Reject drift detection from any ref except main
+        shell: bash
+        env:
+          DRIFT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$DRIFT_REF" != "refs/heads/main" ]]; then
+            echo "Terraform drift detection must run from refs/heads/main" >&2
+            exit 1
+          fi
+
+  components-cloudflare:
+    name: Discover Cloudflare infrastructure components
+    needs: authorize-drift-ref
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Discover registered Cloudflare Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
+  detect-cloudflare:
+    name: Detect ${{ matrix.component }} Cloudflare drift (${{ matrix.environment }})
+    needs: components-cloudflare
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ matrix.environment }}
+      deployment: false
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.components-cloudflare.outputs.components) }}
+        environment: [staging, production]
+    env:
+      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: ${{ matrix.environment }}
+      TF_WORKSPACE: api-${{ matrix.component }}-${{ matrix.environment }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Cloudflare Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: ${{ matrix.environment }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: cloudflare-terraform-drift
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Detect drift in the registered Cloudflare Terraform component
+        uses: ./.github/actions/detect-cloudflare-terraform-drift
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+          TF_VAR_cloudflare_account_id: ${{ steps.infisical.outputs.cloudflare_account_id }}
+        with:
+          component: ${{ matrix.component }}
+          environment: ${{ matrix.environment }}
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          cloudflare-read-api-token: ${{ steps.infisical.outputs.cloudflare_terraform_read_api_token }}
+
+  detect-upstash:
+    name: Detect Upstash Redis drift (${{ matrix.environment }})
+    needs: authorize-drift-ref
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ matrix.environment }}
+      deployment: false
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    env:
+      TERRAFORM_ROOT: infra/upstash/redis
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: ${{ matrix.environment }}
+      TF_WORKSPACE: api-upstash-redis-${{ matrix.environment }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Upstash Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: ${{ matrix.environment }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: upstash-terraform-drift
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Detect drift in Upstash Redis infrastructure
+        uses: ./.github/actions/detect-upstash-terraform-drift
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+        with:
+          environment: ${{ matrix.environment }}
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          upstash-email: ${{ steps.infisical.outputs.upstash_terraform_email }}
+          upstash-api-key: ${{ steps.infisical.outputs.upstash_terraform_api_key }}
+
+  detect-neon:
+    name: Detect Neon database drift (${{ matrix.environment }})
+    needs: authorize-drift-ref
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ matrix.environment }}
+      deployment: false
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    env:
+      TERRAFORM_ROOT: infra/neon/database
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: ${{ matrix.environment }}
+      TF_WORKSPACE: api-neon-database-${{ matrix.environment }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Neon Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: ${{ matrix.environment }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: neon-terraform-drift
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Detect drift in Neon database infrastructure
+        uses: ./.github/actions/detect-neon-terraform-drift
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+        with:
+          environment: ${{ matrix.environment }}
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          neon-api-key: ${{ steps.infisical.outputs.neon_api_key }}
+          neon-organization-id: ${{ steps.infisical.outputs.neon_organization_id }}

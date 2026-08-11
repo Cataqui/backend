@@ -1,4 +1,5 @@
 enum JobStatus {
+  DRAFT
   ACTIVE
   CLOSED
 }
@@ -28,4 +29,8 @@ enum JobPaymentType {
 enum JobContactMethod {
   WHATSAPP
   PHONE_CALL
+}
+
+enum AuthIdentityProvider {
+  WHATSAPP
 }

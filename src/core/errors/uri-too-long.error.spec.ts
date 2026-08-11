@@ -1,4 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
+import { DomainError } from "./domain-error";
 import { ErrorCode } from "./error-code.enum";
 import { UriTooLongError } from "./uri-too-long.error";
 
@@ -26,12 +27,11 @@ describe("UriTooLongError", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with error_code and message", () => {
+		it("should return object with errorCode and message", () => {
 			const error = new UriTooLongError("url too long");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.URI_TOO_LONG);
-			expect(response).toHaveProperty("message", "url too long");
+			expect(response).toEqual({ errorCode: ErrorCode.URI_TOO_LONG, message: "url too long" });
 		});
 	});
 
@@ -43,7 +43,7 @@ describe("UriTooLongError", () => {
 
 		it("should be an instance of DomainError", () => {
 			const error = new UriTooLongError();
-			expect(error).toBeInstanceOf(Error);
+			expect(error).toBeInstanceOf(DomainError);
 		});
 	});
 });

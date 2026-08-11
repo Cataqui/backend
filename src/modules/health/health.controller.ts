@@ -1,12 +1,15 @@
-import { Controller, Get, HttpStatus, Logger, Res, Version } from "@nestjs/common";
+import { Controller, Get, Header, HttpCode, HttpStatus, Logger, Res, SerializeOptions, Version } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
 import type { FastifyReply } from "fastify";
+import type { z } from "zod";
 import { PrismaService } from "../../core/prisma/prisma.service";
 import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
-import { HealthCheckOutputDto, HealthIndicatorDetailDto } from "./dto/health-check-output.dto";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
+import { RedisHealthIndicator } from "./redis-health.indicator";
+import { HealthCheckOutputSchema } from "./schemas/health-check-output.schema";
+import { HealthIndicatorDetailSchema } from "./schemas/health-indicator-detail.schema";
 
 @ApiTags("health")
 @Controller("health")
@@ -17,27 +20,44 @@ export class HealthController {
 		private readonly _health: HealthCheckService,
 		private readonly _prismaHealth: PrismaHealthIndicator,
 		private readonly _prisma: PrismaService,
+		private readonly _redisHealth: RedisHealthIndicator,
 	) {}
+
+	@Get("live")
+	@Version("1")
+	@SkipEnvelope()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	@ApiOperation({ summary: "Process liveness probe" })
+	@ApiResponse({
+		status: HttpStatus.NO_CONTENT,
+		description: "The API process is responding. This probe does not check external dependencies.",
+	})
+	liveness(): void {}
 
 	@Get()
 	@Version("1")
 	@SkipEnvelope()
-	@ApiOperation({ summary: "Health check endpoint" })
+	@ApiOperation({ summary: "Dependency readiness probe" })
 	@ApiResponse({
 		status: HttpStatus.OK,
-		type: HealthCheckOutputDto,
+		standardSchema: HealthCheckOutputSchema,
 		description: "All services are healthy",
 	})
 	@ApiResponse({
 		status: HttpStatus.SERVICE_UNAVAILABLE,
 		description: "One or more services are unhealthy",
 	})
-	async check(@Res({ passthrough: true }) reply: FastifyReply): Promise<HealthCheckOutputDto> {
+	@SerializeOptions({ schema: HealthCheckOutputSchema })
+	async check(@Res({ passthrough: true }) reply: FastifyReply): Promise<z.infer<typeof HealthCheckOutputSchema>> {
 		let healthStatus: HealthCheckStatus;
-		let details: Record<string, HealthIndicatorDetailDto>;
+		let details: Record<string, z.infer<typeof HealthIndicatorDetailSchema>>;
 
 		try {
-			const result = await this._health.check([() => this._prismaHealth.pingCheck("database", this._prisma)]);
+			const result = await this._health.check([
+				() => this._prismaHealth.pingCheck("database", this._prisma),
+				() => this._redisHealth.pingCheck(),
+			]);
 
 			healthStatus = result.status as HealthCheckStatus;
 
@@ -53,14 +73,20 @@ export class HealthController {
 					message = "Database connection failed";
 				}
 
-				details[key] = new HealthIndicatorDetailDto(status, message);
+				details[key] = {
+					status: status,
+					...(message === undefined ? {} : { message: message }),
+				};
 			}
 		} catch (error) {
 			this._logger.error("Health check failed", error);
 
 			healthStatus = HealthCheckStatus.ERROR;
 			details = {
-				error: new HealthIndicatorDetailDto(HealthIndicatorStatus.DOWN, "Database connection failed"),
+				error: {
+					status: HealthIndicatorStatus.DOWN,
+					message: "Dependency health check failed",
+				},
 			};
 		}
 
@@ -68,6 +94,6 @@ export class HealthController {
 
 		reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
 
-		return new HealthCheckOutputDto(healthStatus, details);
+		return { status: healthStatus, details: details };
 	}
 }

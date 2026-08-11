@@ -1,27 +1,20 @@
 import { Injectable } from "@nestjs/common";
-import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
-import { PaginationOutputDto } from "../../shared/dto/pagination-output.dto";
-import { MapService } from "../map/map.service";
-import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
-import type { FeedSort } from "./enums/feed-sort.enum";
-import { DEFAULT_FEED_SORT, FEED_ITEMS_RESPONSE_LIMIT } from "./feed.constants";
+import type { z } from "zod";
+import { PaginatedResult, type PaginatedResult as PaginatedResultType } from "../../shared/results/paginated-result";
 import { FeedRepository } from "./repositories/feed.repository";
+import { toFeedItemOutput } from "./schemas/feed-item-output.mapper";
+import { FeedItemOutputSchema } from "./schemas/feed-item-output.schema";
 import { CursorUtils } from "./utils/cursor.utils";
 
 @Injectable()
 export class FeedService {
-	constructor(
-		private readonly _feedRepository: FeedRepository,
-		private readonly _mapService: MapService,
-	) {}
+	constructor(private readonly _feedRepository: FeedRepository) {}
 
 	async getFeed(params: {
 		cursor?: string | undefined;
-		sort?: FeedSort | undefined;
-	}): Promise<PaginatedResponseDto<FeedItemOutputDto>> {
-		const limit = FEED_ITEMS_RESPONSE_LIMIT;
-		const sort = params.sort ?? DEFAULT_FEED_SORT;
-		const cursorPosition = params.cursor ? CursorUtils.decodeCursor(params.cursor, sort) : undefined;
+	}): Promise<PaginatedResultType<z.infer<typeof FeedItemOutputSchema>>> {
+		const limit = 20;
+		const cursorPosition = params.cursor ? CursorUtils.decodeCursor({ cursor: params.cursor }) : undefined;
 
 		const rawFeedResults = await this._feedRepository.getFeedItems({ cursor: cursorPosition, limit: limit + 1 });
 
@@ -31,17 +24,19 @@ export class FeedService {
 		let nextCursor: string | null = null;
 
 		if (hasMore) {
-			const lastItem = rawItems[rawItems.length - 1]!;
+			const lastItem = rawItems.at(-1);
+			if (lastItem === undefined) throw new Error("Paginated feed results unexpectedly contain no items");
 
 			nextCursor = CursorUtils.encodeCursor({
-				sort,
 				createdAt: lastItem.createdAt.toISOString(),
 				jobId: lastItem.id,
 			});
 		}
 
-		const mapConfig = await this._mapService.getConfig({ region: "BR" });
-		const items = rawItems.map((item) => FeedItemOutputDto.fromDatabase(item, mapConfig));
-		return new PaginatedResponseDto(items, new PaginationOutputDto(hasMore, nextCursor));
+		const items = rawItems.map((item) => toFeedItemOutput({ job: item }));
+		return PaginatedResult.create({
+			data: items,
+			pagination: { hasMore: hasMore, nextCursor: nextCursor },
+		});
 	}
 }

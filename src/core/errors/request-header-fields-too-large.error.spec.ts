@@ -25,12 +25,14 @@ describe("RequestHeaderFieldsTooLargeError", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with error_code and message", () => {
+		it("should return object with errorCode and message", () => {
 			const error = new RequestHeaderFieldsTooLargeError("headers too big");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE);
-			expect(response).toHaveProperty("message", "headers too big");
+			expect(response).toEqual({
+				errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE,
+				message: "headers too big",
+			});
 		});
 	});
 
@@ -42,7 +44,8 @@ describe("RequestHeaderFieldsTooLargeError", () => {
 
 		it("should be an instance of DomainError", () => {
 			const error = new RequestHeaderFieldsTooLargeError();
-			expect(error).toBeInstanceOf(Error);
+			expect(error).toBeInstanceOf(DomainError);
 		});
 	});
 });
+import { DomainError } from "./domain-error";

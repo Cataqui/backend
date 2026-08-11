@@ -1,13 +1,14 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
+import { getStorageToken, ThrottlerStorageService } from "@nestjs/throttler";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/core/app.factory";
 import { PrismaService } from "../src/core/prisma/prisma.service";
+import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
 process.env["NODE_ENV"] = "production";
-process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
-process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://allowed-origin.com";
 
 async function buildApp(): Promise<NestFastifyApplication> {
@@ -16,6 +17,8 @@ async function buildApp(): Promise<NestFastifyApplication> {
 	})
 		.overrideProvider(PrismaService)
 		.useValue({})
+		.overrideProvider(InboundMessageAuthRepository)
+		.useValue({})
 		.overrideProvider(HealthCheckService)
 		.useValue({
 			check: vi.fn().mockResolvedValue({
@@ -23,6 +26,8 @@ async function buildApp(): Promise<NestFastifyApplication> {
 				details: { database: { status: "up" } },
 			}),
 		})
+		.overrideProvider(getStorageToken())
+		.useValue(new ThrottlerStorageService())
 		.compile();
 
 	const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
@@ -117,7 +122,7 @@ describe("CORS (e2e)", () => {
 			});
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
-			expect(body["error_code"]).toBe("CORS_BLOCKED");
+			expect(body["errorCode"]).toBe("CORS_BLOCKED");
 
 			await app.close();
 		});
@@ -175,7 +180,7 @@ describe("CORS (e2e)", () => {
 				},
 			});
 
-			expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, PUT, DELETE, OPTIONS");
+			expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, PUT, PATCH, DELETE, OPTIONS");
 
 			await app.close();
 		});
@@ -192,7 +197,9 @@ describe("CORS (e2e)", () => {
 				},
 			});
 
-			expect(response.headers["access-control-allow-headers"]).toBe("Content-Type, Authorization, x-request-id");
+			expect(response.headers["access-control-allow-headers"]).toBe(
+				"Content-Type, Authorization, Accept-Language, x-request-id",
+			);
 
 			await app.close();
 		});

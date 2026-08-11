@@ -11,7 +11,7 @@ function resolveRequestId(request: FastifyRequest): string {
 }
 
 function resolveEndpoint(request: FastifyRequest): string {
-	return request.url;
+	return request.url.split("?", 1)[0] ?? request.url;
 }
 
 function resolveRequestLocale(acceptLanguage: string | undefined): string {

@@ -1,106 +1,356 @@
 name: Deploy Production
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'src/**'
-      - 'worker/**'
       - 'prisma/**'
+      - 'infra/**'
       - 'Dockerfile'
-      - 'wrangler.jsonc'
+      - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
+      - '.github/actions/**'
+      - '.github/workflows/deploy-production.yml'
+
+permissions:
+  contents: read
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
+  authorize-deployment-ref:
+    name: Authorize the production deployment ref
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Reject deployment from any ref except main
+        shell: bash
+        env:
+          DEPLOYMENT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$DEPLOYMENT_REF" != "refs/heads/main" ]]; then
+            echo "Production deployments must run from refs/heads/main" >&2
+            exit 1
+          fi
+
+  infrastructure-components-cloudflare:
+    name: Discover Cloudflare infrastructure components
+    needs: authorize-deployment-ref
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      components: ${{ steps.registry.outputs.components }}
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Discover registered Cloudflare Terraform components
+        id: registry
+        uses: ./.github/actions/discover-cloudflare-terraform-components
+
+  infrastructure-cloudflare:
+    name: Deploy ${{ matrix.component }} Cloudflare infrastructure (Production)
+    needs: infrastructure-components-cloudflare
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.infrastructure-components-cloudflare.outputs.components) }}
+    env:
+      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: production
+      TF_WORKSPACE: api-${{ matrix.component }}-production
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Cloudflare Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: cloudflare-terraform-apply
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Deploy the registered Cloudflare Terraform component
+        uses: ./.github/actions/deploy-cloudflare-terraform-component
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+          TF_VAR_cloudflare_account_id: ${{ steps.infisical.outputs.cloudflare_account_id }}
+        with:
+          component: ${{ matrix.component }}
+          environment: production
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          cloudflare-read-api-token: ${{ steps.infisical.outputs.cloudflare_terraform_read_api_token }}
+          cloudflare-write-api-token: ${{ steps.infisical.outputs.cloudflare_terraform_write_api_token }}
+
+  infrastructure-upstash:
+    name: Deploy Upstash Redis infrastructure (Production)
+    needs: authorize-deployment-ref
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+    env:
+      TERRAFORM_ROOT: infra/upstash/redis
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: production
+      TF_WORKSPACE: api-upstash-redis-production
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Upstash Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: upstash-terraform-apply
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Deploy Upstash Redis infrastructure
+        id: upstash-terraform
+        uses: ./.github/actions/deploy-upstash-terraform
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+        with:
+          environment: production
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          upstash-email: ${{ steps.infisical.outputs.upstash_terraform_email }}
+          upstash-api-key: ${{ steps.infisical.outputs.upstash_terraform_api_key }}
+
+      - name: Synchronize generated Upstash Redis credentials to Infisical
+        uses: ./.github/actions/sync-upstash-redis-to-infisical
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-id: ${{ vars.INFISICAL_PROJECT_ID }}
+          redis-rest-token: ${{ steps.upstash-terraform.outputs.redis-rest-token }}
+          redis-rest-url: ${{ steps.upstash-terraform.outputs.redis-rest-url }}
+
+  infrastructure-neon:
+    name: Deploy Neon database infrastructure (Production)
+    needs: authorize-deployment-ref
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+    env:
+      TERRAFORM_ROOT: infra/neon/database
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: production
+      TF_WORKSPACE: api-neon-database-production
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load Neon Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: neon-terraform-apply
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Deploy Neon database infrastructure
+        id: neon-terraform
+        uses: ./.github/actions/deploy-neon-terraform
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+        with:
+          environment: production
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          neon-api-key: ${{ steps.infisical.outputs.neon_api_key }}
+          neon-organization-id: ${{ steps.infisical.outputs.neon_organization_id }}
+
+      - name: Synchronize generated Neon database configuration to Infisical
+        uses: ./.github/actions/sync-neon-database-to-infisical
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          infisical-project-id: ${{ vars.INFISICAL_PROJECT_ID }}
+          project-id: ${{ steps.neon-terraform.outputs.project-id }}
+          neon-api-key: ${{ steps.infisical.outputs.neon_api_key }}
+          database-owner-direct-url: ${{ steps.neon-terraform.outputs.database-owner-direct-url }}
+          database-app-pooler-url: ${{ steps.neon-terraform.outputs.database-app-pooler-url }}
+
   migrate:
     name: Migrate (Production)
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]
+    permissions:
+      contents: read
+      id-token: write
     environment:
       name: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Load database migration credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: database-migration
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
       - name: Create Neon test branch
         id: neon-branch
-        uses: neondatabase/create-branch-action@v6
+        uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6
         with:
-          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          project_id: ${{ steps.infisical.outputs.neon_project_id }}
           branch_name: production-deploy-${{ github.run_id }}
           parent_branch: production
           database: cataqui-production
-          api_key: ${{ secrets.NEON_API_KEY }}
+          role: cataqui_production_owner
+          api_key: ${{ steps.infisical.outputs.neon_api_key }}
 
       - name: Test migrations on branch
         run: pnpm exec prisma migrate deploy
         env:
-          DATABASE_DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+          DATABASE_OWNER_DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
 
       - name: Run database migrations
         if: success()
         run: pnpm exec prisma migrate deploy
         env:
-          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+          DATABASE_OWNER_DIRECT_URL: ${{ steps.infisical.outputs.database_owner_direct_url }}
 
       - name: Cleanup Neon test branch
         if: always() && steps.neon-branch.outputs.branch_id != ''
-        uses: neondatabase/delete-branch-action@v3
+        uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
         with:
-          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          project_id: ${{ steps.infisical.outputs.neon_project_id }}
           branch: ${{ steps.neon-branch.outputs.branch_id }}
-          api_key: ${{ secrets.NEON_API_KEY }}
+          api_key: ${{ steps.infisical.outputs.neon_api_key }}
 
   deploy:
     name: Deploy (Production)
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     needs: migrate
+    permissions:
+      contents: read
+      id-token: write
     environment:
       name: production
       url: https://api.cataqui.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
+      - name: Load API runtime credentials from Infisical
+        id: api-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env production
           environment: production
-          secrets: |
-            DATABASE_POOLER_URL
-            DATABASE_DIRECT_URL
-            PROTOMAP_AUTH_SECRET
-            AI_GATEWAY_API_TOKEN
-        env:
-          DATABASE_POOLER_URL: ${{ secrets.DATABASE_POOLER_URL }}
-          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
-          PROTOMAP_AUTH_SECRET: ${{ secrets.PROTOMAP_AUTH_SECRET }}
-          AI_GATEWAY_API_TOKEN: ${{ secrets.AI_GATEWAY_API_TOKEN }}
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: api-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Load webhooks runtime credentials from Infisical
+        id: webhooks-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: webhooks-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Load application deployment credentials from Infisical
+        id: deployment-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: application-deploy
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Deploy and verify the Cloudflare API Worker
+        uses: ./.github/actions/deploy-cloudflare-api-worker
+        with:
+          environment: production
+          health-url: https://api.cataqui.com/v1/health
+          cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
+          cloudflare-account-id: ${{ steps.api-runtime-credentials.outputs.cloudflare_account_id }}
+          database-app-pooler-url: ${{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}
+          ai-gateway-api-token: ${{ steps.api-runtime-credentials.outputs.ai_gateway_api_token }}
+          auth-refresh-token-hmac-key-v1-base64url: ${{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}
+          upstash-redis-rest-url: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}
+          upstash-redis-rest-token: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}
+
+      - name: Deploy and verify the webhooks Worker
+        uses: ./.github/actions/deploy-cloudflare-webhooks-worker
+        with:
+          environment: production
+          readiness-url: https://webhooks.cataqui.com/whatsapp
+          cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
+          cloudflare-account-id: ${{ steps.webhooks-runtime-credentials.outputs.cloudflare_account_id }}
+          meta-app-secret: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
+          whatsapp-auth-webhook-verify-token: ${{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}

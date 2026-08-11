@@ -1,9 +1,10 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
-import { instanceToPlain } from "class-transformer";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { RequestUtils } from "../../../shared/utils/request.utils";
+import { ValidationViolationSchema } from "../../validation/validation-violation.schema";
 import { ErrorCode } from "../error-code.enum";
-import { ErrorOutputDto } from "../error-output.dto";
+import { ErrorOutputSchema, toErrorOutput } from "../error-output";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -16,24 +17,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 		const { status, body } = this._resolveError(exception, request);
 
-		this._logger.warn(`${request.method} ${request.url} → ${status} ${body.errorCode}`);
+		this._logger.warn(`${request.method} ${RequestUtils.resolveEndpoint(request)} → ${status} ${body.errorCode}`);
 
-		response.status(status).send(instanceToPlain(body));
+		response.status(status).send(body);
 	}
 
-	private _resolveError(exception: unknown, request: FastifyRequest): { status: HttpStatus; body: ErrorOutputDto } {
+	private _resolveError(
+		exception: unknown,
+		request: FastifyRequest,
+	): { status: HttpStatus; body: z.infer<typeof ErrorOutputSchema> } {
 		if (exception instanceof HttpException) return this._resolveHttpException(exception, request);
 
 		if (exception instanceof Error) {
 			this._logger.error(`Unhandled error: ${exception.message}`, exception.stack);
 		}
 
-		return this._buildErrorOutput(
-			ErrorCode.INTERNAL_ERROR,
-			"An unexpected error occurred",
-			HttpStatus.INTERNAL_SERVER_ERROR,
-			request,
-		);
+		return this._buildErrorOutput({
+			errorCode: ErrorCode.INTERNAL_ERROR,
+			message: "An unexpected error occurred",
+			status: HttpStatus.INTERNAL_SERVER_ERROR,
+			request: request,
+		});
 	}
 
 	private _resolveHttpException(
@@ -41,26 +45,31 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		request: FastifyRequest,
 	): {
 		status: HttpStatus;
-		body: ErrorOutputDto;
+		body: z.infer<typeof ErrorOutputSchema>;
 	} {
 		const status = exception.getStatus();
 		const exceptionResponse = exception.getResponse();
 
 		if (typeof exceptionResponse === "string") {
 			const result = this._resolveErrorCodeForStringResponse(exceptionResponse, status);
-			return this._buildErrorOutput(result.errorCode, result.message, status, request);
+			return this._buildErrorOutput({
+				errorCode: result.errorCode,
+				message: result.message,
+				status: status,
+				request: request,
+			});
 		}
 
 		if (typeof exceptionResponse === "object" && exceptionResponse !== null) {
 			return this._resolveObjectResponse(exceptionResponse as Record<string, unknown>, status, request);
 		}
 
-		return this._buildErrorOutput(
-			ErrorCode.INTERNAL_ERROR,
-			"An unexpected error occurred",
-			HttpStatus.INTERNAL_SERVER_ERROR,
-			request,
-		);
+		return this._buildErrorOutput({
+			errorCode: ErrorCode.INTERNAL_ERROR,
+			message: "An unexpected error occurred",
+			status: HttpStatus.INTERNAL_SERVER_ERROR,
+			request: request,
+		});
 	}
 
 	private _resolveErrorCodeForStringResponse(
@@ -72,7 +81,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		}
 
 		if (status === HttpStatus.BAD_REQUEST) {
-			return { errorCode: ErrorCode.INVALID_REQUEST, message };
+			return { errorCode: ErrorCode.INVALID_REQUEST, message: message };
 		}
 
 		if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
@@ -90,7 +99,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			};
 		}
 
-		return { errorCode: ErrorCode.INTERNAL_ERROR, message };
+		return { errorCode: ErrorCode.INTERNAL_ERROR, message: message };
 	}
 
 	private _resolveObjectResponse(
@@ -99,19 +108,26 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		request: FastifyRequest,
 	): {
 		status: HttpStatus;
-		body: ErrorOutputDto;
+		body: z.infer<typeof ErrorOutputSchema>;
 	} {
 		const { errorCode, message } = this._resolveErrorCodeFromObject(resp, status);
+		const validationViolationsResult = z.array(ValidationViolationSchema).min(1).safeParse(resp["violations"]);
 
-		return this._buildErrorOutput(errorCode, message, status, request);
+		return this._buildErrorOutput({
+			errorCode: errorCode,
+			message: message,
+			status: status,
+			request: request,
+			...(validationViolationsResult.success ? { violations: validationViolationsResult.data } : {}),
+		});
 	}
 
 	private _resolveErrorCodeFromObject(
 		resp: Record<string, unknown>,
 		status: HttpStatus,
 	): { errorCode: ErrorCode; message: string } {
-		if (typeof resp["error_code"] === "string") {
-			return { errorCode: resp["error_code"] as ErrorCode, message: this._resolveMessage(resp["message"]) };
+		if (typeof resp["errorCode"] === "string") {
+			return { errorCode: resp["errorCode"] as ErrorCode, message: this._resolveMessage(resp["message"]) };
 		}
 
 		if (status === HttpStatus.NOT_FOUND) {
@@ -143,25 +159,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		return { errorCode: ErrorCode.INTERNAL_ERROR, message: this._resolveMessage(resp["message"]) };
 	}
 
-	private _buildErrorOutput(
-		errorCode: ErrorCode,
-		message: string,
-		status: HttpStatus,
-		request: FastifyRequest,
-	): {
+	private _buildErrorOutput(params: {
+		errorCode: ErrorCode;
+		message: string;
 		status: HttpStatus;
-		body: ErrorOutputDto;
+		request: FastifyRequest;
+		violations?: z.infer<typeof ValidationViolationSchema>[];
+	}): {
+		status: HttpStatus;
+		body: z.infer<typeof ErrorOutputSchema>;
 	} {
 		return {
-			status,
-			body: new ErrorOutputDto(
-				errorCode,
-				message,
-				status,
-				RequestUtils.resolveRequestId(request),
-				new Date().toISOString(),
-				RequestUtils.resolveEndpoint(request),
-			),
+			status: params.status,
+			body: toErrorOutput({
+				errorCode: params.errorCode,
+				message: params.message,
+				status: params.status,
+				requestId: RequestUtils.resolveRequestId(params.request),
+				timestamp: new Date().toISOString(),
+				endpoint: RequestUtils.resolveEndpoint(params.request),
+				...(params.violations === undefined ? {} : { violations: params.violations }),
+			}),
 		};
 	}
 

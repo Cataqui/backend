@@ -5,7 +5,15 @@ import tseslint from "typescript-eslint";
 
 export default [
 	{
-		ignores: ["eslint.config.mjs", "commitlint.config.mjs", "prisma.config.ts", "vitest.config.ts", "generated/", "dist/", "worker/"],
+		ignores: [
+			"eslint.config.mjs",
+			"commitlint.config.mjs",
+			"prisma.config.ts",
+			"vitest.config.ts",
+			"generated/",
+			"dist/",
+			"src/platform/cloudflare/",
+		],
 	},
 	eslint.configs.recommended,
 	...tseslint.configs.recommendedTypeChecked,

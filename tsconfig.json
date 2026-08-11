@@ -21,14 +21,13 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": ".",
     "incremental": true,
     "skipLibCheck": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*", "test/**/*.spec.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*", "test/**/*.ts", "src/platform/cloudflare/workers/webhooks/modules/inbound-message-auth/.routes.spec.ts"],
+  "exclude": ["node_modules", "dist", "src/platform/cloudflare"]
 }

@@ -12,15 +12,20 @@ describe("ErrorCode", () => {
 			"POST_NOT_FOUND",
 			"POST_ALREADY_REPORTED",
 			"INVALID_CURSOR",
-			"JOB_CATEGORY_NOT_FOUND",
 			"JOB_NOT_FOUND",
 			"JOB_CONTACT_NOT_FOUND",
+			"JOB_DATA_DERIVATION_UNAVAILABLE",
+			"JOB_DRAFT_INCOMPLETE",
 			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
-			"MAP_REGION_NOT_FOUND",
+			"AUTH_INTENT_CREATION_COLLISION",
+			"AUTH_INTENT_NOT_FOUND",
+			"AUTH_SESSION_UNAVAILABLE",
+			"ACCESS_TOKEN_REQUIRED",
+			"INVALID_REFRESH_TOKEN",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -36,7 +41,7 @@ describe("ErrorCode", () => {
 		}
 	});
 
-	it("should have exactly 19 members", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(19);
+	it("should expose every supported error code", () => {
+		expect(Object.keys(ErrorCode)).toHaveLength(25);
 	});
 });

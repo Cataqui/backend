@@ -1,0 +1,13 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ESNext"]
+	},
+	"files": ["../api/api-worker-env.d.ts"],
+	"include": [
+		"./**/*.ts",
+		"../../containers/api/inbound/**/*.ts",
+		"../../contracts/**/*.ts"
+	],
+	"exclude": ["../api"]
+}

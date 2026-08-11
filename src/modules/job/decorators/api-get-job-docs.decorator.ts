@@ -1,18 +1,22 @@
-import { applyDecorators, HttpStatus } from "@nestjs/common";
+import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { JobOutputDto } from "../dto/job-output.dto";
+import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { PublicJobOutputSchema } from "../schemas/public-job-output.schema";
 
 export function ApiGetJobDocs(): MethodDecorator & ClassDecorator {
+	const responseSchema = createSuccessResponseSchema({ dataSchema: PublicJobOutputSchema });
+
 	return applyDecorators(
-		ApiOperation({ summary: "Get a job by ID" }),
+		SerializeOptions({ schema: responseSchema }),
+		ApiOperation({ summary: "Get a public job by ID" }),
 		ApiResponse({
 			status: HttpStatus.OK,
-			description: "Job found",
-			type: JobOutputDto,
+			description: "Public job found.",
+			standardSchema: responseSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.NOT_FOUND,
-			description: "Job not found",
+			description: "No public job exists with the supplied jobId.",
 		}),
 	);
 }

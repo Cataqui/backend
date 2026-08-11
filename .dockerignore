@@ -2,6 +2,7 @@
 dist/
 generated/
 coverage/
+.wrangler/
 
 # Dependencies (rebuilt inside Docker)
 node_modules/
@@ -10,6 +11,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+.infisical-secrets
 
 # Git
 .git/
@@ -34,6 +36,8 @@ docker-compose.yml
 .dockerignore
 
 # CI & meta
+.github/
+infra/
 commitlint.config.mjs
 LICENSE
 .editorconfig

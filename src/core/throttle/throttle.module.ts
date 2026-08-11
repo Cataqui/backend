@@ -1,27 +1,36 @@
-import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { Global, Module } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { GLOBAL_THROTTLE_CONFIG_KEY, type IGlobalThrottleConfig } from "../config/throttle.config";
-import { CustomThrottlerGuard } from "../guards/throttler.guard";
+import { UserRateLimitGuard } from "../guards/user-rate-limit.guard";
+import { RedisModule } from "../redis/redis.module";
+import { RedisService } from "../redis/redis.service";
+import { RateLimitConstants } from "./rate-limit.constants";
+import { RedisThrottlerStorage } from "./redis-throttler.storage";
 
+@Global()
 @Module({
 	imports: [
 		ThrottlerModule.forRootAsync({
-			inject: [GLOBAL_THROTTLE_CONFIG_KEY],
-			useFactory: (config: IGlobalThrottleConfig) => [
-				{
-					name: "default",
-					ttl: config.ttl,
-					limit: config.limit,
-				},
-			],
+			imports: [RedisModule],
+			inject: [Reflector, RedisService],
+			useFactory: (reflector: Reflector, redis: RedisService) => ({
+				storage: new RedisThrottlerStorage(redis),
+				throttlers: [
+					{
+						name: RateLimitConstants.THROTTLER_NAME,
+						ttl: 0,
+						limit: 0,
+						skipIf: (context) =>
+							reflector.getAllAndOverride<boolean>(RateLimitConstants.DECORATOR_METADATA_KEY, [
+								context.getHandler(),
+								context.getClass(),
+							]) !== true,
+					},
+				],
+			}),
 		}),
 	],
-	providers: [
-		{
-			provide: APP_GUARD,
-			useClass: CustomThrottlerGuard,
-		},
-	],
+	providers: [UserRateLimitGuard],
+	exports: [UserRateLimitGuard],
 })
 export class ThrottleModule {}

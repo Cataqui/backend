@@ -1,0 +1,97 @@
+name: Synchronize Upstash Redis credentials to Infisical
+description: Write Terraform-generated Upstash Redis REST credentials to the runtime folder
+
+inputs:
+  environment:
+    description: Protected deployment environment whose Infisical runtime folder receives the credentials
+    required: true
+  identity-id:
+    description: Infisical machine identity authenticated through GitHub OIDC
+    required: true
+  infisical-api-url:
+    description: Infisical API origin
+    required: false
+    default: https://us.infisical.com
+  project-id:
+    description: Infisical project identifier used by the secret-management CLI
+    required: true
+  redis-rest-token:
+    description: Terraform-generated Upstash Redis REST token
+    required: true
+  redis-rest-url:
+    description: Terraform-generated Upstash Redis REST URL
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up the official Infisical CLI
+      uses: ./.github/actions/setup-infisical-cli
+
+    - name: Request a GitHub OIDC token for Infisical
+      id: github-oidc
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      with:
+        result-encoding: string
+        script: |
+          const oidcToken = await core.getIDToken("https://github.com/Cataqui");
+          core.setSecret(oidcToken);
+          return oidcToken;
+
+    - name: Authenticate and synchronize generated credentials
+      shell: bash
+      env:
+        GITHUB_OIDC_TOKEN: ${{ steps.github-oidc.outputs.result }}
+        INFISICAL_API_URL: ${{ inputs.infisical-api-url }}
+        INFISICAL_ENVIRONMENT: ${{ inputs.environment }}
+        INFISICAL_IDENTITY_ID: ${{ inputs.identity-id }}
+        INFISICAL_PROJECT_ID: ${{ inputs.project-id }}
+        UPSTASH_REDIS_REST_TOKEN: ${{ inputs.redis-rest-token }}
+        UPSTASH_REDIS_REST_URL: ${{ inputs.redis-rest-url }}
+      run: |
+        set -euo pipefail
+
+        if [[ "$INFISICAL_ENVIRONMENT" != "staging" && "$INFISICAL_ENVIRONMENT" != "production" ]]; then
+          echo "environment must be staging or production" >&2
+          exit 1
+        fi
+
+        if [[ -z "$INFISICAL_IDENTITY_ID" || -z "$INFISICAL_PROJECT_ID" ]]; then
+          echo "INFISICAL_IDENTITY_ID and INFISICAL_PROJECT_ID must be configured as GitHub repository variables" >&2
+          exit 1
+        fi
+
+        if [[ -z "$UPSTASH_REDIS_REST_URL" || -z "$UPSTASH_REDIS_REST_TOKEN" ]]; then
+          echo "Terraform must return non-empty Upstash Redis REST credentials" >&2
+          exit 1
+        fi
+
+        echo "::add-mask::$UPSTASH_REDIS_REST_URL"
+        echo "::add-mask::$UPSTASH_REDIS_REST_TOKEN"
+
+        infisical_access_token="$(
+          INFISICAL_JWT="$GITHUB_OIDC_TOKEN" infisical login \
+            --domain="$INFISICAL_API_URL" \
+            --method=oidc-auth \
+            --machine-identity-id="$INFISICAL_IDENTITY_ID" \
+            --plain \
+            --silent \
+            --telemetry=false
+        )"
+
+        if [[ -z "$infisical_access_token" ]]; then
+          echo "Infisical OIDC authentication returned an empty access token" >&2
+          exit 1
+        fi
+
+        echo "::add-mask::$infisical_access_token"
+
+        INFISICAL_TOKEN="$infisical_access_token" infisical secrets set \
+          "UPSTASH_REDIS_REST_URL=$UPSTASH_REDIS_REST_URL" \
+          "UPSTASH_REDIS_REST_TOKEN=$UPSTASH_REDIS_REST_TOKEN" \
+          --domain="$INFISICAL_API_URL" \
+          --env="$INFISICAL_ENVIRONMENT" \
+          --path="/runtime" \
+          --projectId="$INFISICAL_PROJECT_ID" \
+          --silent \
+          --telemetry=false

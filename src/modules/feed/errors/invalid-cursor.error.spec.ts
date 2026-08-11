@@ -26,13 +26,4 @@ describe("InvalidCursorError", () => {
 
 		expect(error.message).toBe("Something went wrong.");
 	});
-
-	describe("sortMismatch", () => {
-		it("should create an error with sort mismatch message", () => {
-			const error = InvalidCursorError.sortMismatch("LATEST", "EXPIRING" as never);
-
-			expect(error.errorCode).toBe(ErrorCode.INVALID_CURSOR);
-			expect(error.message).toBe("Cursor sort 'LATEST' does not match requested sort 'EXPIRING'.");
-		});
-	});
 });

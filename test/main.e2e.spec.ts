@@ -1,13 +1,15 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
+import { getStorageToken, ThrottlerStorageService } from "@nestjs/throttler";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/core/app.factory";
 import { requestSizeConfig } from "../src/core/config/request-size.config";
+import { ErrorCode } from "../src/core/errors/error-code.enum";
 import { PrismaService } from "../src/core/prisma/prisma.service";
+import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
-process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
-process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 async function buildApp(): Promise<NestFastifyApplication> {
@@ -16,6 +18,10 @@ async function buildApp(): Promise<NestFastifyApplication> {
 	})
 		.overrideProvider(PrismaService)
 		.useValue({})
+		.overrideProvider(InboundMessageAuthRepository)
+		.useValue({})
+		.overrideProvider(getStorageToken())
+		.useValue(new ThrottlerStorageService())
 		.overrideProvider(HealthCheckService)
 		.useValue({
 			check: vi.fn().mockResolvedValue({
@@ -32,6 +38,7 @@ async function buildApp(): Promise<NestFastifyApplication> {
 			bodyLimit: sizeConfig.bodyLimitBytes,
 			requestTimeout: sizeConfig.requestTimeoutMs,
 			connectionTimeout: sizeConfig.connectionTimeoutMs,
+			handlerTimeout: sizeConfig.handlerTimeoutMs,
 			keepAliveTimeout: sizeConfig.keepAliveTimeoutMs,
 		}),
 	);
@@ -49,6 +56,24 @@ describe("Main (e2e)", () => {
 	});
 
 	describe("health endpoint", () => {
+		it("should expose process liveness without a response body", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "GET", url: "/v1/health/live" });
+			await app.close();
+
+			expect({ statusCode: response.statusCode, body: response.body }).toEqual({ statusCode: 204, body: "" });
+		});
+
+		it("should answer the Docker liveness HEAD probe", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({ method: "HEAD", url: "/v1/health/live" });
+			await app.close();
+
+			expect(response.statusCode).toBe(204);
+		});
+
 		it("should return 200", async () => {
 			const app = await buildApp();
 
@@ -82,6 +107,38 @@ describe("Main (e2e)", () => {
 			expect(response.statusCode).toBe(200);
 
 			await app.close();
+		});
+	});
+
+	describe("request validation", () => {
+		it("should return API-owned structured field violations without raw Zod metadata", async () => {
+			const app = await buildApp();
+
+			const response = await app.inject({
+				method: "POST",
+				url: "/v1/auth/inbound-message/intents",
+				headers: { "content-type": "application/json" },
+				payload: { channel: "SMS" },
+			});
+			await app.close();
+
+			const body = response.json() as Record<string, unknown>;
+			const violations = body["violations"] as Record<string, unknown>[];
+
+			expect({
+				statusCode: response.statusCode,
+				errorCode: body["errorCode"],
+				message: body["message"],
+				violation: violations[0],
+			}).toEqual({
+				statusCode: 400,
+				errorCode: ErrorCode.VALIDATION_ERROR,
+				message: "The request contains invalid fields.",
+				violation: {
+					path: ["channel"],
+					message: expect.any(String),
+				},
+			});
 		});
 	});
 

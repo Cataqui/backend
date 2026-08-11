@@ -1,12 +1,9 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
-import { instanceToPlain } from "class-transformer";
 import type { FastifyRequest } from "fastify";
 import type { Observable } from "rxjs";
 import { map } from "rxjs";
 import { SKIP_ENVELOPE_KEY } from "../../shared/decorators/skip-envelope.decorator";
-import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
-import { PaginatedSuccessResponseDto } from "../../shared/dto/paginated-success-response.dto";
-import { SuccessResponseDto } from "../../shared/dto/success-response.dto";
+import { PaginatedResult } from "../../shared/results/paginated-result";
 import { RequestUtils } from "../../shared/utils/request.utils";
 
 @Injectable()
@@ -16,12 +13,7 @@ export class ResponseInterceptor implements NestInterceptor {
 			Reflect.getMetadata(SKIP_ENVELOPE_KEY, context.getClass())) as boolean | undefined;
 
 		if (skipEnvelope) {
-			return next.handle().pipe(
-				map((data: unknown) => {
-					if (data === null || data === undefined) return data;
-					return instanceToPlain(data, { exposeUnsetFields: false });
-				}),
-			);
+			return next.handle();
 		}
 
 		const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -33,12 +25,15 @@ export class ResponseInterceptor implements NestInterceptor {
 			map((data: unknown) => {
 				if (data === null || data === undefined) return data;
 
-				const responseDto =
-					data instanceof PaginatedResponseDto
-						? new PaginatedSuccessResponseDto(data.data, data.pagination, requestId, timestamp, endpoint)
-						: new SuccessResponseDto(data, requestId, timestamp, endpoint);
-
-				return instanceToPlain(responseDto, { exposeUnsetFields: false });
+				return PaginatedResult.is(data)
+					? {
+							data: data.data,
+							pagination: data.pagination,
+							requestId: requestId,
+							timestamp: timestamp,
+							endpoint: endpoint,
+						}
+					: { data: data, requestId: requestId, timestamp: timestamp, endpoint: endpoint };
 			}),
 		);
 	}

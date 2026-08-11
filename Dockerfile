@@ -1,5 +1,5 @@
 # ─── base ──────────────────────────────────────────────────────────────
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 
 RUN apk add --no-cache tini
 
@@ -22,7 +22,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 # ─── build ─────────────────────────────────────────────────────────────
 FROM deps AS build
 
-ARG DATABASE_DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ARG DATABASE_OWNER_DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
 
 COPY . .
 
@@ -31,7 +31,7 @@ RUN pnpm prisma:generate \
     && pnpm prune --prod --ignore-scripts
 
 # ─── runtime ───────────────────────────────────────────────────────────
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 
 RUN apk add --no-cache tini wget
 
@@ -52,7 +52,7 @@ USER cataqui
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health/live || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/src/main.js"]

@@ -24,11 +24,11 @@ describe("RouteNotFoundException", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with ROUTE_NOT_FOUND error_code", () => {
+		it("should return object with ROUTE_NOT_FOUND errorCode", () => {
 			const error = new RouteNotFoundException();
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.ROUTE_NOT_FOUND);
+			expect(response).toHaveProperty("errorCode", ErrorCode.ROUTE_NOT_FOUND);
 		});
 
 		it("should include the friendly message", () => {

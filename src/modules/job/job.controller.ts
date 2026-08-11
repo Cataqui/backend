@@ -1,42 +1,109 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Version } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, Param, Patch, Post, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { RequestLocale } from "../../shared/locale/request-locale.decorator";
-import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";
+import type { z } from "zod";
+import { RateLimit } from "../../core/throttle/rate-limit.decorator";
+import { CurrentAuthSession } from "../auth/decorators/current-auth-session.decorator";
+import type { IAuthenticatedSession } from "../auth/interfaces/authenticated-session.interface";
+import { ApiCreateJobDraftDocs } from "./decorators/api-create-job-draft-docs.decorator";
 import { ApiGetJobContactDocs } from "./decorators/api-get-job-contact-docs.decorator";
 import { ApiGetJobDocs } from "./decorators/api-get-job-docs.decorator";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { GetJobContactRequestParamsDto } from "./dto/get-job-contact-request-params.dto";
-import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
-import { JobContactOutputDto } from "./dto/job-contact-output.dto";
-import { JobOutputDto } from "./dto/job-output.dto";
+import { ApiPublishJobDocs } from "./decorators/api-publish-job-docs.decorator";
+import { ApiUpdateJobDraftDocs } from "./decorators/api-update-job-draft-docs.decorator";
+import { ApiUpdateJobDocs } from "./decorators/api-update-job-docs.decorator";
 import { JobService } from "./job.service";
+import { CreateJobDraftInputSchema } from "./schemas/create-job-draft-input.schema";
+import { DraftJobOutputSchema } from "./schemas/draft-job-output.schema";
+import { GetJobContactInputSchema } from "./schemas/get-job-contact-input.schema";
+import { GetJobInputSchema } from "./schemas/get-job-input.schema";
+import { JobContactOutputSchema } from "./schemas/job-contact-output.schema";
+import { PublicJobOutputSchema } from "./schemas/public-job-output.schema";
+import { UpdateJobInputSchema } from "./schemas/update-job-input.schema";
 
 @ApiTags("jobs")
-@Controller("job")
+@Controller("jobs")
 export class JobController {
 	constructor(private readonly _jobService: JobService) {}
 
-	@Get(":job_id")
+	@Get(":jobId")
 	@Version("1")
 	@HttpCode(HttpStatus.OK)
 	@ApiGetJobDocs()
-	async getJob(@Param() params: GetJobRequestParamsDto, @RequestLocale() locale: string): Promise<JobOutputDto> {
-		return this._jobService.getJob({ jobId: params.jobId, locale });
+	async getJob(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+	): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		return this._jobService.getPublicJob({ jobId: params.jobId });
 	}
 
-	@Get(":job_id/contact/:contact_id")
+	@Get(":jobId/contact/:contactId")
 	@Version("1")
 	@HttpCode(HttpStatus.OK)
+	@Header("Cache-Control", "no-store")
 	@ApiGetJobContactDocs()
-	async getJobContact(@Param() params: GetJobContactRequestParamsDto): Promise<JobContactOutputDto> {
-		return this._jobService.getJobContact({ contactId: params.contactId, jobId: params.jobId });
+	async getJobContact(
+		@Param({ schema: GetJobContactInputSchema })
+		params: z.infer<typeof GetJobContactInputSchema>,
+	): Promise<z.infer<typeof JobContactOutputSchema>> {
+		return this._jobService.getActiveJobContact({ contactId: params.contactId, jobId: params.jobId });
 	}
 
-	@Post()
+	@Post("drafts")
 	@Version("1")
+	@RateLimit({ requests: 20, per: "hour" })
 	@HttpCode(HttpStatus.CREATED)
-	@ApiCreateJobDocs()
-	async create(@Body() dto: CreateJobRequestDto, @RequestLocale() locale: string): Promise<JobOutputDto> {
-		return this._jobService.createJob({ dto: dto, locale: locale });
+	@ApiCreateJobDraftDocs()
+	async createDraft(
+		@Body({ schema: CreateJobDraftInputSchema }) dto: z.infer<typeof CreateJobDraftInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof DraftJobOutputSchema>> {
+		return this._jobService.createDraft({ dto: dto, posterUserId: authSession.userId });
+	}
+
+	@Patch("drafts/:jobId")
+	@Version("1")
+	@RateLimit({ requests: 60, per: "hour" })
+	@HttpCode(HttpStatus.OK)
+	@ApiUpdateJobDraftDocs()
+	async updateDraft(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+		@Body({ schema: UpdateJobInputSchema }) dto: z.infer<typeof UpdateJobInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof DraftJobOutputSchema>> {
+		return this._jobService.updateDraft({
+			jobId: params.jobId,
+			updatedDto: dto,
+			posterUserId: authSession.userId,
+		});
+	}
+
+	@Patch(":jobId")
+	@Version("1")
+	@RateLimit({ requests: 60, per: "hour" })
+	@HttpCode(HttpStatus.OK)
+	@ApiUpdateJobDocs()
+	async updatePublicJob(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+		@Body({ schema: UpdateJobInputSchema }) dto: z.infer<typeof UpdateJobInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		return this._jobService.updatePublicJob({
+			jobId: params.jobId,
+			updatedDto: dto,
+			posterUserId: authSession.userId,
+		});
+	}
+
+	@Post(":jobId/publish")
+	@Version("1")
+	@RateLimit({ requests: 20, per: "hour" })
+	@HttpCode(HttpStatus.OK)
+	@ApiPublishJobDocs()
+	async publish(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		return this._jobService.publishJob({
+			jobId: params.jobId,
+			posterUserId: authSession.userId,
+		});
 	}
 }

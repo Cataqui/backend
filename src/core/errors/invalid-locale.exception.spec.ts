@@ -26,12 +26,14 @@ describe("InvalidLocaleException", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return error_code and message", () => {
+		it("should return errorCode and message", () => {
 			const error = new InvalidLocaleException("en_US");
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.INVALID_LOCALE);
-			expect(response).toHaveProperty("message");
+			expect(response).toEqual({
+				errorCode: ErrorCode.INVALID_LOCALE,
+				message: expect.stringContaining("en_US"),
+			});
 		});
 	});
 });

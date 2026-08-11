@@ -5,6 +5,6 @@ import "dotenv/config";
 export default defineConfig({
   schema: path.join(import.meta.dirname, "prisma", "schema"),
   datasource: {
-    url: process.env.DATABASE_DIRECT_URL!,
+    url: process.env.DATABASE_OWNER_DIRECT_URL!,
   },
 });

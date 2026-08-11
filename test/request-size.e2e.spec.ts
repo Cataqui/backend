@@ -1,29 +1,30 @@
-import { ValidationPipe, VersioningType } from "@nestjs/common";
+import { StandardSchemaSerializerInterceptor, StandardSchemaValidationPipe, VersioningType } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { HealthCheckService } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
-import { instanceToPlain } from "class-transformer";
 import { AppModule } from "../src/app.module";
 import type { IRequestSizeConfig } from "../src/core/config/request-size.config";
-import { REQUEST_SIZE_CONFIG_KEY, requestSizeConfig } from "../src/core/config/request-size.config";
+import { requestSizeConfig } from "../src/core/config/request-size.config";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
-import { ErrorOutputDto } from "../src/core/errors/error-output.dto";
+import { ErrorOutputSchema } from "../src/core/errors/error-output";
 import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
 import { registerRequestSizeHooks } from "../src/core/hooks/request-size.hook";
 import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
 import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
 import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
 import { PrismaService } from "../src/core/prisma/prisma.service";
+import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
-process.env["DATABASE_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
-process.env["DATABASE_DIRECT_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
+process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
 
 const TEST_CONFIG: IRequestSizeConfig = {
 	bodyLimitBytes: 2048,
 	urlLengthLimitBytes: 128,
 	requestTimeoutMs: 10_000,
-	connectionTimeoutMs: 5_000,
+	connectionTimeoutMs: 0,
+	handlerTimeoutMs: 60_000,
 	keepAliveTimeoutMs: 5_000,
 };
 
@@ -33,9 +34,14 @@ function expectedErrorBody(
 	status: number,
 	endpoint: string,
 ): Record<string, unknown> {
-	return instanceToPlain(new ErrorOutputDto(errorCode, message, status, "", "", endpoint), {
-		exposeUnsetFields: false,
-	}) as Record<string, unknown>;
+	return {
+		errorCode: errorCode,
+		message: message,
+		status: status,
+		requestId: "",
+		timestamp: "",
+		endpoint: endpoint,
+	};
 }
 
 function assertErrorResponse(
@@ -51,11 +57,9 @@ function assertErrorResponse(
 	const expected = expectedErrorBody(errorCode, message, status, endpoint);
 
 	const staticFields = Object.fromEntries(
-		Object.entries(expected).filter(([key]) => key !== "request_id" && key !== "timestamp"),
+		Object.entries(expected).filter(([key]) => key !== "requestId" && key !== "timestamp"),
 	);
 	expect(body).toMatchObject(staticFields);
-	expect(body).not.toHaveProperty("errorCode");
-	expect(body).not.toHaveProperty("requestId");
 
 	return body;
 }
@@ -68,6 +72,8 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 	})
 		.overrideProvider(PrismaService)
 		.useValue({})
+		.overrideProvider(InboundMessageAuthRepository)
+		.useValue({})
 		.overrideProvider(HealthCheckService)
 		.useValue({
 			check: vi.fn().mockResolvedValue({
@@ -77,7 +83,7 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 		});
 
 	if (overrideConfig) {
-		testBuilder.overrideProvider(REQUEST_SIZE_CONFIG_KEY).useValue(overrideConfig);
+		testBuilder.overrideProvider(requestSizeConfig.KEY).useValue(overrideConfig);
 	}
 
 	const moduleRef = await testBuilder.compile();
@@ -87,25 +93,21 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 			bodyLimit: effectiveConfig.bodyLimitBytes,
 			requestTimeout: effectiveConfig.requestTimeoutMs,
 			connectionTimeout: effectiveConfig.connectionTimeoutMs,
+			handlerTimeout: effectiveConfig.handlerTimeoutMs,
 			keepAliveTimeout: effectiveConfig.keepAliveTimeoutMs,
 		}),
 	);
 
 	app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 
-	app.useGlobalPipes(
-		new ValidationPipe({
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			transform: true,
-			transformOptions: {
-				enableImplicitConversion: true,
-			},
-		}),
-	);
+	app.useGlobalPipes(new StandardSchemaValidationPipe());
 
-	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
-	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
+	app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
+	app.useGlobalInterceptors(
+		new LoggingInterceptor(),
+		new StandardSchemaSerializerInterceptor(app.get(Reflector)),
+		new ResponseInterceptor(),
+	);
 
 	await app.init();
 
@@ -196,7 +198,7 @@ describe("Request Size Limits (e2e)", () => {
 			await app.close();
 		});
 
-		it("should return envelope with snake_case keys on rejection", async () => {
+		it("should return an error envelope with camelCase keys on rejection", async () => {
 			const app = await buildApp(TEST_CONFIG);
 
 			const response = await app.inject({
@@ -206,23 +208,12 @@ describe("Request Size Limits (e2e)", () => {
 			});
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
-			const dtoKeys = Object.keys(
-				instanceToPlain(new ErrorOutputDto(ErrorCode.PAYLOAD_TOO_LARGE, "", 0, "", "", ""), {
-					exposeUnsetFields: false,
-				}),
-			);
-
-			for (const key of dtoKeys) {
-				expect(body).toHaveProperty(key);
-			}
-
-			expect(body).not.toHaveProperty("errorCode");
-			expect(body).not.toHaveProperty("requestId");
+			expect(ErrorOutputSchema.safeParse(body).success).toBe(true);
 
 			await app.close();
 		});
 
-		it("should include a valid UUID request_id in envelope", async () => {
+		it("should include a valid UUID requestId in envelope", async () => {
 			const app = await buildApp(TEST_CONFIG);
 
 			const response = await app.inject({
@@ -232,7 +223,7 @@ describe("Request Size Limits (e2e)", () => {
 			});
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
-			expect(body["request_id"] as string).toMatch(/^[0-9a-f-]{36}$/);
+			expect(body["requestId"] as string).toMatch(/^[0-9a-f-]{36}$/);
 
 			await app.close();
 		});
@@ -256,6 +247,28 @@ describe("Request Size Limits (e2e)", () => {
 			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
 
 			expect(initialConfig["bodyLimit"]).toBe(TEST_CONFIG.bodyLimitBytes);
+
+			await app.close();
+		});
+
+		it("should keep socket timeout disabled so long-running handlers can finish", async () => {
+			const app = await buildApp(TEST_CONFIG);
+
+			const fastifyInstance = app.getHttpAdapter().getInstance();
+			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
+
+			expect(initialConfig["connectionTimeout"]).toBe(0);
+
+			await app.close();
+		});
+
+		it("should enforce a handler deadline longer than the AI operation deadline", async () => {
+			const app = await buildApp(TEST_CONFIG);
+
+			const fastifyInstance = app.getHttpAdapter().getInstance();
+			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
+
+			expect(initialConfig["handlerTimeout"]).toBe(60_000);
 
 			await app.close();
 		});

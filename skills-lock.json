@@ -13,6 +13,18 @@
       "skillPath": "skills/api-security-best-practices/SKILL.md",
       "computedHash": "5a088c5b84b75ed44955e7a153b4af20b5a70b6430e86d0f0398b824cc9efb20"
     },
+    "ask-questions-if-underspecified": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/ask-questions-if-underspecified/skills/ask-questions-if-underspecified/SKILL.md",
+      "computedHash": "e78cf8dd5cb5861bd606ce450ed305051bd09998429f81c33eaab9c87db96272"
+    },
+    "backend-architect": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/backend-architect/SKILL.md",
+      "computedHash": "54823d87ab527c8080d13e98229fd473d271295dc84a01eef09c683af66a3642"
+    },
     "biome": {
       "source": "bobmatnyc/claude-mpm-skills",
       "sourceType": "github",
@@ -24,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/.curated/cloudflare-deploy/SKILL.md",
       "computedHash": "72e2f6fec78aecc84994c1c23e74fcd7f09328c8ab61ff12d957a956e1784179"
+    },
+    "database-optimizer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/database-optimizer/SKILL.md",
+      "computedHash": "2feb5b0765151417dab90bf014df41514386e4bdb25aad9ab38498c0bd18a1d8"
     },
     "docker-expert": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -66,6 +84,12 @@
       "sourceType": "github",
       "skillPath": "skills/nestjs-expert/SKILL.md",
       "computedHash": "0775f4ba14e4f372b894cc86feb0bf58a51b2038bc98b3ff18f2021565cea494"
+    },
+    "performance-engineer": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/performance-engineer/SKILL.md",
+      "computedHash": "bf844ba60df30fe294541fe22e90eed18b4341d3270dc8599f0c4bfcf5e40c58"
     },
     "pnpm": {
       "source": "antfu/skills",
@@ -121,6 +145,12 @@
       "skillPath": "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor/SKILL.md",
       "computedHash": "483d9ce83cd95ef1b343c879c608e87ab30ec8ede5873f8ea22707e6ebab033a"
     },
+    "terraform-engineer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/terraform-engineer/SKILL.md",
+      "computedHash": "04e717ca5d883a2839863f371f8ebba8b3f89cde3b2292cf90a3186c30b2d24a"
+    },
     "testing-patterns": {
       "source": "vudovn/antigravity-kit",
       "sourceType": "github",
@@ -138,6 +168,18 @@
       "sourceType": "github",
       "skillPath": "stdlib/languages/typescript-expert/SKILL.md",
       "computedHash": "f8a2d5004c2e2100d5c6fe5390027b59fbc4664764ae9dc5d98ff342071d3e49"
+    },
+    "upstash": {
+      "source": "upstash/skills",
+      "sourceType": "github",
+      "skillPath": "skills/upstash/SKILL.md",
+      "computedHash": "17f79bb120b105e34aa18cfcafa69097b59f81212079c8f83795be67032e0faf"
+    },
+    "upstash-redis-js": {
+      "source": "upstash/skills",
+      "sourceType": "github",
+      "skillPath": "skills/upstash-redis-js/SKILL.md",
+      "computedHash": "b3740ee221b199b157554899c638f035880eb7c0f551c1b78615942293b44c5f"
     },
     "wrangler": {
       "source": "cloudflare/skills",

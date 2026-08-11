@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { DATABASE_CONFIG_KEY, databaseConfig } from "../config/database.config";
+import { databaseConfig } from "../config/database.config";
 import { PrismaService } from "./prisma.service";
 
 let prismaNeonConfigs: Record<string, unknown>[] = [];
@@ -32,7 +32,7 @@ describe("PrismaService", () => {
 		const module = await Test.createTestingModule({
 			providers: [
 				{
-					provide: DATABASE_CONFIG_KEY,
+					provide: databaseConfig.KEY,
 					useValue: MOCK_CONFIG,
 				},
 				PrismaService,
@@ -46,9 +46,15 @@ describe("PrismaService", () => {
 		expect(prismaService).toBeDefined();
 	});
 
-	it("should pass poolerUrl as connectionString to PrismaNeon", () => {
+	it("should pass appPoolerUrl as connectionString to PrismaNeon", () => {
 		expect(prismaNeonConfigs[0]).toMatchObject({
-			connectionString: MOCK_CONFIG.poolerUrl,
+			connectionString: MOCK_CONFIG.appPoolerUrl,
+		});
+	});
+
+	it("should keep the configured minimum number of warm Neon pool connections", () => {
+		expect(prismaNeonConfigs[0]).toMatchObject({
+			min: MOCK_CONFIG.minimumPoolConnections,
 		});
 	});
 

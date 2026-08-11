@@ -1,0 +1,102 @@
+name: Detect Upstash Terraform drift
+description: Fail when the Upstash Redis database differs from its persistent environment
+
+inputs:
+  environment:
+    description: Persistent environment to inspect
+    required: true
+  terraform-api-token:
+    description: HCP Terraform API token
+    required: true
+  upstash-email:
+    description: Email for the environment-scoped Upstash account
+    required: true
+  upstash-api-key:
+    description: Developer API key for the environment-scoped Upstash account
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify protected environment credentials are available
+      shell: bash
+      env:
+        HCP_TERRAFORM_TOKEN: ${{ inputs.terraform-api-token }}
+        UPSTASH_TERRAFORM_EMAIL: ${{ inputs.upstash-email }}
+        UPSTASH_TERRAFORM_API_KEY: ${{ inputs.upstash-api-key }}
+      run: |
+        if [[ -z "$HCP_TERRAFORM_TOKEN" ]]; then
+          echo "TERRAFORM_API_TOKEN must be available in the selected Infisical environment" >&2
+          exit 1
+        fi
+
+        if [[ -z "$UPSTASH_TERRAFORM_EMAIL" ]]; then
+          echo "UPSTASH_TERRAFORM_EMAIL must be available in the selected Infisical environment" >&2
+          exit 1
+        fi
+
+        if [[ -z "$UPSTASH_TERRAFORM_API_KEY" ]]; then
+          echo "UPSTASH_TERRAFORM_API_KEY must be available in the selected Infisical environment" >&2
+          exit 1
+        fi
+
+    - name: Read the pinned Terraform version
+      id: terraform-version
+      shell: bash
+      run: |
+        terraform_version="$(tr -d '[:space:]' < infra/upstash/.terraform-version)"
+
+        if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "infra/upstash/.terraform-version must contain a semantic version such as 1.15.8" >&2
+          exit 1
+        fi
+
+        echo "version=$terraform_version" >> "$GITHUB_OUTPUT"
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+      with:
+        terraform_version: ${{ steps.terraform-version.outputs.version }}
+        terraform_wrapper: false
+
+    - name: Verify the drift target
+      shell: bash
+      env:
+        TERRAFORM_TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        if [[ "$TERRAFORM_ROOT" != "infra/upstash/redis" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
+          echo "TERRAFORM_ROOT must identify the Upstash Redis Terraform root" >&2
+          exit 1
+        fi
+
+        if [[ "$TERRAFORM_TARGET_ENVIRONMENT" != "staging" && "$TERRAFORM_TARGET_ENVIRONMENT" != "production" ]]; then
+          echo "environment must be staging or production" >&2
+          exit 1
+        fi
+
+    - name: Initialize Terraform and the HCP workspace
+      shell: bash
+      run: terraform init -input=false
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
+
+    - name: Fail when managed Upstash infrastructure has drifted
+      shell: bash
+      working-directory: ${{ env.TERRAFORM_ROOT }}
+      env:
+        TF_TOKEN_app_terraform_io: ${{ inputs.terraform-api-token }}
+        UPSTASH_EMAIL: ${{ inputs.upstash-email }}
+        UPSTASH_API_KEY: ${{ inputs.upstash-api-key }}
+      run: |
+        set +e
+        terraform plan -detailed-exitcode -input=false -lock-timeout=5m -no-color
+        terraform_exit_code=$?
+        set -e
+
+        if [[ "$terraform_exit_code" -eq 2 ]]; then
+          echo "### Upstash Redis drift detected for $TF_VAR_environment" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
+
+        exit "$terraform_exit_code"

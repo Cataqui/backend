@@ -2,25 +2,38 @@ name: CI
 
 on:
   push:
-    branches: [development, staging, main]
+    branches: [staging, main]
     paths:
       - 'src/**'
-      - 'worker/**'
       - 'prisma/**'
+      - 'infra/**'
+      - 'Dockerfile'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
       - 'test/**'
+      - '.github/actions/**'
       - '.github/workflows/**'
   pull_request:
-    branches: [development, staging, main]
+    branches: [staging, main]
     paths:
       - 'src/**'
-      - 'worker/**'
       - 'prisma/**'
+      - 'infra/**'
+      - 'Dockerfile'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
       - 'test/**'
+      - '.github/actions/**'
       - '.github/workflows/**'
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -29,32 +42,38 @@ concurrency:
 jobs:
   quality:
     name: Quality Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: pnpm prisma:generate
         env:
-          DATABASE_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          DATABASE_OWNER_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint:check
 
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Test with coverage
+        run: pnpm test:cov
         env:
           CORS_ORIGINS: http://localhost:3000
+
+      - name: Build
+        run: pnpm build

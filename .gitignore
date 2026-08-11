@@ -1,12 +1,14 @@
 node_modules/
 dist/
 .env
+.infisical-secrets
 coverage/
 generated/
 .idea/
 *.js.map
 *.ts.map
 .DS_Store
+.pnpm-store/
 
 # Only pnpm lockfile is accepted
 package-lock.json
@@ -14,11 +16,22 @@ yarn.lock
 bun.lock
 bun.lockb
 
-# Cloudflare Worker
-worker/dist/
+# Cloudflare Workers
 .wrangler/
-.dev.vars
-.dev.vars.*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
 
 # AI
 .opencode

@@ -1,16 +1,21 @@
 import helmet from "@fastify/helmet";
-import { BadRequestException, Logger, ValidationPipe, VersioningType } from "@nestjs/common";
+import {
+	Logger,
+	StandardSchemaSerializerInterceptor,
+	StandardSchemaValidationPipe,
+	VersioningType,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import type { ValidationError } from "class-validator";
+import { AppSwagger } from "./app.swagger";
 import { requestSizeConfig } from "./config/request-size.config";
 import { CorsBlockedError } from "./errors/cors-blocked.error";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
+import { RequestValidationError } from "./errors/request-validation.error";
 import { registerRequestSizeHooks } from "./hooks/request-size.hook";
 import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
 import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
-import { ValidationErrorUtils } from "./validation/validation-error.utils";
 
 export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	const corsLogger = new Logger("CORS");
@@ -26,23 +31,32 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 
 	app.useGlobalPipes(
-		new ValidationPipe({
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			transform: true,
-			stopAtFirstError: true,
-			transformOptions: {
-				enableImplicitConversion: true,
-			},
-			exceptionFactory: (errors: ValidationError[]): BadRequestException => {
-				const messages = ValidationErrorUtils.formatValidationErrors(errors);
-				return new BadRequestException(messages);
-			},
+		new StandardSchemaValidationPipe({
+			exceptionFactory: (issues) =>
+				new RequestValidationError({
+					violations: issues.map((issue) => ({
+						path:
+							issue.path?.map((pathSegment) => {
+								const key = typeof pathSegment === "object" ? pathSegment.key : pathSegment;
+								return typeof key === "number" ? key : String(key);
+							}) ?? [],
+						message: issue.message,
+					})),
+				}),
 		}),
 	);
 
-	app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
-	app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
+	// Nest evaluates global filters in reverse registration order. Keep the catch-all first so
+	// Prisma errors reach their specific filter before the generic HTTP fallback.
+	app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
+
+	// Nest runs response interceptors in reverse order. ResponseInterceptor creates the wire envelope,
+	// then Standard Schema validates and serializes that complete response contract.
+	app.useGlobalInterceptors(
+		new LoggingInterceptor(),
+		new StandardSchemaSerializerInterceptor(app.get(Reflector)),
+		new ResponseInterceptor(),
+	);
 
 	const isDevelopment = process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
 
@@ -59,8 +73,8 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 					}
 				},
 		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],
+		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization", "Accept-Language", "x-request-id"],
 	});
 
 	const fastifyInstance = app.getHttpAdapter().getInstance();
@@ -74,19 +88,5 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	});
 	registerRequestSizeHooks(fastifyInstance, sizeConfig);
 
-	if (process.env["NODE_ENV"] !== "production") {
-		const swaggerConfig = new DocumentBuilder()
-			.setTitle("Cataquí API")
-			.setVersion("1.0")
-			.addGlobalParameters({
-				name: "accept-language",
-				in: "header",
-				required: false,
-				schema: { type: "string", default: "en-US", example: "en-US" },
-			})
-			.build();
-
-		const document = SwaggerModule.createDocument(app, swaggerConfig);
-		SwaggerModule.setup("docs", app, document);
-	}
+	AppSwagger.setup(app);
 }

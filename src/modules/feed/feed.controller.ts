@@ -1,9 +1,10 @@
 import { Controller, Get, HttpCode, HttpStatus, Query, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { PaginatedResponseDto } from "../../shared/dto/paginated-response.dto";
+import type { z } from "zod";
+import type { PaginatedResult } from "../../shared/results/paginated-result";
 import { ApiGetFeedDocs } from "./decorators/api-get-feed-docs.decorator";
-import { FeedItemOutputDto } from "./dto/feed-item-output.dto";
-import { FeedRequestQueryDto } from "./dto/feed-request-query.dto";
+import { FeedItemOutputSchema } from "./schemas/feed-item-output.schema";
+import { FeedInputSchema } from "./schemas/feed-input.schema";
 import { FeedService } from "./feed.service";
 
 @ApiTags("feed")
@@ -15,10 +16,11 @@ export class FeedController {
 	@Version("1")
 	@HttpCode(HttpStatus.OK)
 	@ApiGetFeedDocs()
-	async getFeed(@Query() query: FeedRequestQueryDto): Promise<PaginatedResponseDto<FeedItemOutputDto>> {
+	async getFeed(
+		@Query({ schema: FeedInputSchema }) query: z.infer<typeof FeedInputSchema>,
+	): Promise<PaginatedResult<z.infer<typeof FeedItemOutputSchema>>> {
 		return this._feedService.getFeed({
 			cursor: query.cursor,
-			sort: query.sort,
 		});
 	}
 }

@@ -188,35 +188,3 @@ describe("resolveLocalizedString", () => {
 		expect(result).toBe("Moving Help");
 	});
 });
-
-describe("detectTextLocaleAsISO6393", () => {
-	it("should detect Portuguese from Portuguese text", () => {
-		const result = LocaleUtils.detectTextLocaleAsISO6393(
-			"Preciso de alguém para ajudar a descarregar um caminhão de mercadorias na loja no sábado das 8h às 14h.",
-		);
-
-		expect(result).toBe("por");
-	});
-
-	it("should detect English from English text", () => {
-		const result = LocaleUtils.detectTextLocaleAsISO6393(
-			"Looking for someone to help me move apartments this Saturday. Need help carrying boxes and furniture.",
-		);
-
-		expect(result).toBe("eng");
-	});
-
-	it("should detect Spanish from Spanish text", () => {
-		const result = LocaleUtils.detectTextLocaleAsISO6393(
-			"Necesito a alguien para ayudar a descargar un camión de mercancías en la tienda el sábado.",
-		);
-
-		expect(result).toBe("spa");
-	});
-
-	it("should return a 3-letter ISO 639-3 code for any non-empty text", () => {
-		const result = LocaleUtils.detectTextLocaleAsISO6393("Short text");
-
-		expect(result.length).toBe(3);
-	});
-});

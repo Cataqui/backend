@@ -1,244 +1,157 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-
-import { PATH_METADATA } from "@nestjs/common/constants";
+import { GUARDS_METADATA, HEADERS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
-import {
-	JobContactMethod,
-	JobPaymentAmountPeriod,
-	JobPaymentType,
-	JobStatus,
-	JobType,
-} from "../../../generated/prisma/client.js";
-import { JobPaymentOutputDto } from "../../shared/dto/job/job-payment-output.dto";
-import { MapConfigOutputDto } from "../map/dto/map-config-output.dto";
-import { CreateJobContactInputDto } from "./dto/create-job-contact-input.dto";
-import { CreateJobLocationInputDto } from "./dto/create-job-location-input.dto";
-import { CreateJobRequestDto } from "./dto/create-job-request.dto";
-import { GetJobContactRequestParamsDto } from "./dto/get-job-contact-request-params.dto";
-import { GetJobRequestParamsDto } from "./dto/get-job-request-params.dto";
-import { JobCategoryOutputDto } from "./dto/job-category-output.dto";
-import { JobContactOutputDto } from "./dto/job-contact-output.dto";
-import { JobContactReferenceOutputDto } from "./dto/job-contact-reference-output.dto";
-import { JobLocationOutputDto } from "./dto/job-location-output.dto";
-import { JobOutputDto } from "./dto/job-output.dto";
-import { JobPaymentInputDto } from "./dto/job-payment-input.dto";
+import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler.constants";
+import { UserRateLimitGuard } from "../../core/guards/user-rate-limit.guard";
+import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 import { JobController } from "./job.controller";
 import { JobService } from "./job.service";
 
-function createMockJobContactOutputDto(): JobContactOutputDto {
-	return JobContactOutputDto.fromDatabase({
-		contactMethod: JobContactMethod.WHATSAPP,
-		identifier: "+5511999999999",
-	});
-}
-
-function createMockJobOutputDto(): JobOutputDto {
-	return new JobOutputDto({
-		jobId: "cm3x-job-1",
-		title: "Help unload truck",
-		description: "Need someone to help unload a delivery truck.",
-		contactReference: new JobContactReferenceOutputDto({
-			contactId: "cm3x-contact-1",
-			contactMethod: JobContactMethod.WHATSAPP,
-		}),
-		location: new JobLocationOutputDto({
-			neighborhood: "Centro",
-			city: "São Paulo",
-			state: "SP",
-			country: "BR",
-			latitude: -23.55,
-			longitude: -46.63,
-			mapConfig: new MapConfigOutputDto({
-				queryParams: "v=1&sig=abc&exp=123",
-				expiresAt: "2026-01-01T00:00:00.000Z",
-				mapVersion: "br",
-				fontstack: "inter",
-				tilesUrlTemplate: "https://tiles.cataqui.com/br/br/{z}/{x}/{y}.mvt",
-				glyphUrlTemplate: "https://tiles.cataqui.com/glyphs/{fontstack}/{range}.pbf",
-			}),
-		}),
-		category: new JobCategoryOutputDto({ categoryId: "cm3x-cat-1", name: "Moving Help", slug: "moving-help" }),
-		payment: new JobPaymentOutputDto({
-			paymentType: JobPaymentType.FIXED,
-			paymentMinAmount: 150.0,
-			paymentMaxAmount: null,
-			paymentNote: null,
-			paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
-			paymentCurrency: "BRL",
-		}),
-		status: JobStatus.ACTIVE,
-		type: JobType.INDIVIDUAL,
-		createdAt: "2026-05-28T10:00:00.000Z",
-		updatedAt: "2026-05-28T10:00:00.000Z",
-	});
-}
-
-describe("JobController", () => {
+describe("JobController lifecycle routes", () => {
+	const authSession = {
+		expiresAt: new Date("2026-08-08T19:15:00.000Z"),
+		sessionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+		userId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+	};
 	let controller: JobController;
-	let jobService: JobService;
+	let jobService: {
+		createDraft: ReturnType<typeof vi.fn>;
+		updateDraft: ReturnType<typeof vi.fn>;
+		updatePublicJob: ReturnType<typeof vi.fn>;
+		publishJob: ReturnType<typeof vi.fn>;
+		getPublicJob: ReturnType<typeof vi.fn>;
+		getActiveJobContact: ReturnType<typeof vi.fn>;
+	};
 
 	beforeEach(async () => {
 		jobService = {
-			createJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
-			getJob: vi.fn().mockImplementation(() => Promise.resolve(createMockJobOutputDto())),
-			getJobContact: vi.fn().mockImplementation(() => Promise.resolve(createMockJobContactOutputDto())),
-		} as unknown as JobService;
-
+			createDraft: vi.fn(),
+			updateDraft: vi.fn(),
+			updatePublicJob: vi.fn(),
+			publishJob: vi.fn(),
+			getPublicJob: vi.fn(),
+			getActiveJobContact: vi.fn(),
+		};
 		const module = await Test.createTestingModule({
 			controllers: [JobController],
 			providers: [{ provide: JobService, useValue: jobService }],
-		}).compile();
+		})
+			.overrideGuard(AccessTokenGuard)
+			.useValue({ canActivate: vi.fn() })
+			.overrideGuard(UserRateLimitGuard)
+			.useValue({ canActivate: vi.fn() })
+			.compile();
 
 		controller = module.get(JobController);
 	});
 
-	describe("create", () => {
-		it("should expose the create action at the job collection route", () => {
-			expect(Reflect.getMetadata(PATH_METADATA, controller.create)).toBe("/");
-		});
+	it("should expose jobs through the plural REST resource", () => {
+		expect(Reflect.getMetadata(PATH_METADATA, JobController)).toBe("jobs");
+	});
 
-		it("should return JobOutputDto on success", async () => {
-			const contact = Object.assign(new CreateJobContactInputDto(), {
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-			const locationData: Partial<CreateJobLocationInputDto> = {
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
-				street: "Rua das Flores, 123",
-				neighborhood: "Centro",
-				latitude: -23.55052,
-				longitude: -46.633308,
-			};
-			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dtoData: Partial<CreateJobRequestDto> = {
-				title: "Help unload truck",
-				description: "Need someone to help unload a delivery truck.",
-				contact,
-				location,
-				type: JobType.INDIVIDUAL,
-				categoryId: "cm3x-cat-1",
-				payment,
-			};
-			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
+	it("should expose draft creation through the drafts collection", () => {
+		expect(Reflect.getMetadata(PATH_METADATA, controller.createDraft)).toBe("drafts");
+	});
 
-			const result = await controller.create(dto, "en-US");
+	it("should limit draft creation to twenty requests per hour per user", () => {
+		expect({
+			requests: Reflect.getMetadata(`${THROTTLER_LIMIT}default`, controller.createDraft),
+			ttl: Reflect.getMetadata(`${THROTTLER_TTL}default`, controller.createDraft),
+		}).toEqual({ requests: 20, ttl: 3_600_000 });
+	});
 
-			expect(result).toBeInstanceOf(JobOutputDto);
-			expect(result.title).toBe("Help unload truck");
-			expect(result.status).toBe(JobStatus.ACTIVE);
-		});
+	it("should expose draft updates through the draft resource", () => {
+		expect(Reflect.getMetadata(PATH_METADATA, controller.updateDraft)).toBe("drafts/:jobId");
+	});
 
-		it("should pass the DTO and locale to jobService.createJob", async () => {
-			const contact = Object.assign(new CreateJobContactInputDto(), {
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-			const locationData: Partial<CreateJobLocationInputDto> = {
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
-				neighborhood: "Centro",
-				latitude: -23.55052,
-				longitude: -46.633308,
-			};
-			const location = Object.assign(new CreateJobLocationInputDto(), locationData);
-			const paymentData: Partial<JobPaymentInputDto> = {
-				type: JobPaymentType.FIXED,
-				minAmount: 150.0,
-				amountPeriod: JobPaymentAmountPeriod.SINGLE,
-				currency: "BRL",
-			};
-			const payment = Object.assign(new JobPaymentInputDto(), paymentData);
-			const dtoData: Partial<CreateJobRequestDto> = {
-				title: "Help unload truck",
-				description: "Need someone to help unload a delivery truck.",
-				contact,
-				location,
-				type: JobType.INDIVIDUAL,
-				categoryId: "cm3x-cat-1",
-				payment,
-			};
-			const dto = Object.assign(new CreateJobRequestDto(), dtoData);
+	it("should expose public job updates through the public job resource", () => {
+		expect(Reflect.getMetadata(PATH_METADATA, controller.updatePublicJob)).toBe(":jobId");
+	});
 
-			await controller.create(dto, "en-US");
+	it("should expose publication at the job publish action", () => {
+		expect(Reflect.getMetadata(PATH_METADATA, controller.publish)).toBe(":jobId/publish");
+	});
 
-			expect(jobService.createJob).toHaveBeenCalledWith({ dto: dto, locale: "en-US" });
+	it.each([
+		["draft creation", "createDraft"],
+		["draft updates", "updateDraft"],
+		["public job updates", "updatePublicJob"],
+		["job publication", "publish"],
+	] as const)("should authenticate before enforcing the user limit for %s", (_name, methodName) => {
+		const guards = Reflect.getMetadata(GUARDS_METADATA, controller[methodName]) as unknown[];
+
+		expect(guards).toEqual([AccessTokenGuard, UserRateLimitGuard]);
+	});
+
+	it("should apply the same per-user update budget to draft updates", () => {
+		expect({
+			requests: Reflect.getMetadata(`${THROTTLER_LIMIT}default`, controller.updateDraft),
+			ttl: Reflect.getMetadata(`${THROTTLER_TTL}default`, controller.updateDraft),
+		}).toEqual({ requests: 60, ttl: 3_600_000 });
+	});
+
+	it("should apply the same per-user update budget to public job updates", () => {
+		expect({
+			requests: Reflect.getMetadata(`${THROTTLER_LIMIT}default`, controller.updatePublicJob),
+			ttl: Reflect.getMetadata(`${THROTTLER_TTL}default`, controller.updatePublicJob),
+		}).toEqual({ requests: 60, ttl: 3_600_000 });
+	});
+
+	it("should limit publication to twenty requests per hour per user", () => {
+		expect({
+			requests: Reflect.getMetadata(`${THROTTLER_LIMIT}default`, controller.publish),
+			ttl: Reflect.getMetadata(`${THROTTLER_TTL}default`, controller.publish),
+		}).toEqual({ requests: 20, ttl: 3_600_000 });
+	});
+
+	it("should pass only the draft description and authenticated owner to creation", async () => {
+		const dto = { description: "Descrição original da oportunidade." };
+
+		await controller.createDraft(dto, authSession);
+
+		expect(jobService.createDraft).toHaveBeenCalledWith({ dto: dto, posterUserId: authSession.userId });
+	});
+
+	it("should pass draft PATCH input and the authenticated owner to the draft service path", async () => {
+		const params = { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
+		const dto = { description: "Nova descrição da oportunidade." };
+
+		await controller.updateDraft(params, dto, authSession);
+
+		expect(jobService.updateDraft).toHaveBeenCalledWith({
+			jobId: params.jobId,
+			updatedDto: dto,
+			posterUserId: authSession.userId,
 		});
 	});
 
-	describe("getJobContact", () => {
-		it("should expose the getJobContact action at the nested contact route", () => {
-			expect(Reflect.getMetadata(PATH_METADATA, controller.getJobContact)).toBe(":job_id/contact/:contact_id");
-		});
+	it("should pass public PATCH input and the authenticated owner to the public service path", async () => {
+		const params = { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
+		const dto = { description: "Nova descrição pública da oportunidade." };
 
-		it("should return JobContactOutputDto on success", async () => {
-			const params = Object.assign(new GetJobContactRequestParamsDto(), {
-				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-				contactId: "cm3x-contact-1",
-			});
-			const result = await controller.getJobContact(params);
+		await controller.updatePublicJob(params, dto, authSession);
 
-			expect(result).toBeInstanceOf(JobContactOutputDto);
-		});
-
-		it("should pass contactId and jobId to jobService.getJobContact", async () => {
-			const params = Object.assign(new GetJobContactRequestParamsDto(), {
-				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-				contactId: "cm3x-contact-1",
-			});
-			await controller.getJobContact(params);
-
-			expect(jobService.getJobContact).toHaveBeenCalledWith({
-				contactId: "cm3x-contact-1",
-				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-			});
-		});
-
-		it("should return WHATSAPP contact method on success", async () => {
-			const expected = JobContactOutputDto.fromDatabase({
-				contactMethod: JobContactMethod.WHATSAPP,
-				identifier: "+5511999999999",
-			});
-			(jobService.getJobContact as ReturnType<typeof vi.fn>).mockResolvedValueOnce(expected);
-
-			const params = Object.assign(new GetJobContactRequestParamsDto(), {
-				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-				contactId: "cm3x-contact-1",
-			});
-
-			const result = await controller.getJobContact(params);
-
-			expect(result.contactMethod).toBe(JobContactMethod.WHATSAPP);
+		expect(jobService.updatePublicJob).toHaveBeenCalledWith({
+			jobId: params.jobId,
+			updatedDto: dto,
+			posterUserId: authSession.userId,
 		});
 	});
 
-	describe("findOne", () => {
-		it("should return JobOutputDto on success", async () => {
-			const params = Object.assign(new GetJobRequestParamsDto(), { jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b" });
-			const result = await controller.getJob(params, "en-US");
+	it("should pass the draft ID and authenticated owner to publication", async () => {
+		const params = { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
 
-			expect(result).toBeInstanceOf(JobOutputDto);
-			expect(result.title).toBe("Help unload truck");
-			expect(result.status).toBe(JobStatus.ACTIVE);
+		await controller.publish(params, authSession);
+
+		expect(jobService.publishJob).toHaveBeenCalledWith({
+			jobId: params.jobId,
+			posterUserId: authSession.userId,
 		});
+	});
 
-		it("should pass jobId and locale to jobService.getJob", async () => {
-			const params = Object.assign(new GetJobRequestParamsDto(), { jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b" });
-			await controller.getJob(params, "pt-BR");
-
-			expect(jobService.getJob).toHaveBeenCalledWith({
-				jobId: "afdfd9b2-203d-4528-8a1c-82b6b139039b",
-				locale: "pt-BR",
-			});
+	it("should prevent full contact responses from being cached", () => {
+		expect(Reflect.getMetadata(HEADERS_METADATA, controller.getJobContact)).toContainEqual({
+			name: "Cache-Control",
+			value: "no-store",
 		});
 	});
 });

@@ -22,11 +22,11 @@ describe("JobNotFoundError", () => {
 	});
 
 	describe("getResponse", () => {
-		it("should return object with JOB_NOT_FOUND error_code", () => {
+		it("should return object with JOB_NOT_FOUND errorCode", () => {
 			const error = new JobNotFoundError();
 			const response = error.getResponse() as Record<string, unknown>;
 
-			expect(response).toHaveProperty("error_code", ErrorCode.JOB_NOT_FOUND);
+			expect(response).toHaveProperty("errorCode", ErrorCode.JOB_NOT_FOUND);
 		});
 
 		it("should include a message in response", () => {

@@ -1,13 +1,13 @@
 model JobContact {
   id            String           @id @default(uuid()) @db.Uuid
-  jobId         String           @map("job_id") @db.Uuid
+  userId        String?          @map("user_id") @db.Uuid
   contactMethod JobContactMethod @map("contact_method")
-  identifier    String
+  identifier    String           @db.VarChar(320)
   createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-  job           Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user          User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs          Job[]
 
-  @@unique([jobId])
-  @@index([jobId])
+  @@unique([userId, contactMethod, identifier])
+  @@index([userId])
   @@map("job_contact_methods")
 }
