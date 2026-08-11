@@ -9,10 +9,11 @@ describe("AuthSessionRepository", () => {
 	let prisma: {
 		$transaction: ReturnType<typeof vi.fn>;
 		authSession: {
+			create: ReturnType<typeof vi.fn>;
 			deleteMany: ReturnType<typeof vi.fn>;
 			findMany: ReturnType<typeof vi.fn>;
 			findUnique: ReturnType<typeof vi.fn>;
-			upsert: ReturnType<typeof vi.fn>;
+			updateMany: ReturnType<typeof vi.fn>;
 		};
 	};
 
@@ -20,10 +21,11 @@ describe("AuthSessionRepository", () => {
 		prisma = {
 			$transaction: vi.fn(),
 			authSession: {
+				create: vi.fn(),
 				deleteMany: vi.fn(),
 				findMany: vi.fn(),
 				findUnique: vi.fn(),
-				upsert: vi.fn(),
+				updateMany: vi.fn(),
 			},
 		};
 		const module = await Test.createTestingModule({
@@ -39,25 +41,17 @@ describe("AuthSessionRepository", () => {
 	it("should store one current refresh token and clear previous recovery state on the device session", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
-		prisma.authSession.upsert.mockResolvedValue({ id: "session-id", userId: "user-id" });
+		prisma.authSession.create.mockResolvedValue({ id: "session-id", userId: "user-id" });
 
-		await repository.upsert({
+		await repository.createOrReplaceForUser({
 			refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
 			refreshTokenHash: "b".repeat(64),
 			sessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "user-id",
 		});
 
-		expect(prisma.authSession.upsert).toHaveBeenCalledWith({
-			where: { id: "5c474828-dd9e-4490-a45a-0e82512bc45e" },
-			update: {
-				lastUsedAt: new Date("2026-08-05T15:00:00.000Z"),
-				previousRefreshTokenHash: null,
-				previousRefreshTokenValidUntil: null,
-				refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
-				refreshTokenHash: "b".repeat(64),
-			},
-			create: {
+		expect(prisma.authSession.create).toHaveBeenCalledWith({
+			data: {
 				id: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 				userId: "user-id",
 				lastUsedAt: new Date("2026-08-05T15:00:00.000Z"),
@@ -71,9 +65,9 @@ describe("AuthSessionRepository", () => {
 	});
 
 	it("should return the session identifiers after storing its current refresh token", async () => {
-		prisma.authSession.upsert.mockResolvedValue({ id: "session-id", userId: "user-id" });
+		prisma.authSession.create.mockResolvedValue({ id: "session-id", userId: "user-id" });
 
-		const result = await repository.upsert({
+		const result = await repository.createOrReplaceForUser({
 			refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
 			refreshTokenHash: "b".repeat(64),
 			sessionId: "session-id",
@@ -83,17 +77,53 @@ describe("AuthSessionRepository", () => {
 		expect(result).toEqual({ sessionId: "session-id", userId: "user-id" });
 	});
 
-	it("should reject a candidate session identifier that belongs to another user", async () => {
-		prisma.authSession.upsert.mockResolvedValue({ id: "session-id", userId: "another-user-id" });
+	it("should reject a preassigned session identifier that belongs to another user", async () => {
+		prisma.authSession.create.mockRejectedValue(
+			new Prisma.PrismaClientKnownRequestError("unique constraint", {
+				code: "P2002",
+				clientVersion: "test",
+			}),
+		);
+		prisma.authSession.findUnique.mockResolvedValue({ id: "session-id", userId: "another-user-id" });
 
 		await expect(
-			repository.upsert({
+			repository.createOrReplaceForUser({
 				refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
 				refreshTokenHash: "b".repeat(64),
 				sessionId: "session-id",
 				userId: "user-id",
 			}),
 		).rejects.toThrow(AuthSessionUnavailableError);
+	});
+
+	it("should replace credentials for the same user's preassigned session after an interrupted exchange", async () => {
+		prisma.authSession.create.mockRejectedValue(
+			new Prisma.PrismaClientKnownRequestError("unique constraint", {
+				code: "P2002",
+				clientVersion: "test",
+			}),
+		);
+		prisma.authSession.findUnique.mockResolvedValue({ id: "session-id", userId: "user-id" });
+		prisma.authSession.updateMany.mockResolvedValue({ count: 1 });
+
+		const result = await repository.createOrReplaceForUser({
+			refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
+			refreshTokenHash: "c".repeat(64),
+			sessionId: "session-id",
+			userId: "user-id",
+		});
+
+		expect(result).toEqual({ sessionId: "session-id", userId: "user-id" });
+		expect(prisma.authSession.updateMany).toHaveBeenCalledWith({
+			where: { id: "session-id", userId: "user-id" },
+			data: {
+				lastUsedAt: expect.any(Date),
+				previousRefreshTokenHash: null,
+				previousRefreshTokenValidUntil: null,
+				refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
+				refreshTokenHash: "c".repeat(64),
+			},
+		});
 	});
 
 	it("should return null for an unknown authenticated session family", async () => {

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.error";
 
@@ -6,40 +7,57 @@ import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.
 export class AuthSessionRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async upsert(params: {
+	async createOrReplaceForUser(params: {
 		refreshExpiresAt: Date;
 		refreshTokenHash: string;
 		sessionId: string;
 		userId: string;
 	}): Promise<{ sessionId: string; userId: string }> {
 		const now = new Date();
+		const sessionData = {
+			lastUsedAt: now,
+			previousRefreshTokenHash: null,
+			previousRefreshTokenValidUntil: null,
+			refreshExpiresAt: params.refreshExpiresAt,
+			refreshTokenHash: params.refreshTokenHash,
+		};
 
-		const session = await this._prisma.authSession.upsert({
+		try {
+			const session = await this._prisma.authSession.create({
+				data: {
+					id: params.sessionId,
+					userId: params.userId,
+					...sessionData,
+				},
+				select: { id: true, userId: true },
+			});
+
+			return {
+				sessionId: session.id,
+				userId: session.userId,
+			};
+		} catch (error) {
+			if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+		}
+
+		const existingSession = await this._prisma.authSession.findUnique({
 			where: { id: params.sessionId },
-			update: {
-				lastUsedAt: now,
-				previousRefreshTokenHash: null,
-				previousRefreshTokenValidUntil: null,
-				refreshExpiresAt: params.refreshExpiresAt,
-				refreshTokenHash: params.refreshTokenHash,
-			},
-			create: {
-				id: params.sessionId,
-				userId: params.userId,
-				lastUsedAt: now,
-				previousRefreshTokenHash: null,
-				previousRefreshTokenValidUntil: null,
-				refreshExpiresAt: params.refreshExpiresAt,
-				refreshTokenHash: params.refreshTokenHash,
-			},
 			select: { id: true, userId: true },
 		});
+		if (existingSession === null || existingSession.userId !== params.userId) {
+			throw new AuthSessionUnavailableError();
+		}
 
-		if (session.userId !== params.userId) throw new AuthSessionUnavailableError();
+		const replacedSession = await this._prisma.authSession.updateMany({
+			where: { id: params.sessionId, userId: params.userId },
+			data: sessionData,
+		});
+
+		if (replacedSession.count !== 1) throw new AuthSessionUnavailableError();
 
 		return {
-			sessionId: session.id,
-			userId: session.userId,
+			sessionId: existingSession.id,
+			userId: existingSession.userId,
 		};
 	}
 

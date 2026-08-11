@@ -483,6 +483,57 @@ export class InboundMessageAuthRepository implements OnModuleInit {
 		);
 	}
 
+	async getVerifiedIntentOrNullAndClaimExchange(params: {
+		exchangeClaimId: string;
+		intentTokenHash: string;
+	}): Promise<{ candidateSessionId: string; userId: string } | null> {
+		const result = await this._redis.eval<string[], string[]>(
+			`
+				local intentValues = redis.call("HMGET", KEYS[1],
+					"status",
+					"candidate_session_id",
+					"user_id"
+				)
+				if intentValues[1] ~= ARGV[1] then return {} end
+				if not intentValues[2] or not intentValues[3] then return {} end
+				if not redis.call("SET", KEYS[2], ARGV[2], "NX", "PX", tonumber(ARGV[3])) then return {} end
+				return { intentValues[2], intentValues[3] }
+			`,
+			[
+				this._buildIntentByTokenHashRedisKey({ intentTokenHash: params.intentTokenHash }),
+				this._buildIntentExchangeClaimRedisKey({ intentTokenHash: params.intentTokenHash }),
+			],
+			[
+				InboundMessageAuthIntentStatus.VERIFIED,
+				params.exchangeClaimId,
+				String(InboundMessageAuthConstants.EXCHANGE_CLAIM_EXPIRATION_MILLISECONDS),
+			],
+		);
+
+		const candidateSessionId = result[0];
+		const userId = result[1];
+		if (typeof candidateSessionId !== "string" || candidateSessionId.length === 0) return null;
+		if (typeof userId !== "string" || userId.length === 0) return null;
+
+		return { candidateSessionId: candidateSessionId, userId: userId };
+	}
+
+	async releaseVerifiedIntentExchangeClaim(params: {
+		exchangeClaimId: string;
+		intentTokenHash: string;
+	}): Promise<void> {
+		const result = await this._redis.eval<string[], number>(
+			`
+				if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end
+				return redis.call("DEL", KEYS[1])
+			`,
+			[this._buildIntentExchangeClaimRedisKey({ intentTokenHash: params.intentTokenHash })],
+			[params.exchangeClaimId],
+		);
+
+		if (result !== 1) throw new Error("Inbound-message authentication exchange ownership was lost");
+	}
+
 	async getIntentOrNullAndMarkAsProcessing(params: {
 		authCodeHash: string;
 		providerMessageId: string;
@@ -584,6 +635,10 @@ export class InboundMessageAuthRepository implements OnModuleInit {
 
 	private _buildIntentBySessionIdRedisKey(params: { sessionId: string }): string {
 		return `auth:inbound-message:intent-key-by-session:${params.sessionId}`;
+	}
+
+	private _buildIntentExchangeClaimRedisKey(params: { intentTokenHash: string }): string {
+		return `auth:inbound-message:intent-exchange-claim:${params.intentTokenHash}`;
 	}
 
 	private _buildIntentVerificationChannel(params: { intentTokenHash: string }): string {

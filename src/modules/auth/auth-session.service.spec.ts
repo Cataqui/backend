@@ -28,7 +28,7 @@ describe("AuthSessionService", () => {
 		findAll: ReturnType<typeof vi.fn>;
 		findRefreshSessionById: ReturnType<typeof vi.fn>;
 		rotateRefreshToken: ReturnType<typeof vi.fn>;
-		upsert: ReturnType<typeof vi.fn>;
+		createOrReplaceForUser: ReturnType<typeof vi.fn>;
 	};
 	let accessTokenRepository: {
 		create: ReturnType<typeof vi.fn>;
@@ -45,7 +45,7 @@ describe("AuthSessionService", () => {
 			findAll: vi.fn(),
 			findRefreshSessionById: vi.fn(),
 			rotateRefreshToken: vi.fn(),
-			upsert: vi.fn(),
+			createOrReplaceForUser: vi.fn(),
 		};
 		accessTokenRepository = {
 			create: vi.fn(),
@@ -75,7 +75,7 @@ describe("AuthSessionService", () => {
 	it("should create a signed rolling refresh token and a short-lived access token", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
-		repository.upsert.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
+		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
 		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
 
@@ -94,11 +94,11 @@ describe("AuthSessionService", () => {
 	it("should store only the complete signed refresh-token hash", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
-		repository.upsert.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
+		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
 		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
 
-		expect(repository.upsert).toHaveBeenCalledWith({
+		expect(repository.createOrReplaceForUser).toHaveBeenCalledWith({
 			sessionId: SESSION_ID,
 			userId: "user-id",
 			refreshTokenHash: createHash("sha256").update(result.refreshToken).digest("hex"),
@@ -107,11 +107,13 @@ describe("AuthSessionService", () => {
 	});
 
 	it("should generate a session family identifier when the caller does not provide one", async () => {
-		repository.upsert.mockImplementation(async (params: { sessionId: string; userId: string }) => params);
+		repository.createOrReplaceForUser.mockImplementation(
+			async (params: { sessionId: string; userId: string }) => params,
+		);
 
 		await service.create({ userId: "user-id" });
 
-		expect(repository.upsert).toHaveBeenCalledWith(
+		expect(repository.createOrReplaceForUser).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sessionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 				userId: "user-id",
@@ -122,7 +124,7 @@ describe("AuthSessionService", () => {
 	it("should register only the access-token hash when creating a session", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
-		repository.upsert.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
+		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
 		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
 
@@ -133,7 +135,7 @@ describe("AuthSessionService", () => {
 	});
 
 	it("should remove both stores when Redis cannot register a created access token", async () => {
-		repository.upsert.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
+		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 		accessTokenRepository.create.mockRejectedValue(new AuthSessionUnavailableError());
 
 		const error = await service.create({ sessionId: SESSION_ID, userId: "user-id" }).catch((caught: unknown) => caught);

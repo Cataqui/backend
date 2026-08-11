@@ -28,7 +28,7 @@ export class AuthSessionService {
 		const sessionId = params.sessionId ?? randomUUID();
 		const tokens = this._authTokenService.createAccessAndRefreshTokens({ sessionId: sessionId });
 
-		const session = await this._authSessionRepository.upsert({
+		const session = await this._authSessionRepository.createOrReplaceForUser({
 			sessionId: sessionId,
 			userId: params.userId,
 			refreshTokenHash: tokens.refreshTokenHash,

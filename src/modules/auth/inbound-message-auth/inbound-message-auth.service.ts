@@ -8,8 +8,8 @@ import { InboundMessageAuthChannel } from "./enums/inbound-message-auth-channel.
 import { InboundMessageAuthIntentStatus } from "./enums/inbound-message-auth-intent-status.enum";
 import { AuthIntentCreationCollisionError } from "./errors/auth-intent-creation-collision.error";
 import { AuthIntentNotFoundError } from "./errors/auth-intent-not-found.error";
-import { InboundMessageAuthConstants } from "./inbound-message-auth.constants";
 import { type IInboundMessageAuthConfig, inboundMessageAuthConfig } from "./inbound-message-auth.config";
+import { InboundMessageAuthConstants } from "./inbound-message-auth.constants";
 import { InboundMessageAuthRepository } from "./repositories/inbound-message-auth.repository";
 import { AuthIntentExchangeOutputSchema } from "./schemas/auth-intent-exchange-output.schema";
 import { InboundMessageAuthIntentOutputSchema } from "./schemas/inbound-message-auth-intent-output.schema";
@@ -64,9 +64,10 @@ export class InboundMessageAuthService {
 		abortSignal?: AbortSignal;
 		intentToken: string;
 	}): Promise<z.infer<typeof AuthIntentExchangeOutputSchema>> {
+		const intentTokenHash = createHash("sha256").update(params.intentToken).digest("hex");
 		const intent = await this._inboundMessageAuthRepository.findIntentByTokenHashAfterWaitingForVerification({
 			...(params.abortSignal === undefined ? {} : { abortSignal: params.abortSignal }),
-			intentTokenHash: createHash("sha256").update(params.intentToken).digest("hex"),
+			intentTokenHash: intentTokenHash,
 		});
 
 		if (intent === null) throw new AuthIntentNotFoundError();
@@ -78,10 +79,30 @@ export class InboundMessageAuthService {
 			};
 		}
 
-		return this._authSessionService.create({
-			sessionId: intent.candidateSessionId,
-			userId: intent.userId,
+		const exchangeClaimId = randomUUID();
+		const claimedIntent = await this._inboundMessageAuthRepository.getVerifiedIntentOrNullAndClaimExchange({
+			exchangeClaimId: exchangeClaimId,
+			intentTokenHash: intentTokenHash,
 		});
+
+		if (claimedIntent === null) {
+			return {
+				status: InboundMessageAuthIntentStatus.PENDING,
+				retryAfterSeconds: InboundMessageAuthConstants.INTENT_EXCHANGE_POLL_RETRY_SECONDS,
+			};
+		}
+
+		try {
+			return await this._authSessionService.create({
+				sessionId: claimedIntent.candidateSessionId,
+				userId: claimedIntent.userId,
+			});
+		} finally {
+			await this._inboundMessageAuthRepository.releaseVerifiedIntentExchangeClaim({
+				exchangeClaimId: exchangeClaimId,
+				intentTokenHash: intentTokenHash,
+			});
+		}
 	}
 
 	async verifyAuthMessage(params: {

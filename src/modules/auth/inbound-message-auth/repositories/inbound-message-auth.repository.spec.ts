@@ -959,7 +959,7 @@ describe("InboundMessageAuthRepository", () => {
 		).rejects.toBeInstanceOf(InboundMessageAuthProcessingInProgressError);
 	});
 
-	it("should write VERIFIED before publishing a secret-free signal in the same atomic script", async () => {
+	it("should retain a verified intent for a five-minute exchange recovery window", async () => {
 		markProcessingIntentAsVerifiedScriptExec.mockResolvedValue(1);
 		const intentTokenHash = "b".repeat(64);
 		const verificationChannel = `auth:inbound-message:verification:${createHash("sha256")
@@ -991,7 +991,7 @@ describe("InboundMessageAuthRepository", () => {
 				"wamid.message",
 				"VERIFIED",
 				"user-id",
-				String(InboundMessageAuthConstants.EXCHANGE_EXPIRATION_SECONDS),
+				"300",
 				"5c474828-dd9e-4490-a45a-0e82512bc45e",
 				verificationChannel,
 				InboundMessageAuthIntentStatus.VERIFIED,
@@ -1054,5 +1054,58 @@ describe("InboundMessageAuthRepository", () => {
 				providerMessageId: "wamid.message",
 			}),
 		).rejects.toThrow("Inbound-message authentication intent processing ownership was lost");
+	});
+
+	it("should atomically lease a verified intent for one session exchange", async () => {
+		redis.eval.mockResolvedValue(["5c474828-dd9e-4490-a45a-0e82512bc45e", "user-id"]);
+
+		const result = await repository.getVerifiedIntentOrNullAndClaimExchange({
+			exchangeClaimId: "9ae5d329-d94f-4396-995d-719f514af05c",
+			intentTokenHash: "b".repeat(64),
+		});
+
+		const claimScript: unknown = redis.eval.mock.calls[0]?.[0];
+		if (typeof claimScript !== "string") throw new Error("Expected the exchange claim Lua script");
+		expect(claimScript).toMatch(/intentValues\[1\] ~= ARGV\[1\][\s\S]*"SET", KEYS\[2\], ARGV\[2\], "NX", "PX"/);
+		expect(redis.eval.mock.calls[0]?.slice(1)).toEqual([
+			[
+				`auth:inbound-message:intent-by-token-hash:${"b".repeat(64)}`,
+				`auth:inbound-message:intent-exchange-claim:${"b".repeat(64)}`,
+			],
+			[
+				InboundMessageAuthIntentStatus.VERIFIED,
+				"9ae5d329-d94f-4396-995d-719f514af05c",
+				String(InboundMessageAuthConstants.EXCHANGE_CLAIM_EXPIRATION_MILLISECONDS),
+			],
+		]);
+		expect(result).toEqual({
+			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
+			userId: "user-id",
+		});
+	});
+
+	it("should reject an intent that is no longer verified", async () => {
+		redis.eval.mockResolvedValue([]);
+
+		const result = await repository.getVerifiedIntentOrNullAndClaimExchange({
+			exchangeClaimId: "9ae5d329-d94f-4396-995d-719f514af05c",
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect(result).toBeNull();
+	});
+
+	it("should release an exchange lease only while the caller still owns it", async () => {
+		redis.eval.mockResolvedValue(1);
+
+		await repository.releaseVerifiedIntentExchangeClaim({
+			exchangeClaimId: "9ae5d329-d94f-4396-995d-719f514af05c",
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect(redis.eval.mock.calls[0]?.slice(1)).toEqual([
+			[`auth:inbound-message:intent-exchange-claim:${"b".repeat(64)}`],
+			["9ae5d329-d94f-4396-995d-719f514af05c"],
+		]);
 	});
 });
