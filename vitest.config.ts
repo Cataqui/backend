@@ -8,6 +8,7 @@ export default defineConfig({
 		env: {
 			NODE_ENV: "test",
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
+			WHATSAPP_AUTH_RECEIVER: "+15556625497",
 			DATABASE_APP_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",

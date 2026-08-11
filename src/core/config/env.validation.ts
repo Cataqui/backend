@@ -17,6 +17,9 @@ export const EnvSchema = z.object({
 			(value) => Buffer.from(value, "base64url").length === 32,
 			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL must decode to exactly 32 bytes",
 		),
+	WHATSAPP_AUTH_RECEIVER: z
+		.string()
+		.regex(/^\+[1-9]\d{1,14}$/, "WHATSAPP_AUTH_RECEIVER must use E.164 format, such as +5511999999999"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

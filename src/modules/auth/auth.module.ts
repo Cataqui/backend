@@ -7,6 +7,7 @@ import { AuthTokenService } from "./auth-token.service";
 import { AccessTokenGuard } from "./guards/access-token.guard";
 import { InboundMessageAuthController } from "./inbound-message-auth/inbound-message-auth.controller";
 import { InboundMessageAuthInboundController } from "./inbound-message-auth/inbound-message-auth.inbound.controller";
+import { inboundMessageAuthConfig } from "./inbound-message-auth/inbound-message-auth.config";
 import { InboundMessageAuthService } from "./inbound-message-auth/inbound-message-auth.service";
 import { InboundMessageAuthRepository } from "./inbound-message-auth/repositories/inbound-message-auth.repository";
 import { AuthAccessTokenRepository } from "./repositories/auth-access-token.repository";
@@ -15,7 +16,7 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 
 @Global()
 @Module({
-	imports: [ConfigModule.forFeature(authConfig)],
+	imports: [ConfigModule.forFeature(authConfig), ConfigModule.forFeature(inboundMessageAuthConfig)],
 	controllers: [AuthSessionController, InboundMessageAuthController, InboundMessageAuthInboundController],
 	providers: [
 		InboundMessageAuthRepository,

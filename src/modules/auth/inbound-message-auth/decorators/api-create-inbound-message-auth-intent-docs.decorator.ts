@@ -12,7 +12,7 @@ export function ApiCreateInboundMessageAuthIntentDocs(): MethodDecorator & Class
 		ApiOperation({
 			summary: "Create an inbound-message authentication intent",
 			description:
-				"Creates a short-lived authentication code and secret intent token for the requested messaging channel. The Cataquí mobile client asks the user to send the code through that channel and keeps the intent token private for polling. An unused intent expires after 15 minutes; after message verification, the token remains exchangeable for five minutes.",
+				"Creates a short-lived authentication code, its channel-specific receiver, and a secret intent token for the requested messaging channel. The Cataquí mobile client asks the user to send the code to that receiver through the channel and keeps the intent token private for polling. An unused intent expires after 15 minutes; after message verification, the token remains exchangeable for five minutes.",
 		}),
 		ApiResponse({
 			status: HttpStatus.CREATED,

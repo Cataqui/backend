@@ -45,7 +45,7 @@ describe("ApiCreateInboundMessageAuthIntentDocs", () => {
 		}).toEqual({
 			summary: "Create an inbound-message authentication intent",
 			description:
-				"Creates a short-lived authentication code and secret intent token for the requested messaging channel. The Cataquí mobile client asks the user to send the code through that channel and keeps the intent token private for polling. An unused intent expires after 15 minutes; after message verification, the token remains exchangeable for five minutes.",
+				"Creates a short-lived authentication code, its channel-specific receiver, and a secret intent token for the requested messaging channel. The Cataquí mobile client asks the user to send the code to that receiver through the channel and keeps the intent token private for polling. An unused intent expires after 15 minutes; after message verification, the token remains exchangeable for five minutes.",
 			responses: {
 				201: {
 					description: "Inbound-message authentication intent created.",
@@ -67,6 +67,27 @@ describe("ApiCreateInboundMessageAuthIntentDocs", () => {
 					content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } } },
 				},
 			},
+		});
+	});
+
+	it("should document the channel-specific code receiver", () => {
+		const outputSchema = document.components?.schemas?.["InboundMessageAuthIntentOutput"] as
+			| {
+					properties?: Record<string, unknown>;
+					required?: string[];
+			  }
+			| undefined;
+
+		expect({
+			codeReceiver: outputSchema?.properties?.["codeReceiver"],
+			isRequired: outputSchema?.required?.includes("codeReceiver"),
+		}).toEqual({
+			codeReceiver: {
+				type: "string",
+				minLength: 1,
+				description: "Channel-specific destination that receives the authentication code.",
+			},
+			isRequired: true,
 		});
 	});
 

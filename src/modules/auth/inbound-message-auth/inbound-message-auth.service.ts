@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
@@ -9,6 +9,7 @@ import { InboundMessageAuthIntentStatus } from "./enums/inbound-message-auth-int
 import { AuthIntentCreationCollisionError } from "./errors/auth-intent-creation-collision.error";
 import { AuthIntentNotFoundError } from "./errors/auth-intent-not-found.error";
 import { InboundMessageAuthConstants } from "./inbound-message-auth.constants";
+import { type IInboundMessageAuthConfig, inboundMessageAuthConfig } from "./inbound-message-auth.config";
 import { InboundMessageAuthRepository } from "./repositories/inbound-message-auth.repository";
 import { AuthIntentExchangeOutputSchema } from "./schemas/auth-intent-exchange-output.schema";
 import { InboundMessageAuthIntentOutputSchema } from "./schemas/inbound-message-auth-intent-output.schema";
@@ -19,6 +20,7 @@ export class InboundMessageAuthService {
 		private readonly _inboundMessageAuthRepository: InboundMessageAuthRepository,
 		private readonly _authIdentityRepository: AuthIdentityRepository,
 		private readonly _authSessionService: AuthSessionService,
+		@Inject(inboundMessageAuthConfig.KEY) private readonly _config: IInboundMessageAuthConfig,
 	) {}
 
 	async createIntent(params: {
@@ -50,6 +52,7 @@ export class InboundMessageAuthService {
 			return {
 				intentToken: intentToken,
 				code: authCode,
+				codeReceiver: this._config.codeReceiverByChannel[params.channel],
 				expiresAt: expiresAt.toISOString(),
 			};
 		}

@@ -9,6 +9,7 @@ export interface ApiWorkerEnvironment {
 	CLOUDFLARE_ACCOUNT_ID: "1fca946385505503c59dd6a2a4eeb442" | "your-account-id";
 	CLOUDFLARE_AI_GATEWAY_ID: "staging" | "production" | "development";
 	API_CONTAINER_POOL_SIZE: "3" | "10" | "1";
+	WHATSAPP_AUTH_RECEIVER: "+15556625497" | "+5511963270517";
 	DATABASE_APP_POOLER_URL: string;
 	AI_GATEWAY_API_TOKEN: string;
 	UPSTASH_REDIS_REST_URL: string;

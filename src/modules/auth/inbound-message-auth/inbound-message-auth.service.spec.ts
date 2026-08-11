@@ -8,6 +8,7 @@ import { InboundMessageAuthChannel } from "./enums/inbound-message-auth-channel.
 import { InboundMessageAuthIntentStatus } from "./enums/inbound-message-auth-intent-status.enum";
 import { AuthIntentCreationCollisionError } from "./errors/auth-intent-creation-collision.error";
 import { AuthIntentNotFoundError } from "./errors/auth-intent-not-found.error";
+import { inboundMessageAuthConfig } from "./inbound-message-auth.config";
 import { InboundMessageAuthService } from "./inbound-message-auth.service";
 import { InboundMessageAuthRepository } from "./repositories/inbound-message-auth.repository";
 
@@ -46,6 +47,14 @@ describe("InboundMessageAuthService", () => {
 				{ provide: InboundMessageAuthRepository, useValue: repository },
 				{ provide: AuthIdentityRepository, useValue: identityRepository },
 				{ provide: AuthSessionService, useValue: authSessionService },
+				{
+					provide: inboundMessageAuthConfig.KEY,
+					useValue: {
+						codeReceiverByChannel: {
+							[InboundMessageAuthChannel.WHATSAPP]: "+5511963270517",
+						},
+					},
+				},
 			],
 		}).compile();
 
@@ -65,6 +74,14 @@ describe("InboundMessageAuthService", () => {
 		const result = await service.createIntent({ channel: InboundMessageAuthChannel.WHATSAPP });
 
 		expect(result.code).toMatch(/^AUTH-[A-Z0-9]{10}$/);
+	});
+
+	it("should return the code receiver configured for the selected channel", async () => {
+		repository.createIntent.mockResolvedValue(true);
+
+		const result = await service.createIntent({ channel: InboundMessageAuthChannel.WHATSAPP });
+
+		expect(result.codeReceiver).toBe("+5511963270517");
 	});
 
 	it("should preassign a candidate session identifier for retry-safe exchange", async () => {

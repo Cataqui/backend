@@ -7,7 +7,11 @@ type WorkerEnvironment = {
 	workers_dev?: boolean;
 	containers?: Array<{ constraints?: { regions?: string[] } }>;
 	observability?: { logs?: { enabled?: boolean; head_sampling_rate?: number; invocation_logs?: boolean } };
-	vars: { API_CONTAINER_POOL_SIZE?: string; WHATSAPP_AUTH_PHONE_NUMBER_ID?: string };
+	vars: {
+		API_CONTAINER_POOL_SIZE?: string;
+		WHATSAPP_AUTH_PHONE_NUMBER_ID?: string;
+		WHATSAPP_AUTH_RECEIVER?: string;
+	};
 	queues?: {
 		producers?: Array<{ binding: string; queue: string }>;
 		consumers?: Array<{
@@ -73,6 +77,22 @@ describe("Webhooks Worker configuration", () => {
 		}).toEqual({
 			apiHasPhoneNumberId: false,
 			webhooks: ["1211194405413752", "1211194405413752", "1203689159488121"],
+		});
+	});
+
+	it("should configure the inbound authentication code receiver only in the API Worker", () => {
+		expect({
+			api: [
+				apiConfig.vars.WHATSAPP_AUTH_RECEIVER,
+				apiConfig.env.staging.vars.WHATSAPP_AUTH_RECEIVER,
+				apiConfig.env.production.vars.WHATSAPP_AUTH_RECEIVER,
+			],
+			webhooksHasCodeReceiver: [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].some(
+				(config) => config.vars.WHATSAPP_AUTH_RECEIVER !== undefined,
+			),
+		}).toEqual({
+			api: ["+15556625497", "+15556625497", "+5511963270517"],
+			webhooksHasCodeReceiver: false,
 		});
 	});
 

@@ -2,6 +2,7 @@ import { EnvSchema } from "./env.validation";
 
 const validEnvironmentSecrets = {
 	AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
+	WHATSAPP_AUTH_RECEIVER: "+15556625497",
 } as const;
 
 function _createValidEnvironment(): Record<string, string> {
@@ -118,6 +119,30 @@ describe("EnvSchema", () => {
 
 			expect(EnvSchema.safeParse(environment).success).toBe(false);
 		});
+
+		it.each(["+15556625497", "+5511963270517"])("should accept E.164-shaped receiver %s", (codeReceiver) => {
+			const environment = _createValidEnvironment();
+			environment["WHATSAPP_AUTH_RECEIVER"] = codeReceiver;
+
+			expect(EnvSchema.safeParse(environment).success).toBe(true);
+		});
+
+		it("should fail when WHATSAPP_AUTH_RECEIVER is missing", () => {
+			const environment = _createValidEnvironment();
+			delete environment["WHATSAPP_AUTH_RECEIVER"];
+
+			expect(EnvSchema.safeParse(environment).success).toBe(false);
+		});
+
+		it.each(["5511963270517", "+0123456789", "+1234567890123456", "+1 555 662 5497"])(
+			"should reject malformed receiver %s",
+			(codeReceiver) => {
+				const environment = _createValidEnvironment();
+				environment["WHATSAPP_AUTH_RECEIVER"] = codeReceiver;
+
+				expect(EnvSchema.safeParse(environment).success).toBe(false);
+			},
+		);
 
 		it("should fail when UPSTASH_REDIS_REST_URL is missing", () => {
 			const environment = _createValidEnvironment();
