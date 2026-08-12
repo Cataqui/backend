@@ -17,6 +17,7 @@ const webhookSigningSecret = "test-meta-app-secret-at-least-32-characters";
 function _buildPayload(params?: {
 	body?: string;
 	contacts?: unknown[];
+	messageId?: string;
 	messages?: unknown[];
 	phoneNumberId?: string;
 }): Record<string, unknown> {
@@ -42,7 +43,7 @@ function _buildPayload(params?: {
 							],
 							messages: params?.messages ?? [
 								{
-									id: "wamid.message",
+									id: params?.messageId ?? "wamid.message",
 									from_user_id: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 									timestamp: "1786172400",
 									type: "text",
@@ -224,6 +225,25 @@ describe("WhatsApp routes", () => {
 				authCodeHash: "a".repeat(64),
 			},
 		});
+	});
+
+	it("should send a burst of valid authentication messages directly to the API Worker without queueing", async () => {
+		isWebhookFromMetaMock.mockResolvedValue(true);
+		const deliverInbound = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+
+		const responses = await Promise.all(
+			Array.from({ length: 300 }, (_, messageIndex) =>
+				whatsappRoutes.fetch(
+					_buildPostRequest(
+						JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD", messageId: `wamid.burst-${messageIndex}` })),
+					),
+					_buildEnv(deliverInbound),
+				),
+			),
+		);
+
+		expect(new Set(responses.map((response) => response.status))).toEqual(new Set([200]));
+		expect(deliverInbound).toHaveBeenCalledTimes(300);
 	});
 
 	it("should ignore authentication messages received by a different WhatsApp number", async () => {
