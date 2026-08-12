@@ -2,6 +2,12 @@ name: Deploy Staging
 
 on:
   workflow_dispatch:
+    inputs:
+      run_signed_webhook_smoke:
+        description: Send a signed 320-request burst through the synchronous WhatsApp login path
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [staging]
     paths:
@@ -355,3 +361,9 @@ jobs:
           cloudflare-account-id: ${{ steps.webhooks-runtime-credentials.outputs.cloudflare_account_id }}
           meta-app-secret: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
           whatsapp-auth-webhook-verify-token: ${{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}
+
+      - name: Send signed WhatsApp webhook staging burst
+        if: inputs.run_signed_webhook_smoke
+        env:
+          META_APP_SECRET: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
+        run: node .github/scripts/run-signed-whatsapp-webhook-burst.mjs
