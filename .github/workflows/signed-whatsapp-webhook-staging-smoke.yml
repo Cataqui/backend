@@ -1,0 +1,41 @@
+name: Signed WhatsApp Webhook Staging Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-whatsapp-webhook-staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  signed-webhook-burst:
+    name: Send signed webhook burst through the synchronous path
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Load webhook signing credential from Infisical
+        id: webhooks-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: staging
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: webhooks-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
+      - name: Send signed staging burst
+        env:
+          META_APP_SECRET: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
+        run: node .github/scripts/run-signed-whatsapp-webhook-burst.mjs
