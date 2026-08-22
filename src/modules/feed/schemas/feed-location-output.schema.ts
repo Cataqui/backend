@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const FeedLocationOutputSchema = z
 	.object({
-		neighborhood: z.string().describe("Neighborhood or district of the job"),
 		latitude: z
 			.number()
 			.describe(

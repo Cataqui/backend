@@ -2,10 +2,6 @@ import { z } from "zod";
 
 export const JobLocationOutputSchema = z
 	.object({
-		neighborhood: z.string().describe("Neighborhood or district"),
-		city: z.string().describe("City name"),
-		state: z.string().describe("State code (2 chars)"),
-		country: z.string().describe("Country code (ISO 3166-1 alpha-2)"),
 		latitude: z
 			.number()
 			.describe(

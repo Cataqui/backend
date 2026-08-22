@@ -22,7 +22,7 @@ describe("job-contact storage", () => {
 
 	it("should migrate existing jobs to reference reusable contacts", () => {
 		const migration = readFileSync(
-			resolve(process.cwd(), "prisma/schema/migrations/20260805180000_add_native_auth/migration.sql"),
+			resolve(process.cwd(), "prisma/schema/migrations/20260810170000_align_auth_and_job_ownership/migration.sql"),
 			"utf8",
 		);
 

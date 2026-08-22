@@ -19,7 +19,6 @@ export function toFeedItemOutput(params: {
 		paymentNote: string | null;
 		paymentAmountPeriod: JobPaymentAmountPeriod;
 		paymentCurrency: string;
-		neighborhood: string;
 		fuzzyLatitude: { toNumber(): number } | number;
 		fuzzyLongitude: { toNumber(): number } | number;
 	};
@@ -38,7 +37,6 @@ export function toFeedItemOutput(params: {
 			currency: params.job.paymentCurrency,
 		},
 		location: {
-			neighborhood: params.job.neighborhood,
 			latitude: _toNumber(params.job.fuzzyLatitude),
 			longitude: _toNumber(params.job.fuzzyLongitude),
 			areaRadius: JobLocationConstants.AREA_RADIUS_METERS,

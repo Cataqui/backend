@@ -8,11 +8,6 @@ model Job {
   description        String      @db.Text
   descriptionSummary String?     @map("description_summary") @db.Text
 
-  street              String?                              @db.VarChar(200)
-  neighborhood        String?                              @db.VarChar(100)
-  city                String?                              @db.VarChar(100)
-  state               String?                              @db.VarChar(2)
-  country             String?                              @db.VarChar(2)
   locationPoint       Unsupported("geometry(Point,4326)")? @map("location_point")
   fuzzyLatitude       Decimal?                             @map("fuzzy_latitude") @db.Decimal(9, 6)
   fuzzyLongitude      Decimal?                             @map("fuzzy_longitude") @db.Decimal(9, 6)
@@ -27,7 +22,6 @@ model Job {
   createdAt           DateTime                             @default(now()) @map("created_at")
   updatedAt           DateTime                             @updatedAt @map("updated_at")
 
-  @@index([city, state, country])
   @@index([contactId])
   @@index([posterUserId])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])

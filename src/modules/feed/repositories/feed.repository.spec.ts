@@ -50,7 +50,6 @@ describe("FeedRepository", () => {
 				paymentType: { not: null },
 				paymentAmountPeriod: { not: null },
 				paymentCurrency: { not: null },
-				neighborhood: { not: null },
 				fuzzyLatitude: { not: null },
 				fuzzyLongitude: { not: null },
 			});
@@ -93,6 +92,7 @@ describe("FeedRepository", () => {
 			if (!(query instanceof Prisma.Sql)) throw new Error("Expected the cursor query to use parameterized Prisma SQL");
 
 			expect(query.text).toContain('("created_at", "id") < (');
+			expect(query.text).not.toContain("neighborhood");
 			expect(query.text).not.toContain("12345678-1234-4234-8234-1234567890ab");
 			expect(query.values).toEqual([
 				"ACTIVE",
@@ -115,7 +115,6 @@ describe("FeedRepository", () => {
 				paymentNote: null,
 				paymentAmountPeriod: "DAILY",
 				paymentCurrency: "BRL",
-				neighborhood: "Centro",
 				fuzzyLatitude: new Prisma.Decimal("-23.550000"),
 				fuzzyLongitude: new Prisma.Decimal("-46.630000"),
 			};
@@ -162,7 +161,6 @@ describe("FeedRepository", () => {
 				paymentNote: true,
 				paymentAmountPeriod: true,
 				paymentCurrency: true,
-				neighborhood: true,
 				fuzzyLatitude: true,
 				fuzzyLongitude: true,
 			});
@@ -180,7 +178,6 @@ describe("FeedRepository", () => {
 				paymentNote: null,
 				paymentAmountPeriod: "MONTHLY",
 				paymentCurrency: "BRL",
-				neighborhood: "Centro",
 				fuzzyLatitude: { toNumber: (): number => -23.55 },
 				fuzzyLongitude: { toNumber: (): number => -46.63 },
 			};
@@ -204,7 +201,6 @@ describe("FeedRepository", () => {
 					paymentNote: null,
 					paymentAmountPeriod: null,
 					paymentCurrency: null,
-					neighborhood: null,
 					fuzzyLatitude: null,
 					fuzzyLongitude: null,
 				},

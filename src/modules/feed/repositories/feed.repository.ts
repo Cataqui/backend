@@ -14,7 +14,6 @@ export interface FeedItemRaw {
 	paymentNote: string | null;
 	paymentAmountPeriod: JobPaymentAmountPeriod;
 	paymentCurrency: string;
-	neighborhood: string;
 	fuzzyLatitude: Prisma.Decimal;
 	fuzzyLongitude: Prisma.Decimal;
 }
@@ -37,7 +36,6 @@ export class FeedRepository {
 						"payment_note" AS "paymentNote",
 						"payment_amount_period" AS "paymentAmountPeriod",
 						"payment_currency" AS "paymentCurrency",
-						"neighborhood",
 						"fuzzy_latitude" AS "fuzzyLatitude",
 						"fuzzy_longitude" AS "fuzzyLongitude"
 					FROM "public"."jobs"
@@ -47,7 +45,6 @@ export class FeedRepository {
 						AND "payment_type" IS NOT NULL
 						AND "payment_amount_period" IS NOT NULL
 						AND "payment_currency" IS NOT NULL
-						AND "neighborhood" IS NOT NULL
 						AND "fuzzy_latitude" IS NOT NULL
 						AND "fuzzy_longitude" IS NOT NULL
 						AND ("created_at", "id") < (${new Date(params.cursor.createdAt)}, ${params.cursor.jobId}::uuid)
@@ -62,7 +59,6 @@ export class FeedRepository {
 						paymentType: { not: null },
 						paymentAmountPeriod: { not: null },
 						paymentCurrency: { not: null },
-						neighborhood: { not: null },
 						fuzzyLatitude: { not: null },
 						fuzzyLongitude: { not: null },
 					},
@@ -79,7 +75,6 @@ export class FeedRepository {
 						paymentNote: true,
 						paymentAmountPeriod: true,
 						paymentCurrency: true,
-						neighborhood: true,
 						fuzzyLatitude: true,
 						fuzzyLongitude: true,
 					},
@@ -92,7 +87,6 @@ export class FeedRepository {
 				item.paymentType === null ||
 				item.paymentAmountPeriod === null ||
 				item.paymentCurrency === null ||
-				item.neighborhood === null ||
 				item.fuzzyLatitude === null ||
 				item.fuzzyLongitude === null
 			) {
@@ -110,7 +104,6 @@ export class FeedRepository {
 				paymentNote: item.paymentNote,
 				paymentAmountPeriod: item.paymentAmountPeriod,
 				paymentCurrency: item.paymentCurrency,
-				neighborhood: item.neighborhood,
 				fuzzyLatitude: item.fuzzyLatitude,
 				fuzzyLongitude: item.fuzzyLongitude,
 			};

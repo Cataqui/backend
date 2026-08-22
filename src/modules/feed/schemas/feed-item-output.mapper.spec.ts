@@ -13,7 +13,6 @@ function createMockDatabaseJob() {
 		paymentNote: null,
 		paymentAmountPeriod: "SINGLE" as const,
 		paymentCurrency: "BRL",
-		neighborhood: "Centro",
 		fuzzyLatitude: { toNumber: () => -23.55 },
 		fuzzyLongitude: { toNumber: () => -46.63 },
 	};
@@ -48,7 +47,6 @@ describe("toFeedItemOutput", () => {
 			const dto = toFeedItemOutput({ job: createMockDatabaseJob() });
 
 			expect(dto.location).toMatchObject({
-				neighborhood: "Centro",
 				latitude: -23.55,
 				longitude: -46.63,
 				areaRadius: 2000,
@@ -90,25 +88,20 @@ describe("toFeedItemOutput", () => {
 			const location = FeedItemOutputSchema.parse(dto).location;
 
 			expect(location).toEqual({
-				neighborhood: "Centro",
 				latitude: -23.55,
 				longitude: -46.63,
 				areaRadius: 2000,
 			});
 		});
 
-		it("should not serialize city in nested location", () => {
-			const dto = toFeedItemOutput({ job: createMockDatabaseJob() });
-			const location = FeedItemOutputSchema.parse(dto).location;
+		it.each(["street", "neighborhood", "city", "state", "country"])(
+			"should not serialize %s in nested location",
+			(field) => {
+				const dto = toFeedItemOutput({ job: createMockDatabaseJob() });
+				const location = FeedItemOutputSchema.parse(dto).location;
 
-			expect(location).not.toHaveProperty("city");
-		});
-
-		it("should not serialize state in nested location", () => {
-			const dto = toFeedItemOutput({ job: createMockDatabaseJob() });
-			const location = FeedItemOutputSchema.parse(dto).location;
-
-			expect(location).not.toHaveProperty("state");
-		});
+				expect(location).not.toHaveProperty(field);
+			},
+		);
 	});
 });

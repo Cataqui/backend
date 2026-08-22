@@ -11,11 +11,6 @@ function _createIncompleteDatabaseDraft() {
 		description: "Need someone to help unload a delivery truck.",
 		descriptionSummary: null,
 		contact: null,
-		street: null,
-		neighborhood: null,
-		city: null,
-		state: null,
-		country: null,
 		fuzzyLatitude: null,
 		fuzzyLongitude: null,
 		status: JobStatus.DRAFT,
@@ -54,10 +49,6 @@ describe("toDraftJobOutput", () => {
 	it("should map complete draft location and payment groups", () => {
 		const output = toDraftJobOutput({
 			..._createIncompleteDatabaseDraft(),
-			neighborhood: "Centro",
-			city: "São Paulo",
-			state: "SP",
-			country: "BR",
 			fuzzyLatitude: new Prisma.Decimal(-23.55),
 			fuzzyLongitude: new Prisma.Decimal(-46.63),
 			paymentType: "FIXED" as const,

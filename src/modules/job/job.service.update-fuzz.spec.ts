@@ -31,11 +31,6 @@ const existingJob = {
 	description: "Descrição completa da oportunidade.",
 	descriptionSummary: "Descrição completa da oportunidade.",
 	contact: null,
-	street: null,
-	neighborhood: "Centro",
-	city: "São Paulo",
-	state: "SP",
-	country: "BR",
 	locationPoint: null,
 	fuzzyLatitude: { toNumber: (): number => -23.55 },
 	fuzzyLongitude: { toNumber: (): number => -46.63 },
@@ -68,11 +63,6 @@ type UpdateFieldCase = {
 
 const validContact = { contactMethod: JobContactMethod.WHATSAPP, identifier: "+5511999999999" };
 const validLocation = {
-	street: "Rua das Flores, 10",
-	neighborhood: "Centro",
-	city: "São Paulo",
-	state: "SP",
-	country: "BR",
 	latitude: -23.55,
 	longitude: -46.63,
 };
@@ -128,11 +118,6 @@ const updateFieldCases: UpdateFieldCase[] = [
 	},
 	...(
 		[
-			["street", fc.stringMatching(/^[A-Za-z0-9](?:[A-Za-z0-9 ]{0,98}[A-Za-z0-9])?$/u), "data", "street"],
-			["neighborhood", fc.stringMatching(/^[A-Za-z0-9][A-Za-z0-9 ]{0,98}[A-Za-z0-9]$/u), "data", "neighborhood"],
-			["city", fc.stringMatching(/^[A-Za-z0-9][A-Za-z0-9 ]{0,98}[A-Za-z0-9]$/u), "data", "city"],
-			["state", fc.constantFrom("SP", "RJ", "MG"), "data", "state"],
-			["country", fc.constantFrom("BR", "US", "PT"), "data", "country"],
 			["latitude", fc.double({ min: -90, max: 90, noNaN: true }), "locationPoint", "latitude"],
 			["longitude", fc.double({ min: -180, max: 180, noNaN: true }), "locationPoint", "longitude"],
 		] as const

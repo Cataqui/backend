@@ -6,13 +6,7 @@ import { DraftJobOutputSchema } from "./draft-job-output.schema";
 export function toDraftJobOutput(
 	job: Prisma.JobGetPayload<{ include: { contact: true } }>,
 ): z.infer<typeof DraftJobOutputSchema> {
-	const hasCompleteLocation =
-		job.neighborhood !== null &&
-		job.city !== null &&
-		job.state !== null &&
-		job.country !== null &&
-		job.fuzzyLatitude !== null &&
-		job.fuzzyLongitude !== null;
+	const hasCompleteLocation = job.fuzzyLatitude !== null && job.fuzzyLongitude !== null;
 
 	const hasCompletePayment =
 		job.paymentType !== null && job.paymentAmountPeriod !== null && job.paymentCurrency !== null;
@@ -31,10 +25,6 @@ export function toDraftJobOutput(
 					},
 		location: hasCompleteLocation
 			? {
-					neighborhood: job.neighborhood,
-					city: job.city,
-					state: job.state,
-					country: job.country,
 					latitude: job.fuzzyLatitude!.toNumber(),
 					longitude: job.fuzzyLongitude!.toNumber(),
 					areaRadius: JobLocationConstants.AREA_RADIUS_METERS,

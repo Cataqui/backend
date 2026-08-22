@@ -18,7 +18,6 @@ function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; 
 		paymentNote: overrides.paymentNote ?? null,
 		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
 		paymentCurrency: overrides.paymentCurrency ?? "BRL",
-		neighborhood: overrides.neighborhood ?? "Centro",
 		fuzzyLatitude: overrides.fuzzyLatitude ?? new Prisma.Decimal("-23.550000"),
 		fuzzyLongitude: overrides.fuzzyLongitude ?? new Prisma.Decimal("-46.630000"),
 	};
@@ -146,7 +145,7 @@ describe("FeedService", () => {
 				jobId: "job-1",
 				title: "Help unload truck",
 				payment: { type: "FIXED", minAmount: 150 },
-				location: { neighborhood: "Centro" },
+				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
 			});
 		});
 

@@ -1,5 +1,5 @@
-import { JobStatus } from "../../../../generated/prisma/client.js";
 import type { z } from "zod";
+import { JobStatus } from "../../../../generated/prisma/client.js";
 import { JobLocationConstants } from "../constants/job-location.constants";
 import type { PublicJobRaw } from "../repositories/job.repository";
 import type { PublicJobOutputSchema } from "./public-job-output.schema";
@@ -17,10 +17,6 @@ export function toPublicJobOutput(job: PublicJobRaw): z.infer<typeof PublicJobOu
 			contactMethod: job.contact!.contactMethod,
 		},
 		location: {
-			neighborhood: job.neighborhood!,
-			city: job.city!,
-			state: job.state!,
-			country: job.country!,
 			latitude: job.fuzzyLatitude!.toNumber(),
 			longitude: job.fuzzyLongitude!.toNumber(),
 			areaRadius: JobLocationConstants.AREA_RADIUS_METERS,

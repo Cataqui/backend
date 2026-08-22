@@ -3,10 +3,6 @@ import { JobLocationOutputSchema } from "./job-location-output.schema";
 describe("JobLocationOutputSchema", () => {
 	it("should serialize the public fuzzy location", () => {
 		const output = {
-			neighborhood: "Centro",
-			city: "São Paulo",
-			state: "SP",
-			country: "BR",
 			latitude: -23.55,
 			longitude: -46.63,
 			areaRadius: 2000,
@@ -15,17 +11,13 @@ describe("JobLocationOutputSchema", () => {
 		expect(JobLocationOutputSchema.parse(output)).toEqual(output);
 	});
 
-	it("should reject the private street field", () => {
+	it.each(["street", "neighborhood", "city", "state", "country"])("should reject the removed %s field", (field) => {
 		expect(() =>
 			JobLocationOutputSchema.parse({
-				neighborhood: "Centro",
-				city: "São Paulo",
-				state: "SP",
-				country: "BR",
 				latitude: -23.55,
 				longitude: -46.63,
 				areaRadius: 2000,
-				street: "Rua privada",
+				[field]: "legacy",
 			}),
 		).toThrow();
 	});

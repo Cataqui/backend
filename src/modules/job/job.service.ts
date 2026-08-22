@@ -330,12 +330,6 @@ export class JobService {
 		if (params.updatedDto.description !== undefined) data.description = params.updatedDto.description;
 		if (params.updatedDto.type !== undefined) data.type = params.updatedDto.type;
 		if (params.updatedDto.location !== undefined) {
-			data.street = params.updatedDto.location.street ?? null;
-			data.neighborhood = params.updatedDto.location.neighborhood;
-			data.city = params.updatedDto.location.city;
-			data.state = params.updatedDto.location.state;
-			data.country = params.updatedDto.location.country;
-
 			const fuzzyLocation = this._locationService.fuzzCoordinate({
 				latitude: params.updatedDto.location.latitude,
 				longitude: params.updatedDto.location.longitude,

@@ -16,9 +16,9 @@ describe("job ownership storage", () => {
 		expect(jobSchema).toContain("@@index([posterUserId])");
 	});
 
-	it("should add the nullable job-owner foreign key in the unlaunched auth migration", () => {
+	it("should add the nullable job-owner foreign key in the forward ownership migration", () => {
 		const migration = readFileSync(
-			resolve(process.cwd(), "prisma/schema/migrations/20260805180000_add_native_auth/migration.sql"),
+			resolve(process.cwd(), "prisma/schema/migrations/20260810170000_align_auth_and_job_ownership/migration.sql"),
 			"utf8",
 		);
 

@@ -17,10 +17,6 @@ function _createPublicJobDatabaseRow() {
 		descriptionSummary: "Trabalho rápido em evento no centro.",
 		contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 		contactMethod: JobContactMethod.WHATSAPP,
-		neighborhood: "Centro",
-		city: "São Paulo",
-		state: "SP",
-		country: "BR",
 		fuzzyLatitude: new Prisma.Decimal("-23.550000"),
 		fuzzyLongitude: new Prisma.Decimal("-46.630000"),
 		paymentType: JobPaymentType.FIXED,
@@ -109,10 +105,6 @@ describe("JobRepository lifecycle persistence", () => {
 				id: databaseJob.contactId,
 				contactMethod: databaseJob.contactMethod,
 			},
-			neighborhood: databaseJob.neighborhood,
-			city: databaseJob.city,
-			state: databaseJob.state,
-			country: databaseJob.country,
 			fuzzyLatitude: databaseJob.fuzzyLatitude,
 			fuzzyLongitude: databaseJob.fuzzyLongitude,
 			paymentType: databaseJob.paymentType,
@@ -317,7 +309,7 @@ describe("JobRepository lifecycle persistence", () => {
 		await repository.update({
 			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			data: { city: "São Paulo" },
+			data: { fuzzyLatitude: -23.55, fuzzyLongitude: -46.63 },
 			locationPoint: { latitude: -23.55, longitude: -46.63 },
 		});
 

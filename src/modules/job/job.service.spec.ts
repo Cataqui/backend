@@ -46,11 +46,6 @@ const completeJob = {
 	description: "Descrição completa da oportunidade.",
 	descriptionSummary: "Descrição completa da oportunidade.",
 	contact: contact,
-	street: "Rua das Flores, 123",
-	neighborhood: "Centro",
-	city: "São Paulo",
-	state: "SP",
-	country: "BR",
 	locationPoint: null,
 	fuzzyLatitude: { toNumber: (): number => -23.55 },
 	fuzzyLongitude: { toNumber: (): number => -46.63 },
@@ -80,11 +75,6 @@ function createCompleteUpdateDto(): z.infer<typeof UpdateJobInputSchema> {
 			location: Object.assign(
 				{},
 				{
-					street: completeJob.street,
-					neighborhood: completeJob.neighborhood,
-					city: completeJob.city,
-					state: completeJob.state,
-					country: completeJob.country,
 					latitude: -23.55,
 					longitude: -46.63,
 				},
@@ -293,7 +283,7 @@ describe("JobService", () => {
 		});
 	});
 
-	it("should ask the job location service to fuzz an edited street location", async () => {
+	it("should ask the location service to fuzz edited coordinates", async () => {
 		jobRepository.findByIdFromPoster.mockResolvedValue(completeJob);
 
 		await service.updateDraft({
@@ -310,7 +300,7 @@ describe("JobService", () => {
 		});
 	});
 
-	it("should fuzz public coordinates when an edited location has no street", async () => {
+	it("should fuzz public coordinates when location changes", async () => {
 		jobRepository.findByIdFromPoster.mockResolvedValue(completeJob);
 		const dto = Object.assign(
 			{},
@@ -318,10 +308,6 @@ describe("JobService", () => {
 				location: Object.assign(
 					{},
 					{
-						neighborhood: "Centro",
-						city: "São Paulo",
-						state: "SP",
-						country: "BR",
 						latitude: -23.55,
 						longitude: -46.63,
 					},
@@ -639,7 +625,7 @@ describe("JobService", () => {
 			...completeJob,
 			title: null,
 			contact: null,
-			neighborhood: null,
+			fuzzyLatitude: null,
 			type: null,
 			paymentType: null,
 			paymentAmountPeriod: null,
@@ -734,7 +720,7 @@ describe("JobService", () => {
 		);
 	});
 
-	it.each(["neighborhood", "city", "state", "country", "fuzzyLatitude", "fuzzyLongitude"] as const)(
+	it.each(["fuzzyLatitude", "fuzzyLongitude"] as const)(
 		"should require a complete location before publishing when %s is missing",
 		async (field) => {
 			jobRepository.findByIdFromPoster.mockResolvedValue({

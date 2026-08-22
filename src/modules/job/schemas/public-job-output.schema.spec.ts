@@ -17,10 +17,6 @@ const activePublicJobOutput = {
 		contactMethod: JobContactMethod.WHATSAPP,
 	},
 	location: {
-		neighborhood: "Centro",
-		city: "São Paulo",
-		state: "SP",
-		country: "BR",
 		latitude: -23.55,
 		longitude: -46.63,
 		areaRadius: 2_000,
