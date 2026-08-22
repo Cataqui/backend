@@ -17,7 +17,7 @@ jobs:
       TF_INPUT: 'false'
     steps:
       - name: Check out the repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -40,7 +40,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Install TFLint
-        uses: terraform-linters/setup-tflint@c750028ac0f3831886a261f96da68ab58a92e7ec # v6
+        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6
         with:
           cache: true
           tflint_config_path: infra/upstash/.tflint.hcl
