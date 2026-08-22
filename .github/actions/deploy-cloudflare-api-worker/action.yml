@@ -23,6 +23,9 @@ inputs:
   auth-refresh-token-hmac-key-v1-base64url:
     description: Environment-specific base64url-encoded V1 refresh-token HMAC key
     required: true
+  microservices-auth-jwt-private-key-v1-pkcs8-base64:
+    description: Environment-specific base64-encoded V1 ES256 private key in PKCS8 format
+    required: true
   upstash-redis-rest-url:
     description: Upstash Redis REST endpoint used by the API container
     required: true
@@ -64,6 +67,7 @@ runs:
         DATABASE_APP_POOLER_URL: ${{ inputs.database-app-pooler-url }}
         AI_GATEWAY_API_TOKEN: ${{ inputs.ai-gateway-api-token }}
         AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: ${{ inputs.auth-refresh-token-hmac-key-v1-base64url }}
+        MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: ${{ inputs.microservices-auth-jwt-private-key-v1-pkcs8-base64 }}
         UPSTASH_REDIS_REST_URL: ${{ inputs.upstash-redis-rest-url }}
         UPSTASH_REDIS_REST_TOKEN: ${{ inputs.upstash-redis-rest-token }}
       run: |
@@ -74,6 +78,7 @@ runs:
           DATABASE_APP_POOLER_URL: env.DATABASE_APP_POOLER_URL,
           AI_GATEWAY_API_TOKEN: env.AI_GATEWAY_API_TOKEN,
           AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: env.AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL,
+          MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: env.MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64,
           UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
           UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN
         }' > "$secrets_file"

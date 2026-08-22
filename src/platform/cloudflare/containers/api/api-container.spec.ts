@@ -16,6 +16,7 @@ describe("ApiContainer request boundary", () => {
 				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
 				UPSTASH_REDIS_REST_TOKEN: "redis-token",
 				AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
+				MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 				WHATSAPP_AUTH_RECEIVER: "+5511963270517",
 				SLEEP_AFTER: "5m",
 				API_CONTAINER_POOL_SIZE: "10",
@@ -34,6 +35,7 @@ describe("ApiContainer request boundary", () => {
 			UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
 			UPSTASH_REDIS_REST_TOKEN: "redis-token",
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
+			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 			WHATSAPP_AUTH_RECEIVER: "+5511963270517",
 		});
 	});

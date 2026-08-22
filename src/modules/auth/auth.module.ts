@@ -9,6 +9,9 @@ import { InboundMessageAuthController } from "./inbound-message-auth/inbound-mes
 import { InboundMessageAuthInboundController } from "./inbound-message-auth/inbound-message-auth.inbound.controller";
 import { inboundMessageAuthConfig } from "./inbound-message-auth/inbound-message-auth.config";
 import { InboundMessageAuthService } from "./inbound-message-auth/inbound-message-auth.service";
+import { microservicesAuthConfig } from "./microservices-auth/microservices-auth.config";
+import { MicroservicesAuthController } from "./microservices-auth/microservices-auth.controller";
+import { MicroservicesAuthService } from "./microservices-auth/microservices-auth.service";
 import { InboundMessageAuthRepository } from "./inbound-message-auth/repositories/inbound-message-auth.repository";
 import { AuthAccessTokenRepository } from "./repositories/auth-access-token.repository";
 import { AuthIdentityRepository } from "./repositories/auth-identity.repository";
@@ -16,8 +19,17 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 
 @Global()
 @Module({
-	imports: [ConfigModule.forFeature(authConfig), ConfigModule.forFeature(inboundMessageAuthConfig)],
-	controllers: [AuthSessionController, InboundMessageAuthController, InboundMessageAuthInboundController],
+	imports: [
+		ConfigModule.forFeature(authConfig),
+		ConfigModule.forFeature(inboundMessageAuthConfig),
+		ConfigModule.forFeature(microservicesAuthConfig),
+	],
+	controllers: [
+		AuthSessionController,
+		InboundMessageAuthController,
+		InboundMessageAuthInboundController,
+		MicroservicesAuthController,
+	],
 	providers: [
 		InboundMessageAuthRepository,
 		AuthAccessTokenRepository,
@@ -26,6 +38,7 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 		AuthTokenService,
 		InboundMessageAuthService,
 		AuthSessionService,
+		MicroservicesAuthService,
 		AccessTokenGuard,
 	],
 	exports: [AccessTokenGuard, AuthSessionService],

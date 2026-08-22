@@ -6,6 +6,7 @@ import { RateLimitConstants } from "../src/core/throttle/rate-limit.constants";
 import { AuthSessionController } from "../src/modules/auth/auth-session.controller";
 import { InboundMessageAuthController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.controller";
 import { InboundMessageAuthInboundController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.inbound.controller";
+import { MicroservicesAuthController } from "../src/modules/auth/microservices-auth/microservices-auth.controller";
 import { FeedController } from "../src/modules/feed/feed.controller";
 import { HealthController } from "../src/modules/health/health.controller";
 import { JobController } from "../src/modules/job/job.controller";
@@ -29,14 +30,15 @@ function _getPolicy(
 
 describe("endpoint rate-limit policy contract", () => {
 	it.each([
-		["job draft creation", JobController, "createDraft", 20],
-		["job draft editing", JobController, "updateDraft", 60],
-		["public job editing", JobController, "updatePublicJob", 60],
-		["job publication", JobController, "publish", 20],
+		["geosearch access-token issuance", MicroservicesAuthController, "createGeosearchAccessToken", 20, 86_400_000],
+		["job draft creation", JobController, "createDraft", 20, 3_600_000],
+		["job draft editing", JobController, "updateDraft", 60, 3_600_000],
+		["public job editing", JobController, "updatePublicJob", 60, 3_600_000],
+		["job publication", JobController, "publish", 20, 3_600_000],
 	] as const)(
-		"should protect %s with the one-hour authenticated-user budget",
-		(_name, controller, method, requests) => {
-			expect(_getPolicy(controller, method)).toEqual({ requests: requests, milliseconds: 3_600_000 });
+		"should protect %s with its authenticated-user budget",
+		(_name, controller, method, requests, milliseconds) => {
+			expect(_getPolicy(controller, method)).toEqual({ requests: requests, milliseconds: milliseconds });
 		},
 	);
 

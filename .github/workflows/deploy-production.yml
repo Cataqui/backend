@@ -342,6 +342,7 @@ jobs:
           database-app-pooler-url: ${{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}
           ai-gateway-api-token: ${{ steps.api-runtime-credentials.outputs.ai_gateway_api_token }}
           auth-refresh-token-hmac-key-v1-base64url: ${{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}
+          microservices-auth-jwt-private-key-v1-pkcs8-base64: ${{ steps.api-runtime-credentials.outputs.microservices_auth_jwt_private_key_v1_pkcs8_base64 }}
           upstash-redis-rest-url: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}
           upstash-redis-rest-token: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}
 

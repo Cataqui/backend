@@ -67,6 +67,7 @@ describe("Infisical GitHub Actions integration", () => {
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
 					"CLOUDFLARE_ACCOUNT_ID",
 					"DATABASE_APP_POOLER_URL",
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"UPSTASH_REDIS_REST_URL",
 				],
@@ -296,6 +297,8 @@ describe("Infisical GitHub Actions integration", () => {
 					"auth-refresh-token-hmac-key-v1-base64url: $" +
 						"{{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}",
 					"database-app-pooler-url: $" + "{{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}",
+					"microservices-auth-jwt-private-key-v1-pkcs8-base64: $" +
+						"{{ steps.api-runtime-credentials.outputs.microservices_auth_jwt_private_key_v1_pkcs8_base64 }}",
 					"cloudflare-api-token: $" + "{{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}",
 					"upstash-redis-rest-token: $" + "{{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}",
 					"upstash-redis-rest-url: $" + "{{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}",

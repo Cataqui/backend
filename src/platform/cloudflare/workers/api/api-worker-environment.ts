@@ -15,5 +15,6 @@ export interface ApiWorkerEnvironment {
 	UPSTASH_REDIS_REST_URL: string;
 	UPSTASH_REDIS_REST_TOKEN: string;
 	AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: string;
+	MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: string;
 	API_CONTAINER: DurableObjectNamespace;
 }

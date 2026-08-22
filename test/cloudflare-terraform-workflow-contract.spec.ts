@@ -585,6 +585,9 @@ describe("Cloudflare Terraform workflow security", () => {
 			deploysRefreshTokenHmacKeyV1Base64url: apiDeploymentActionSource.includes(
 				"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: env.AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
 			),
+			deploysMicroservicesAuthPrivateKeyV1: apiDeploymentActionSource.includes(
+				"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: env.MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+			),
 			keepsRedisCredentialsOutOfWebhooks: !webhooksDeploymentActionSource.includes("UPSTASH_REDIS"),
 			verifiesBothReadinessContracts:
 				apiDeploymentActionSource.includes("/v1/health") &&
@@ -609,6 +612,7 @@ describe("Cloudflare Terraform workflow security", () => {
 			protectsBothEphemeralSecretFiles: true,
 			isolatesWhatsappSecrets: true,
 			deploysRefreshTokenHmacKeyV1Base64url: true,
+			deploysMicroservicesAuthPrivateKeyV1: true,
 			keepsRedisCredentialsOutOfWebhooks: true,
 			verifiesBothReadinessContracts: true,
 			rollsBackFailedApiReadiness: true,

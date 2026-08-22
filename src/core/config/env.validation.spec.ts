@@ -2,6 +2,7 @@ import { EnvSchema } from "./env.validation";
 
 const validEnvironmentSecrets = {
 	AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
+	MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: Buffer.from("test-private-key").toString("base64"),
 	WHATSAPP_AUTH_RECEIVER: "+15556625497",
 } as const;
 
@@ -116,6 +117,20 @@ describe("EnvSchema", () => {
 		it("should fail when AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL does not decode to 32 bytes", () => {
 			const environment = _createValidEnvironment();
 			environment["AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL"] = Buffer.alloc(31, 1).toString("base64url");
+
+			expect(EnvSchema.safeParse(environment).success).toBe(false);
+		});
+
+		it("should fail when the microservices JWT private key is missing", () => {
+			const environment = _createValidEnvironment();
+			delete environment["MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"];
+
+			expect(EnvSchema.safeParse(environment).success).toBe(false);
+		});
+
+		it("should fail when the microservices JWT private key is not base64", () => {
+			const environment = _createValidEnvironment();
+			environment["MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"] = "not-base64!";
 
 			expect(EnvSchema.safeParse(environment).success).toBe(false);
 		});
