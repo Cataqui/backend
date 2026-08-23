@@ -44,10 +44,10 @@ runs:
       id: terraform-version
       shell: bash
       run: |
-        terraform_version="$(tr -d '[:space:]' < infra/upstash/.terraform-version)"
+        terraform_version="$(tr -d '[:space:]' < infrastructure/upstash/.terraform-version)"
 
         if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "infra/upstash/.terraform-version must contain a semantic version such as 1.15.8" >&2
+          echo "infrastructure/upstash/.terraform-version must contain a semantic version such as 1.15.8" >&2
           exit 1
         fi
 
@@ -64,7 +64,7 @@ runs:
       env:
         TERRAFORM_TARGET_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        if [[ "$TERRAFORM_ROOT" != "infra/upstash/redis" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
+        if [[ "$TERRAFORM_ROOT" != "infrastructure/upstash/redis" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
           echo "TERRAFORM_ROOT must identify the Upstash Redis Terraform root" >&2
           exit 1
         fi

@@ -37,7 +37,7 @@ docker-compose.yml
 
 # CI & meta
 .github/
-infra/
+infrastructure/
 commitlint.config.mjs
 LICENSE
 .editorconfig

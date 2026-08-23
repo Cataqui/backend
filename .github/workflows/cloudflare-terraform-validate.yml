@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      TERRAFORM_ROOT: infra/cloudflare/${{ inputs.component }}
+      TERRAFORM_ROOT: infrastructure/cloudflare/${{ inputs.component }}
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
     steps:
@@ -29,10 +29,10 @@ jobs:
       - name: Read the pinned Terraform version
         id: terraform-version
         run: |
-          terraform_version="$(tr -d '[:space:]' < infra/cloudflare/.terraform-version)"
+          terraform_version="$(tr -d '[:space:]' < infrastructure/cloudflare/.terraform-version)"
 
           if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "infra/cloudflare/.terraform-version must contain a semantic version such as 1.15.8" >&2
+            echo "infrastructure/cloudflare/.terraform-version must contain a semantic version such as 1.15.8" >&2
             exit 1
           fi
 
@@ -48,7 +48,7 @@ jobs:
         uses: terraform-linters/setup-tflint@c750028ac0f3831886a261f96da68ab58a92e7ec # v6
         with:
           cache: true
-          tflint_config_path: infra/cloudflare/.tflint.hcl
+          tflint_config_path: infrastructure/cloudflare/.tflint.hcl
           tflint_version: v0.64.0
 
       - name: Verify the requested component
@@ -56,17 +56,17 @@ jobs:
           TERRAFORM_COMPONENT: ${{ inputs.component }}
         run: |
           if [[ ! "$TERRAFORM_COMPONENT" =~ ^[a-z0-9-]+$ || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
-            echo "component must identify a registered Terraform root under infra/cloudflare" >&2
+            echo "component must identify a registered Terraform root under infrastructure/cloudflare" >&2
             exit 1
           fi
 
-          if ! jq --exit-status --arg component "$TERRAFORM_COMPONENT" 'index($component) != null' infra/cloudflare/components.json > /dev/null; then
-            echo "component must be listed in infra/cloudflare/components.json" >&2
+          if ! jq --exit-status --arg component "$TERRAFORM_COMPONENT" 'index($component) != null' infrastructure/cloudflare/components.json > /dev/null; then
+            echo "component must be listed in infrastructure/cloudflare/components.json" >&2
             exit 1
           fi
 
       - name: Verify Terraform formatting
-        run: terraform fmt -check -recursive infra/cloudflare
+        run: terraform fmt -check -recursive infrastructure/cloudflare
 
       - name: Initialize Terraform without remote state
         run: terraform init -backend=false -input=false
@@ -77,12 +77,12 @@ jobs:
         working-directory: ${{ env.TERRAFORM_ROOT }}
 
       - name: Initialize TFLint plugins
-        run: tflint --chdir=infra/cloudflare --config="$GITHUB_WORKSPACE/infra/cloudflare/.tflint.hcl" --init
+        run: tflint --chdir=infrastructure/cloudflare --config="$GITHUB_WORKSPACE/infrastructure/cloudflare/.tflint.hcl" --init
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Verify Terraform conventions
-        run: tflint --chdir=infra/cloudflare --config="$GITHUB_WORKSPACE/infra/cloudflare/.tflint.hcl" --recursive --format compact
+        run: tflint --chdir=infrastructure/cloudflare --config="$GITHUB_WORKSPACE/infrastructure/cloudflare/.tflint.hcl" --recursive --format compact
 
       - name: Verify Terraform behavior
         run: terraform test

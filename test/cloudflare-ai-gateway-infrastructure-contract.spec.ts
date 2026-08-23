@@ -2,10 +2,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 
-const aiGatewayRootTerraformDirectory = resolve(process.cwd(), "infra/cloudflare/ai-gateway");
+const aiGatewayRootTerraformDirectory = resolve(process.cwd(), "infrastructure/cloudflare/ai-gateway");
 const aiGatewayTerraformDirectories = [
 	aiGatewayRootTerraformDirectory,
-	resolve(process.cwd(), "infra/cloudflare/modules/ai-gateway"),
+	resolve(process.cwd(), "infrastructure/cloudflare/modules/ai-gateway"),
 ];
 const aiGatewayRootTerraformSource = readdirSync(aiGatewayRootTerraformDirectory)
 	.filter((fileName) => fileName.endsWith(".tf"))
@@ -19,12 +19,9 @@ const aiGatewayTerraformSource = aiGatewayTerraformDirectories
 	)
 	.join("\n");
 const cloudflareComponents = JSON.parse(
-	readFileSync(resolve(process.cwd(), "infra/cloudflare/components.json"), "utf8"),
+	readFileSync(resolve(process.cwd(), "infrastructure/cloudflare/components.json"), "utf8"),
 ) as string[];
-const wranglerConfig = ts.readConfigFile(
-	resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
-	ts.sys.readFile,
-).config as {
+const wranglerConfig = ts.readConfigFile(resolve(process.cwd(), "apps/api/wrangler.jsonc"), ts.sys.readFile).config as {
 	env: Record<"staging" | "production", { vars: { CLOUDFLARE_AI_GATEWAY_ID: string } }>;
 };
 
@@ -39,7 +36,7 @@ describe("Cloudflare AI Gateway infrastructure contract", () => {
 				/id\s*=\s*"\$\{local\.cloudflare_account_id\}\/\$\{var\.environment\}"/.test(aiGatewayRootTerraformSource),
 			rootDeclaresInput: aiGatewayRootTerraformSource.includes('variable "cloudflare_account_id"'),
 			moduleDeclaresInput: readFileSync(
-				resolve(process.cwd(), "infra/cloudflare/modules/ai-gateway/variables.tf"),
+				resolve(process.cwd(), "infrastructure/cloudflare/modules/ai-gateway/variables.tf"),
 				"utf8",
 			).includes('variable "cloudflare_account_id"'),
 		}).toEqual({

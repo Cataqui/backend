@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 const workflowsDirectory = resolve(process.cwd(), ".github/workflows");
 const actionsDirectory = resolve(process.cwd(), ".github/actions");
-const cloudflareInfrastructureDirectory = resolve(process.cwd(), "infra/cloudflare");
+const cloudflareInfrastructureDirectory = resolve(process.cwd(), "infrastructure/cloudflare");
 const dependabotSource = readFileSync(resolve(process.cwd(), ".github/dependabot.yml"), "utf8");
 const workflowSources = Object.fromEntries(
 	readdirSync(workflowsDirectory)
@@ -36,36 +36,71 @@ function _getActionSource(actionName: string): string {
 	return source;
 }
 
+function _getWorkflowJobSource(workflowSource: string, jobId: string): string {
+	const jobDeclarations = [...workflowSource.matchAll(/^ {2}([a-z0-9_-]+):\n/gm)];
+	const jobIndex = jobDeclarations.findIndex((match) => match[1] === jobId);
+	const jobDeclaration = jobDeclarations[jobIndex];
+
+	if (jobDeclaration?.index === undefined) {
+		throw new Error(`Expected workflow job ${jobId} to exist.`);
+	}
+
+	return workflowSource.slice(jobDeclaration.index, jobDeclarations[jobIndex + 1]?.index ?? workflowSource.length);
+}
+
 describe("Cloudflare Terraform workflow security", () => {
-	it("should run quality checks when any application build contract changes", () => {
+	it("should run selective CI for every monorepo ownership and toolchain boundary", () => {
 		const continuousIntegrationSource = _getWorkflowSource("ci.yml");
-		const requiredPaths = [
-			"src/**",
-			"prisma/**",
-			"infra/**",
-			"Dockerfile",
+		const requiredPathScopes = [
+			"apps/**",
+			"packages/**",
+			"infrastructure/**",
+			"scripts/**",
+			"test/**",
+			".agents/skills/**",
+			".github/**",
 			"package.json",
 			"pnpm-lock.yaml",
 			"pnpm-workspace.yaml",
-			"nest-cli.json",
-			"tsconfig.json",
-			"test/**",
-			".github/actions/**",
-			".github/workflows/**",
+			"skills-lock.json",
+			"biome.json",
+			"tsconfig*.json",
+			"vitest*.ts",
+			".gitattributes",
 		];
 
-		expect(requiredPaths.every((path) => continuousIntegrationSource.split(`- '${path}'`).length - 1 === 2)).toBe(true);
+		expect(
+			requiredPathScopes.every((pathScope) => continuousIntegrationSource.split(`- '${pathScope}'`).length - 1 === 2),
+		).toBe(true);
 	});
 
-	it("should enforce non-mutating lint, TypeScript checking, coverage, and a production build in CI", () => {
+	it("should validate repository contracts and each affected workspace through the dependency graph", () => {
 		const continuousIntegrationSource = _getWorkflowSource("ci.yml");
+		const affectedScopeSource = _getWorkflowJobSource(continuousIntegrationSource, "affected_scope");
+		const repositorySource = _getWorkflowJobSource(continuousIntegrationSource, "repository");
+		const workspaceSource = _getWorkflowJobSource(continuousIntegrationSource, "workspace");
 
 		expect({
-			lint: continuousIntegrationSource.includes("run: pnpm lint:check"),
-			typecheck: continuousIntegrationSource.includes("run: pnpm typecheck\n"),
-			coverage: continuousIntegrationSource.includes("run: pnpm test:cov"),
-			build: continuousIntegrationSource.includes("run: pnpm build"),
-		}).toEqual({ lint: true, typecheck: true, coverage: true, build: true });
+			resolvesChangedPaths: affectedScopeSource.includes("node scripts/affected-workspaces.mjs"),
+			checksDiffWhitespace: affectedScopeSource.includes("git diff --check"),
+			lintsRepository: repositorySource.includes("run: pnpm lint:check"),
+			testsRepositoryContracts: repositorySource.includes("run: pnpm test:repo"),
+			usesAffectedWorkspaceMatrix: workspaceSource.includes(
+				"workspace: $" + "{{ fromJSON(needs.affected_scope.outputs.validation_workspaces) }}",
+			),
+			buildsDependenciesFirst: workspaceSource.includes('run: pnpm --filter "$WORKSPACE..." run build'),
+			typechecksWorkspace: workspaceSource.includes('run: pnpm --filter "$WORKSPACE" run typecheck'),
+			enforcesWorkspaceCoverage: workspaceSource.includes('run: pnpm --filter "$WORKSPACE" run test:cov'),
+		}).toEqual({
+			resolvesChangedPaths: true,
+			checksDiffWhitespace: true,
+			lintsRepository: true,
+			testsRepositoryContracts: true,
+			usesAffectedWorkspaceMatrix: true,
+			buildsDependenciesFirst: true,
+			typechecksWorkspace: true,
+			enforcesWorkspaceCoverage: true,
+		});
 	});
 
 	it("should use repository-local api names for every HCP Terraform workspace", () => {
@@ -172,14 +207,14 @@ describe("Cloudflare Terraform workflow security", () => {
 		expect({
 			usesEnvironmentScopedName: terraformDriftSource.includes("profile: cloudflare-terraform-drift"),
 			selectsInputEnvironment: terraformDriftSource.includes(`environment:\n      name: \${{ matrix.environment }}`),
-			doesNotCreateDeployment: terraformDriftSource.includes("deployment: false"),
+			avoidsWriteCredentialProfile: !terraformDriftSource.includes("profile: cloudflare-terraform-apply"),
 			hasEnvironmentSpecificNames: /CLOUDFLARE_TERRAFORM_(STAGING|PRODUCTION)_READ_API_TOKEN/.test(
 				combinedWorkflowSource,
 			),
 		}).toEqual({
 			usesEnvironmentScopedName: true,
 			selectsInputEnvironment: true,
-			doesNotCreateDeployment: true,
+			avoidsWriteCredentialProfile: true,
 			hasEnvironmentSpecificNames: false,
 		});
 	});
@@ -280,7 +315,7 @@ describe("Cloudflare Terraform workflow security", () => {
 						source.includes("fromJSON(needs.") &&
 						source.includes(".outputs.components)"),
 				),
-				componentDiscoveryActionSource.includes("infra/cloudflare/components.json"),
+				componentDiscoveryActionSource.includes("infrastructure/cloudflare/components.json"),
 			].every(Boolean),
 		).toBe(true);
 	});
@@ -323,16 +358,22 @@ describe("Cloudflare Terraform workflow security", () => {
 	});
 
 	it("should validate infrastructure changes whenever the shared Terraform action changes", () => {
-		const workflowsTriggeredByInfrastructureAutomation = [
-			_getWorkflowSource("ci.yml"),
-			_getWorkflowSource("terraform-plan.yml"),
-			_getWorkflowSource("deploy-staging.yml"),
-			_getWorkflowSource("deploy-production.yml"),
-		];
+		const continuousIntegrationSource = _getWorkflowSource("ci.yml");
+		const terraformPlanSource = _getWorkflowSource("terraform-plan.yml");
+		const stagingDeploymentSource = _getWorkflowSource("deploy-staging.yml");
+		const productionDeploymentSource = _getWorkflowSource("deploy-production.yml");
 
-		expect(
-			workflowsTriggeredByInfrastructureAutomation.every((source) => source.includes("'.github/actions/**'")),
-		).toBe(true);
+		expect({
+			ciCoversAllWorkflowAutomation: continuousIntegrationSource.includes("- '.github/**'"),
+			terraformValidationCoversActions: terraformPlanSource.includes("- '.github/actions/**'"),
+			stagingDeliveryCoversActions: stagingDeploymentSource.includes("- '.github/actions/**'"),
+			productionDeliveryCoversActions: productionDeploymentSource.includes("- '.github/actions/**'"),
+		}).toEqual({
+			ciCoversAllWorkflowAutomation: true,
+			terraformValidationCoversActions: true,
+			stagingDeliveryCoversActions: true,
+			productionDeliveryCoversActions: true,
+		});
 	});
 
 	it("should register every Cloudflare Terraform root for delivery and drift detection", () => {
@@ -355,7 +396,7 @@ describe("Cloudflare Terraform workflow security", () => {
 			terraformUpdateConfigurations: dependabotSource.match(/package-ecosystem: terraform/g)?.length,
 			usesMultipleDirectories: dependabotSource.includes("directories:"),
 			includesEveryRoot: registeredComponents.every((component) =>
-				dependabotSource.includes(`- /infra/cloudflare/${component}`),
+				dependabotSource.includes(`- /infrastructure/cloudflare/${component}`),
 			),
 		}).toEqual({
 			terraformUpdateConfigurations: 1,
@@ -374,7 +415,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		expect(
 			terraformWorkflowSources.every(
 				(source) =>
-					source.includes("infra/cloudflare/.terraform-version") &&
+					source.includes("infrastructure/cloudflare/.terraform-version") &&
 					source.includes("terraform_version: $" + "{{ steps.terraform-version.outputs.version }}"),
 			),
 		).toBe(true);
@@ -415,7 +456,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		const terraformComponentsValidateSource = _getWorkflowSource("cloudflare-terraform-components-validate.yml");
 
 		expect({
-			discoversReusableModules: terraformComponentsValidateSource.includes("infra/cloudflare/modules/*"),
+			discoversReusableModules: terraformComponentsValidateSource.includes("infrastructure/cloudflare/modules/*"),
 			runsModuleTests: terraformComponentsValidateSource.includes('terraform -chdir="$module_directory" test'),
 		}).toEqual({
 			discoversReusableModules: true,
@@ -479,7 +520,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		const terraformDeploySource = _getActionSource("deploy-cloudflare-terraform-component");
 
 		expect({
-			cloudflareDirectoryRuns: terraformDeploySource.match(/--chdir=infra\/cloudflare/g)?.length,
+			cloudflareDirectoryRuns: terraformDeploySource.match(/--chdir=infrastructure\/cloudflare/g)?.length,
 			parentDirectoryRuns: terraformDeploySource.includes("--chdir=.."),
 		}).toEqual({
 			cloudflareDirectoryRuns: 2,
@@ -501,45 +542,100 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
-	it("should automatically deploy production after protected infrastructure deployment succeeds", () => {
+	it("should resolve and order selective production deployments through explicit readiness gates", () => {
 		const productionDeploymentSource = _getWorkflowSource("deploy-production.yml");
+		const affectedScopeSource = _getWorkflowJobSource(productionDeploymentSource, "affected-scope");
+		const cloudflareInfrastructureSource = _getWorkflowJobSource(
+			productionDeploymentSource,
+			"infrastructure-cloudflare",
+		);
+		const neonInfrastructureSource = _getWorkflowJobSource(productionDeploymentSource, "infrastructure-neon");
+		const upstashInfrastructureSource = _getWorkflowJobSource(productionDeploymentSource, "infrastructure-upstash");
+		const infrastructureReadinessSource = _getWorkflowJobSource(productionDeploymentSource, "infrastructure-readiness");
+		const migrateSource = _getWorkflowJobSource(productionDeploymentSource, "migrate");
+		const deployApiSource = _getWorkflowJobSource(productionDeploymentSource, "deploy-api");
+		const deployWebhooksSource = _getWorkflowJobSource(productionDeploymentSource, "deploy-webhooks");
+		const deployGeosearchSource = _getWorkflowJobSource(productionDeploymentSource, "deploy-geosearch");
 
 		expect({
 			hasPushTrigger: /\n {2}push:/.test(productionDeploymentSource),
 			targetsMain: productionDeploymentSource.includes("branches: [main]"),
-			deploysInfrastructure: productionDeploymentSource.includes(
-				"uses: ./.github/actions/deploy-cloudflare-terraform-component",
+			resolvesAffectedScope:
+				affectedScopeSource.includes("node scripts/affected-workspaces.mjs") &&
+				affectedScopeSource.includes('--base "$base_sha"') &&
+				affectedScopeSource.includes('--head "$EVENT_HEAD_SHA"'),
+			selectsCloudflareComponents:
+				cloudflareInfrastructureSource.includes(
+					"component: $" + "{{ fromJSON(needs.infrastructure-components-cloudflare.outputs.components) }}",
+				) && cloudflareInfrastructureSource.includes("needs.infrastructure-components-cloudflare.result == 'success'"),
+			selectsNeon: neonInfrastructureSource.includes("needs.affected-scope.outputs.deploy_neon == 'true'"),
+			selectsUpstash: upstashInfrastructureSource.includes("needs.affected-scope.outputs.deploy_upstash == 'true'"),
+			joinsSelectedInfrastructure: [
+				"infrastructure-components-cloudflare",
+				"infrastructure-cloudflare",
+				"infrastructure-neon",
+				"infrastructure-upstash",
+			].every((jobId) => infrastructureReadinessSource.includes(`- ${jobId}`)),
+			migratesAfterReadiness:
+				migrateSource.includes("needs: [affected-scope, infrastructure-readiness]") &&
+				migrateSource.includes("needs.affected-scope.outputs.run_migrations == 'true'") &&
+				migrateSource.match(/pnpm --filter @cataqui\/api prisma:migrate:deploy/g)?.length === 2,
+			deploysApiAfterMigration:
+				deployApiSource.includes("needs: [affected-scope, migrate]") &&
+				deployApiSource.includes("needs.migrate.result == 'success'"),
+			ordersSelectedApiBeforeWebhooks:
+				deployWebhooksSource.includes("needs: [affected-scope, infrastructure-readiness, deploy-api]") &&
+				deployWebhooksSource.includes("needs.deploy-api.result == 'success'"),
+			ordersSelectedApiBeforeGeosearch:
+				deployGeosearchSource.includes("needs: [affected-scope, infrastructure-readiness, deploy-api]") &&
+				deployGeosearchSource.includes("needs.deploy-api.result == 'success'"),
+			allowsIndependentWorkerDeployment: [deployWebhooksSource, deployGeosearchSource].every((source) =>
+				source.includes("needs.affected-scope.outputs.deploy_api != 'true' && needs.deploy-api.result == 'skipped'"),
 			),
-			migratesAfterInfrastructure: productionDeploymentSource.includes(
-				"needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]",
-			),
-			deploysAfterMigration: productionDeploymentSource.includes("needs: migrate"),
 		}).toEqual({
 			hasPushTrigger: true,
 			targetsMain: true,
-			deploysInfrastructure: true,
-			migratesAfterInfrastructure: true,
-			deploysAfterMigration: true,
+			resolvesAffectedScope: true,
+			selectsCloudflareComponents: true,
+			selectsNeon: true,
+			selectsUpstash: true,
+			joinsSelectedInfrastructure: true,
+			migratesAfterReadiness: true,
+			deploysApiAfterMigration: true,
+			ordersSelectedApiBeforeWebhooks: true,
+			ordersSelectedApiBeforeGeosearch: true,
+			allowsIndependentWorkerDeployment: true,
 		});
 	});
 
-	it("should redeploy when any container build contract changes", () => {
+	it("should resolve deployment scope for every monorepo runtime and build contract", () => {
 		const deploymentWorkflowSources = [
 			_getWorkflowSource("deploy-staging.yml"),
 			_getWorkflowSource("deploy-production.yml"),
 		];
-		const containerBuildContracts = [
-			"'Dockerfile'",
+		const runtimeBuildScopes = [
+			"'apps/**'",
+			"'packages/**'",
 			"'package.json'",
 			"'pnpm-lock.yaml'",
 			"'pnpm-workspace.yaml'",
-			"'nest-cli.json'",
-			"'tsconfig.json'",
+			"'tsconfig*.json'",
+			"'vitest*.ts'",
+			"'.dockerignore'",
+		];
+		const workspaceDependencyBuilds = [
+			'pnpm --filter "@cataqui/api^..." run build',
+			'pnpm --filter "@cataqui/webhooks-worker^..." run build',
+			'pnpm --filter "@cataqui/geosearch-worker^..." run build',
 		];
 
 		expect(
 			deploymentWorkflowSources.every((source) =>
-				containerBuildContracts.every((buildContract) => source.includes(buildContract)),
+				[
+					source.includes("node scripts/affected-workspaces.mjs"),
+					runtimeBuildScopes.every((runtimeBuildScope) => source.includes(runtimeBuildScope)),
+					workspaceDependencyBuilds.every((dependencyBuild) => source.includes(dependencyBuild)),
+				].every(Boolean),
 			),
 		).toBe(true);
 	});
@@ -551,10 +647,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		];
 		const apiDeploymentActionSource = _getActionSource("deploy-cloudflare-api-worker");
 		const webhooksDeploymentActionSource = _getActionSource("deploy-cloudflare-webhooks-worker");
-		const apiWranglerSource = readFileSync(
-			resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
-			"utf8",
-		);
+		const apiWranglerSource = readFileSync(resolve(process.cwd(), "apps/api/wrangler.jsonc"), "utf8");
 
 		expect({
 			describesApiDeploymentWithAutomaticRollback:
@@ -566,7 +659,7 @@ describe("Cloudflare Terraform workflow security", () => {
 					source.includes("uses: ./.github/actions/deploy-cloudflare-webhooks-worker"),
 			),
 			usesStrictImmediateContainerDeployment: apiDeploymentActionSource.includes(
-				"deploy --strict --cwd src/platform/cloudflare/workers/api\n          --config wrangler.jsonc --containers-rollout immediate",
+				"deploy --strict --cwd apps/api\n          --config wrangler.jsonc --containers-rollout immediate",
 			),
 			protectsBothEphemeralSecretFiles: [apiDeploymentActionSource, webhooksDeploymentActionSource].every(
 				(source) =>
@@ -594,14 +687,14 @@ describe("Cloudflare Terraform workflow security", () => {
 				webhooksDeploymentActionSource.includes('response_status" == "403"'),
 			rollsBackFailedApiReadiness:
 				apiDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				apiDeploymentActionSource.includes("rollback --cwd src/platform/cloudflare/workers/api"),
+				apiDeploymentActionSource.includes("rollback --cwd apps/api"),
 			verifiesApiReadinessAfterRollback:
 				apiDeploymentActionSource.includes("Verify the API readiness after rollback") &&
 				apiDeploymentActionSource.includes("steps.rollback.outcome == 'success'") &&
 				apiDeploymentActionSource.includes("The API remained unhealthy after rollback"),
 			rollsBackFailedWebhooksReadiness:
 				webhooksDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				webhooksDeploymentActionSource.includes("rollback --cwd src/platform/cloudflare/workers/webhooks"),
+				webhooksDeploymentActionSource.includes("rollback --cwd apps/workers/webhooks"),
 			keepsProgressiveContainerStepsAvailableForLaterDeployments:
 				apiWranglerSource.includes('"rollout_step_percentage": [10, 50, 100]') &&
 				apiWranglerSource.includes('"rollout_step_percentage": [10, 25, 50, 100]'),

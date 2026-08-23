@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      TERRAFORM_ROOT: infra/neon/database
+      TERRAFORM_ROOT: infrastructure/neon/database
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
     steps:
@@ -24,10 +24,10 @@ jobs:
       - name: Read the pinned Terraform version
         id: terraform-version
         run: |
-          terraform_version="$(tr -d '[:space:]' < infra/neon/.terraform-version)"
+          terraform_version="$(tr -d '[:space:]' < infrastructure/neon/.terraform-version)"
 
           if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "infra/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
+            echo "infrastructure/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
             exit 1
           fi
 
@@ -43,11 +43,11 @@ jobs:
         uses: terraform-linters/setup-tflint@c750028ac0f3831886a261f96da68ab58a92e7ec # v6
         with:
           cache: true
-          tflint_config_path: infra/neon/.tflint.hcl
+          tflint_config_path: infrastructure/neon/.tflint.hcl
           tflint_version: v0.64.0
 
       - name: Verify Terraform formatting
-        run: terraform fmt -check -recursive infra/neon
+        run: terraform fmt -check -recursive infrastructure/neon
 
       - name: Initialize Terraform without remote state
         run: terraform init -backend=false -input=false
@@ -58,12 +58,12 @@ jobs:
         working-directory: ${{ env.TERRAFORM_ROOT }}
 
       - name: Initialize TFLint plugins
-        run: tflint --chdir=infra/neon --config="$GITHUB_WORKSPACE/infra/neon/.tflint.hcl" --init
+        run: tflint --chdir=infrastructure/neon --config="$GITHUB_WORKSPACE/infrastructure/neon/.tflint.hcl" --init
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Verify Terraform conventions
-        run: tflint --chdir=infra/neon --config="$GITHUB_WORKSPACE/infra/neon/.tflint.hcl" --recursive --format compact
+        run: tflint --chdir=infrastructure/neon --config="$GITHUB_WORKSPACE/infrastructure/neon/.tflint.hcl" --recursive --format compact
 
       - name: Verify Terraform behavior
         run: terraform test

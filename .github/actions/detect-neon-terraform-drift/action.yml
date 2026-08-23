@@ -36,10 +36,10 @@ runs:
       id: terraform-version
       shell: bash
       run: |
-        terraform_version="$(tr -d '[:space:]' < infra/neon/.terraform-version)"
+        terraform_version="$(tr -d '[:space:]' < infrastructure/neon/.terraform-version)"
 
         if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "infra/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
+          echo "infrastructure/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
           exit 1
         fi
 
@@ -56,7 +56,7 @@ runs:
       env:
         TERRAFORM_TARGET_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        if [[ "$TERRAFORM_ROOT" != "infra/neon/database" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
+        if [[ "$TERRAFORM_ROOT" != "infrastructure/neon/database" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
           echo "TERRAFORM_ROOT must identify the Neon database Terraform root" >&2
           exit 1
         fi

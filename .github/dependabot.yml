@@ -16,10 +16,10 @@ updates:
 
   - package-ecosystem: terraform
     directories:
-      - /infra/cloudflare/ai-gateway
-      - /infra/cloudflare/queues
-      - /infra/neon/database
-      - /infra/upstash/redis
+      - /infrastructure/cloudflare/ai-gateway
+      - /infrastructure/cloudflare/queues
+      - /infrastructure/neon/database
+      - /infrastructure/upstash/redis
     schedule:
       interval: weekly
       day: monday

@@ -40,6 +40,9 @@ outputs:
   google_places_api_key:
     description: Google Places API New key for the geosearch Worker
     value: ${{ steps.action-inputs.outputs.google_places_api_key }}
+  microservices_auth_jwt_private_key_v1_pkcs8_base64:
+    description: Environment-specific ES256 private key for issuing microservice access tokens
+    value: ${{ steps.action-inputs.outputs.microservices_auth_jwt_private_key_v1_pkcs8_base64 }}
   whatsapp_auth_access_token:
     description: Meta WhatsApp Cloud API access token
     value: ${{ steps.action-inputs.outputs.whatsapp_auth_access_token }}

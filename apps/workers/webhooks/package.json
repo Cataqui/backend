@@ -1,0 +1,36 @@
+{
+	"name": "@cataqui/webhooks-worker",
+	"version": "1.0.0",
+	"description": "Cataquí provider webhook ingress Worker",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"scripts": {
+		"build": "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
+		"cf:deploy:production": "wrangler deploy --config wrangler.jsonc --env production",
+		"cf:deploy:staging": "wrangler deploy --config wrangler.jsonc --env staging",
+		"cf:dev": "wrangler dev --config wrangler.jsonc --env-file \"$PWD/../../../.env\"",
+		"cf:secret:put": "wrangler secret put --config wrangler.jsonc",
+		"cf:tail": "wrangler tail --config wrangler.jsonc",
+		"cf:types": "wrangler types webhooks-worker-env.d.ts --config wrangler.jsonc --env-interface GeneratedWebhooksWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
+		"cf:types:check": "wrangler types webhooks-worker-env.d.ts --check --config wrangler.jsonc --env-interface GeneratedWebhooksWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
+		"clean": "node -e \"for (const target of ['coverage','dist']) require('node:fs').rmSync(target,{recursive:true,force:true})\"",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit && pnpm cf:types:check"
+	},
+	"dependencies": {
+		"@cataqui/api-internal-ingress": "workspace:*",
+		"hono": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

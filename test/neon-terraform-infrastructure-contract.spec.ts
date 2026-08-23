@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repositoryRoot = process.cwd();
-const terraformRoot = resolve(repositoryRoot, "infra/neon/database");
+const terraformRoot = resolve(repositoryRoot, "infrastructure/neon/database");
 const versionsSource = readFileSync(resolve(terraformRoot, "versions.tf"), "utf8");
 const localsSource = readFileSync(resolve(terraformRoot, "locals.tf"), "utf8");
 const databaseSource = readFileSync(resolve(terraformRoot, "database.tf"), "utf8");

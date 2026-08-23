@@ -56,14 +56,13 @@ jobs:
       id-token: write
     environment:
       name: ${{ matrix.environment }}
-      deployment: false
     strategy:
       fail-fast: false
       matrix:
         component: ${{ fromJSON(needs.components-cloudflare.outputs.components) }}
         environment: [staging, production]
     env:
-      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TERRAFORM_ROOT: infrastructure/cloudflare/${{ matrix.component }}
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
       TF_VAR_environment: ${{ matrix.environment }}
@@ -104,13 +103,12 @@ jobs:
       id-token: write
     environment:
       name: ${{ matrix.environment }}
-      deployment: false
     strategy:
       fail-fast: false
       matrix:
         environment: [staging, production]
     env:
-      TERRAFORM_ROOT: infra/upstash/redis
+      TERRAFORM_ROOT: infrastructure/upstash/redis
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
       TF_VAR_environment: ${{ matrix.environment }}
@@ -151,13 +149,12 @@ jobs:
       id-token: write
     environment:
       name: ${{ matrix.environment }}
-      deployment: false
     strategy:
       fail-fast: false
       matrix:
         environment: [staging, production]
     env:
-      TERRAFORM_ROOT: infra/neon/database
+      TERRAFORM_ROOT: infrastructure/neon/database
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
       TF_VAR_environment: ${{ matrix.environment }}

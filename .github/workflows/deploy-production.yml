@@ -4,17 +4,32 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'prisma/**'
-      - 'infra/**'
-      - 'Dockerfile'
+      - 'apps/**'
+      - 'packages/**'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - 'test/**'
+      - '.agents/skills/**'
+      - '.github/actions/**'
+      - '.github/workflows/deploy-production.yml'
+      - 'docs/**'
+      - '**/AGENTS.md'
+      - '*.md'
+      - '*.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - 'nest-cli.json'
-      - 'tsconfig.json'
-      - '.github/actions/**'
-      - '.github/workflows/deploy-production.yml'
+      - 'skills-lock.json'
+      - 'biome.json'
+      - 'tsconfig*.json'
+      - 'vitest*.ts'
+      - '.dockerignore'
+      - '.editorconfig'
+      - '.env.example'
+      - '.gitignore'
+      - '.ignore'
+      - '.npmrc'
+      - 'LICENSE'
 
 permissions:
   contents: read
@@ -39,13 +54,184 @@ jobs:
             exit 1
           fi
 
-  infrastructure-components-cloudflare:
-    name: Discover Cloudflare infrastructure components
+  affected-scope:
+    name: Resolve affected production scope
     needs: authorize-deployment-ref
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      components: ${{ steps.registry.outputs.components }}
+      cloudflare_components: ${{ steps.cloudflare-components.outputs.components }}
+      deploy_ai_gateway: ${{ steps.scope.outputs.deploy_ai_gateway }}
+      deploy_api: ${{ steps.scope.outputs.deploy_api }}
+      deploy_geosearch: ${{ steps.scope.outputs.deploy_geosearch }}
+      deploy_neon: ${{ steps.scope.outputs.deploy_neon }}
+      deploy_queues: ${{ steps.scope.outputs.deploy_queues }}
+      deploy_upstash: ${{ steps.scope.outputs.deploy_upstash }}
+      deploy_webhooks: ${{ steps.scope.outputs.deploy_webhooks }}
+      run_migrations: ${{ steps.scope.outputs.run_migrations }}
+      validate_infrastructure: ${{ steps.scope.outputs.validate_infrastructure }}
+      validate_repository: ${{ steps.scope.outputs.validate_repository }}
+      validation_workspaces: ${{ steps.scope.outputs.validation_workspaces }}
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve changed paths and dependent workspaces
+        id: scope
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+          EVENT_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base_sha="$EVENT_BEFORE_SHA"
+          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]]; then
+            base_sha="$(git hash-object -t tree /dev/null)"
+          fi
+          git diff --check "$base_sha" "$EVENT_HEAD_SHA"
+          node scripts/affected-workspaces.mjs \
+            --base "$base_sha" \
+            --head "$EVENT_HEAD_SHA" \
+            --github-output
+
+      - name: Select Cloudflare infrastructure components
+        id: cloudflare-components
+        shell: bash
+        env:
+          DEPLOY_AI_GATEWAY: ${{ steps.scope.outputs.deploy_ai_gateway }}
+          DEPLOY_QUEUES: ${{ steps.scope.outputs.deploy_queues }}
+        run: |
+          set -euo pipefail
+          components="$(jq --compact-output --null-input \
+            --arg deploy_ai_gateway "$DEPLOY_AI_GATEWAY" \
+            --arg deploy_queues "$DEPLOY_QUEUES" \
+            '[
+              if $deploy_ai_gateway == "true" then "ai-gateway" else empty end,
+              if $deploy_queues == "true" then "queues" else empty end
+            ]')"
+          echo "components=$components" >> "$GITHUB_OUTPUT"
+
+  validate-repository:
+    name: Validate repository contracts before deployment
+    needs: affected-scope
+    if: >-
+      ${{
+        needs.affected-scope.outputs.validate_repository == 'true' ||
+        needs.affected-scope.outputs.validate_infrastructure == 'true' ||
+        needs.affected-scope.outputs.validation_workspaces != '[]'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version: 24
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint the repository
+        run: pnpm lint:check
+
+      - name: Validate repository contracts
+        run: pnpm test:repo
+
+  validate-workspaces:
+    name: Validate ${{ matrix.workspace }} before deployment
+    needs: affected-scope
+    if: needs.affected-scope.outputs.validation_workspaces != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJSON(needs.affected-scope.outputs.validation_workspaces) }}
+    env:
+      CORS_ORIGINS: http://localhost:3000
+      DATABASE_OWNER_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version: 24
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace and dependencies
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: pnpm --filter "$WORKSPACE..." run build
+
+      - name: Typecheck workspace
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: pnpm --filter "$WORKSPACE" run typecheck
+
+      - name: Test workspace with coverage
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: pnpm --filter "$WORKSPACE" run test:cov
+
+  validation-gate:
+    name: Confirm affected validation passed
+    needs: [affected-scope, validate-repository, validate-workspaces]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Reject failed or cancelled validation
+        shell: bash
+        env:
+          AFFECTED_SCOPE_RESULT: ${{ needs.affected-scope.result }}
+          REPOSITORY_RESULT: ${{ needs.validate-repository.result }}
+          WORKSPACES_RESULT: ${{ needs.validate-workspaces.result }}
+        run: |
+          set -euo pipefail
+          for result in "$AFFECTED_SCOPE_RESULT" "$REPOSITORY_RESULT" "$WORKSPACES_RESULT"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "Affected validation did not complete successfully." >&2
+              exit 1
+            fi
+          done
+
+  infrastructure-components-cloudflare:
+    name: Discover selected Cloudflare infrastructure components
+    needs: [affected-scope, validation-gate]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.validation-gate.result == 'success' &&
+        needs.affected-scope.outputs.cloudflare_components != '[]'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      components: ${{ steps.selection.outputs.components }}
     steps:
       - name: Check out the deployment revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -56,10 +242,33 @@ jobs:
         id: registry
         uses: ./.github/actions/discover-cloudflare-terraform-components
 
+      - name: Verify the selected components are registered
+        id: selection
+        shell: bash
+        env:
+          REGISTERED_COMPONENTS: ${{ steps.registry.outputs.components }}
+          SELECTED_COMPONENTS: ${{ needs.affected-scope.outputs.cloudflare_components }}
+        run: |
+          set -euo pipefail
+          if ! jq --exit-status \
+            --argjson registered "$REGISTERED_COMPONENTS" \
+            'all(.[]; . as $component | $registered | index($component) != null)' \
+            <<< "$SELECTED_COMPONENTS" > /dev/null; then
+            echo "The affected scope selected an unregistered Cloudflare Terraform component." >&2
+            exit 1
+          fi
+          echo "components=$(jq --compact-output . <<< "$SELECTED_COMPONENTS")" >> "$GITHUB_OUTPUT"
+
   infrastructure-cloudflare:
     name: Deploy ${{ matrix.component }} Cloudflare infrastructure (Production)
-    needs: infrastructure-components-cloudflare
-    if: github.ref == 'refs/heads/main'
+    needs: [affected-scope, validation-gate, infrastructure-components-cloudflare]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.validation-gate.result == 'success' &&
+        needs.infrastructure-components-cloudflare.result == 'success' &&
+        needs.infrastructure-components-cloudflare.outputs.components != '[]'
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -72,7 +281,7 @@ jobs:
       matrix:
         component: ${{ fromJSON(needs.infrastructure-components-cloudflare.outputs.components) }}
     env:
-      TERRAFORM_ROOT: infra/cloudflare/${{ matrix.component }}
+      TERRAFORM_ROOT: infrastructure/cloudflare/${{ matrix.component }}
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
       TF_VAR_environment: production
@@ -82,7 +291,6 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
       - name: Load Cloudflare Terraform credentials from Infisical
         id: infisical
         uses: ./.github/actions/load-infisical-secrets
@@ -91,8 +299,7 @@ jobs:
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           profile: cloudflare-terraform-apply
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
-      - name: Deploy the registered Cloudflare Terraform component
+      - name: Deploy the selected Cloudflare Terraform component
         uses: ./.github/actions/deploy-cloudflare-terraform-component
         env:
           TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
@@ -103,62 +310,15 @@ jobs:
           cloudflare-read-api-token: ${{ steps.infisical.outputs.cloudflare_terraform_read_api_token }}
           cloudflare-write-api-token: ${{ steps.infisical.outputs.cloudflare_terraform_write_api_token }}
 
-  infrastructure-upstash:
-    name: Deploy Upstash Redis infrastructure (Production)
-    needs: authorize-deployment-ref
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: production
-    env:
-      TERRAFORM_ROOT: infra/upstash/redis
-      TF_IN_AUTOMATION: 'true'
-      TF_INPUT: 'false'
-      TF_VAR_environment: production
-      TF_WORKSPACE: api-upstash-redis-production
-    steps:
-      - name: Check out the deployment revision
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-
-      - name: Load Upstash Terraform credentials from Infisical
-        id: infisical
-        uses: ./.github/actions/load-infisical-secrets
-        with:
-          environment: production
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          profile: upstash-terraform-apply
-          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
-      - name: Deploy Upstash Redis infrastructure
-        id: upstash-terraform
-        uses: ./.github/actions/deploy-upstash-terraform
-        env:
-          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
-        with:
-          environment: production
-          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
-          upstash-email: ${{ steps.infisical.outputs.upstash_terraform_email }}
-          upstash-api-key: ${{ steps.infisical.outputs.upstash_terraform_api_key }}
-
-      - name: Synchronize generated Upstash Redis credentials to Infisical
-        uses: ./.github/actions/sync-upstash-redis-to-infisical
-        with:
-          environment: production
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          project-id: ${{ vars.INFISICAL_PROJECT_ID }}
-          redis-rest-token: ${{ steps.upstash-terraform.outputs.redis-rest-token }}
-          redis-rest-url: ${{ steps.upstash-terraform.outputs.redis-rest-url }}
-
   infrastructure-neon:
     name: Deploy Neon database infrastructure (Production)
-    needs: authorize-deployment-ref
-    if: github.ref == 'refs/heads/main'
+    needs: [affected-scope, validation-gate]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.validation-gate.result == 'success' &&
+        needs.affected-scope.outputs.deploy_neon == 'true'
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -167,7 +327,7 @@ jobs:
     environment:
       name: production
     env:
-      TERRAFORM_ROOT: infra/neon/database
+      TERRAFORM_ROOT: infrastructure/neon/database
       TF_IN_AUTOMATION: 'true'
       TF_INPUT: 'false'
       TF_VAR_environment: production
@@ -177,7 +337,6 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
       - name: Load Neon Terraform credentials from Infisical
         id: infisical
         uses: ./.github/actions/load-infisical-secrets
@@ -186,7 +345,6 @@ jobs:
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           profile: neon-terraform-apply
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
       - name: Deploy Neon database infrastructure
         id: neon-terraform
         uses: ./.github/actions/deploy-neon-terraform
@@ -197,7 +355,6 @@ jobs:
           terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
           neon-api-key: ${{ steps.infisical.outputs.neon_api_key }}
           neon-organization-id: ${{ steps.infisical.outputs.neon_organization_id }}
-
       - name: Synchronize generated Neon database configuration to Infisical
         uses: ./.github/actions/sync-neon-database-to-infisical
         with:
@@ -209,32 +366,137 @@ jobs:
           database-owner-direct-url: ${{ steps.neon-terraform.outputs.database-owner-direct-url }}
           database-app-pooler-url: ${{ steps.neon-terraform.outputs.database-app-pooler-url }}
 
+  infrastructure-upstash:
+    name: Deploy Upstash Redis infrastructure (Production)
+    needs: [affected-scope, validation-gate]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.validation-gate.result == 'success' &&
+        needs.affected-scope.outputs.deploy_upstash == 'true'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+    env:
+      TERRAFORM_ROOT: infrastructure/upstash/redis
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_environment: production
+      TF_WORKSPACE: api-upstash-redis-production
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Load Upstash Terraform credentials from Infisical
+        id: infisical
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: upstash-terraform-apply
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+      - name: Deploy Upstash Redis infrastructure
+        id: upstash-terraform
+        uses: ./.github/actions/deploy-upstash-terraform
+        env:
+          TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
+        with:
+          environment: production
+          terraform-api-token: ${{ steps.infisical.outputs.terraform_api_token }}
+          upstash-email: ${{ steps.infisical.outputs.upstash_terraform_email }}
+          upstash-api-key: ${{ steps.infisical.outputs.upstash_terraform_api_key }}
+      - name: Synchronize generated Upstash Redis credentials to Infisical
+        uses: ./.github/actions/sync-upstash-redis-to-infisical
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-id: ${{ vars.INFISICAL_PROJECT_ID }}
+          redis-rest-token: ${{ steps.upstash-terraform.outputs.redis-rest-token }}
+          redis-rest-url: ${{ steps.upstash-terraform.outputs.redis-rest-url }}
+
+  infrastructure-readiness:
+    name: Confirm selected infrastructure is ready
+    needs:
+      - affected-scope
+      - validation-gate
+      - infrastructure-components-cloudflare
+      - infrastructure-cloudflare
+      - infrastructure-neon
+      - infrastructure-upstash
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Reject incomplete selected infrastructure
+        shell: bash
+        env:
+          DEPLOY_AI_GATEWAY: ${{ needs.affected-scope.outputs.deploy_ai_gateway }}
+          DEPLOY_NEON: ${{ needs.affected-scope.outputs.deploy_neon }}
+          DEPLOY_QUEUES: ${{ needs.affected-scope.outputs.deploy_queues }}
+          DEPLOY_UPSTASH: ${{ needs.affected-scope.outputs.deploy_upstash }}
+          DISCOVERY_RESULT: ${{ needs.infrastructure-components-cloudflare.result }}
+          CLOUDFLARE_RESULT: ${{ needs.infrastructure-cloudflare.result }}
+          NEON_RESULT: ${{ needs.infrastructure-neon.result }}
+          UPSTASH_RESULT: ${{ needs.infrastructure-upstash.result }}
+          VALIDATION_RESULT: ${{ needs.validation-gate.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$VALIDATION_RESULT" != "success" ]]; then
+            echo "Affected validation did not pass before infrastructure deployment." >&2
+            exit 1
+          fi
+          if [[ "$DEPLOY_AI_GATEWAY" == "true" || "$DEPLOY_QUEUES" == "true" ]]; then
+            if [[ "$DISCOVERY_RESULT" != "success" || "$CLOUDFLARE_RESULT" != "success" ]]; then
+              echo "Selected Cloudflare infrastructure did not deploy successfully." >&2
+              exit 1
+            fi
+          fi
+          if [[ "$DEPLOY_NEON" == "true" && "$NEON_RESULT" != "success" ]]; then
+            echo "Selected Neon infrastructure did not deploy successfully." >&2
+            exit 1
+          fi
+          if [[ "$DEPLOY_UPSTASH" == "true" && "$UPSTASH_RESULT" != "success" ]]; then
+            echo "Selected Upstash infrastructure did not deploy successfully." >&2
+            exit 1
+          fi
+
   migrate:
     name: Migrate (Production)
-    if: github.ref == 'refs/heads/main'
+    needs: [affected-scope, infrastructure-readiness]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.infrastructure-readiness.result == 'success' &&
+        needs.affected-scope.outputs.run_migrations == 'true'
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]
     permissions:
       contents: read
       id-token: write
     environment:
       name: production
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
           node-version: 24
-
-      - run: pnpm install --frozen-lockfile
-
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
       - name: Load database migration credentials from Infisical
         id: infisical
         uses: ./.github/actions/load-infisical-secrets
@@ -243,7 +505,6 @@ jobs:
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           profile: database-migration
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
       - name: Create Neon test branch
         id: neon-branch
         uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6
@@ -254,18 +515,15 @@ jobs:
           database: cataqui-production
           role: cataqui_production_owner
           api_key: ${{ steps.infisical.outputs.neon_api_key }}
-
       - name: Test migrations on branch
-        run: pnpm exec prisma migrate deploy
+        run: pnpm --filter @cataqui/api prisma:migrate:deploy
         env:
           DATABASE_OWNER_DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
-
       - name: Run database migrations
         if: success()
-        run: pnpm exec prisma migrate deploy
+        run: pnpm --filter @cataqui/api prisma:migrate:deploy
         env:
           DATABASE_OWNER_DIRECT_URL: ${{ steps.infisical.outputs.database_owner_direct_url }}
-
       - name: Cleanup Neon test branch
         if: always() && steps.neon-branch.outputs.branch_id != ''
         uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
@@ -274,12 +532,17 @@ jobs:
           branch: ${{ steps.neon-branch.outputs.branch_id }}
           api_key: ${{ steps.infisical.outputs.neon_api_key }}
 
-  deploy:
-    name: Deploy (Production)
-    if: github.ref == 'refs/heads/main'
+  deploy-api:
+    name: Deploy API (Production)
+    needs: [affected-scope, migrate]
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        needs.affected-scope.outputs.deploy_api == 'true' &&
+        needs.migrate.result == 'success'
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: migrate
     permissions:
       contents: read
       id-token: write
@@ -287,23 +550,26 @@ jobs:
       name: production
       url: https://api.cataqui.com
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.4.0
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
           node-version: 24
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm install --frozen-lockfile
+      - name: Build API workspace dependencies
+        run: pnpm --filter "@cataqui/api^..." run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
       - name: Load API runtime credentials from Infisical
         id: api-runtime-credentials
         uses: ./.github/actions/load-infisical-secrets
@@ -312,25 +578,6 @@ jobs:
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           profile: api-runtime
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
-      - name: Load webhooks runtime credentials from Infisical
-        id: webhooks-runtime-credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with:
-          environment: production
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          profile: webhooks-runtime
-          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
-      - name: Load geosearch runtime credentials from Infisical
-        id: geosearch-runtime-credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with:
-          environment: production
-          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
-          profile: geosearch-runtime
-          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
       - name: Load application deployment credentials from Infisical
         id: deployment-credentials
         uses: ./.github/actions/load-infisical-secrets
@@ -339,7 +586,6 @@ jobs:
           identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
           profile: application-deploy
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-
       - name: Deploy and verify the Cloudflare API Worker
         uses: ./.github/actions/deploy-cloudflare-api-worker
         with:
@@ -353,6 +599,63 @@ jobs:
           upstash-redis-rest-url: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_url }}
           upstash-redis-rest-token: ${{ steps.api-runtime-credentials.outputs.upstash_redis_rest_token }}
 
+  deploy-webhooks:
+    name: Deploy Webhooks Worker (Production)
+    needs: [affected-scope, infrastructure-readiness, deploy-api]
+    if: >-
+      ${{
+        always() &&
+        github.ref == 'refs/heads/main' &&
+        needs.affected-scope.outputs.deploy_webhooks == 'true' &&
+        needs.infrastructure-readiness.result == 'success' &&
+        (
+          needs.deploy-api.result == 'success' ||
+          (needs.affected-scope.outputs.deploy_api != 'true' && needs.deploy-api.result == 'skipped')
+        )
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+      url: https://webhooks.cataqui.com/whatsapp
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version: 24
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Webhooks workspace dependencies
+        run: pnpm --filter "@cataqui/webhooks-worker^..." run build
+
+      - name: Load webhooks runtime credentials from Infisical
+        id: webhooks-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: webhooks-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+      - name: Load application deployment credentials from Infisical
+        id: deployment-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: application-deploy
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
       - name: Deploy and verify the webhooks Worker
         uses: ./.github/actions/deploy-cloudflare-webhooks-worker
         with:
@@ -362,6 +665,63 @@ jobs:
           meta-app-secret: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
           whatsapp-auth-webhook-verify-token: ${{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}
 
+  deploy-geosearch:
+    name: Deploy Geosearch Worker (Production)
+    needs: [affected-scope, infrastructure-readiness, deploy-api]
+    if: >-
+      ${{
+        always() &&
+        github.ref == 'refs/heads/main' &&
+        needs.affected-scope.outputs.deploy_geosearch == 'true' &&
+        needs.infrastructure-readiness.result == 'success' &&
+        (
+          needs.deploy-api.result == 'success' ||
+          (needs.affected-scope.outputs.deploy_api != 'true' && needs.deploy-api.result == 'skipped')
+        )
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+      url: https://geosearch.cataqui.com/v1/health
+    steps:
+      - name: Check out the deployment revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version: 24
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Geosearch workspace dependencies
+        run: pnpm --filter "@cataqui/geosearch-worker^..." run build
+
+      - name: Load geosearch runtime credentials from Infisical
+        id: geosearch-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: geosearch-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+      - name: Load application deployment credentials from Infisical
+        id: deployment-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: production
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: application-deploy
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
       - name: Deploy and verify the geosearch Worker
         uses: ./.github/actions/deploy-cloudflare-geosearch-worker
         with:

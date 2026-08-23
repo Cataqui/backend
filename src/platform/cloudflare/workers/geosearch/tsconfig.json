@@ -1,8 +1,0 @@
-{
-	"extends": "../../tsconfig.json",
-	"compilerOptions": {
-		"lib": ["ESNext"]
-	},
-	"files": ["./geosearch-worker-env.d.ts"],
-	"include": ["./**/*.ts"]
-}

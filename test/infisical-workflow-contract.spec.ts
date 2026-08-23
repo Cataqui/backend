@@ -20,6 +20,18 @@ const authenticatedWorkflowSources = ["deploy-staging.yml", "deploy-production.y
 	(fileName) => readFileSync(resolve(repositoryRoot, ".github/workflows", fileName), "utf8"),
 );
 
+function _workflowJobSource(source: string, jobName: string) {
+	const jobStartMarker = `\n  ${jobName}:\n`;
+	const jobStart = source.indexOf(jobStartMarker);
+
+	if (jobStart === -1) throw new Error(`missing workflow job: ${jobName}`);
+
+	const remainingSource = source.slice(jobStart + jobStartMarker.length);
+	const nextJobOffset = remainingSource.search(/\n {2}[a-z][a-z0-9-]*:\n/u);
+
+	return nextJobOffset === -1 ? remainingSource : remainingSource.slice(0, nextJobOffset);
+}
+
 describe("Infisical GitHub Actions integration", () => {
 	it("should prefer reviewed official automation over custom provider API shell code", () => {
 		expect({
@@ -197,6 +209,22 @@ describe("Infisical GitHub Actions integration", () => {
 		});
 	});
 
+	it("should expose every selected profile credential through the composite action", () => {
+		const selectedCredentialNames = [
+			...new Set(Object.values(infisicalProfiles).flatMap((profile) => profile.credentials)),
+		];
+
+		expect(
+			selectedCredentialNames.every((credentialName) => {
+				const outputName = credentialName.toLowerCase();
+				return (
+					loadInfisicalSecretsActionSource.includes(`  ${outputName}:`) &&
+					loadInfisicalSecretsActionSource.includes(`steps.action-inputs.outputs.${outputName}`)
+				);
+			}),
+		).toBe(true);
+	});
+
 	it("should exclude the plaintext Infisical handoff file from Git and Docker build contexts", () => {
 		expect({
 			docker: dockerignoreSource.split("\n").includes(".infisical-secrets"),
@@ -246,25 +274,62 @@ describe("Infisical GitHub Actions integration", () => {
 		).toBe(true);
 	});
 
-	it("should install application dependencies and deployment tooling before fetching application credentials", () => {
-		expect(
-			authenticatedWorkflowSources.slice(0, 2).every((source) => {
-				const installIndex = source.lastIndexOf("pnpm install --frozen-lockfile");
-				const buildxIndex = source.lastIndexOf("docker/setup-buildx-action@");
-				const apiRuntimeCredentialsIndex = source.indexOf("profile: api-runtime");
-				const webhooksRuntimeCredentialsIndex = source.indexOf("profile: webhooks-runtime");
-				const geosearchRuntimeCredentialsIndex = source.indexOf("profile: geosearch-runtime");
-				const applicationDeploymentCredentialsIndex = source.indexOf("profile: application-deploy");
+	it("should build each application dependency graph before fetching its isolated credentials", () => {
+		const applicationJobs = [
+			{
+				buildCommand: 'pnpm --filter "@cataqui/api^..." run build',
+				deploymentAction: "deploy-cloudflare-api-worker",
+				jobName: "deploy-api",
+				runtimeProfile: "api-runtime",
+				setupTooling: "docker/setup-buildx-action@",
+			},
+			{
+				buildCommand: 'pnpm --filter "@cataqui/webhooks-worker^..." run build',
+				deploymentAction: "deploy-cloudflare-webhooks-worker",
+				jobName: "deploy-webhooks",
+				runtimeProfile: "webhooks-runtime",
+				setupTooling: null,
+			},
+			{
+				buildCommand: 'pnpm --filter "@cataqui/geosearch-worker^..." run build',
+				deploymentAction: "deploy-cloudflare-geosearch-worker",
+				jobName: "deploy-geosearch",
+				runtimeProfile: "geosearch-runtime",
+				setupTooling: null,
+			},
+		];
 
-				return (
-					installIndex < apiRuntimeCredentialsIndex &&
-					buildxIndex < apiRuntimeCredentialsIndex &&
-					apiRuntimeCredentialsIndex < webhooksRuntimeCredentialsIndex &&
-					webhooksRuntimeCredentialsIndex < geosearchRuntimeCredentialsIndex &&
-					geosearchRuntimeCredentialsIndex < applicationDeploymentCredentialsIndex
-				);
-			}),
-		).toBe(true);
+		for (const source of authenticatedWorkflowSources.slice(0, 2)) {
+			for (const applicationJob of applicationJobs) {
+				const jobSource = _workflowJobSource(source, applicationJob.jobName);
+				const installIndex = jobSource.indexOf("pnpm install --frozen-lockfile");
+				const buildIndex = jobSource.indexOf(applicationJob.buildCommand);
+				const runtimeCredentialsIndex = jobSource.indexOf(`profile: ${applicationJob.runtimeProfile}`);
+				const deploymentCredentialsIndex = jobSource.indexOf("profile: application-deploy");
+				const deploymentActionIndex = jobSource.indexOf(applicationJob.deploymentAction);
+				const setupToolingIndex =
+					applicationJob.setupTooling === null ? buildIndex : jobSource.indexOf(applicationJob.setupTooling);
+
+				expect({
+					buildsBeforeCredentials:
+						installIndex < buildIndex && buildIndex <= setupToolingIndex && setupToolingIndex < runtimeCredentialsIndex,
+					credentialsAreIsolated:
+						runtimeCredentialsIndex < deploymentCredentialsIndex && deploymentCredentialsIndex < deploymentActionIndex,
+					findsEveryStep: [
+						installIndex,
+						buildIndex,
+						setupToolingIndex,
+						runtimeCredentialsIndex,
+						deploymentCredentialsIndex,
+						deploymentActionIndex,
+					].every((index) => index >= 0),
+				}).toEqual({
+					buildsBeforeCredentials: true,
+					credentialsAreIsolated: true,
+					findsEveryStep: true,
+				});
+			}
+		}
 	});
 
 	it("should install application dependencies before fetching database migration credentials", () => {
@@ -279,15 +344,20 @@ describe("Infisical GitHub Actions integration", () => {
 	});
 
 	it("should prevent non-deployment branches from entering authenticated jobs", () => {
+		const deploymentJobs = ["deploy-api", "deploy-webhooks", "deploy-geosearch"];
+		const stagingSource = authenticatedWorkflowSources.at(0) ?? "";
+		const productionSource = authenticatedWorkflowSources.at(1) ?? "";
+		const driftSource = authenticatedWorkflowSources.at(2) ?? "";
+
 		expect({
-			staging: (authenticatedWorkflowSources.at(0) ?? "").includes("if: github.ref == 'refs/heads/staging'"),
-			production: (authenticatedWorkflowSources.at(1) ?? "").includes("if: github.ref == 'refs/heads/main'"),
-			drift: (authenticatedWorkflowSources.at(2) ?? "").includes("if: github.ref == 'refs/heads/main'"),
-		}).toEqual({
-			staging: true,
-			production: true,
-			drift: true,
-		});
+			staging: deploymentJobs.every((jobName) =>
+				_workflowJobSource(stagingSource, jobName).includes("github.ref == 'refs/heads/staging'"),
+			),
+			production: deploymentJobs.every((jobName) =>
+				_workflowJobSource(productionSource, jobName).includes("github.ref == 'refs/heads/main'"),
+			),
+			drift: driftSource.includes("if: github.ref == 'refs/heads/main'"),
+		}).toEqual({ staging: true, production: true, drift: true });
 	});
 
 	it("should pin the runner image, bound job duration, and avoid persisting checkout credentials", () => {

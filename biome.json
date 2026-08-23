@@ -7,10 +7,23 @@
 	},
 	"files": {
 		"includes": [
-			"src/**/*.ts",
+			"*.json",
+			"*.jsonc",
+			"*.mjs",
+			"*.ts",
+			"apps/**/*.json",
+			"apps/**/*.jsonc",
+			"apps/**/*.mjs",
+			"apps/**/*.ts",
+			"packages/**/*.json",
+			"packages/**/*.mjs",
+			"packages/**/*.ts",
+			"scripts/**/*.mjs",
 			"test/**/*.ts",
-			"!src/core/i18n/i18n.generated.ts",
-			"!src/platform/cloudflare/workers/**/*-worker-env.d.ts"
+			"!skills-lock.json",
+			"!apps/api/src/core/i18n/i18n.generated.ts",
+			"!apps/api/api-worker-env.d.ts",
+			"!apps/workers/**/*-worker-env.d.ts"
 		]
 	},
 	"formatter": {
@@ -59,7 +72,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/**/*.spec.ts", "test/**/*.spec.ts"],
+			"includes": ["apps/**/*.spec.ts", "packages/**/*.spec.ts", "test/**/*.spec.ts"],
 			"linter": {
 				"rules": {
 					"suspicious": {

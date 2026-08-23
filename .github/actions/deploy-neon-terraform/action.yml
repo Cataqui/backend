@@ -57,10 +57,10 @@ runs:
       id: terraform-version
       shell: bash
       run: |
-        terraform_version="$(tr -d '[:space:]' < infra/neon/.terraform-version)"
+        terraform_version="$(tr -d '[:space:]' < infrastructure/neon/.terraform-version)"
 
         if [[ ! "$terraform_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "infra/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
+          echo "infrastructure/neon/.terraform-version must contain a semantic version such as 1.15.8" >&2
           exit 1
         fi
 
@@ -76,7 +76,7 @@ runs:
       uses: terraform-linters/setup-tflint@c750028ac0f3831886a261f96da68ab58a92e7ec # v6
       with:
         cache: true
-        tflint_config_path: infra/neon/.tflint.hcl
+        tflint_config_path: infrastructure/neon/.tflint.hcl
         tflint_version: v0.64.0
 
     - name: Verify the deployment target
@@ -84,7 +84,7 @@ runs:
       env:
         TERRAFORM_TARGET_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        if [[ "$TERRAFORM_ROOT" != "infra/neon/database" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
+        if [[ "$TERRAFORM_ROOT" != "infrastructure/neon/database" || ! -f "$TERRAFORM_ROOT/versions.tf" ]]; then
           echo "TERRAFORM_ROOT must identify the Neon database Terraform root" >&2
           exit 1
         fi
@@ -96,7 +96,7 @@ runs:
 
     - name: Verify Terraform formatting
       shell: bash
-      run: terraform fmt -check -recursive infra/neon
+      run: terraform fmt -check -recursive infrastructure/neon
 
     - name: Verify PostgreSQL privilege tooling is available
       shell: bash
@@ -120,13 +120,13 @@ runs:
 
     - name: Initialize TFLint plugins
       shell: bash
-      run: tflint --chdir=infra/neon --config="$GITHUB_WORKSPACE/infra/neon/.tflint.hcl" --init
+      run: tflint --chdir=infrastructure/neon --config="$GITHUB_WORKSPACE/infrastructure/neon/.tflint.hcl" --init
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Verify Terraform conventions
       shell: bash
-      run: tflint --chdir=infra/neon --config="$GITHUB_WORKSPACE/infra/neon/.tflint.hcl" --recursive --format compact
+      run: tflint --chdir=infrastructure/neon --config="$GITHUB_WORKSPACE/infrastructure/neon/.tflint.hcl" --recursive --format compact
 
     - name: Verify Terraform behavior
       shell: bash

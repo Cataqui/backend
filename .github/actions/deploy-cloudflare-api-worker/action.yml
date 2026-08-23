@@ -89,7 +89,7 @@ runs:
         apiToken: ${{ inputs.cloudflare-api-token }}
         packageManager: pnpm
         command: >-
-          deploy --strict --cwd src/platform/cloudflare/workers/api
+          deploy --strict --cwd apps/api
           --config wrangler.jsonc --containers-rollout immediate
           --env ${{ inputs.environment }}
           --secrets-file ${{ steps.secrets-file.outputs.path }}
@@ -123,7 +123,7 @@ runs:
         apiToken: ${{ inputs.cloudflare-api-token }}
         packageManager: pnpm
         command: >-
-          rollback --cwd src/platform/cloudflare/workers/api --config wrangler.jsonc
+          rollback --cwd apps/api --config wrangler.jsonc
           --env ${{ inputs.environment }} --yes
           --message "Automatic rollback after failed readiness check in GitHub Actions run ${{ github.run_id }}"
 

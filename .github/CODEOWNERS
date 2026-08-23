@@ -1,6 +1,8 @@
-/infra/ @Cataqui/backend
+/infrastructure/ @Cataqui/backend
 /.github/CODEOWNERS @Cataqui/project
 /.github/dependabot.yml @Cataqui/security
 /.github/actions/ @Cataqui/ci-cd
 /.github/workflows/ @Cataqui/ci-cd
-/src/platform/cloudflare/workers/*/wrangler.jsonc @Cataqui/backend
+/apps/api/wrangler.jsonc @Cataqui/backend
+/apps/workers/*/wrangler.jsonc @Cataqui/backend
+/packages/ @Cataqui/backend

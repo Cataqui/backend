@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repositoryRoot = process.cwd();
-const upstashTerraformRoot = resolve(repositoryRoot, "infra/upstash/redis");
+const upstashTerraformRoot = resolve(repositoryRoot, "infrastructure/upstash/redis");
 const versionsSource = readFileSync(resolve(upstashTerraformRoot, "versions.tf"), "utf8");
 const localsSource = readFileSync(resolve(upstashTerraformRoot, "locals.tf"), "utf8");
 const redisSource = readFileSync(resolve(upstashTerraformRoot, "redis.tf"), "utf8");
@@ -26,6 +26,18 @@ const productionWorkflowSource = readFileSync(
 	"utf8",
 );
 const driftWorkflowSource = readFileSync(resolve(repositoryRoot, ".github/workflows/terraform-drift.yml"), "utf8");
+
+function _workflowJobSource(source: string, jobName: string) {
+	const jobStartMarker = `\n  ${jobName}:\n`;
+	const jobStart = source.indexOf(jobStartMarker);
+
+	if (jobStart === -1) throw new Error(`missing workflow job: ${jobName}`);
+
+	const remainingSource = source.slice(jobStart + jobStartMarker.length);
+	const nextJobOffset = remainingSource.search(/\n {2}[a-z][a-z0-9-]*:\n/u);
+
+	return nextJobOffset === -1 ? remainingSource : remainingSource.slice(0, nextJobOffset);
+}
 
 describe("Upstash Redis Terraform infrastructure", () => {
 	it("should pin the official Upstash provider to its current compatible minor version", () => {
@@ -96,15 +108,24 @@ describe("Upstash Redis Terraform infrastructure", () => {
 
 	it("should synchronize generated REST credentials to Infisical before migrations can start", () => {
 		expect(
-			[stagingWorkflowSource, productionWorkflowSource].every(
-				(source) =>
-					source.includes("id: upstash-terraform") &&
-					source.includes("uses: ./.github/actions/sync-upstash-redis-to-infisical") &&
-					source.includes("project-id: $" + "{{ vars.INFISICAL_PROJECT_ID }}") &&
-					source.includes("redis-rest-url: $" + "{{ steps.upstash-terraform.outputs.redis-rest-url }}") &&
-					source.includes("redis-rest-token: $" + "{{ steps.upstash-terraform.outputs.redis-rest-token }}") &&
-					source.includes("needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]"),
-			),
+			[stagingWorkflowSource, productionWorkflowSource].every((source) => {
+				const upstashJob = _workflowJobSource(source, "infrastructure-upstash");
+				const readinessJob = _workflowJobSource(source, "infrastructure-readiness");
+				const migrationJob = _workflowJobSource(source, "migrate");
+
+				return (
+					upstashJob.includes("id: upstash-terraform") &&
+					upstashJob.includes("uses: ./.github/actions/sync-upstash-redis-to-infisical") &&
+					upstashJob.includes("project-id: $" + "{{ vars.INFISICAL_PROJECT_ID }}") &&
+					upstashJob.includes("redis-rest-url: $" + "{{ steps.upstash-terraform.outputs.redis-rest-url }}") &&
+					upstashJob.includes("redis-rest-token: $" + "{{ steps.upstash-terraform.outputs.redis-rest-token }}") &&
+					readinessJob.includes("- infrastructure-upstash") &&
+					readinessJob.includes("UPSTASH_RESULT: $" + "{{ needs.infrastructure-upstash.result }}") &&
+					readinessJob.includes('"$DEPLOY_UPSTASH" == "true" && "$UPSTASH_RESULT" != "success"') &&
+					migrationJob.includes("needs: [affected-scope, infrastructure-readiness]") &&
+					migrationJob.includes("needs.infrastructure-readiness.result == 'success'")
+				);
+			}),
 		).toBe(true);
 	});
 
@@ -157,17 +178,22 @@ describe("Upstash Redis Terraform infrastructure", () => {
 	});
 
 	it("should deploy each Upstash database inside its protected GitHub environment before migrations", () => {
+		const stagingReadinessJob = _workflowJobSource(stagingWorkflowSource, "infrastructure-readiness");
+		const productionReadinessJob = _workflowJobSource(productionWorkflowSource, "infrastructure-readiness");
+		const stagingMigrationJob = _workflowJobSource(stagingWorkflowSource, "migrate");
+		const productionMigrationJob = _workflowJobSource(productionWorkflowSource, "migrate");
+
 		expect({
 			stagingEnvironment: /infrastructure-upstash:[\s\S]*?environment:\n\s+name: staging/.test(stagingWorkflowSource),
 			productionEnvironment: /infrastructure-upstash:[\s\S]*?environment:\n\s+name: production/.test(
 				productionWorkflowSource,
 			),
-			stagingBlocksMigrations: stagingWorkflowSource.includes(
-				"needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]",
-			),
-			productionBlocksMigrations: productionWorkflowSource.includes(
-				"needs: [infrastructure-cloudflare, infrastructure-neon, infrastructure-upstash]",
-			),
+			stagingBlocksMigrations:
+				stagingReadinessJob.includes("- infrastructure-upstash") &&
+				stagingMigrationJob.includes("needs: [affected-scope, infrastructure-readiness]"),
+			productionBlocksMigrations:
+				productionReadinessJob.includes("- infrastructure-upstash") &&
+				productionMigrationJob.includes("needs: [affected-scope, infrastructure-readiness]"),
 		}).toEqual({
 			stagingEnvironment: true,
 			productionEnvironment: true,

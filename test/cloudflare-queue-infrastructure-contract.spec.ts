@@ -12,18 +12,16 @@ type WranglerQueueEnvironment = {
 };
 
 const queueManifest = JSON.parse(
-	readFileSync(resolve(process.cwd(), "infra/cloudflare/queues/queues.json"), "utf8"),
+	readFileSync(resolve(process.cwd(), "infrastructure/cloudflare/queues/queues.json"), "utf8"),
 ) as QueueManifest;
-const apiWranglerConfig = ts.readConfigFile(
-	resolve(process.cwd(), "src/platform/cloudflare/workers/api/wrangler.jsonc"),
-	ts.sys.readFile,
-).config as {
+const apiWranglerConfig = ts.readConfigFile(resolve(process.cwd(), "apps/api/wrangler.jsonc"), ts.sys.readFile)
+	.config as {
 	queues: WranglerQueueEnvironment["queues"];
 	env: Record<"staging" | "production", WranglerQueueEnvironment>;
 };
 const deriveJobDataQueueBaseName = queueManifest["derive_job_data"]?.base_name;
 const queueRootTerraformSource = ["locals.tf", "queues.tf", "variables.tf"]
-	.map((fileName) => readFileSync(resolve(process.cwd(), "infra/cloudflare/queues", fileName), "utf8"))
+	.map((fileName) => readFileSync(resolve(process.cwd(), "infrastructure/cloudflare/queues", fileName), "utf8"))
 	.join("\n");
 
 describe("Cloudflare Queue infrastructure contract", () => {
@@ -35,7 +33,7 @@ describe("Cloudflare Queue infrastructure contract", () => {
 			rootUsesLocal: queueRootTerraformSource.includes("cloudflare_account_id  = local.cloudflare_account_id"),
 			rootDeclaresInput: queueRootTerraformSource.includes('variable "cloudflare_account_id"'),
 			moduleDeclaresInput: readFileSync(
-				resolve(process.cwd(), "infra/cloudflare/modules/queue-pair/variables.tf"),
+				resolve(process.cwd(), "infrastructure/cloudflare/modules/queue-pair/variables.tf"),
 				"utf8",
 			).includes('variable "cloudflare_account_id"'),
 		}).toEqual({

@@ -1,0 +1,43 @@
+{
+	"name": "@cataqui/api-internal-ingress",
+	"version": "1.0.0",
+	"description": "Typed internal ingress contracts and transport adapters for the Cataquí API container",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"files": [
+		"dist",
+		"package.json"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./queue": {
+			"types": "./dist/queue.d.ts",
+			"import": "./dist/queue.js"
+		},
+		"./router": {
+			"types": "./dist/router.d.ts",
+			"import": "./dist/router.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "node -e \"for (const target of ['coverage','dist']) require('node:fs').rmSync(target,{recursive:true,force:true})\"",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}
