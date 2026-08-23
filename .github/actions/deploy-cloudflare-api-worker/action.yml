@@ -11,9 +11,6 @@ inputs:
   cloudflare-api-token:
     description: Cloudflare deployment API token
     required: true
-  cloudflare-account-id:
-    description: Cloudflare account ID
-    required: true
   database-app-pooler-url:
     description: Application-role Neon pooler URL
     required: true
@@ -90,7 +87,6 @@ runs:
       uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
       with:
         apiToken: ${{ inputs.cloudflare-api-token }}
-        accountId: ${{ inputs.cloudflare-account-id }}
         packageManager: pnpm
         command: >-
           deploy --strict --cwd src/platform/cloudflare/workers/api
@@ -125,7 +121,6 @@ runs:
       uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
       with:
         apiToken: ${{ inputs.cloudflare-api-token }}
-        accountId: ${{ inputs.cloudflare-account-id }}
         packageManager: pnpm
         command: >-
           rollback --cwd src/platform/cloudflare/workers/api --config wrangler.jsonc

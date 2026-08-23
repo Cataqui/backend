@@ -65,7 +65,6 @@ describe("Infisical GitHub Actions integration", () => {
 				credentials: [
 					"AI_GATEWAY_API_TOKEN",
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-					"CLOUDFLARE_ACCOUNT_ID",
 					"DATABASE_APP_POOLER_URL",
 					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
 					"UPSTASH_REDIS_REST_TOKEN",
@@ -74,12 +73,15 @@ describe("Infisical GitHub Actions integration", () => {
 				secretPath: "/runtime",
 			},
 			"webhooks-runtime": {
-				credentials: ["CLOUDFLARE_ACCOUNT_ID", "META_APP_SECRET", "WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"],
+				credentials: ["META_APP_SECRET", "WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"],
 				secretPath: "/runtime",
+			},
+			"geosearch-runtime": {
+				credentials: ["GOOGLE_PLACES_API_KEY"],
+				secretPath: "/geosearch",
 			},
 			"cloudflare-terraform-apply": {
 				credentials: [
-					"CLOUDFLARE_ACCOUNT_ID",
 					"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
 					"CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN",
 					"HCP_TERRAFORM_ORGANIZATION",
@@ -88,12 +90,7 @@ describe("Infisical GitHub Actions integration", () => {
 				secretPath: "/terraform/cloudflare/apply",
 			},
 			"cloudflare-terraform-drift": {
-				credentials: [
-					"CLOUDFLARE_ACCOUNT_ID",
-					"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
-					"HCP_TERRAFORM_ORGANIZATION",
-					"TERRAFORM_API_TOKEN",
-				],
+				credentials: ["CLOUDFLARE_TERRAFORM_READ_API_TOKEN", "HCP_TERRAFORM_ORGANIZATION", "TERRAFORM_API_TOKEN"],
 				secretPath: "/terraform/cloudflare/drift",
 			},
 			"database-migration": {
@@ -126,6 +123,20 @@ describe("Infisical GitHub Actions integration", () => {
 				],
 				secretPath: "/terraform/upstash/drift",
 			},
+		});
+	});
+
+	it("should keep the public Cloudflare account ID out of Infisical and deployment inputs", () => {
+		expect({
+			profilesContainAccountId: JSON.stringify(infisicalProfiles).includes("CLOUDFLARE_ACCOUNT_ID"),
+			loaderExposesAccountId: loadInfisicalSecretsActionSource.includes("cloudflare_account_id"),
+			workflowsInjectAccountId: authenticatedWorkflowSources.some(
+				(source) => source.includes("TF_VAR_cloudflare_account_id") || source.includes("cloudflare-account-id:"),
+			),
+		}).toEqual({
+			profilesContainAccountId: false,
+			loaderExposesAccountId: false,
+			workflowsInjectAccountId: false,
 		});
 	});
 
@@ -242,13 +253,15 @@ describe("Infisical GitHub Actions integration", () => {
 				const buildxIndex = source.lastIndexOf("docker/setup-buildx-action@");
 				const apiRuntimeCredentialsIndex = source.indexOf("profile: api-runtime");
 				const webhooksRuntimeCredentialsIndex = source.indexOf("profile: webhooks-runtime");
+				const geosearchRuntimeCredentialsIndex = source.indexOf("profile: geosearch-runtime");
 				const applicationDeploymentCredentialsIndex = source.indexOf("profile: application-deploy");
 
 				return (
 					installIndex < apiRuntimeCredentialsIndex &&
 					buildxIndex < apiRuntimeCredentialsIndex &&
 					apiRuntimeCredentialsIndex < webhooksRuntimeCredentialsIndex &&
-					webhooksRuntimeCredentialsIndex < applicationDeploymentCredentialsIndex
+					webhooksRuntimeCredentialsIndex < geosearchRuntimeCredentialsIndex &&
+					geosearchRuntimeCredentialsIndex < applicationDeploymentCredentialsIndex
 				);
 			}),
 		).toBe(true);
@@ -308,8 +321,11 @@ describe("Infisical GitHub Actions integration", () => {
 					"whatsapp-auth-webhook-verify-token: $" +
 						"{{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}",
 				];
+				const geosearchMappings = [
+					"google-places-api-key: $" + "{{ steps.geosearch-runtime-credentials.outputs.google_places_api_key }}",
+				];
 
-				return [...apiMappings, ...webhookMappings].every((mapping) => source.includes(mapping));
+				return [...apiMappings, ...webhookMappings, ...geosearchMappings].every((mapping) => source.includes(mapping));
 			}),
 		).toBe(true);
 	});

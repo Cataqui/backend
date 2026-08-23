@@ -6,11 +6,15 @@ Object.defineProperty(crypto.subtle, "timingSafeEqual", {
 	value: timingSafeEqualMock,
 });
 
-vi.mock("../../shared/meta.utils", () => ({
-	isWebhookFromMeta: isWebhookFromMetaMock,
+vi.mock("./meta-webhook-auth.service", () => ({
+	MetaWebhookAuthService: class {
+		isWebhookFromMeta = isWebhookFromMetaMock;
+	},
 }));
 
-import { whatsappRoutes } from "./whatsapp.routes";
+import { createWhatsappRoutes } from "./whatsapp.routes";
+
+const whatsappRoutes = createWhatsappRoutes();
 
 const webhookSigningSecret = "test-meta-app-secret-at-least-32-characters";
 

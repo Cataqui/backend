@@ -2,10 +2,15 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 
+const aiGatewayRootTerraformDirectory = resolve(process.cwd(), "infra/cloudflare/ai-gateway");
 const aiGatewayTerraformDirectories = [
-	resolve(process.cwd(), "infra/cloudflare/ai-gateway"),
+	aiGatewayRootTerraformDirectory,
 	resolve(process.cwd(), "infra/cloudflare/modules/ai-gateway"),
 ];
+const aiGatewayRootTerraformSource = readdirSync(aiGatewayRootTerraformDirectory)
+	.filter((fileName) => fileName.endsWith(".tf"))
+	.map((fileName) => readFileSync(resolve(aiGatewayRootTerraformDirectory, fileName), "utf8"))
+	.join("\n");
 const aiGatewayTerraformSource = aiGatewayTerraformDirectories
 	.flatMap((terraformDirectory) =>
 		readdirSync(terraformDirectory)
@@ -24,6 +29,27 @@ const wranglerConfig = ts.readConfigFile(
 };
 
 describe("Cloudflare AI Gateway infrastructure contract", () => {
+	it("should commit the public account ID at the application root while keeping the module reusable", () => {
+		expect({
+			committedRootAccount: aiGatewayRootTerraformSource.includes(
+				'cloudflare_account_id = "1fca946385505503c59dd6a2a4eeb442"',
+			),
+			rootUsesLocal:
+				aiGatewayRootTerraformSource.includes("cloudflare_account_id = local.cloudflare_account_id") &&
+				/id\s*=\s*"\$\{local\.cloudflare_account_id\}\/\$\{var\.environment\}"/.test(aiGatewayRootTerraformSource),
+			rootDeclaresInput: aiGatewayRootTerraformSource.includes('variable "cloudflare_account_id"'),
+			moduleDeclaresInput: readFileSync(
+				resolve(process.cwd(), "infra/cloudflare/modules/ai-gateway/variables.tf"),
+				"utf8",
+			).includes('variable "cloudflare_account_id"'),
+		}).toEqual({
+			committedRootAccount: true,
+			rootUsesLocal: true,
+			rootDeclaresInput: false,
+			moduleDeclaresInput: true,
+		});
+	});
+
 	it("should include AI Gateway in every environment's Terraform delivery lifecycle", () => {
 		expect(cloudflareComponents).toContain("ai-gateway");
 	});

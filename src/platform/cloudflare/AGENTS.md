@@ -24,3 +24,14 @@ Cloudflare code has four explicit owners: the API Worker, the Webhooks Worker, t
 - Use `pnpm cf:dev` to exercise the complete local Webhooks Worker → Service Binding → API Worker/container path and shared Queue workflows. It starts the Webhooks config first as Wrangler's HTTP-exposed primary Worker and the API config second as its bound service and Queue consumer.
 - Use `pnpm cf:dev:webhooks` or `pnpm cf:dev:api` only when intentionally working on one Worker in isolation. An isolated Webhooks Worker cannot prove direct application delivery because its API Worker Service Binding is disconnected.
 - Keep the repository development environment as the single local secret source. Wrangler commands that change their working directory must receive that root environment explicitly.
+
+## Hono Application Structure
+
+- Keep each Hono application entrypoint in `app.ts`. The application entrypoint owns only global middleware, feature-route mounting, not-found behavior, and the global error boundary.
+- Declare feature folders directly under the owning Worker. Do not add a `modules` wrapper directory.
+- Keep `*.routes.ts` focused on HTTP concerns: parsing and validating request-owned input, calling the feature service, and returning successful responses. Let typed service errors reach the application's global error boundary for consistent response translation.
+- Keep orchestration and business decisions in `*.service.ts`. Services must remain independent of Hono `Context` so they can be tested without constructing HTTP requests.
+- Define one Worker-wide base error contract that the global error boundary can serialize without feature-specific branching. Keep concrete domain errors beside their owning feature and throw them directly from services.
+- Use `*.repository.ts` only for real external boundaries such as provider HTTP APIs, storage, Queues, or another Worker. Routes must not call repositories or provider clients directly.
+- Colocate provider-specific adapters and schemas inside the feature that owns their normalized output. Provider contracts must not leak into route responses or service callers.
+- Share code across feature folders only when its contract genuinely applies to the whole Worker. Do not create generic helper folders for single-feature logic.

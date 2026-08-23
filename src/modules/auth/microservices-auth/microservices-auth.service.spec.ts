@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { generateKeyPairSync } from "node:crypto";
-import { importSPKI, jwtVerify } from "jose";
+import { importJWK, importSPKI, jwtVerify } from "jose";
 import { type IMicroservicesAuthConfig, microservicesAuthConfig } from "./microservices-auth.config";
 import { MicroservicesAuthService } from "./microservices-auth.service";
 
@@ -64,6 +64,48 @@ describe("MicroservicesAuthService", () => {
 		const result = await service.createGeosearchAccessToken({ userId: userId });
 
 		expect(result).toMatchObject({ tokenType: "Bearer", expiresAt: "2026-08-22T15:10:00.000Z" });
+	});
+
+	it("should publish only the public key that verifies issued tokens", async () => {
+		const service = await createService();
+		const accessToken = await service.createGeosearchAccessToken({ userId: userId });
+		const jwks = service.getPublicJwks();
+		const publicJwk = jwks.keys[0];
+		if (publicJwk === undefined) throw new Error("The test public JWK is unavailable");
+
+		const verified = await jwtVerify(accessToken.accessToken, await importJWK(publicJwk, "ES256"), {
+			algorithms: ["ES256"],
+			audience: "GEOSEARCH",
+			typ: "microservice-access+jwt",
+		});
+
+		expect({ jwks: jwks, subject: verified.payload.sub, privateMaterial: "d" in publicJwk }).toEqual({
+			jwks: {
+				keys: [expect.objectContaining({ alg: "ES256", crv: "P-256", kid: "V1", kty: "EC", use: "sig" })],
+			},
+			subject: userId,
+			privateMaterial: false,
+		});
+	});
+
+	it("should publish every configured public key in deterministic key-ID order", async () => {
+		const { privateKey: previousPrivateKey } = generateKeyPairSync("ec", {
+			namedCurve: "prime256v1",
+			privateKeyEncoding: { format: "der", type: "pkcs8" },
+			publicKeyEncoding: { format: "pem", type: "spki" },
+		});
+		const service = await createService({
+			config: {
+				signingKeyId: "V1",
+				privateKeyPkcs8Base64ByKeyId: {
+					V1: privateKey.toString("base64"),
+					V0: previousPrivateKey.toString("base64"),
+				},
+			},
+		});
+
+		expect(service.getPublicJwks().keys.map((publicJwk) => publicJwk.kid)).toEqual(["V0", "V1"]);
+		expect(service.getPublicJwks()).toBe(service.getPublicJwks());
 	});
 
 	it("should reject malformed private key material during initialization", async () => {

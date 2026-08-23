@@ -233,7 +233,7 @@ whatsappUrl;
 
 For API contracts:
 
-- Keep one authoritative schema per schema file. Each `*.schema.ts` file must define and export exactly one top-level schema, and the file name must match that schema's domain name.
+- Every authoritative schema must live in its own `*.schema.ts` file. Do not declare schemas inside controllers, services, repositories, middleware, or other implementation files. Each schema file must define and export exactly one top-level schema, and the file name must match that schema's domain name.
 - Define the authoritative runtime contract with Zod.
 - For request bodies, query parameters, and route parameters, attach the schema directly to the Nest decorator and use `z.infer<typeof InputSchema>` directly at the parameter or service boundary. Do not create an empty transport class or a type alias that only repeats the inferred schema type.
 - Name every owned schema for incoming data `*InputSchema` and its file `*-input.schema.ts`, regardless of whether the value currently comes from an HTTP body, query string, route parameters, Queue message, or another boundary. Never encode transport-specific words such as `Request`, `Body`, `Query`, or `Params` in a reusable input schema name. Provider-owned payload contracts may retain the provider's terminology at the integration boundary.

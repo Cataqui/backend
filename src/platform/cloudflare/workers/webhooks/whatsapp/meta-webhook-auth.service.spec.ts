@@ -1,13 +1,15 @@
-import { isWebhookFromMeta } from "./meta.utils";
+import { MetaWebhookAuthService } from "./meta-webhook-auth.service";
 
 const rawBody = new TextEncoder().encode("what do ya want for nothing?");
 const appSecret = "Jefe";
 const validWebhookSignature = "sha256=5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843";
 
-describe("isWebhookFromMeta", () => {
+describe("MetaWebhookAuthService", () => {
+	const service = new MetaWebhookAuthService();
+
 	it("should accept a valid HMAC-SHA256 webhook signature", async () => {
 		await expect(
-			isWebhookFromMeta({
+			service.isWebhookFromMeta({
 				rawBody: rawBody,
 				webhookSignature: validWebhookSignature,
 				appSecret: appSecret,
@@ -17,7 +19,7 @@ describe("isWebhookFromMeta", () => {
 
 	it("should reject a valid signature for a different raw body", async () => {
 		await expect(
-			isWebhookFromMeta({
+			service.isWebhookFromMeta({
 				rawBody: new TextEncoder().encode("what do ya want for something else?"),
 				webhookSignature: validWebhookSignature,
 				appSecret: appSecret,
@@ -27,7 +29,7 @@ describe("isWebhookFromMeta", () => {
 
 	it("should reject a well-formed signature with a different HMAC", async () => {
 		await expect(
-			isWebhookFromMeta({
+			service.isWebhookFromMeta({
 				rawBody: rawBody,
 				webhookSignature: `sha256=${"0".repeat(64)}`,
 				appSecret: appSecret,
@@ -47,7 +49,7 @@ describe("isWebhookFromMeta", () => {
 		["surrounding whitespace", ` sha256=${"0".repeat(64)} `],
 	])("should reject a malformed %s", async (_description, webhookSignature) => {
 		await expect(
-			isWebhookFromMeta({
+			service.isWebhookFromMeta({
 				rawBody: rawBody,
 				webhookSignature: webhookSignature,
 				appSecret: appSecret,

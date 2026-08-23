@@ -1,7 +1,8 @@
 {
 	"$schema": "../../../../../node_modules/wrangler/config-schema.json",
 	"name": "cataqui-webhooks-development",
-	"main": "./worker.ts",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
+	"main": "./app.ts",
 	"tsconfig": "./tsconfig.json",
 	"compatibility_date": "2026-08-08",
 	"compatibility_flags": ["nodejs_compat"],

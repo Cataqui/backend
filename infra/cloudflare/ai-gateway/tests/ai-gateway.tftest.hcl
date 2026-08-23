@@ -8,8 +8,7 @@ run "staging_uses_the_gateway_id_configured_in_the_worker" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -22,8 +21,7 @@ run "production_uses_the_gateway_id_configured_in_the_worker" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "production"
+    environment = "production"
   }
 
   assert {
@@ -36,8 +34,7 @@ run "staging_matches_its_existing_gateway_configuration" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -74,8 +71,7 @@ run "production_matches_its_existing_gateway_configuration" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "production"
+    environment = "production"
   }
 
   assert {
@@ -112,8 +108,7 @@ run "unsupported_environments_are_rejected_before_infrastructure_is_planned" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "development"
+    environment = "development"
   }
 
   expect_failures = [var.environment]

@@ -29,6 +29,9 @@ type WorkerEnvironment = {
 };
 
 type WorkerConfig = WorkerEnvironment & {
+	account_id: string;
+	cache?: { cross_version_cache?: boolean; enabled: boolean };
+	exports?: Record<string, { cache?: { enabled: boolean }; type: string }>;
 	main: string;
 	durable_objects?: unknown;
 	env: Record<"staging" | "production", WorkerEnvironment>;
@@ -49,6 +52,13 @@ const packageScripts = (
 ).scripts;
 
 describe("Webhooks Worker configuration", () => {
+	it("should commit the public Cloudflare deployment account in every Worker configuration", () => {
+		expect({ api: apiConfig.account_id, webhooks: webhooksConfig.account_id }).toEqual({
+			api: "1fca946385505503c59dd6a2a4eeb442",
+			webhooks: "1fca946385505503c59dd6a2a4eeb442",
+		});
+	});
+
 	it("should use generic Webhooks Worker names in every environment", () => {
 		expect([webhooksConfig.name, webhooksConfig.env.staging.name, webhooksConfig.env.production.name]).toEqual([
 			"cataqui-webhooks-development",
@@ -60,7 +70,19 @@ describe("Webhooks Worker configuration", () => {
 	it("should use independent API and Webhooks Worker entrypoints", () => {
 		expect({ api: apiConfig.main, webhooks: webhooksConfig.main }).toEqual({
 			api: "./worker.ts",
-			webhooks: "./worker.ts",
+			webhooks: "./app.ts",
+		});
+	});
+
+	it("should cache only the API public-JWKS entrypoint without sharing entries across versions", () => {
+		expect({ cache: apiConfig.cache, exports: apiConfig.exports }).toEqual({
+			cache: { enabled: false, cross_version_cache: false },
+			exports: {
+				MicroservicesAuthJwksEntrypoint: {
+					type: "worker",
+					cache: { enabled: true },
+				},
+			},
 		});
 	});
 

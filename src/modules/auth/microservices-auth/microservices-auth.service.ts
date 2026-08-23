@@ -1,15 +1,18 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
+import { createPrivateKey, createPublicKey } from "node:crypto";
 import { importPKCS8, SignJWT } from "jose";
 import type { z } from "zod";
 import { MicroserviceAudience } from "./enums/microservice-audience.enum";
 import { type IMicroservicesAuthConfig, microservicesAuthConfig } from "./microservices-auth.config";
 import { MicroserviceAccessTokenOutputSchema } from "./schemas/microservice-access-token-output.schema";
+import { MicroservicesAuthJwksOutputSchema } from "./schemas/microservices-auth-jwks-output.schema";
 
 @Injectable()
 export class MicroservicesAuthService implements OnModuleInit {
 	constructor(@Inject(microservicesAuthConfig.KEY) private readonly _config: IMicroservicesAuthConfig) {}
 
 	private _signingKey: Awaited<ReturnType<typeof importPKCS8>> | undefined;
+	private _publicJwks: z.infer<typeof MicroservicesAuthJwksOutputSchema> | undefined;
 
 	async createGeosearchAccessToken(params: {
 		userId: string;
@@ -33,6 +36,12 @@ export class MicroservicesAuthService implements OnModuleInit {
 		};
 	}
 
+	getPublicJwks(): z.infer<typeof MicroservicesAuthJwksOutputSchema> {
+		if (this._publicJwks === undefined) throw new Error("The microservice public JWKS is unavailable");
+
+		return this._publicJwks;
+	}
+
 	async onModuleInit(): Promise<void> {
 		const privateKeyPkcs8Base64 = this._config.privateKeyPkcs8Base64ByKeyId[this._config.signingKeyId];
 
@@ -40,9 +49,27 @@ export class MicroservicesAuthService implements OnModuleInit {
 			throw new Error("The current microservice JWT signing key is unavailable");
 		}
 
+		const publicJwks = MicroservicesAuthJwksOutputSchema.parse({
+			keys: Object.entries(this._config.privateKeyPkcs8Base64ByKeyId)
+				.sort(([firstKeyId], [secondKeyId]) => firstKeyId.localeCompare(secondKeyId))
+				.map(([keyId, configuredPrivateKeyPkcs8Base64]) => ({
+					...createPublicKey(
+						createPrivateKey({
+							key: Buffer.from(configuredPrivateKeyPkcs8Base64, "base64"),
+							format: "der",
+							type: "pkcs8",
+						}),
+					).export({ format: "jwk" }),
+					alg: "ES256",
+					kid: keyId,
+					use: "sig",
+				})),
+		});
+
 		this._signingKey = await importPKCS8(
 			`-----BEGIN PRIVATE KEY-----\n${privateKeyPkcs8Base64}\n-----END PRIVATE KEY-----`,
 			"ES256",
 		);
+		this._publicJwks = publicJwks;
 	}
 }

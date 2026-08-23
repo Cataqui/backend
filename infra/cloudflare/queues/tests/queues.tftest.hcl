@@ -4,8 +4,7 @@ run "staging_primary_queue_name_matches_the_worker_binding" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -18,8 +17,7 @@ run "staging_dead_letter_queue_name_matches_the_worker_binding" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -32,8 +30,7 @@ run "production_primary_queue_name_matches_the_worker_binding" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "production"
+    environment = "production"
   }
 
   assert {
@@ -46,8 +43,7 @@ run "production_dead_letter_queue_name_matches_the_worker_binding" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "production"
+    environment = "production"
   }
 
   assert {
@@ -60,8 +56,7 @@ run "primary_queue_retains_unprocessed_messages_for_four_days" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -74,8 +69,7 @@ run "dead_letter_queue_retains_failed_messages_for_fourteen_days" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "staging"
+    environment = "staging"
   }
 
   assert {
@@ -89,8 +83,7 @@ run "unsupported_environments_are_rejected_before_infrastructure_is_planned" {
   command = plan
 
   variables {
-    cloudflare_account_id = "00000000000000000000000000000000"
-    environment           = "development"
+    environment = "development"
   }
 
   expect_failures = [var.environment]

@@ -6,6 +6,8 @@ allowBuilds:
   prisma: true
   sharp: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260822.1'
 # Nest 12 alpha and AI SDK ranges still resolve vulnerable transitive versions.
 # Keep these centralized pins until their upstream dependency ranges include the patched releases.
 overrides:

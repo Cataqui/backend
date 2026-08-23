@@ -22,8 +22,30 @@ const apiWranglerConfig = ts.readConfigFile(
 	env: Record<"staging" | "production", WranglerQueueEnvironment>;
 };
 const deriveJobDataQueueBaseName = queueManifest["derive_job_data"]?.base_name;
+const queueRootTerraformSource = ["locals.tf", "queues.tf", "variables.tf"]
+	.map((fileName) => readFileSync(resolve(process.cwd(), "infra/cloudflare/queues", fileName), "utf8"))
+	.join("\n");
 
 describe("Cloudflare Queue infrastructure contract", () => {
+	it("should commit the public account ID at the application root while keeping the module reusable", () => {
+		expect({
+			committedRootAccount: queueRootTerraformSource.includes(
+				'cloudflare_account_id = "1fca946385505503c59dd6a2a4eeb442"',
+			),
+			rootUsesLocal: queueRootTerraformSource.includes("cloudflare_account_id  = local.cloudflare_account_id"),
+			rootDeclaresInput: queueRootTerraformSource.includes('variable "cloudflare_account_id"'),
+			moduleDeclaresInput: readFileSync(
+				resolve(process.cwd(), "infra/cloudflare/modules/queue-pair/variables.tf"),
+				"utf8",
+			).includes('variable "cloudflare_account_id"'),
+		}).toEqual({
+			committedRootAccount: true,
+			rootUsesLocal: true,
+			rootDeclaresInput: false,
+			moduleDeclaresInput: true,
+		});
+	});
+
 	it("should provision only the asynchronous job-data derivation Queue", () => {
 		expect(Object.keys(queueManifest)).toEqual(["derive_job_data"]);
 	});

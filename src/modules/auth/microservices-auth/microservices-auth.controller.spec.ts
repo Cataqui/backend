@@ -10,6 +10,7 @@ import {
 import { Test } from "@nestjs/testing";
 import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler.constants";
 import { UserRateLimitGuard } from "../../../core/guards/user-rate-limit.guard";
+import { SKIP_ENVELOPE_KEY } from "../../../shared/decorators/skip-envelope.decorator";
 import { AccessTokenGuard } from "../guards/access-token.guard";
 import { MicroservicesAuthController } from "./microservices-auth.controller";
 import { MicroservicesAuthService } from "./microservices-auth.service";
@@ -21,10 +22,13 @@ describe("MicroservicesAuthController", () => {
 		userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 	};
 	let controller: MicroservicesAuthController;
-	let microservicesAuthService: { createGeosearchAccessToken: ReturnType<typeof vi.fn> };
+	let microservicesAuthService: {
+		createGeosearchAccessToken: ReturnType<typeof vi.fn>;
+		getPublicJwks: ReturnType<typeof vi.fn>;
+	};
 
 	beforeEach(async () => {
-		microservicesAuthService = { createGeosearchAccessToken: vi.fn() };
+		microservicesAuthService = { createGeosearchAccessToken: vi.fn(), getPublicJwks: vi.fn() };
 		const module = await Test.createTestingModule({
 			controllers: [MicroservicesAuthController],
 			providers: [{ provide: MicroservicesAuthService, useValue: microservicesAuthService }],
@@ -52,6 +56,53 @@ describe("MicroservicesAuthController", () => {
 			version: "1",
 			status: HttpStatus.OK,
 		});
+	});
+
+	it("should expose public versioned JWKS without the API envelope or authentication guards", () => {
+		expect({
+			controllerPath: Reflect.getMetadata(PATH_METADATA, MicroservicesAuthController),
+			path: Reflect.getMetadata(PATH_METADATA, controller.getPublicJwks),
+			method: Reflect.getMetadata(METHOD_METADATA, controller.getPublicJwks),
+			version: Reflect.getMetadata(VERSION_METADATA, controller.getPublicJwks),
+			skipEnvelope: Reflect.getMetadata(SKIP_ENVELOPE_KEY, controller.getPublicJwks),
+			guards: Reflect.getMetadata(GUARDS_METADATA, controller.getPublicJwks),
+		}).toEqual({
+			controllerPath: "auth/microservices",
+			path: "jwks",
+			method: RequestMethod.GET,
+			version: "1",
+			skipEnvelope: true,
+			guards: undefined,
+		});
+	});
+
+	it("should return cacheable public JWKS with its registered media type", () => {
+		expect(Reflect.getMetadata(HEADERS_METADATA, controller.getPublicJwks)).toEqual(
+			expect.arrayContaining([
+				{ name: "Cache-Control", value: "public, max-age=300" },
+				{ name: "Content-Type", value: "application/jwk-set+json" },
+			]),
+		);
+	});
+
+	it("should return the service's cached public JWKS", () => {
+		const jwks = {
+			keys: [
+				{
+					alg: "ES256" as const,
+					crv: "P-256" as const,
+					kid: "V1",
+					kty: "EC" as const,
+					use: "sig" as const,
+					x: "A".repeat(43),
+					y: "B".repeat(43),
+				},
+			],
+		};
+		microservicesAuthService.getPublicJwks.mockReturnValue(jwks);
+
+		expect(controller.getPublicJwks()).toBe(jwks);
+		expect(microservicesAuthService.getPublicJwks).toHaveBeenCalledOnce();
 	});
 
 	it("should prevent the issued access token from being cached", () => {

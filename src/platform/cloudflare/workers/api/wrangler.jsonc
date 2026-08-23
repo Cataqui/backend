@@ -1,11 +1,22 @@
 {
 	"$schema": "../../../../../node_modules/wrangler/config-schema.json",
 	"name": "cataqui-api-development",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
 	"main": "./worker.ts",
 	"tsconfig": "./tsconfig.json",
 	"compatibility_date": "2025-12-18",
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": true,
+	"cache": {
+		"enabled": false,
+		"cross_version_cache": false,
+	},
+	"exports": {
+		"MicroservicesAuthJwksEntrypoint": {
+			"type": "worker",
+			"cache": { "enabled": true },
+		},
+	},
 	"containers": [
 		{
 			"class_name": "ApiContainer",
@@ -55,7 +66,7 @@
 		"NODE_ENV": "development",
 		"SLEEP_AFTER": "5m",
 		"CORS_ORIGINS": "http://localhost:3000",
-		"CLOUDFLARE_ACCOUNT_ID": "your-account-id",
+		"CLOUDFLARE_ACCOUNT_ID": "1fca946385505503c59dd6a2a4eeb442",
 		"CLOUDFLARE_AI_GATEWAY_ID": "development",
 		"API_CONTAINER_POOL_SIZE": "1",
 		"WHATSAPP_AUTH_RECEIVER": "+15556625497",

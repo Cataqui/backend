@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes";
+import { createWhatsappRoutes } from "./whatsapp/whatsapp.routes";
 
 const app = new Hono<{ Bindings: WebhooksWorkerEnv }>();
 
@@ -17,7 +17,7 @@ app.use(
 	}),
 );
 
-app.route("/whatsapp", whatsappRoutes);
+app.route("/whatsapp", createWhatsappRoutes());
 
 app.notFound((context) => context.body(null, 404));
 

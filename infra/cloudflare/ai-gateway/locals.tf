@@ -1,4 +1,6 @@
 locals {
+  cloudflare_account_id = "1fca946385505503c59dd6a2a4eeb442"
+
   gateway_configuration_by_environment = {
     staging = {
       authentication             = true

@@ -87,7 +87,6 @@ jobs:
         uses: ./.github/actions/detect-cloudflare-terraform-drift
         env:
           TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
-          TF_VAR_cloudflare_account_id: ${{ steps.infisical.outputs.cloudflare_account_id }}
         with:
           component: ${{ matrix.component }}
           environment: ${{ matrix.environment }}

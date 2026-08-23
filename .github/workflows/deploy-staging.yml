@@ -103,7 +103,6 @@ jobs:
         uses: ./.github/actions/deploy-cloudflare-terraform-component
         env:
           TF_CLOUD_ORGANIZATION: ${{ steps.infisical.outputs.hcp_terraform_organization }}
-          TF_VAR_cloudflare_account_id: ${{ steps.infisical.outputs.cloudflare_account_id }}
         with:
           component: ${{ matrix.component }}
           environment: staging
@@ -330,6 +329,15 @@ jobs:
           profile: webhooks-runtime
           project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
 
+      - name: Load geosearch runtime credentials from Infisical
+        id: geosearch-runtime-credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with:
+          environment: staging
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          profile: geosearch-runtime
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+
       - name: Load application deployment credentials from Infisical
         id: deployment-credentials
         uses: ./.github/actions/load-infisical-secrets
@@ -345,7 +353,6 @@ jobs:
           environment: staging
           health-url: https://staging.api.cataqui.com/v1/health
           cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
-          cloudflare-account-id: ${{ steps.api-runtime-credentials.outputs.cloudflare_account_id }}
           database-app-pooler-url: ${{ steps.api-runtime-credentials.outputs.database_app_pooler_url }}
           ai-gateway-api-token: ${{ steps.api-runtime-credentials.outputs.ai_gateway_api_token }}
           auth-refresh-token-hmac-key-v1-base64url: ${{ steps.api-runtime-credentials.outputs.auth_refresh_token_hmac_key_v1_base64url }}
@@ -359,9 +366,16 @@ jobs:
           environment: staging
           readiness-url: https://staging.webhooks.cataqui.com/whatsapp
           cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
-          cloudflare-account-id: ${{ steps.webhooks-runtime-credentials.outputs.cloudflare_account_id }}
           meta-app-secret: ${{ steps.webhooks-runtime-credentials.outputs.meta_app_secret }}
           whatsapp-auth-webhook-verify-token: ${{ steps.webhooks-runtime-credentials.outputs.whatsapp_auth_webhook_verify_token }}
+
+      - name: Deploy and verify the geosearch Worker
+        uses: ./.github/actions/deploy-cloudflare-geosearch-worker
+        with:
+          environment: staging
+          readiness-url: https://staging.geosearch.cataqui.com/v1/health
+          cloudflare-api-token: ${{ steps.deployment-credentials.outputs.cloudflare_deployment_api_token }}
+          google-places-api-key: ${{ steps.geosearch-runtime-credentials.outputs.google_places_api_key }}
 
       - name: Send signed WhatsApp webhook staging burst
         if: inputs.run_signed_webhook_smoke

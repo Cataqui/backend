@@ -1,5 +1,11 @@
 import fc from "fast-check";
-import { getInboundMessageAuthInputOrNull } from "./inbound-message-auth.utils";
+import { InboundMessageAuthService } from "./inbound-message-auth.service";
+
+const service = new InboundMessageAuthService();
+
+function getInboundMessageAuthInputOrNull(params: Parameters<InboundMessageAuthService["getInputOrNull"]>[0]) {
+	return service.getInputOrNull(params);
+}
 
 function _createMessage(params?: { text?: string; providerContactIdentifier?: string | undefined }) {
 	return {

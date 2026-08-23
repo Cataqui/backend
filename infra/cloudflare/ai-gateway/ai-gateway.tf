@@ -1,7 +1,7 @@
 module "application" {
   source = "../modules/ai-gateway"
 
-  cloudflare_account_id = var.cloudflare_account_id
+  cloudflare_account_id = local.cloudflare_account_id
   configuration         = local.gateway_configuration
   configuration_shape = {
     top_level    = toset(keys(local.gateway_configuration))

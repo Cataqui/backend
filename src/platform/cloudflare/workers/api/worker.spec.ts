@@ -21,7 +21,17 @@ vi.mock("../../queues/queue", () => ({
 	routeQueueBatch: routeMock,
 }));
 
-import worker, { ApiContainerInboundEntrypoint } from "./worker";
+import worker, { ApiContainerInboundEntrypoint, MicroservicesAuthJwksEntrypoint } from "./worker";
+
+function _createExecutionContext(params?: { jwksFetch?: ReturnType<typeof vi.fn> }): ExecutionContext {
+	return {
+		exports: {
+			MicroservicesAuthJwksEntrypoint: {
+				fetch: params?.jwksFetch ?? vi.fn(),
+			},
+		},
+	} as never;
+}
 
 describe("API Worker", () => {
 	beforeEach(() => {
@@ -37,6 +47,7 @@ describe("API Worker", () => {
 		const response = await worker.fetch(
 			new Request("https://api.cataqui.com/v1/whatsapp/webhook", { method: "POST" }),
 			{ API_CONTAINER: {}, API_CONTAINER_POOL_SIZE: "3" } as never,
+			_createExecutionContext(),
 		);
 
 		expect(response).toBe(expectedResponse);
@@ -48,7 +59,11 @@ describe("API Worker", () => {
 		getRandomMock.mockResolvedValue({ fetch: containerFetch });
 		const env = { API_CONTAINER: {}, API_CONTAINER_POOL_SIZE: "10" } as never;
 
-		const response = await worker.fetch(new Request("https://api.cataqui.com/v1/jobs/drafts", { method: "POST" }), env);
+		const response = await worker.fetch(
+			new Request("https://api.cataqui.com/v1/jobs/drafts", { method: "POST" }),
+			env,
+			_createExecutionContext(),
+		);
 
 		expect(response).toBe(expectedResponse);
 	});
@@ -58,9 +73,97 @@ describe("API Worker", () => {
 		const apiContainerBinding = {};
 		const env = { API_CONTAINER: apiContainerBinding, API_CONTAINER_POOL_SIZE: "10" } as never;
 
-		await worker.fetch(new Request("https://api.cataqui.com/v1/feed"), env);
+		await worker.fetch(new Request("https://api.cataqui.com/v1/feed"), env, _createExecutionContext());
 
 		expect(getRandomMock).toHaveBeenCalledWith(apiContainerBinding, 10);
+	});
+
+	it("should dispatch only the public JWKS GET route through the cached entrypoint", async () => {
+		const expectedResponse = Response.json({ keys: [] });
+		const jwksFetch = vi.fn().mockResolvedValue(expectedResponse);
+		const request = new Request("https://api.cataqui.com/v1/auth/microservices/jwks");
+
+		const response = await worker.fetch(
+			request,
+			{ API_CONTAINER: {}, API_CONTAINER_POOL_SIZE: "10" } as never,
+			_createExecutionContext({ jwksFetch: jwksFetch }),
+		);
+
+		expect({
+			response: response,
+			entrypointCalls: jwksFetch.mock.calls,
+			containerCalls: getRandomMock.mock.calls,
+		}).toEqual({
+			response: expectedResponse,
+			entrypointCalls: [[request]],
+			containerCalls: [],
+		});
+	});
+
+	it.each([
+		new Request("https://api.cataqui.com/v1/auth/microservices/jwks", { method: "POST" }),
+		new Request("https://api.cataqui.com/v1/auth/microservices/jwks/another"),
+	])("should keep non-matching requests on the uncached gateway", async (request) => {
+		const containerFetch = vi.fn().mockResolvedValue(new Response("ok"));
+		const jwksFetch = vi.fn();
+		getRandomMock.mockResolvedValue({ fetch: containerFetch });
+
+		await worker.fetch(
+			request,
+			{ API_CONTAINER: {}, API_CONTAINER_POOL_SIZE: "10" } as never,
+			_createExecutionContext({ jwksFetch: jwksFetch }),
+		);
+
+		expect({ entrypointCalls: jwksFetch.mock.calls, containerCalls: containerFetch.mock.calls }).toEqual({
+			entrypointCalls: [],
+			containerCalls: [[request]],
+		});
+	});
+
+	it("should forward a cached-entrypoint miss to a random API container", async () => {
+		const expectedResponse = Response.json({ keys: [] });
+		const containerFetch = vi.fn().mockResolvedValue(expectedResponse);
+		const apiContainerBinding = {};
+		getRandomMock.mockResolvedValue({ fetch: containerFetch });
+		const entrypoint = new MicroservicesAuthJwksEntrypoint(
+			{} as never,
+			{ API_CONTAINER: apiContainerBinding, API_CONTAINER_POOL_SIZE: "3" } as never,
+		);
+		const request = new Request("https://api.cataqui.com/v1/auth/microservices/jwks");
+
+		const response = await entrypoint.fetch(request);
+
+		expect({
+			response: response,
+			selectedPool: getRandomMock.mock.calls,
+			containerCalls: containerFetch.mock.calls,
+		}).toEqual({
+			response: expectedResponse,
+			selectedPool: [[apiContainerBinding, 3]],
+			containerCalls: [[request]],
+		});
+	});
+
+	it("should prevent a failed JWKS response from entering the Worker cache", async () => {
+		getRandomMock.mockResolvedValue({
+			fetch: vi.fn().mockResolvedValue(new Response("failed", { status: 503, headers: { "Cache-Control": "public" } })),
+		});
+		const entrypoint = new MicroservicesAuthJwksEntrypoint(
+			{} as never,
+			{ API_CONTAINER: {}, API_CONTAINER_POOL_SIZE: "3" } as never,
+		);
+
+		const response = await entrypoint.fetch(new Request("https://api.cataqui.com/v1/auth/microservices/jwks"));
+
+		expect({
+			status: response.status,
+			cacheControl: response.headers.get("Cache-Control"),
+			body: await response.text(),
+		}).toEqual({
+			status: 503,
+			cacheControl: "no-store",
+			body: "failed",
+		});
 	});
 
 	it("should delegate queue batches to the queue router", async () => {

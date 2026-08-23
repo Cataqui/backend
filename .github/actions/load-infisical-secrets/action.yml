@@ -22,9 +22,6 @@ outputs:
   ai_gateway_api_token:
     description: Cloudflare AI Gateway API token
     value: ${{ steps.action-inputs.outputs.ai_gateway_api_token }}
-  cloudflare_account_id:
-    description: Cloudflare account identifier for Terraform and Wrangler actions
-    value: ${{ steps.action-inputs.outputs.cloudflare_account_id }}
   cloudflare_deployment_api_token:
     description: Cloudflare deployment API token
     value: ${{ steps.action-inputs.outputs.cloudflare_deployment_api_token }}
@@ -40,6 +37,9 @@ outputs:
   database_app_pooler_url:
     description: Pooled PostgreSQL application-role URL for the Cloudflare runtime
     value: ${{ steps.action-inputs.outputs.database_app_pooler_url }}
+  google_places_api_key:
+    description: Google Places API New key for the geosearch Worker
+    value: ${{ steps.action-inputs.outputs.google_places_api_key }}
   whatsapp_auth_access_token:
     description: Meta WhatsApp Cloud API access token
     value: ${{ steps.action-inputs.outputs.whatsapp_auth_access_token }}

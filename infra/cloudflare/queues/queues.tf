@@ -3,7 +3,7 @@ module "queue_pair" {
 
   source = "../modules/queue-pair"
 
-  cloudflare_account_id  = var.cloudflare_account_id
+  cloudflare_account_id  = local.cloudflare_account_id
   primary_queue_name     = "${each.value.base_name}-${var.environment}"
   dead_letter_queue_name = "${each.value.base_name}-${var.environment}-dlq"
 

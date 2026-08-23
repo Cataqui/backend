@@ -6,11 +6,13 @@ Object.defineProperty(crypto.subtle, "timingSafeEqual", {
 	value: timingSafeEqualMock,
 });
 
-vi.mock("./shared/meta.utils", () => ({
-	isWebhookFromMeta: isWebhookFromMetaMock,
+vi.mock("./whatsapp/meta-webhook-auth.service", () => ({
+	MetaWebhookAuthService: class {
+		isWebhookFromMeta = isWebhookFromMetaMock;
+	},
 }));
 
-import worker from "./worker";
+import worker from "./app";
 
 describe("Webhooks Worker", () => {
 	beforeEach(() => {

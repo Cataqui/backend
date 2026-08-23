@@ -7,7 +7,6 @@
 		"credentials": [
 			"AI_GATEWAY_API_TOKEN",
 			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-			"CLOUDFLARE_ACCOUNT_ID",
 			"DATABASE_APP_POOLER_URL",
 			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
 			"UPSTASH_REDIS_REST_TOKEN",
@@ -17,15 +16,17 @@
 	},
 	"webhooks-runtime": {
 		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
 			"META_APP_SECRET",
 			"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"
 		],
 		"secretPath": "/runtime"
 	},
+	"geosearch-runtime": {
+		"credentials": ["GOOGLE_PLACES_API_KEY"],
+		"secretPath": "/geosearch"
+	},
 	"cloudflare-terraform-apply": {
 		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
 			"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
 			"CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN",
 			"HCP_TERRAFORM_ORGANIZATION",
@@ -35,7 +36,6 @@
 	},
 	"cloudflare-terraform-drift": {
 		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
 			"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
 			"HCP_TERRAFORM_ORGANIZATION",
 			"TERRAFORM_API_TOKEN"

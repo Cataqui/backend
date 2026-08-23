@@ -1,5 +1,6 @@
 locals {
-  queue_pairs = jsondecode(file("${path.module}/queues.json"))
+  cloudflare_account_id = "1fca946385505503c59dd6a2a4eeb442"
+  queue_pairs           = jsondecode(file("${path.module}/queues.json"))
 }
 
 resource "terraform_data" "queue_registry_shape" {
