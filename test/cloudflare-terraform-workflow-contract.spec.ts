@@ -616,6 +616,8 @@ describe("Cloudflare Terraform workflow security", () => {
 
 		expect(
 			deploymentWorkflowSources.every((source) => {
+				const validationGateSource = _getWorkflowJobSource(source, "validation-gate");
+				const infrastructureReadinessSource = _getWorkflowJobSource(source, "infrastructure-readiness");
 				const migrationSource = _getWorkflowJobSource(source, "migrate");
 				const apiDeploymentSource = _getWorkflowJobSource(source, "deploy-api");
 				const webhooksDeploymentSource = _getWorkflowJobSource(source, "deploy-webhooks");
@@ -628,6 +630,20 @@ describe("Cloudflare Terraform workflow security", () => {
 				];
 
 				return (
+					validationGateSource.includes("\n    if: always()\n") &&
+					validationGateSource.includes('if [[ "$AFFECTED_SCOPE_RESULT" != "success" ]]') &&
+					validationGateSource.includes('for result in "$REPOSITORY_RESULT" "$WORKSPACES_RESULT"') &&
+					validationGateSource.includes('"$result" != "success" && "$result" != "skipped"') &&
+					infrastructureReadinessSource.includes("\n    if: always()\n") &&
+					infrastructureReadinessSource.includes('if [[ "$VALIDATION_RESULT" != "success" ]]') &&
+					infrastructureReadinessSource.includes(
+						'if [[ "$DEPLOY_AI_GATEWAY" == "true" || "$DEPLOY_QUEUES" == "true" ]]',
+					) &&
+					infrastructureReadinessSource.includes(
+						'"$DISCOVERY_RESULT" != "success" || "$CLOUDFLARE_RESULT" != "success"',
+					) &&
+					infrastructureReadinessSource.includes('"$DEPLOY_NEON" == "true" && "$NEON_RESULT" != "success"') &&
+					infrastructureReadinessSource.includes('"$DEPLOY_UPSTASH" == "true" && "$UPSTASH_RESULT" != "success"') &&
 					selectedMutationSources.every((jobSource) => /if: >-\n\s+\$\{\{\n\s+!cancelled\(\) &&/.test(jobSource)) &&
 					migrationSource.includes("needs: [affected-scope, infrastructure-readiness]") &&
 					migrationSource.includes("needs.infrastructure-readiness.result == 'success'") &&

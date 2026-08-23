@@ -212,7 +212,13 @@ jobs:
           WORKSPACES_RESULT: ${{ needs.validate-workspaces.result }}
         run: |
           set -euo pipefail
-          for result in "$AFFECTED_SCOPE_RESULT" "$REPOSITORY_RESULT" "$WORKSPACES_RESULT"; do
+
+          if [[ "$AFFECTED_SCOPE_RESULT" != "success" ]]; then
+            echo "The affected deployment scope was not resolved successfully." >&2
+            exit 1
+          fi
+
+          for result in "$REPOSITORY_RESULT" "$WORKSPACES_RESULT"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               echo "Affected validation did not complete successfully." >&2
               exit 1
