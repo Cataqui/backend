@@ -70,8 +70,9 @@ runs:
       with:
         apiToken: ${{ inputs.cloudflare-api-token }}
         packageManager: pnpm
+        workingDirectory: apps/workers/webhooks
         command: >-
-          deploy --strict --cwd apps/workers/webhooks --config wrangler.jsonc
+          deploy --strict --config wrangler.jsonc
           --env ${{ inputs.environment }}
           --secrets-file ${{ steps.secrets-file.outputs.path }}
           --tag ${{ github.sha }}
@@ -119,8 +120,9 @@ runs:
       with:
         apiToken: ${{ inputs.cloudflare-api-token }}
         packageManager: pnpm
+        workingDirectory: apps/workers/webhooks
         command: >-
-          rollback --cwd apps/workers/webhooks --config wrangler.jsonc
+          rollback --config wrangler.jsonc
           --env ${{ inputs.environment }} --yes
           --message "Automatic rollback after failed readiness check in GitHub Actions run ${{ github.run_id }}"
 

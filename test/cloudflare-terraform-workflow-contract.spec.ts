@@ -702,6 +702,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		];
 		const apiDeploymentActionSource = _getActionSource("deploy-cloudflare-api-worker");
 		const webhooksDeploymentActionSource = _getActionSource("deploy-cloudflare-webhooks-worker");
+		const geosearchDeploymentActionSource = _getActionSource("deploy-cloudflare-geosearch-worker");
 		const apiWranglerSource = readFileSync(resolve(process.cwd(), "apps/api/wrangler.jsonc"), "utf8");
 
 		expect({
@@ -713,8 +714,16 @@ describe("Cloudflare Terraform workflow security", () => {
 					source.includes("uses: ./.github/actions/deploy-cloudflare-api-worker") &&
 					source.includes("uses: ./.github/actions/deploy-cloudflare-webhooks-worker"),
 			),
+			usesWorkspaceLocalWrangler: [
+				[apiDeploymentActionSource, "apps/api"],
+				[webhooksDeploymentActionSource, "apps/workers/webhooks"],
+				[geosearchDeploymentActionSource, "apps/workers/geosearch"],
+			].every(
+				([source, workingDirectory]) =>
+					source.includes(`workingDirectory: ${workingDirectory}`) && !source.includes(`--cwd ${workingDirectory}`),
+			),
 			usesStrictImmediateContainerDeployment: apiDeploymentActionSource.includes(
-				"deploy --strict --cwd apps/api\n          --config wrangler.jsonc --containers-rollout immediate",
+				"deploy --strict --config wrangler.jsonc --containers-rollout immediate",
 			),
 			protectsBothEphemeralSecretFiles: [apiDeploymentActionSource, webhooksDeploymentActionSource].every(
 				(source) =>
@@ -742,20 +751,21 @@ describe("Cloudflare Terraform workflow security", () => {
 				webhooksDeploymentActionSource.includes('response_status" == "403"'),
 			rollsBackFailedApiReadiness:
 				apiDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				apiDeploymentActionSource.includes("rollback --cwd apps/api"),
+				apiDeploymentActionSource.includes("rollback --config wrangler.jsonc"),
 			verifiesApiReadinessAfterRollback:
 				apiDeploymentActionSource.includes("Verify the API readiness after rollback") &&
 				apiDeploymentActionSource.includes("steps.rollback.outcome == 'success'") &&
 				apiDeploymentActionSource.includes("The API remained unhealthy after rollback"),
 			rollsBackFailedWebhooksReadiness:
 				webhooksDeploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				webhooksDeploymentActionSource.includes("rollback --cwd apps/workers/webhooks"),
+				webhooksDeploymentActionSource.includes("rollback --config wrangler.jsonc"),
 			keepsProgressiveContainerStepsAvailableForLaterDeployments:
 				apiWranglerSource.includes('"rollout_step_percentage": [10, 50, 100]') &&
 				apiWranglerSource.includes('"rollout_step_percentage": [10, 25, 50, 100]'),
 		}).toEqual({
 			describesApiDeploymentWithAutomaticRollback: true,
 			usesBothDeploymentActions: true,
+			usesWorkspaceLocalWrangler: true,
 			usesStrictImmediateContainerDeployment: true,
 			protectsBothEphemeralSecretFiles: true,
 			isolatesWhatsappSecrets: true,

@@ -133,9 +133,10 @@ describe("Geosearch Worker configuration", () => {
 			),
 			productionDomain:
 				deploymentWorkflowSources.at(1)?.includes("readiness-url: https://geosearch.cataqui.com/v1/health") ?? false,
-			strictDeploy: deploymentActionSource.includes(
-				"deploy --strict --cwd apps/workers/geosearch --config wrangler.jsonc",
-			),
+			strictDeploy:
+				deploymentActionSource.includes("workingDirectory: apps/workers/geosearch") &&
+				deploymentActionSource.includes("deploy --strict --config wrangler.jsonc") &&
+				!deploymentActionSource.includes("--cwd apps/workers/geosearch"),
 			isolatedSecretFile:
 				deploymentActionSource.includes("umask 077") &&
 				deploymentActionSource.includes("GOOGLE_PLACES_API_KEY: env.GOOGLE_PLACES_API_KEY") &&
@@ -143,7 +144,7 @@ describe("Geosearch Worker configuration", () => {
 			readiness: deploymentActionSource.includes('response_status" == "204"'),
 			rollback:
 				deploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				deploymentActionSource.includes("rollback --cwd apps/workers/geosearch"),
+				deploymentActionSource.includes("rollback --config wrangler.jsonc"),
 			forwardsAccountId:
 				deploymentActionSource.includes("cloudflare-account-id") || deploymentActionSource.includes("accountId:"),
 		}).toEqual({
