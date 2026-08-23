@@ -608,6 +608,26 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
+	it("should evaluate selected migrations after optional infrastructure jobs are skipped", () => {
+		const deploymentWorkflowSources = [
+			_getWorkflowSource("deploy-staging.yml"),
+			_getWorkflowSource("deploy-production.yml"),
+		];
+
+		expect(
+			deploymentWorkflowSources.every((source) => {
+				const migrationSource = _getWorkflowJobSource(source, "migrate");
+
+				return (
+					migrationSource.includes("needs: [affected-scope, infrastructure-readiness]") &&
+					/if: >-\n\s+\$\{\{\n\s+always\(\) &&/.test(migrationSource) &&
+					migrationSource.includes("needs.infrastructure-readiness.result == 'success'") &&
+					migrationSource.includes("needs.affected-scope.outputs.run_migrations == 'true'")
+				);
+			}),
+		).toBe(true);
+	});
+
 	it("should resolve deployment scope for every monorepo runtime and build contract", () => {
 		const deploymentWorkflowSources = [
 			_getWorkflowSource("deploy-staging.yml"),

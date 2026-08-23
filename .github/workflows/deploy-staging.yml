@@ -532,6 +532,7 @@ jobs:
     needs: [affected-scope, infrastructure-readiness]
     if: >-
       ${{
+        always() &&
         github.ref == 'refs/heads/staging' &&
         needs.infrastructure-readiness.result == 'success' &&
         needs.affected-scope.outputs.run_migrations == 'true'
