@@ -12,6 +12,8 @@ describe("Prisma migration history", () => {
 			"20260810170000_align_auth_and_job_ownership": "e2d95cae1441f8b3986d5f61af031ab9d73330d92637b8facd3e100402480317",
 			"20260810170000_save_verified_identity_and_contact":
 				"3647a8e48ec446da6c615ed23ebdb84ebca6b92d875a41b691f07cc49893af1b",
+			"20260810190000_save_verified_identity_contact_and_session":
+				"a5aba8272a13dd32b11e16c9cf6168b7ee69165b4648c7286fe55c24d726f976",
 			"20260822120000_remove_job_location_labels": "9dfd1b41c128175dfc128675a9e74ba319cfb8f471a088ce97c0a7a61b48e834",
 		};
 
