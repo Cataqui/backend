@@ -608,7 +608,7 @@ describe("Cloudflare Terraform workflow security", () => {
 		});
 	});
 
-	it("should evaluate selected migrations after optional infrastructure jobs are skipped", () => {
+	it("should evaluate selected deployments after optional infrastructure jobs are skipped", () => {
 		const deploymentWorkflowSources = [
 			_getWorkflowSource("deploy-staging.yml"),
 			_getWorkflowSource("deploy-production.yml"),
@@ -617,12 +617,31 @@ describe("Cloudflare Terraform workflow security", () => {
 		expect(
 			deploymentWorkflowSources.every((source) => {
 				const migrationSource = _getWorkflowJobSource(source, "migrate");
+				const apiDeploymentSource = _getWorkflowJobSource(source, "deploy-api");
+				const webhooksDeploymentSource = _getWorkflowJobSource(source, "deploy-webhooks");
+				const geosearchDeploymentSource = _getWorkflowJobSource(source, "deploy-geosearch");
+				const selectedMutationSources = [
+					migrationSource,
+					apiDeploymentSource,
+					webhooksDeploymentSource,
+					geosearchDeploymentSource,
+				];
 
 				return (
+					selectedMutationSources.every((jobSource) => /if: >-\n\s+\$\{\{\n\s+!cancelled\(\) &&/.test(jobSource)) &&
 					migrationSource.includes("needs: [affected-scope, infrastructure-readiness]") &&
-					/if: >-\n\s+\$\{\{\n\s+always\(\) &&/.test(migrationSource) &&
 					migrationSource.includes("needs.infrastructure-readiness.result == 'success'") &&
-					migrationSource.includes("needs.affected-scope.outputs.run_migrations == 'true'")
+					migrationSource.includes("needs.affected-scope.outputs.run_migrations == 'true'") &&
+					apiDeploymentSource.includes("needs: [affected-scope, migrate]") &&
+					apiDeploymentSource.includes("needs.affected-scope.outputs.deploy_api == 'true'") &&
+					apiDeploymentSource.includes("needs.migrate.result == 'success'") &&
+					[webhooksDeploymentSource, geosearchDeploymentSource].every(
+						(jobSource) =>
+							jobSource.includes("needs.infrastructure-readiness.result == 'success'") &&
+							jobSource.includes(
+								"needs.affected-scope.outputs.deploy_api != 'true' && needs.deploy-api.result == 'skipped'",
+							),
+					)
 				);
 			}),
 		).toBe(true);

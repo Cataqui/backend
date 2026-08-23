@@ -532,7 +532,7 @@ jobs:
     needs: [affected-scope, infrastructure-readiness]
     if: >-
       ${{
-        always() &&
+        !cancelled() &&
         github.ref == 'refs/heads/staging' &&
         needs.infrastructure-readiness.result == 'success' &&
         needs.affected-scope.outputs.run_migrations == 'true'
@@ -607,6 +607,7 @@ jobs:
     needs: [affected-scope, migrate]
     if: >-
       ${{
+        !cancelled() &&
         github.ref == 'refs/heads/staging' &&
         needs.affected-scope.outputs.deploy_api == 'true' &&
         needs.migrate.result == 'success'
@@ -680,7 +681,7 @@ jobs:
     needs: [affected-scope, infrastructure-readiness, deploy-api]
     if: >-
       ${{
-        always() &&
+        !cancelled() &&
         github.ref == 'refs/heads/staging' &&
         needs.affected-scope.outputs.deploy_webhooks == 'true' &&
         needs.infrastructure-readiness.result == 'success' &&
@@ -757,7 +758,7 @@ jobs:
     needs: [affected-scope, infrastructure-readiness, deploy-api]
     if: >-
       ${{
-        always() &&
+        !cancelled() &&
         github.ref == 'refs/heads/staging' &&
         needs.affected-scope.outputs.deploy_geosearch == 'true' &&
         needs.infrastructure-readiness.result == 'success' &&
