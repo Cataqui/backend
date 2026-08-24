@@ -153,6 +153,9 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"cloudflare-queues",
 			"cloudflare-zone-configuration",
 			"cloudflare-zone-dns",
+			"infisical-generated-folders",
+			"neon-database-access",
+			"neon-projects",
 		]);
 		expect(runner).toContain('new URL("./roots/", import.meta.url)');
 		expect(runner).not.toContain("cloudflare-ai-gateways");

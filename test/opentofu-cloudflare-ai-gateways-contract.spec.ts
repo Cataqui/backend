@@ -84,6 +84,10 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 				},
 			},
 			infisical: { project_id: "954d434f-7e08-4904-af66-0bf62377794e" },
+			neon: {
+				organization_id: "org-wandering-pond-46567045",
+				database: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
+			},
 		});
 
 		const rootHcl = _getRootHcl();

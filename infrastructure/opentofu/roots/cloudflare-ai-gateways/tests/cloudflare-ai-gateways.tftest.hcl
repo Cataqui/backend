@@ -107,10 +107,6 @@ run "runtime_token_delivery" {
 
   assert {
     condition = (
-      infisical_secret_folder.generated.folder_path == "/" &&
-      infisical_secret_folder.generated.name == "generated" &&
-      infisical_secret_folder.runtime.folder_path == "/generated" &&
-      infisical_secret_folder.runtime.name == "runtime" &&
       infisical_secret.derive_job_data_ai_gateway_api_token.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
       infisical_secret.derive_job_data_ai_gateway_api_token.env_slug == "production" &&
       infisical_secret.derive_job_data_ai_gateway_api_token.folder_path == "/generated/runtime" &&
