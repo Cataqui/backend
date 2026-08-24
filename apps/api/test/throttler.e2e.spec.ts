@@ -14,7 +14,6 @@ import { getStorageToken, type ThrottlerStorage, ThrottlerStorageService } from 
 import { AuthSessionService } from "../src/modules/auth/auth-session.service";
 import { AccessTokenGuard } from "../src/modules/auth/guards/access-token.guard";
 import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
-import { RedisService } from "../src/core/redis/redis.service";
 import { RateLimitedError } from "../src/core/errors/rate-limited.error";
 import { RateLimit } from "../src/core/throttle/rate-limit.decorator";
 import { ThrottleModule } from "../src/core/throttle/throttle.module";
@@ -59,8 +58,6 @@ async function _buildApp(
 			},
 		],
 	})
-		.overrideProvider(RedisService)
-		.useValue({})
 		.overrideProvider(getStorageToken())
 		.useValue(params.storage ?? new ThrottlerStorageService())
 		.compile();

@@ -5,7 +5,6 @@ import { getStorageToken, ThrottlerStorageService } from "@nestjs/throttler";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/core/app.factory";
 import { PrismaService } from "../src/core/prisma/prisma.service";
-import { RedisService } from "../src/core/redis/redis.service";
 import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
 process.env["NODE_ENV"] = "production";
@@ -17,8 +16,6 @@ async function buildApp(): Promise<NestFastifyApplication> {
 		imports: [AppModule],
 	})
 		.overrideProvider(PrismaService)
-		.useValue({})
-		.overrideProvider(RedisService)
 		.useValue({})
 		.overrideProvider(InboundMessageAuthRepository)
 		.useValue({})

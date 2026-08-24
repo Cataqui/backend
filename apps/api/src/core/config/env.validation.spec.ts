@@ -16,9 +16,8 @@ function _createValidEnvironment(): Record<string, string> {
 		CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 		DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 		DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-		REDIS_URL: "redis://redis.example.com:6379",
-		REDIS_USERNAME: "runtime",
-		REDIS_PASSWORD: "test-password",
+		UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+		UPSTASH_REDIS_REST_TOKEN: "test-token",
 	};
 }
 
@@ -34,10 +33,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "rediss://redis.example.com:6380",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
-				REDIS_CA_CERT_BASE64: Buffer.from("certificate").toString("base64"),
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(
@@ -74,9 +71,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "redis://redis.example.com:6379",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success ? result.data.PORT : result).toBe(3000);
@@ -92,9 +88,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "redis://redis.example.com:6379",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success ? { port: result.data.PORT, type: typeof result.data.PORT } : result).toEqual({
@@ -164,44 +159,28 @@ describe("EnvSchema", () => {
 			},
 		);
 
-		it("should fail when REDIS_URL is missing", () => {
+		it("should fail when UPSTASH_REDIS_REST_URL is missing", () => {
 			const environment = _createValidEnvironment();
-			delete environment["REDIS_URL"];
+			delete environment["UPSTASH_REDIS_REST_URL"];
 			const result = EnvSchema.safeParse(environment);
 
 			expect(result.success).toBe(false);
 		});
 
-		it("should fail when REDIS_URL is not a valid Redis URL", () => {
+		it("should fail when UPSTASH_REDIS_REST_URL is not a valid URL", () => {
 			const environment = _createValidEnvironment();
-			environment["REDIS_URL"] = "https://redis.example.com";
+			environment["UPSTASH_REDIS_REST_URL"] = "not-a-url";
 			const result = EnvSchema.safeParse(environment);
 
 			expect(result.success).toBe(false);
 		});
 
-		it.each(["REDIS_USERNAME", "REDIS_PASSWORD"])("should fail when %s is missing", (name) => {
+		it("should fail when UPSTASH_REDIS_REST_TOKEN is missing", () => {
 			const environment = _createValidEnvironment();
-			delete environment[name];
+			delete environment["UPSTASH_REDIS_REST_TOKEN"];
 			const result = EnvSchema.safeParse(environment);
 
 			expect(result.success).toBe(false);
-		});
-
-		it("should require a valid CA bundle for a TLS URL", () => {
-			const environment = _createValidEnvironment();
-			environment["REDIS_URL"] = "rediss://redis.example.com:6380";
-
-			expect(EnvSchema.safeParse(environment).success).toBe(false);
-			environment["REDIS_CA_CERT_BASE64"] = "not-base64!";
-			expect(EnvSchema.safeParse(environment).success).toBe(false);
-		});
-
-		it("should require a Redis CA certificate in production", () => {
-			const environment = _createValidEnvironment();
-			environment["NODE_ENV"] = "production";
-
-			expect(EnvSchema.safeParse(environment).success).toBe(false);
 		});
 
 		it("should fail when DATABASE_APP_POOLER_URL is missing", () => {
@@ -229,9 +208,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "redis://redis.example.com:6379",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(true);
@@ -263,9 +241,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "redis://redis.example.com:6379",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success).toBe(false);
@@ -282,9 +259,8 @@ describe("EnvSchema", () => {
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-				REDIS_URL: "redis://redis.example.com:6379",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "test-password",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "test-token",
 			});
 
 			expect(result.success ? result.data.CORS_ORIGINS : result).toBe("https://cataqui.com,https://app.cataqui.com");

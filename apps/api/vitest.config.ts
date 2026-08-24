@@ -21,9 +21,8 @@ export default defineConfig({
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 			DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
 			DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
-			REDIS_URL: "redis://redis.example.com:6379",
-			REDIS_USERNAME: "runtime",
-			REDIS_PASSWORD: "test-password",
+			UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+			UPSTASH_REDIS_REST_TOKEN: "test-token",
 		},
 		coverage: {
 			...WorkspaceCoverage,

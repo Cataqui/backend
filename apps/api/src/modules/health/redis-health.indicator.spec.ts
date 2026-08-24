@@ -23,7 +23,7 @@ describe("RedisHealthIndicator", () => {
 		redisService = module.get(RedisService);
 	});
 
-	it("should report Redis as up when Redis answers PONG", async () => {
+	it("should report Redis as up when Upstash answers PONG", async () => {
 		vi.spyOn(redisService, "ping").mockResolvedValue("PONG");
 
 		const result = await redisHealthIndicator.pingCheck();
@@ -31,7 +31,7 @@ describe("RedisHealthIndicator", () => {
 		expect(result).toEqual({ redis: { status: "up" } });
 	});
 
-	it("should report Redis as down when Redis returns an unexpected response", async () => {
+	it("should report Redis as down when Upstash returns an unexpected response", async () => {
 		vi.spyOn(redisService, "ping").mockResolvedValue("unexpected");
 
 		const result = await redisHealthIndicator.pingCheck();
@@ -40,7 +40,7 @@ describe("RedisHealthIndicator", () => {
 	});
 
 	it("should report Redis as down without leaking provider errors", async () => {
-		vi.spyOn(redisService, "ping").mockRejectedValue(new Error("private Redis details"));
+		vi.spyOn(redisService, "ping").mockRejectedValue(new Error("private Upstash details"));
 
 		const result = await redisHealthIndicator.pingCheck();
 

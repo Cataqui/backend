@@ -105,7 +105,7 @@ Always optimize for:
 - HTTP adapter: **Fastify adapter**
 - ORM: **Prisma**
 - Database: **PostgreSQL on Neon**
-- Shared ephemeral state: **Redis Cloud**
+- Shared ephemeral state: **Upstash Redis**
 - Edge and asynchronous infrastructure: **Cloudflare Workers, Containers, and Queues**
 - File/media storage: **Cloudflare R2** or S3-compatible storage
 - Test framework: **Vitest**

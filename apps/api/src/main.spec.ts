@@ -47,10 +47,8 @@ describe("application startup logging", () => {
 
 	it("should emit only warnings and errors through Nest in production", async () => {
 		const originalEnvironment = process.env["NODE_ENV"];
-		const originalRedisCaCertificate = process.env["REDIS_CA_CERT_BASE64"];
 		const originalExitCode = process.exitCode;
 		process.env["NODE_ENV"] = "production";
-		process.env["REDIS_CA_CERT_BASE64"] = Buffer.from("certificate").toString("base64");
 		vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 		createNestApplication.mockRejectedValueOnce(new Error("Startup dependency failed"));
 
@@ -65,8 +63,6 @@ describe("application startup logging", () => {
 		} finally {
 			if (originalEnvironment === undefined) delete process.env["NODE_ENV"];
 			else process.env["NODE_ENV"] = originalEnvironment;
-			if (originalRedisCaCertificate === undefined) delete process.env["REDIS_CA_CERT_BASE64"];
-			else process.env["REDIS_CA_CERT_BASE64"] = originalRedisCaCertificate;
 			process.exitCode = originalExitCode;
 		}
 	});

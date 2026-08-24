@@ -13,10 +13,8 @@ describe("ApiContainer request boundary", () => {
 				CLOUDFLARE_ACCOUNT_ID: "account-id",
 				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "gateway-token",
 				DERIVE_JOB_DATA_AI_GATEWAY_ID: "gateway-id",
-				REDIS_URL: "rediss://redis.example.com:6380",
-				REDIS_USERNAME: "runtime",
-				REDIS_PASSWORD: "redis-password",
-				REDIS_CA_CERT_BASE64: "certificate-bundle",
+				UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+				UPSTASH_REDIS_REST_TOKEN: "redis-token",
 				AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 				MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 				WHATSAPP_AUTH_RECEIVER: "+5511963270517",
@@ -34,10 +32,8 @@ describe("ApiContainer request boundary", () => {
 			CLOUDFLARE_ACCOUNT_ID: "account-id",
 			DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "gateway-token",
 			DERIVE_JOB_DATA_AI_GATEWAY_ID: "gateway-id",
-			REDIS_URL: "rediss://redis.example.com:6380",
-			REDIS_USERNAME: "runtime",
-			REDIS_PASSWORD: "redis-password",
-			REDIS_CA_CERT_BASE64: "certificate-bundle",
+			UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+			UPSTASH_REDIS_REST_TOKEN: "redis-token",
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 			WHATSAPP_AUTH_RECEIVER: "+5511963270517",
@@ -53,17 +49,6 @@ describe("ApiContainer request boundary", () => {
 		);
 
 		expect(container.pingEndpoint).toBe("localhost/v1/health/live");
-	});
-
-	it("should omit the Redis CA certificate when the binding is unavailable", () => {
-		const container = new ApiContainer(
-			{} as never,
-			{
-				SLEEP_AFTER: "5m",
-			} as ApiWorkerEnv,
-		);
-
-		expect(container.envVars).not.toHaveProperty("REDIS_CA_CERT_BASE64");
 	});
 
 	it("should hide internal paths from externally forwarded requests", async () => {

@@ -14,7 +14,6 @@ import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor
 import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
 import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
 import { PrismaService } from "../src/core/prisma/prisma.service";
-import { RedisService } from "../src/core/redis/redis.service";
 import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
 process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
@@ -72,8 +71,6 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 		imports: [AppModule],
 	})
 		.overrideProvider(PrismaService)
-		.useValue({})
-		.overrideProvider(RedisService)
 		.useValue({})
 		.overrideProvider(InboundMessageAuthRepository)
 		.useValue({})
