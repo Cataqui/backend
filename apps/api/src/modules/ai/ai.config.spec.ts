@@ -17,45 +17,45 @@ describe("aiConfig", () => {
 
 	it("should load cloudflareAccountId from CLOUDFLARE_ACCOUNT_ID", () => {
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
-		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
-		process.env["CLOUDFLARE_AI_GATEWAY_ID"] = "test-gateway";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"] = "test-token";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
 
 		const config: IAiConfig = aiConfig();
 
 		expect(config.cloudflareAccountId).toBe("test-account");
 	});
 
-	it("should load aiApiToken from AI_GATEWAY_API_TOKEN", () => {
+	it("should load deriveJobDataAiGatewayApiToken from DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN", () => {
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
-		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
-		process.env["CLOUDFLARE_AI_GATEWAY_ID"] = "test-gateway";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"] = "test-token";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
 
 		const config: IAiConfig = aiConfig();
 
-		expect(config.aiApiToken).toBe("test-token");
+		expect(config.deriveJobDataAiGatewayApiToken).toBe("test-token");
 	});
 
-	it("should load cloudflareAiGatewayId from CLOUDFLARE_AI_GATEWAY_ID", () => {
+	it("should load deriveJobDataAiGatewayId from DERIVE_JOB_DATA_AI_GATEWAY_ID", () => {
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
-		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
-		process.env["CLOUDFLARE_AI_GATEWAY_ID"] = "test-gateway";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"] = "test-token";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
 
 		const config: IAiConfig = aiConfig();
 
-		expect(config.cloudflareAiGatewayId).toBe("test-gateway");
+		expect(config.deriveJobDataAiGatewayId).toBe("test-gateway");
 	});
 
 	it("should load all three config values", () => {
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "account-123";
-		process.env["AI_GATEWAY_API_TOKEN"] = "token-456";
-		process.env["CLOUDFLARE_AI_GATEWAY_ID"] = "gateway-789";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"] = "token-456";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "gateway-789";
 
 		const config: IAiConfig = aiConfig();
 
 		expect(config).toEqual({
 			cloudflareAccountId: "account-123",
-			aiApiToken: "token-456",
-			cloudflareAiGatewayId: "gateway-789",
+			deriveJobDataAiGatewayApiToken: "token-456",
+			deriveJobDataAiGatewayId: "gateway-789",
 		});
 	});
 });

@@ -33,8 +33,8 @@ vi.mock("ai-gateway-provider/providers/unified", () => ({
 
 const mockConfig = {
 	cloudflareAccountId: "test-account",
-	aiApiToken: "test-token",
-	cloudflareAiGatewayId: "test-gateway",
+	deriveJobDataAiGatewayApiToken: "test-token",
+	deriveJobDataAiGatewayId: "test-gateway",
 };
 
 describe("AiService", () => {

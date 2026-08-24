@@ -14,17 +14,17 @@ import { aiConfig } from "./ai.config";
 
 @Injectable()
 export class AiService {
-	private readonly _gateway: AiGateway;
+	private readonly _deriveJobDataGateway: AiGateway;
 	private readonly _unifiedProvider: ReturnType<typeof createUnified>;
 
 	constructor(
 		@Inject(aiConfig.KEY)
 		config: ConfigType<typeof aiConfig>,
 	) {
-		this._gateway = createAiGateway({
+		this._deriveJobDataGateway = createAiGateway({
 			accountId: config.cloudflareAccountId,
-			gateway: config.cloudflareAiGatewayId,
-			apiKey: config.aiApiToken,
+			gateway: config.deriveJobDataAiGatewayId,
+			apiKey: config.deriveJobDataAiGatewayApiToken,
 			options: {
 				collectLog: false,
 				skipCache: true,
@@ -45,7 +45,9 @@ export class AiService {
 	}): Promise<InferSchema<SCHEMA>> {
 		const generateObjectOnce = async (): Promise<InferSchema<SCHEMA>> => {
 			const { output } = await aiGenerateText({
-				model: this._gateway(this._unifiedProvider(this._getGatewayModelForTask({ task: params.task }))),
+				model: this._getGatewayForTask({ task: params.task })(
+					this._unifiedProvider(this._getGatewayModelForTask({ task: params.task })),
+				),
 				system: params.system,
 				prompt: params.prompt,
 				output: Output.object({
@@ -65,6 +67,13 @@ export class AiService {
 			if (!NoObjectGeneratedError.isInstance(error)) throw error;
 
 			return generateObjectOnce();
+		}
+	}
+
+	private _getGatewayForTask(params: { task: AiTask }): AiGateway {
+		switch (params.task) {
+			case AiTask.DERIVE_JOB_DATA:
+				return this._deriveJobDataGateway;
 		}
 	}
 

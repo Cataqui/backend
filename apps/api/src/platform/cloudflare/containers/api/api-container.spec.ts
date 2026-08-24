@@ -11,8 +11,8 @@ describe("ApiContainer request boundary", () => {
 				DATABASE_APP_POOLER_URL: "postgresql://pooler",
 				CORS_ORIGINS: "https://cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "account-id",
-				AI_GATEWAY_API_TOKEN: "gateway-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "gateway-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "gateway-id",
 				REDIS_URL: "rediss://redis.example.com:6380",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "redis-password",
@@ -32,8 +32,8 @@ describe("ApiContainer request boundary", () => {
 			DATABASE_APP_POOLER_URL: "postgresql://pooler",
 			CORS_ORIGINS: "https://cataqui.com",
 			CLOUDFLARE_ACCOUNT_ID: "account-id",
-			AI_GATEWAY_API_TOKEN: "gateway-token",
-			CLOUDFLARE_AI_GATEWAY_ID: "gateway-id",
+			DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "gateway-token",
+			DERIVE_JOB_DATA_AI_GATEWAY_ID: "gateway-id",
 			REDIS_URL: "rediss://redis.example.com:6380",
 			REDIS_USERNAME: "runtime",
 			REDIS_PASSWORD: "redis-password",
@@ -53,6 +53,17 @@ describe("ApiContainer request boundary", () => {
 		);
 
 		expect(container.pingEndpoint).toBe("localhost/v1/health/live");
+	});
+
+	it("should omit the Redis CA certificate when the binding is unavailable", () => {
+		const container = new ApiContainer(
+			{} as never,
+			{
+				SLEEP_AFTER: "5m",
+			} as ApiWorkerEnv,
+		);
+
+		expect(container.envVars).not.toHaveProperty("REDIS_CA_CERT_BASE64");
 	});
 
 	it("should hide internal paths from externally forwarded requests", async () => {

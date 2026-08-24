@@ -3,7 +3,7 @@
 	"account_id": "1fca946385505503c59dd6a2a4eeb442",
 	"name": "cataqui-api-development",
 	"main": "./src/platform/cloudflare/workers/api/worker.ts",
-	"tsconfig": "./tsconfig.worker.json",
+	"tsconfig": "./src/platform/cloudflare/tsconfig.json",
 	"compatibility_date": "2025-12-18",
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": true,
@@ -67,7 +67,7 @@
 		"NODE_ENV": "development",
 		"SLEEP_AFTER": "5m",
 		"CORS_ORIGINS": "http://localhost:3000",
-		"CLOUDFLARE_AI_GATEWAY_ID": "development",
+		"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-development",
 		"API_CONTAINER_POOL_SIZE": "1",
 		"WHATSAPP_AUTH_RECEIVER": "+15556625497"
 	},
@@ -75,7 +75,7 @@
 		"required": [
 			"CLOUDFLARE_ACCOUNT_ID",
 			"DATABASE_APP_POOLER_URL",
-			"AI_GATEWAY_API_TOKEN",
+			"DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN",
 			"REDIS_URL",
 			"REDIS_USERNAME",
 			"REDIS_PASSWORD",
@@ -136,7 +136,7 @@
 				"NODE_ENV": "staging",
 				"SLEEP_AFTER": "5m",
 				"CORS_ORIGINS": "https://staging.cataqui.com",
-				"CLOUDFLARE_AI_GATEWAY_ID": "staging",
+				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-staging",
 				"API_CONTAINER_POOL_SIZE": "3",
 				"WHATSAPP_AUTH_RECEIVER": "+15556625497"
 			},
@@ -144,7 +144,7 @@
 				"required": [
 					"CLOUDFLARE_ACCOUNT_ID",
 					"DATABASE_APP_POOLER_URL",
-					"AI_GATEWAY_API_TOKEN",
+					"DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN",
 					"REDIS_URL",
 					"REDIS_USERNAME",
 					"REDIS_PASSWORD",
@@ -203,7 +203,7 @@
 				"NODE_ENV": "production",
 				"SLEEP_AFTER": "1h",
 				"CORS_ORIGINS": "https://cataqui.com",
-				"CLOUDFLARE_AI_GATEWAY_ID": "production",
+				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-production",
 				"API_CONTAINER_POOL_SIZE": "10",
 				"WHATSAPP_AUTH_RECEIVER": "+5511963270517"
 			},
@@ -211,7 +211,7 @@
 				"required": [
 					"CLOUDFLARE_ACCOUNT_ID",
 					"DATABASE_APP_POOLER_URL",
-					"AI_GATEWAY_API_TOKEN",
+					"DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN",
 					"REDIS_URL",
 					"REDIS_USERNAME",
 					"REDIS_PASSWORD",

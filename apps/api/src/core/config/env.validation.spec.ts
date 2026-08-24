@@ -14,8 +14,8 @@ function _createValidEnvironment(): Record<string, string> {
 		DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 		CORS_ORIGINS: "http://localhost:3000",
 		CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-		AI_GATEWAY_API_TOKEN: "test-api-token",
-		CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+		DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+		DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 		REDIS_URL: "redis://redis.example.com:6379",
 		REDIS_USERNAME: "runtime",
 		REDIS_PASSWORD: "test-password",
@@ -32,8 +32,8 @@ describe("EnvSchema", () => {
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CORS_ORIGINS: "http://localhost:3000",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "rediss://redis.example.com:6380",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
@@ -72,8 +72,8 @@ describe("EnvSchema", () => {
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "redis://redis.example.com:6379",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
@@ -90,8 +90,8 @@ describe("EnvSchema", () => {
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "redis://redis.example.com:6379",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
@@ -197,6 +197,13 @@ describe("EnvSchema", () => {
 			expect(EnvSchema.safeParse(environment).success).toBe(false);
 		});
 
+		it("should require a Redis CA certificate in production", () => {
+			const environment = _createValidEnvironment();
+			environment["NODE_ENV"] = "production";
+
+			expect(EnvSchema.safeParse(environment).success).toBe(false);
+		});
+
 		it("should fail when DATABASE_APP_POOLER_URL is missing", () => {
 			const environment = _createValidEnvironment();
 			delete environment["DATABASE_APP_POOLER_URL"];
@@ -220,8 +227,8 @@ describe("EnvSchema", () => {
 				CORS_ORIGINS: "http://localhost:3000",
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "redis://redis.example.com:6379",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
@@ -254,8 +261,8 @@ describe("EnvSchema", () => {
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CORS_ORIGINS: "http://localhost:3000",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "redis://redis.example.com:6379",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
@@ -273,8 +280,8 @@ describe("EnvSchema", () => {
 				CORS_ORIGINS: "https://cataqui.com,https://app.cataqui.com",
 				DATABASE_APP_POOLER_URL: "postgresql://user:pass@localhost:5432/db",
 				CLOUDFLARE_ACCOUNT_ID: "test-account-id",
-				AI_GATEWAY_API_TOKEN: "test-api-token",
-				CLOUDFLARE_AI_GATEWAY_ID: "test-gateway-id",
+				DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: "test-api-token",
+				DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
 				REDIS_URL: "redis://redis.example.com:6379",
 				REDIS_USERNAME: "runtime",
 				REDIS_PASSWORD: "test-password",
