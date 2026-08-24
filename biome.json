@@ -15,6 +15,7 @@
 			"apps/**/*.jsonc",
 			"apps/**/*.mjs",
 			"apps/**/*.ts",
+			"infrastructure/**/*.mjs",
 			"packages/**/*.json",
 			"packages/**/*.mjs",
 			"packages/**/*.ts",

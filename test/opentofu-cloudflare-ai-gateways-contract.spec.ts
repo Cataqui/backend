@@ -75,7 +75,14 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 	it("should centralize stable provider identifiers as committed non-secret configuration", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
 		expect(platforms).toEqual({
-			cloudflare: { account_id: "1fca946385505503c59dd6a2a4eeb442" },
+			cloudflare: {
+				account_id: "1fca946385505503c59dd6a2a4eeb442",
+				zones: {
+					"cataqui.com": {
+						zone_id: "0c75bfd5c20cdbb338d44e62bcde8acc",
+					},
+				},
+			},
 			infisical: { project_id: "954d434f-7e08-4904-af66-0bf62377794e" },
 		});
 

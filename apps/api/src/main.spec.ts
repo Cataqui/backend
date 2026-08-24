@@ -47,20 +47,27 @@ describe("application startup logging", () => {
 
 	it("should emit only warnings and errors through Nest in production", async () => {
 		const originalEnvironment = process.env["NODE_ENV"];
+		const originalRedisCaCertificate = process.env["REDIS_CA_CERT_BASE64"];
 		const originalExitCode = process.exitCode;
 		process.env["NODE_ENV"] = "production";
+		process.env["REDIS_CA_CERT_BASE64"] = Buffer.from("certificate").toString("base64");
 		vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 		createNestApplication.mockRejectedValueOnce(new Error("Startup dependency failed"));
 
-		await import("./main");
-		await vi.waitFor(() => expect(createNestApplication).toHaveBeenCalled(), { timeout: 5_000 });
-		if (originalEnvironment === undefined) delete process.env["NODE_ENV"];
-		else process.env["NODE_ENV"] = originalEnvironment;
-		process.exitCode = originalExitCode;
+		try {
+			await import("./main");
+			await vi.waitFor(() => expect(createNestApplication).toHaveBeenCalled(), { timeout: 5_000 });
 
-		expect(createNestApplication.mock.calls[0]?.[2]).toEqual({
-			abortOnError: false,
-			logger: ["error", "warn", "fatal"],
-		});
+			expect(createNestApplication.mock.calls[0]?.[2]).toEqual({
+				abortOnError: false,
+				logger: ["error", "warn", "fatal"],
+			});
+		} finally {
+			if (originalEnvironment === undefined) delete process.env["NODE_ENV"];
+			else process.env["NODE_ENV"] = originalEnvironment;
+			if (originalRedisCaCertificate === undefined) delete process.env["REDIS_CA_CERT_BASE64"];
+			else process.env["REDIS_CA_CERT_BASE64"] = originalRedisCaCertificate;
+			process.exitCode = originalExitCode;
+		}
 	});
 });
