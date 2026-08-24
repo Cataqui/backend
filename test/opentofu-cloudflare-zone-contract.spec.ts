@@ -156,6 +156,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"infisical-generated-folders",
 			"neon-database-access",
 			"neon-projects",
+			"upstash-redis",
 		]);
 		expect(runner).toContain('new URL("./roots/", import.meta.url)');
 		expect(runner).not.toContain("cloudflare-ai-gateways");
