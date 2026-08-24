@@ -29,7 +29,7 @@ type WorkerEnvironment = {
 };
 
 type WorkerConfig = WorkerEnvironment & {
-	account_id: string;
+	account_id?: string;
 	main: string;
 	durable_objects?: unknown;
 	env: Record<"staging" | "production", WorkerEnvironment>;
@@ -37,6 +37,10 @@ type WorkerConfig = WorkerEnvironment & {
 
 const webhooksConfig = ts.readConfigFile(resolve(process.cwd(), "wrangler.jsonc"), ts.sys.readFile)
 	.config as WorkerConfig;
+const deploymentActionSource = readFileSync(
+	resolve(process.cwd(), "../../../.github/actions/deploy-cloudflare-webhooks-worker/action.yml"),
+	"utf8",
+);
 const packageScripts = (
 	JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
 		scripts: Record<string, string>;
@@ -44,8 +48,9 @@ const packageScripts = (
 ).scripts;
 
 describe("Webhooks Worker configuration", () => {
-	it("should commit the public Cloudflare deployment account", () => {
-		expect(webhooksConfig.account_id).toBe("1fca946385505503c59dd6a2a4eeb442");
+	it("should resolve the Cloudflare deployment account from the platform catalog", () => {
+		expect(webhooksConfig.account_id).toBeUndefined();
+		expect(deploymentActionSource).toContain(".cloudflare.accountId");
 	});
 
 	it("should use generic Webhooks Worker names in every environment", () => {
@@ -153,7 +158,7 @@ describe("Webhooks Worker configuration", () => {
 			webhooksHasWebhookSecrets:
 				webhooksEnvSource.includes("META_APP_SECRET") &&
 				webhooksEnvSource.includes("WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"),
-			webhooksHasRedisCredentials: webhooksEnvSource.includes("UPSTASH_REDIS"),
+			webhooksHasRedisCredentials: webhooksEnvSource.includes("REDIS_"),
 		}).toEqual({
 			webhooksHasOutboundToken: false,
 			webhooksHasWebhookSecrets: true,

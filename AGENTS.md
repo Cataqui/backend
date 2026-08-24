@@ -2,24 +2,27 @@
 
 ## Mission and Scope
 
-This repository is the Cataquí backend monorepo. It owns the private user API, provider-ingress and supporting Cloudflare Workers, narrowly scoped runtime contracts, and backend delivery infrastructure. It does not own the admin API or account/zone infrastructure such as DNS, DNSSEC, WAF, bot controls, or zone security.
+This repository is the Cataquí backend monorepo. It owns the APIs and backend infraestructure needed to run Cataquí as the best way as possible.
 
-Cataquí is the real-time opportunity layer of the city. Optimize every product-facing change for fast discovery, low friction, local relevance, freshness, and trust. Do not turn the product into corporate recruiting or staffing software.
+Cataquí is the real-time gig/freelance layer of the city, containing all the local opportunities in a single app, making it easy to discover jobs/gigs/freelance and make fast local money. Optimize every product-facing change for fast discovery, low friction, local relevance, freshness, and trust. Do not turn the product into corporate recruiting or staffing software.
 
 ## Workspace Ownership
 
-- `apps/api` owns the NestJS application, Prisma schema and migrations, API routing Worker, API container boundary, and API image.
-- `apps/workers/*` contains independently deployable Cloudflare Workers. Applications must not import one another.
-- `packages/api-internal-ingress` owns only typed private ingress contracts and transport adapters for direct Worker calls and Queue delivery into the API container.
-- `packages/microservices-auth-contracts` owns only runtime-neutral JWT and JWKS contracts shared by token issuers and verifiers.
-- `infrastructure` owns backend runtime dependencies such as Neon, Upstash, Queues, and AI Gateway delivery.
+- `apps/api` owns the NestJS application, Prisma schema and migrations, API routing Worker, API container boundary, and API image. This API is the main orchestrator and main entry point for most things related directly to what Cataquí is. This own the core of cataqui, things like posting jobs, getting feed, etc. 
+- `apps/workers/*` contains independently deployable Cloudflare Workers microservices. These are made to not stress the main API over stuff that can be independently managed and are not core to Cataquí. Things such as webhook services, Address searching services and non critical services should have a worker instead of being embedded in the main API.
+- `packages/*` owns shared packages across apps. Things that many different apps access should be declared here instead of duplicating work.
+- `infrastructure` owns the whole infrastructure for running all Cataquí products, including the complete `cataqui.com` Cloudflare zone: DNS, DNSSEC, WAF, bot management, rate limits, and zone settings.
 
 Cross-workspace behavior must use a named package and its public `package.json` exports. Never use relative imports across workspace boundaries, deep-import another workspace, or create generic `common`, `shared`, or `utils` packages. Keep provider-owned contracts at their integration boundary even when their current fields resemble an owned contract.
 
+## Instruction Scope
+
+Before changing a file, check its directory and parent directories for nested `AGENTS.md` files. Apply every applicable instruction; when instructions conflict, the `AGENTS.md` closest to the file being changed takes precedence over parent guidance.
+
 ## Toolchain
 
-- Use Node.js 24, TypeScript 6, pnpm, Biome, Vitest, and Wrangler.
-- Use only the root `pnpm-lock.yaml`; never add npm, Yarn, or Bun lockfiles.
+- Node.js 24, TypeScript 6, pnpm, Biome, Vitest, Wrangler and OpenTofu for infrastructure setup.
+- Only the root `pnpm-lock.yaml`; never add npm, Yarn, or Bun lockfiles.
 - Add dependencies to the workspace that imports them. Use `workspace:*` for internal packages and the root catalog for genuinely shared versions.
 - Every application and package must keep independent `build`, `typecheck`, `test`, `test:cov`, and `clean` scripts.
 - Shared packages publish compiled `dist` entrypoints. Build dependencies before consumers with recursive or dependency-aware pnpm filters.
@@ -46,4 +49,4 @@ Cross-workspace behavior must use a named package and its public `package.json` 
 
 ## Skills
 
-Keep every skill and its registry ownership at the repository root so the complete backend toolset is available from every workspace. Registry-backed skills live in the root `skills-lock.json` and are restored with the pinned root `pnpm skills:install` command. Keep their root `.agents/skills` installations tracked; `unit-test-writer` remains the documented vendored exception without a registry source.
+Skills are available at `.agents/skills/`. Always check available skills before performing actions to ensure you are doing the correct stuff. Never think alone about something if a skill to help you is available.

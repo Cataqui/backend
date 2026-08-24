@@ -7,6 +7,7 @@ import { configureApp } from "../src/core/app.factory";
 import { requestSizeConfig } from "../src/core/config/request-size.config";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
 import { PrismaService } from "../src/core/prisma/prisma.service";
+import { RedisService } from "../src/core/redis/redis.service";
 import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
 
 process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
@@ -17,6 +18,8 @@ async function buildApp(): Promise<NestFastifyApplication> {
 		imports: [AppModule],
 	})
 		.overrideProvider(PrismaService)
+		.useValue({})
+		.overrideProvider(RedisService)
 		.useValue({})
 		.overrideProvider(InboundMessageAuthRepository)
 		.useValue({})

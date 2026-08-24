@@ -1,6 +1,6 @@
 /infrastructure/ @Cataqui/backend
 /.github/CODEOWNERS @Cataqui/project
-/.github/dependabot.yml @Cataqui/security
+/.github/renovate.json @Cataqui/security
 /.github/actions/ @Cataqui/ci-cd
 /.github/workflows/ @Cataqui/ci-cd
 /apps/api/wrangler.jsonc @Cataqui/backend

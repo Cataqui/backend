@@ -13,7 +13,7 @@ type GeosearchWorkerEnvironment = {
 };
 
 type GeosearchWorkerConfig = GeosearchWorkerEnvironment & {
-	account_id: string;
+	account_id?: string;
 	main: string;
 	env: Record<"production" | "staging", GeosearchWorkerEnvironment>;
 };
@@ -26,9 +26,9 @@ const deploymentActionSource = readFileSync(
 	resolve(repositoryRoot, ".github/actions/deploy-cloudflare-geosearch-worker/action.yml"),
 	"utf8",
 );
-const deploymentWorkflowSources = ["deploy-staging.yml", "deploy-production.yml"].map((fileName) =>
-	readFileSync(resolve(repositoryRoot, ".github/workflows", fileName), "utf8"),
-);
+const deploymentWorkflowSources = [
+	readFileSync(resolve(repositoryRoot, ".github/workflows/deploy-environment.yml"), "utf8"),
+];
 const packageScripts = (
 	JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
 		scripts: Record<string, string>;
@@ -61,7 +61,8 @@ describe("Geosearch Worker configuration", () => {
 
 	it("should expose independent Worker names and the exact protected custom domains", () => {
 		expect({
-			accountId: geosearchWorkerConfig.account_id,
+			accountIdInConfig: geosearchWorkerConfig.account_id,
+			deploymentUsesCatalog: deploymentActionSource.includes(".cloudflare.accountId"),
 			main: geosearchWorkerConfig.main,
 			names: [
 				geosearchWorkerConfig.name,
@@ -76,7 +77,8 @@ describe("Geosearch Worker configuration", () => {
 				geosearchWorkerConfig.env.production.workers_dev,
 			],
 		}).toEqual({
-			accountId: "1fca946385505503c59dd6a2a4eeb442",
+			accountIdInConfig: undefined,
+			deploymentUsesCatalog: true,
 			main: "./src/app.ts",
 			names: ["cataqui-geosearch-development", "cataqui-geosearch-staging", "cataqui-geosearch-production"],
 			stagingRoutes: [{ pattern: "staging.geosearch.cataqui.com", custom_domain: true }],
@@ -131,8 +133,7 @@ describe("Geosearch Worker configuration", () => {
 			workflowsUseAction: deploymentWorkflowSources.every((source) =>
 				source.includes("uses: ./.github/actions/deploy-cloudflare-geosearch-worker"),
 			),
-			productionDomain:
-				deploymentWorkflowSources.at(1)?.includes("readiness-url: https://geosearch.cataqui.com/v1/health") ?? false,
+			productionDomain: deploymentWorkflowSources[0]?.includes("https://geosearch.cataqui.com/v1/health") ?? false,
 			strictDeploy:
 				deploymentActionSource.includes("workingDirectory: apps/workers/geosearch") &&
 				deploymentActionSource.includes("deploy --strict --config wrangler.jsonc") &&

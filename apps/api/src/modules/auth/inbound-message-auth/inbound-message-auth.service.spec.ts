@@ -181,7 +181,7 @@ describe("InboundMessageAuthService", () => {
 	});
 
 	it("should propagate an internal storage failure to the global error filter", async () => {
-		const storageError = new Error("UPSTASH_REDIS_REST_TOKEN rejected");
+		const storageError = new Error("REDIS_PASSWORD rejected");
 		repository.createIntent.mockRejectedValue(storageError);
 
 		await expect(service.createIntent({ channel: InboundMessageAuthChannel.WHATSAPP })).rejects.toBe(storageError);

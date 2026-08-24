@@ -1,8 +1,7 @@
 import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { errors as UpstashRedisErrors } from "@upstash/redis";
 import { createHash } from "node:crypto";
-import { RedisService } from "../../../../core/redis/redis.service";
+import { RedisCommandError, RedisService } from "../../../../core/redis/redis.service";
 import { InboundMessageAuthChannel } from "../enums/inbound-message-auth-channel.enum";
 import { InboundMessageAuthIntentStatus } from "../enums/inbound-message-auth-intent-status.enum";
 import { InboundMessageAuthProcessingInProgressError } from "../errors/inbound-message-auth-processing-in-progress.error";
@@ -45,13 +44,12 @@ describe("InboundMessageAuthRepository", () => {
 	let findIntentByTokenHashScriptExec: ReturnType<typeof vi.fn>;
 	let getIntentOrNullAndMarkAsProcessingScriptExec: ReturnType<typeof vi.fn>;
 	let markProcessingIntentAsVerifiedScriptExec: ReturnType<typeof vi.fn>;
-	let preloadScript: ReturnType<typeof vi.fn>;
 	let preloadScripts: ReturnType<typeof vi.fn>;
 	let verificationSubscriber: ReturnType<typeof _createVerificationSubscriberTestDouble>;
 	let redis: {
 		createScript: ReturnType<typeof vi.fn>;
 		eval: ReturnType<typeof vi.fn>;
-		pipeline: ReturnType<typeof vi.fn>;
+		preloadScripts: ReturnType<typeof vi.fn>;
 		set: ReturnType<typeof vi.fn>;
 		subscribe: ReturnType<typeof vi.fn>;
 	};
@@ -62,14 +60,8 @@ describe("InboundMessageAuthRepository", () => {
 		findIntentByTokenHashScriptExec = vi.fn();
 		getIntentOrNullAndMarkAsProcessingScriptExec = vi.fn();
 		markProcessingIntentAsVerifiedScriptExec = vi.fn();
-		preloadScript = vi.fn();
 		preloadScripts = vi.fn();
 		verificationSubscriber = _createVerificationSubscriberTestDouble();
-		const scriptPreloadPipeline = {
-			scriptLoad: preloadScript,
-			exec: preloadScripts,
-		};
-		preloadScript.mockReturnValue(scriptPreloadPipeline);
 
 		let createdScriptCount = 0;
 		redis = {
@@ -85,7 +77,7 @@ describe("InboundMessageAuthRepository", () => {
 				return { script: script, exec: exec };
 			}),
 			eval: vi.fn(),
-			pipeline: vi.fn(() => scriptPreloadPipeline),
+			preloadScripts: preloadScripts,
 			set: vi.fn().mockResolvedValue("OK"),
 			subscribe: vi.fn(() => verificationSubscriber),
 		};
@@ -101,17 +93,15 @@ describe("InboundMessageAuthRepository", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("should preload the critical inbound-message scripts with one Redis request before serving traffic", async () => {
+	it("should preload the critical inbound-message scripts before serving traffic", async () => {
 		await repository.onModuleInit();
 
-		expect(redis.pipeline).toHaveBeenCalledOnce();
-		expect(preloadScript).toHaveBeenCalledTimes(3);
-		expect(preloadScript.mock.calls).toEqual([
-			[expect.stringContaining('redis.call("HMGET", KEYS[1]')],
-			[expect.stringContaining('redis.call("HMGET", intentKey')],
-			[expect.stringContaining('redis.call("HSET", KEYS[1]')],
-		]);
 		expect(preloadScripts).toHaveBeenCalledOnce();
+		expect(preloadScripts).toHaveBeenCalledWith([
+			expect.stringContaining('redis.call("HMGET", KEYS[1]'),
+			expect.stringContaining('redis.call("HMGET", intentKey'),
+			expect.stringContaining('redis.call("HSET", KEYS[1]'),
+		]);
 	});
 
 	it("should preserve startup availability when first-use script loading can recover from a preload failure", async () => {
@@ -248,9 +238,7 @@ describe("InboundMessageAuthRepository", () => {
 
 	it("should replace command-bearing Redis failures with a safe intent-lookup error", async () => {
 		const intentTokenHash = "b".repeat(64);
-		findIntentByTokenHashScriptExec.mockRejectedValue(
-			new UpstashRedisErrors.UpstashError(`redis unavailable, command was: ${intentTokenHash}`),
-		);
+		findIntentByTokenHashScriptExec.mockRejectedValue(new RedisCommandError());
 
 		const error = await repository
 			.findIntentByTokenHash({

@@ -1,4 +1,5 @@
 node_modules/
+gha-creds-*.json
 dist/
 .env
 .infisical-secrets
@@ -25,6 +26,9 @@ bun.lockb
 *.tfstate.*
 *.tfplan
 tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
 crash.log
 crash.*.log
 override.tf

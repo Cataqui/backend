@@ -3,7 +3,7 @@ import { ConfigModule as NestConfigModule } from "@nestjs/config";
 import { databaseConfig } from "./database.config";
 import { EnvSchema } from "./env.validation";
 import { requestSizeConfig } from "./request-size.config";
-import { upstashRedisConfig } from "./upstash-redis.config";
+import { redisConfig } from "./redis.config";
 
 @Global()
 @Module({
@@ -11,7 +11,7 @@ import { upstashRedisConfig } from "./upstash-redis.config";
 		NestConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: ".env",
-			load: [requestSizeConfig, upstashRedisConfig],
+			load: [requestSizeConfig, redisConfig],
 			validate: (config: Record<string, unknown>) => {
 				const result = EnvSchema.safeParse(config);
 
@@ -36,10 +36,10 @@ import { upstashRedisConfig } from "./upstash-redis.config";
 			useFactory: requestSizeConfig,
 		},
 		{
-			provide: upstashRedisConfig.KEY,
-			useFactory: upstashRedisConfig,
+			provide: redisConfig.KEY,
+			useFactory: redisConfig,
 		},
 	],
-	exports: [databaseConfig.KEY, requestSizeConfig.KEY, upstashRedisConfig.KEY],
+	exports: [databaseConfig.KEY, requestSizeConfig.KEY, redisConfig.KEY],
 })
 export class ConfigModule {}

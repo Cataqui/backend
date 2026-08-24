@@ -17,7 +17,7 @@ type WorkerEnvironment = {
 };
 
 type WorkerConfig = WorkerEnvironment & {
-	account_id: string;
+	account_id?: string;
 	cache?: { cross_version_cache?: boolean; enabled: boolean };
 	exports?: Record<string, { cache?: { enabled: boolean }; type: string }>;
 	main: string;
@@ -34,11 +34,17 @@ const webhooksConfig = ts.readConfigFile(
 
 describe("API and Webhooks Worker configuration integration", () => {
 	it("should use one deployment account and independent entrypoints", () => {
+		const deploymentActions = [
+			readFileSync(resolve(repositoryRoot, ".github/actions/deploy-cloudflare-api-worker/action.yml"), "utf8"),
+			readFileSync(resolve(repositoryRoot, ".github/actions/deploy-cloudflare-webhooks-worker/action.yml"), "utf8"),
+		];
 		expect({
 			accounts: [apiConfig.account_id, webhooksConfig.account_id],
+			actionsUseCatalog: deploymentActions.every((source) => source.includes(".cloudflare.accountId")),
 			entrypoints: [apiConfig.main, webhooksConfig.main],
 		}).toEqual({
-			accounts: ["1fca946385505503c59dd6a2a4eeb442", "1fca946385505503c59dd6a2a4eeb442"],
+			accounts: [undefined, undefined],
+			actionsUseCatalog: true,
 			entrypoints: ["./src/platform/cloudflare/workers/api/worker.ts", "./src/app.ts"],
 		});
 	});
@@ -162,7 +168,7 @@ describe("API and Webhooks Worker configuration integration", () => {
 			apiHasOutboundToken: apiEnvironmentSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN"),
 			apiHasWebhookSecret: apiEnvironmentSource.includes("META_APP_SECRET"),
 			webhooksHasOutboundToken: webhooksEnvironmentSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN"),
-			webhooksHasRedisCredentials: webhooksEnvironmentSource.includes("UPSTASH_REDIS"),
+			webhooksHasRedisCredentials: webhooksEnvironmentSource.includes("REDIS_"),
 			webhooksHasWebhookSecrets:
 				webhooksEnvironmentSource.includes("META_APP_SECRET") &&
 				webhooksEnvironmentSource.includes("WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"),

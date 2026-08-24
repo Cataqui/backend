@@ -1,7 +1,6 @@
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
-import { errors as UpstashRedisErrors } from "@upstash/redis";
 import { createHash, randomUUID } from "node:crypto";
-import { RedisService } from "../../../../core/redis/redis.service";
+import { RedisCommandError, RedisService } from "../../../../core/redis/redis.service";
 import { InboundMessageAuthChannel } from "../enums/inbound-message-auth-channel.enum";
 import { InboundMessageAuthIntentStatus } from "../enums/inbound-message-auth-intent-status.enum";
 import { InboundMessageAuthProcessingInProgressError } from "../errors/inbound-message-auth-processing-in-progress.error";
@@ -136,12 +135,11 @@ export class InboundMessageAuthRepository implements OnModuleInit {
 
 	async onModuleInit(): Promise<void> {
 		try {
-			await this._redis
-				.pipeline()
-				.scriptLoad(this._findIntentByTokenHashScript.script)
-				.scriptLoad(this._getIntentOrNullAndMarkAsProcessingScript.script)
-				.scriptLoad(this._markProcessingIntentAsVerifiedScript.script)
-				.exec();
+			await this._redis.preloadScripts([
+				this._findIntentByTokenHashScript.script,
+				this._getIntentOrNullAndMarkAsProcessingScript.script,
+				this._markProcessingIntentAsVerifiedScript.script,
+			]);
 		} catch {
 			this._logger.warn("Inbound-message authentication scripts could not be preloaded; first use will load them");
 		}
@@ -196,7 +194,7 @@ export class InboundMessageAuthRepository implements OnModuleInit {
 				[],
 			);
 		} catch (error) {
-			if (!(error instanceof UpstashRedisErrors.UpstashError)) throw error;
+			if (!(error instanceof RedisCommandError)) throw error;
 			throw new Error("Inbound-message authentication intent lookup was rejected by Redis");
 		}
 

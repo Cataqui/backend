@@ -67,7 +67,7 @@ People, stores, venues, businesses, agencies, or individuals who need someone to
 
 1. A person or business posts a quick job/task.
 2. A worker opens the feed and discovers the opportunity.
-3. The worker taps the WhatsApp CTA.
+3. The worker taps the CTA (usually Whatsapp, iMessage etc.).
 4. The conversation happens outside the platform.
 5. If both sides agree, the worker does the job and gets paid.
 
@@ -98,14 +98,14 @@ Always optimize for:
 
 ### Runtime & Package Manager
 
-- Runtime: **Node.js 24.x**
+- Runtime: **Node.js**
 - Package manager: **pnpm**
 - Language: **TypeScript 6**
 - Framework: **NestJS**
 - HTTP adapter: **Fastify adapter**
 - ORM: **Prisma**
 - Database: **PostgreSQL on Neon**
-- Shared ephemeral state: **Upstash Redis**
+- Shared ephemeral state: **Redis Cloud**
 - Edge and asynchronous infrastructure: **Cloudflare Workers, Containers, and Queues**
 - File/media storage: **Cloudflare R2** or S3-compatible storage
 - Test framework: **Vitest**

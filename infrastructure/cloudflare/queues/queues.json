@@ -1,7 +1,0 @@
-{
-	"derive_job_data": {
-		"base_name": "cataqui-api-derive-job-data",
-		"primary_message_retention_seconds": 345600,
-		"dead_letter_message_retention_seconds": 1209600
-	}
-}

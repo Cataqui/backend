@@ -28,11 +28,13 @@
 		"skills:install": "npx --yes skills@1.5.23 experimental_install",
 		"test": "pnpm build:packages && pnpm test:repo && pnpm -r --if-present run test",
 		"test:api": "pnpm build:packages && pnpm --filter @cataqui/api run test",
-		"test:cov": "pnpm build:packages && pnpm test:repo && pnpm -r --if-present run test:cov",
+		"test:cov": "pnpm build:packages && pnpm test:repo:cov && pnpm -r --if-present run test:cov",
 		"test:geosearch": "pnpm build:packages && pnpm --filter @cataqui/geosearch-worker run test",
 		"test:repo": "vitest run --config vitest.config.ts",
+		"test:repo:cov": "vitest run --config vitest.config.ts --coverage",
 		"test:webhooks": "pnpm build:packages && pnpm --filter @cataqui/webhooks-worker run test",
-		"typecheck": "pnpm build:packages && pnpm -r --if-present run typecheck"
+		"typecheck": "pnpm build:packages && pnpm typecheck:infra && pnpm -r --if-present run typecheck",
+		"typecheck:infra": "tsc --project scripts/infra/tsconfig.json --noEmit"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",
@@ -40,8 +42,11 @@
 		"@commitlint/config-conventional": "^21.2.0",
 		"@types/node": "^24.13.3",
 		"@vitest/coverage-v8": "catalog:",
+		"cloudflare": "7.1.0",
+		"google-auth-library": "11.0.2",
 		"husky": "^9.1.7",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"zod": "catalog:"
 	}
 }

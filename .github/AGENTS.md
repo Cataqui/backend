@@ -4,35 +4,48 @@ These instructions apply to the GitHub automation scope containing this file.
 
 ## Prefer Maintained Automation
 
-Prefer official, provider-maintained CLIs or GitHub Actions over custom Bash that reimplements a provider API, authentication flow, retry policy, serialization format, or create/update behavior. Before adding a shell implementation, check the provider's current documentation, official GitHub organization, CLI, and Marketplace publisher.
+Prefer official, provider-maintained CLIs, SDKs, and GitHub Actions over custom code that reimplements authentication, retries, serialization, or provider lifecycle behavior. Verify the publisher, permissions, and source before adopting an action. Pin every external action to a full commit SHA with its release tag in a comment; pin CLIs and dependencies through a verified checksum or the repository lockfile.
 
-Marketplace availability alone is not evidence that an action is safe. Use an action only when its publisher and source repository are trustworthy, its permissions and data access are understood, and it materially reduces maintained code. Pin every external action to a full commit SHA and keep the human-readable release tag in a comment. Pin every downloaded CLI to an exact version and verify its published checksum or lockfile integrity before execution. Do not approve dependency lifecycle scripts that download unverified executables.
+Short orchestration around an official tool is appropriate. Keep shell blocks fail-closed with `set -euo pipefail`, do not print credentials, and extract code only when it needs focused tests or genuine reuse.
 
-Direct shell commands remain appropriate for short orchestration around an official CLI, repository-local validation, and behavior for which no maintained tool exists. Keep those blocks fail-closed with `set -euo pipefail`, avoid printing credentials, and extract them only when they become complex enough to need focused tests or genuine reuse.
+The SHA-pinned official `google-github-actions/auth` Action is the permitted Google workload-identity boundary for a protected job that needs a short-lived Google access token. Do not create or store a long-lived Google credential file in GitHub, Infisical, an artifact, or an action output.
 
-## Infisical Environment Names
+## Infisical and Credential Ownership
 
-Infisical is the source of truth for deployment credentials and linked provider configuration. Jobs that select a GitHub environment must authenticate to the matching Infisical environment through the shared credential-loading action and GitHub OIDC. Do not copy deployment credentials into GitHub Actions secrets.
+Infisical project `Cataquí Backend` is the source of truth for credentials. Address it only by the stable project ID defined in `infrastructure/platforms.json`; project names and slugs are not workflow identifiers. Protected jobs authenticate to the matching Infisical environment through GitHub OIDC. Never copy deployment credentials into GitHub Actions secrets.
 
-Use the same credential names and profile folders in the Infisical `staging` and `production` environments. Never encode an environment in a credential name or add workflow conditionals that select environment-specific names. The protected GitHub environment and job pass the matching Infisical environment slug.
+A credential profile is only an ordered array of exact, non-recursive Infisical paths. Do not duplicate secret-name inventories in the profile registry or fetch `/`, a recursive parent, or a sibling application folder. Reject duplicate keys when composing more than one exact path.
 
-Only these non-secret bootstrap identifiers belong in GitHub Actions variables:
+Use one environment-scoped GitHub deployment identity per environment. Bind it to numeric owner and repository IDs, the protected environment, trusted branch, and exact reusable workflow reference. Grant only the union of exact paths and access modes used by that workflow, and keep Infisical access tokens short-lived.
 
-- repository variable `INFISICAL_IDENTITY_ID`;
-- repository variable `INFISICAL_PROJECT_ID`;
-- repository variable `INFISICAL_PROJECT_SLUG`.
+The credential loader may mask and place validated values in the current protected job environment. It must never create secret outputs or artifacts. Temporary files belong in runner-temporary storage with mode `0600` and must be deleted unconditionally. Never pass a credential in a command argument, log line, GitHub output, or artifact. BYOK Google authentication uses the official action's ephemeral external-account ADC file and the official Google authentication library; it never exposes a Google access token as a workflow output, argument, log, or artifact.
 
-Every authenticated job must request `id-token: write` alongside the minimum existing permissions. Bind the Infisical machine identity to the repository, staging and production environment subjects, permitted branches, exact workflow set, repository ID, and owner ID. Use bounded OIDC alternatives rather than unrestricted wildcards. Keep credentials in non-recursive profile folders without secret imports. The shared identity requires write access because Terraform deployments synchronize generated runtime credentials into `/runtime` and Neon migration configuration into `/database`.
+Non-secret identifiers and automation identity IDs are generated by bootstrap as protected environment variables. Do not add project slugs, provider credentials, trusted bot identities, or duplicated secret-name inventories to those variables.
 
-Fetch credentials only after dependency and tool setup. Keep the Infisical action in file-export mode, validate the exact credential set without sourcing the file, mask outputs, delete the file immediately, and pass each output only to its consuming step.
+## OpenTofu Apply Contract
 
-## Adding a New Environment Variable
+Application infrastructure runs in isolated OpenTofu roots with encrypted state. Pull requests remain credential-free and do not plan. Protected pushes authenticate with GitHub OIDC, load the exact environment state profile from Infisical, use native S3 lockfiles, snapshot an existing state, and run one immediate `tofu apply -auto-approve -input=false`. Do not add saved plans, plan artifacts, approval jobs, HCP status gates, or scheduled drift workflows.
 
-In addition to the application and Cloudflare environment registrations required by the repository-wide guidance, update every applicable GitHub automation owner:
+Use native GitHub concurrency per environment and root with `cancel-in-progress: false`. Run dependent roots only after their selected prerequisites complete. Keep cross-root remote-state sharing disabled; exchange required identifiers through their exact Infisical folders.
 
-1. **Infisical** — Add the same name to the applicable isolated profile folder in the `staging` and `production` project environments with their environment-specific values.
-2. **Credential profile registry** — Add the name to every deployment responsibility that consumes it.
-3. **Environment deployment workflows** — Forward the fetched value to the application or deployment action in every deployed environment.
-4. **Owning Worker configuration** — Declare stable, non-sensitive Worker configuration directly in the environment-specific variables when it benefits from code review. Generated connection configuration may remain in Infisical beside its credential.
+## Provider Gaps
 
-Do not skip any applicable location. Missing one means the variable will not reach the container in that environment.
+When a provider has no suitable Terraform resource or maintained action, address the gap in the following order of preference:
+
+1. Install and use the provider's official CLI in actions if available.
+2. Use scripts only for cases where a CLI cannot be used, creating a small typed script connecting to the official API/SDK.
+
+Keep these scripts idempotent, narrowly authenticated, and limited to convergence plus the minimum read-after-write verification required to prove the requested mutation. Do not wrap them in a general broker, agent, command framework, or extra workflow layer.
+
+Do not keep permanent provider smoke machinery in deployment workflows. Places, Vertex, Queue delivery, database behavior, cache behavior, and Meta signatures are exercised in development and staging. A temporary implementation check may be used while introducing a change, but remove it after the implementation is proven. Ordinary application deployment health/readiness checks are not provider smokes.
+
+## Changing Runtime Configuration
+
+Update runtime configuration at its owning application or resource boundary:
+
+1. Update the authoritative application schema or provider contract.
+2. Put sensitive values in the owning exact Infisical folder for each environment; keep stable non-sensitive configuration in reviewed source when appropriate.
+3. Ensure only the consuming job composes the required exact paths.
+4. Update focused contract tests without duplicating the complete key list in workflow metadata or this guide.
+
+Missing configuration must fail before deployment. Do not grant recursive access or broaden another application's profile to make it pass.
