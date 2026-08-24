@@ -18,17 +18,9 @@ type GeosearchWorkerConfig = GeosearchWorkerEnvironment & {
 	env: Record<"production" | "staging", GeosearchWorkerEnvironment>;
 };
 
-const repositoryRoot = resolve(process.cwd(), "../../..");
 const geosearchWorkerConfig = ts.readConfigFile(resolve(process.cwd(), "wrangler.jsonc"), ts.sys.readFile)
 	.config as GeosearchWorkerConfig;
 const geosearchEnvironmentSource = readFileSync(resolve(process.cwd(), "geosearch-worker-env.d.ts"), "utf8");
-const deploymentActionSource = readFileSync(
-	resolve(repositoryRoot, ".github/actions/deploy-cloudflare-geosearch-worker/action.yml"),
-	"utf8",
-);
-const deploymentWorkflowSources = [
-	readFileSync(resolve(repositoryRoot, ".github/workflows/deploy-environment.yml"), "utf8"),
-];
 const packageScripts = (
 	JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
 		scripts: Record<string, string>;
@@ -61,8 +53,7 @@ describe("Geosearch Worker configuration", () => {
 
 	it("should expose independent Worker names and the exact protected custom domains", () => {
 		expect({
-			accountIdInConfig: geosearchWorkerConfig.account_id,
-			deploymentUsesCatalog: deploymentActionSource.includes(".cloudflare.accountId"),
+			accountId: geosearchWorkerConfig.account_id,
 			main: geosearchWorkerConfig.main,
 			names: [
 				geosearchWorkerConfig.name,
@@ -77,8 +68,7 @@ describe("Geosearch Worker configuration", () => {
 				geosearchWorkerConfig.env.production.workers_dev,
 			],
 		}).toEqual({
-			accountIdInConfig: undefined,
-			deploymentUsesCatalog: true,
+			accountId: "1fca946385505503c59dd6a2a4eeb442",
 			main: "./src/app.ts",
 			names: ["cataqui-geosearch-development", "cataqui-geosearch-staging", "cataqui-geosearch-production"],
 			stagingRoutes: [{ pattern: "staging.geosearch.cataqui.com", custom_domain: true }],
@@ -125,37 +115,6 @@ describe("Geosearch Worker configuration", () => {
 			generatedHasGoogleKey: true,
 			generatedHasEmbeddedJwks: false,
 			generatedHasPrivateSigner: false,
-		});
-	});
-
-	it("should deploy through an isolated strict action with readiness and rollback", () => {
-		expect({
-			workflowsUseAction: deploymentWorkflowSources.every((source) =>
-				source.includes("uses: ./.github/actions/deploy-cloudflare-geosearch-worker"),
-			),
-			productionDomain: deploymentWorkflowSources[0]?.includes("https://geosearch.cataqui.com/v1/health") ?? false,
-			strictDeploy:
-				deploymentActionSource.includes("workingDirectory: apps/workers/geosearch") &&
-				deploymentActionSource.includes("deploy --strict --config wrangler.jsonc") &&
-				!deploymentActionSource.includes("--cwd apps/workers/geosearch"),
-			isolatedSecretFile:
-				deploymentActionSource.includes("umask 077") &&
-				deploymentActionSource.includes("GOOGLE_PLACES_API_KEY: env.GOOGLE_PLACES_API_KEY") &&
-				deploymentActionSource.includes('run: rm -f -- "$SECRETS_FILE"'),
-			readiness: deploymentActionSource.includes('response_status" == "204"'),
-			rollback:
-				deploymentActionSource.includes("steps.readiness.outcome == 'failure'") &&
-				deploymentActionSource.includes("rollback --config wrangler.jsonc"),
-			forwardsAccountId:
-				deploymentActionSource.includes("cloudflare-account-id") || deploymentActionSource.includes("accountId:"),
-		}).toEqual({
-			workflowsUseAction: true,
-			productionDomain: true,
-			strictDeploy: true,
-			isolatedSecretFile: true,
-			readiness: true,
-			rollback: true,
-			forwardsAccountId: false,
 		});
 	});
 

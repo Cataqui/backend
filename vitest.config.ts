@@ -12,6 +12,6 @@ export default defineConfig({
 			},
 		},
 		globals: true,
-		include: ["test/**/*.spec.ts", "scripts/**/*.spec.ts"],
+		include: ["test/**/*.spec.ts"],
 	},
 });

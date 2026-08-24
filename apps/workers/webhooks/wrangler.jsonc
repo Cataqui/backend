@@ -1,5 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
 	"name": "cataqui-webhooks-development",
 	"main": "./src/app.ts",
 	"tsconfig": "./tsconfig.json",

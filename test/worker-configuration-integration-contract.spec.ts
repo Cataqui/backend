@@ -34,17 +34,11 @@ const webhooksConfig = ts.readConfigFile(
 
 describe("API and Webhooks Worker configuration integration", () => {
 	it("should use one deployment account and independent entrypoints", () => {
-		const deploymentActions = [
-			readFileSync(resolve(repositoryRoot, ".github/actions/deploy-cloudflare-api-worker/action.yml"), "utf8"),
-			readFileSync(resolve(repositoryRoot, ".github/actions/deploy-cloudflare-webhooks-worker/action.yml"), "utf8"),
-		];
 		expect({
 			accounts: [apiConfig.account_id, webhooksConfig.account_id],
-			actionsUseCatalog: deploymentActions.every((source) => source.includes(".cloudflare.accountId")),
 			entrypoints: [apiConfig.main, webhooksConfig.main],
 		}).toEqual({
-			accounts: [undefined, undefined],
-			actionsUseCatalog: true,
+			accounts: ["1fca946385505503c59dd6a2a4eeb442", "1fca946385505503c59dd6a2a4eeb442"],
 			entrypoints: ["./src/platform/cloudflare/workers/api/worker.ts", "./src/app.ts"],
 		});
 	});

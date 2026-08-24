@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [staging, main]
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    branches: [staging, main]
+    paths-ignore:
+      - '**/*.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate applications and packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting and linting
+        run: pnpm lint:check
+
+      - name: Type-check every workspace
+        run: pnpm typecheck
+
+      - name: Run coverage gates
+        run: pnpm test:cov
+
+      - name: Build applications and packages
+        run: pnpm build

@@ -1,5 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
 	"name": "cataqui-api-development",
 	"main": "./src/platform/cloudflare/workers/api/worker.ts",
 	"tsconfig": "./tsconfig.worker.json",

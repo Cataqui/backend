@@ -20,7 +20,7 @@ bun.lockb
 # Cloudflare Workers
 .wrangler/
 
-# Terraform
+# OpenTofu and Terraform-compatible artifacts
 .terraform/
 *.tfstate
 *.tfstate.*

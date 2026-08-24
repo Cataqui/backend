@@ -15,12 +15,9 @@
 			"apps/**/*.jsonc",
 			"apps/**/*.mjs",
 			"apps/**/*.ts",
-			"infrastructure/**/*.json",
 			"packages/**/*.json",
 			"packages/**/*.mjs",
 			"packages/**/*.ts",
-			"scripts/**/*.mjs",
-			"scripts/**/*.ts",
 			"test/**/*.ts",
 			"!skills-lock.json",
 			"!apps/api/src/core/i18n/i18n.generated.ts",
@@ -74,7 +71,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["apps/**/*.spec.ts", "packages/**/*.spec.ts", "scripts/**/*.spec.ts", "test/**/*.spec.ts"],
+			"includes": ["apps/**/*.spec.ts", "packages/**/*.spec.ts", "test/**/*.spec.ts"],
 			"linter": {
 				"rules": {
 					"suspicious": {

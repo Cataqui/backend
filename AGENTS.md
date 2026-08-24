@@ -41,7 +41,7 @@ Before changing a file, check its directory and parent directories for nested `A
 ## Validation and Delivery
 
 - Every application and package must independently maintain at least 90% statements, branches, functions, and lines.
-- Run focused tests from the owning workspace. Before handoff, run the root frozen install, lint, typecheck, coverage, build, relevant Wrangler dry runs, relevant Terraform checks, and `git diff --check`.
+- Run focused tests from the owning workspace. Before handoff, run the root frozen install, lint, typecheck, coverage, build, relevant Wrangler dry runs, relevant OpenTofu checks, and `git diff --check`.
 - Select validation and deployment from changed paths, then expand through workspace dependencies. Shared package changes must validate all consumers.
 - Infrastructure readiness precedes database migration, and database migration precedes API deployment. Deploy API before a dependent Webhooks or Geosearch Worker.
 - Documentation-only and skills-only changes must not deploy runtime applications.
