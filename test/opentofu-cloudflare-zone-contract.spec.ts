@@ -148,7 +148,12 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			.sort();
 		const runner = _readInfrastructureFile("opentofu/run-root-command.mjs");
 
-		expect(rootNames).toEqual(["cloudflare-ai-gateways", "cloudflare-zone-configuration", "cloudflare-zone-dns"]);
+		expect(rootNames).toEqual([
+			"cloudflare-ai-gateways",
+			"cloudflare-queues",
+			"cloudflare-zone-configuration",
+			"cloudflare-zone-dns",
+		]);
 		expect(runner).toContain('new URL("./roots/", import.meta.url)');
 		expect(runner).not.toContain("cloudflare-ai-gateways");
 	});
