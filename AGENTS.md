@@ -22,6 +22,7 @@ Before changing a file, check its directory and parent directories for nested `A
 ## Toolchain
 
 - Node.js 24, TypeScript 6, pnpm, Biome, Vitest, Wrangler and OpenTofu for infrastructure setup.
+- Keep every GitHub Action and workflow under `.github`; never place action metadata or workflow files beside application, package, or infrastructure source code.
 - Only the root `pnpm-lock.yaml`; never add npm, Yarn, or Bun lockfiles.
 - Add dependencies to the workspace that imports them. Use `workspace:*` for internal packages and the root catalog for genuinely shared versions.
 - Every application and package must keep independent `build`, `typecheck`, `test`, `test:cov`, and `clean` scripts.
@@ -41,6 +42,7 @@ Before changing a file, check its directory and parent directories for nested `A
 ## Validation and Delivery
 
 - Every application and package must independently maintain at least 90% statements, branches, functions, and lines.
+- Do not add automated tests for GitHub Actions, workflows, or documentation.
 - Run focused tests from the owning workspace. Before handoff, run the root frozen install, lint, typecheck, coverage, build, relevant Wrangler dry runs, relevant OpenTofu checks, and `git diff --check`.
 - Select validation and deployment from changed paths, then expand through workspace dependencies. Shared package changes must validate all consumers.
 - Infrastructure readiness precedes database migration, and database migration precedes API deployment. Deploy API before a dependent Webhooks or Geosearch Worker.
