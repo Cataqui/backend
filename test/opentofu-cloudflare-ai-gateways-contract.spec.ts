@@ -33,11 +33,7 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 	it("should pin the approved OpenTofu and provider versions", () => {
 		const versions = _readInfrastructureFile("opentofu/roots/cloudflare-ai-gateways/versions.tf");
 
-		expect(versions.match(/version\s*=\s*"=[^"]+"/g)).toEqual([
-			'version = "= 1.12.6"',
-			'version = "= 5.23.0"',
-			'version = "= 0.19.21"',
-		]);
+		expect(versions.match(/version\s*=\s*"=[^"]+"/g)).toEqual(['version = "= 1.12.6"', 'version = "= 5.23.0"']);
 	});
 
 	it("should pin the approved OpenTofu CLI version", () => {
@@ -87,7 +83,10 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 				organization_id: "945579294313",
 				billing_account_id: "01A827-CA7CE9-646496",
 			},
-			infisical: { project_id: "954d434f-7e08-4904-af66-0bf62377794e" },
+			infisical: {
+				project_id: "954d434f-7e08-4904-af66-0bf62377794e",
+				project_slug: "cataqui-backend-r6c-i",
+			},
 			neon: {
 				organization_id: "org-wandering-pond-46567045",
 				database: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
@@ -97,7 +96,6 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		const rootHcl = _getRootHcl();
 		expect(rootHcl).toMatch(/jsondecode\(file\("\$\{path\.module\}\/\.\.\/\.\.\/\.\.\/platforms\.json"\)\)/);
 		expect(rootHcl).toMatch(/account_id\s*=\s*local\.cloudflare_account_id/);
-		expect(rootHcl).toMatch(/(?:project_id|workspace_id)\s*=\s*local\.infisical_project_id/);
 		expect(rootHcl).not.toMatch(/(?:cloudflare_account_id|infisical_project_id)\s*=\s*"/);
 	});
 
@@ -107,12 +105,10 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		expect(committedValues).not.toMatch(/(?:api_token|api_key|access_key|secret_access_key)\s*=\s*"[^"$]+"/i);
 	});
 
-	it("should write the runtime token only through Infisical's write-only field", () => {
+	it("should leave token issuance and delivery to the centralized token root", () => {
 		const rootHcl = _getRootHcl();
 
-		expect(rootHcl).toMatch(
-			/name\s*=\s*"DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"[\s\S]*value_wo\s*=\s*cloudflare_api_token\.derive_job_data_runtime\.value[\s\S]*value_wo_version\s*=\s*1/,
-		);
+		expect(rootHcl).not.toMatch(/cloudflare_api_token|cloudflare_api_token_permission_groups|infisical_/);
 	});
 
 	it("should prohibit secret outputs from the provider root", () => {

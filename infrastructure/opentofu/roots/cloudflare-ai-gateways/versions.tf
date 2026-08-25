@@ -6,10 +6,6 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "= 5.23.0"
     }
-    infisical = {
-      source  = "infisical/infisical"
-      version = "= 0.19.21"
-    }
   }
 
   backend "s3" {}

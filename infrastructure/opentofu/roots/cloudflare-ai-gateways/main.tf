@@ -1,8 +1,3 @@
-data "cloudflare_api_token_permission_groups_list" "ai_gateway_run" {
-  name  = "AI%20Gateway%20Run"
-  scope = "com.cloudflare.api.account"
-}
-
 resource "cloudflare_ai_gateway" "derive_job_data" {
   account_id                 = local.cloudflare_account_id
   id                         = local.derive_job_data_gateway.id
@@ -30,35 +25,4 @@ resource "cloudflare_ai_gateway" "derive_job_data" {
       window     = 2592000
     }]
   }
-}
-
-resource "cloudflare_api_token" "derive_job_data_runtime" {
-  name   = "${local.derive_job_data_gateway.id}-runtime"
-  status = "active"
-
-  policies = [{
-    effect = "allow"
-    permission_groups = [{
-      id = one(data.cloudflare_api_token_permission_groups_list.ai_gateway_run.result).id
-    }]
-    resources = jsonencode({
-      "com.cloudflare.api.account.${local.cloudflare_account_id}" = "*"
-    })
-  }]
-
-  lifecycle {
-    precondition {
-      condition     = length(data.cloudflare_api_token_permission_groups_list.ai_gateway_run.result) == 1
-      error_message = "Cloudflare must return exactly one account-scoped AI Gateway Run permission group."
-    }
-  }
-}
-
-resource "infisical_secret" "derive_job_data_ai_gateway_api_token" {
-  workspace_id     = local.infisical_project_id
-  env_slug         = var.environment
-  folder_path      = "/generated/api/runtime"
-  name             = "DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"
-  value_wo         = cloudflare_api_token.derive_job_data_runtime.value
-  value_wo_version = 1
 }

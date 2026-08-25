@@ -151,6 +151,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 		expect(rootNames).toEqual([
 			"auth-secrets",
 			"cloudflare-ai-gateways",
+			"cloudflare-api-tokens",
 			"cloudflare-queues",
 			"cloudflare-zone-configuration",
 			"cloudflare-zone-dns",

@@ -83,3 +83,40 @@ resource "infisical_secret_folder" "deployment" {
 
   depends_on = [infisical_secret_folder.api]
 }
+
+resource "infisical_secret_folder" "opentofu" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "opentofu"
+  folder_path      = "/generated"
+  description      = "Generated credentials scoped to OpenTofu execution."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "cloudflare_opentofu_root" {
+  for_each = local.cloudflare_opentofu_roots
+
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = each.value
+  folder_path      = "/generated/opentofu"
+  description      = "Generated Cloudflare credentials for the ${each.value} OpenTofu root."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.opentofu]
+}
+
+resource "infisical_secret_folder" "cloudflare_opentofu_access" {
+  for_each = local.cloudflare_opentofu_access_folders
+
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = each.value.access
+  folder_path      = "/generated/opentofu/${each.value.root_name}"
+  description      = "Generated ${each.value.access}-only credentials for the ${each.value.root_name} OpenTofu root."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.cloudflare_opentofu_root]
+}

@@ -1,16 +1,4 @@
-mock_provider "cloudflare" {
-  mock_data "cloudflare_api_token_permission_groups_list" {
-    defaults = {
-      result = [{
-        id     = "permission-group-id"
-        name   = "AI Gateway Run"
-        scopes = ["com.cloudflare.api.account"]
-      }]
-    }
-  }
-}
-
-mock_provider "infisical" {}
+mock_provider "cloudflare" {}
 
 run "staging_gateway" {
   command = plan
@@ -82,38 +70,6 @@ run "gateway_security_and_cost_controls" {
       cloudflare_ai_gateway.derive_job_data.spend_limits.rules[0].window == 2592000
     )
     error_message = "The gateway must enforce a global rolling thirty-day cost limit."
-  }
-}
-
-run "runtime_token_delivery" {
-  command = plan
-
-  variables {
-    environment = "production"
-  }
-
-  assert {
-    condition = (
-      cloudflare_api_token.derive_job_data_runtime.status == "active" &&
-      length(cloudflare_api_token.derive_job_data_runtime.policies) == 1 &&
-      length(cloudflare_api_token.derive_job_data_runtime.policies[0].permission_groups) == 1 &&
-      cloudflare_api_token.derive_job_data_runtime.policies[0].permission_groups[0].id == "permission-group-id" &&
-      jsondecode(cloudflare_api_token.derive_job_data_runtime.policies[0].resources) == {
-        "com.cloudflare.api.account.1fca946385505503c59dd6a2a4eeb442" = "*"
-      }
-    )
-    error_message = "The runtime token must be active and grant only the resolved AI Gateway Run permission."
-  }
-
-  assert {
-    condition = (
-      infisical_secret.derive_job_data_ai_gateway_api_token.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
-      infisical_secret.derive_job_data_ai_gateway_api_token.env_slug == "production" &&
-      infisical_secret.derive_job_data_ai_gateway_api_token.folder_path == "/generated/api/runtime" &&
-      infisical_secret.derive_job_data_ai_gateway_api_token.name == "DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN" &&
-      infisical_secret.derive_job_data_ai_gateway_api_token.value_wo_version == 1
-    )
-    error_message = "The generated runtime token must be written only to the production runtime folder through the write-only field."
   }
 }
 

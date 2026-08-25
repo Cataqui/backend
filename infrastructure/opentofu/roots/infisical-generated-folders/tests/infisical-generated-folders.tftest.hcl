@@ -42,6 +42,25 @@ run "generated_folder_contract" {
     )
     error_message = "API, Geosearch, and Webhooks must have protected runtime folders, with deployment nested under API."
   }
+
+  assert {
+    condition = (
+      infisical_secret_folder.opentofu.folder_path == "/generated" &&
+      infisical_secret_folder.opentofu.name == "opentofu" &&
+      !infisical_secret_folder.opentofu.force_delete &&
+      toset(keys(infisical_secret_folder.cloudflare_opentofu_root)) == toset([
+        "cloudflare-ai-gateways",
+        "cloudflare-queues",
+      ]) &&
+      toset(keys(infisical_secret_folder.cloudflare_opentofu_access)) == toset([
+        "cloudflare-ai-gateways/apply",
+        "cloudflare-ai-gateways/plan",
+        "cloudflare-queues/apply",
+        "cloudflare-queues/plan",
+      ])
+    )
+    error_message = "Staging must create generated OpenTofu folders only for its account-scoped Cloudflare roots."
+  }
 }
 
 run "production_folder_environment" {
@@ -63,6 +82,17 @@ run "production_folder_environment" {
       infisical_secret_folder.deployment.environment_slug == "production"
     )
     error_message = "Every folder must use the selected Infisical environment."
+  }
+
+  assert {
+    condition = (
+      infisical_secret_folder.opentofu.environment_slug == "production" &&
+      length(infisical_secret_folder.cloudflare_opentofu_root) == 4 &&
+      length(infisical_secret_folder.cloudflare_opentofu_access) == 8 &&
+      alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"]) &&
+      alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_access) : folder.environment_slug == "production"])
+    )
+    error_message = "Production must create plan/apply folders for all four Cloudflare roots."
   }
 }
 
