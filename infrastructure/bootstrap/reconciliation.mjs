@@ -33,8 +33,13 @@ export function validatePlatforms(platforms) {
 		"google_cloud.billing_account_id",
 		GOOGLE_ACCOUNT_PATTERN,
 	);
-	_requireString(platforms?.infisical?.project_id, "infisical.project_id", /^[a-f0-9-]{36}$/);
-	_requireString(platforms?.infisical?.project_slug, "infisical.project_slug", LOWERCASE_NAME_PATTERN);
+	_requireString(
+		platforms?.infisical?.organization_id,
+		"infisical.organization_id",
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+	);
+	_requireString(platforms?.infisical?.project?.name, "infisical.project.name");
+	_requireString(platforms?.infisical?.project?.slug, "infisical.project.slug", LOWERCASE_NAME_PATTERN);
 	_requireString(
 		platforms?.cloudflare?.r2?.buckets?.opentofu_state,
 		"cloudflare.r2.buckets.opentofu_state",
@@ -46,7 +51,8 @@ export function validatePlatforms(platforms) {
 	_requireExactKeys(platforms.cloudflare.r2, ["buckets"], "cloudflare.r2");
 	_requireExactKeys(platforms.cloudflare.r2.buckets, ["opentofu_state"], "cloudflare.r2.buckets");
 	_requireExactKeys(platforms.upstash, ["account_email"], "upstash");
-	_requireExactKeys(platforms.infisical, ["project_id", "project_slug", "opentofu_identities"], "infisical");
+	_requireExactKeys(platforms.infisical, ["organization_id", "project", "opentofu_identities"], "infisical");
+	_requireExactKeys(platforms.infisical.project, ["name", "slug"], "infisical.project");
 	_requireExactKeys(
 		platforms.google_cloud.projects,
 		["cataqui_staging", "cataqui_production"],

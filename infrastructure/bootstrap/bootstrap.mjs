@@ -10,7 +10,11 @@ import {
 import { acquireLock, knownSecrets, log, platformsPath, requireTool, run } from "./bootstrap-runtime.mjs";
 import { reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
-import { ensureBootstrapFolders, reconcileInfisicalIdentity } from "./infisical-bootstrap.mjs";
+import {
+	ensureBootstrapFolders,
+	reconcileInfisicalIdentity,
+	reconcileInfisicalProject,
+} from "./infisical-bootstrap.mjs";
 import { reconcileNeonApiKeys, verifyNeonCliAuthentication } from "./neon-bootstrap.mjs";
 import { ENVIRONMENTS, redactSecrets, validatePlatforms } from "./reconciliation.mjs";
 import { reconcileUpstashApiKey } from "./upstash-bootstrap.mjs";
@@ -44,21 +48,27 @@ async function _main() {
 		const platforms = validatePlatforms(JSON.parse(readFileSync(platformsPath, "utf8")));
 		_validateLocalAuthentication(platforms);
 		const infisicalToken = _getInfisicalToken();
+		const infisicalProjectId = await reconcileInfisicalProject(platforms, infisicalToken);
 
 		ensurePrivateR2Bucket(platforms);
-		await ensureBootstrapFolders(platforms, infisicalToken);
-		const cloudflareToken = await resolveCloudflareBootstrapToken(platforms, infisicalToken);
-		await reconcileR2Credentials({ platforms, infisicalToken, cloudflareToken });
-		await reconcileUpstashApiKey(platforms, infisicalToken);
-		await reconcileNeonApiKeys(platforms, infisicalToken);
-		await reconcileGoogleProjects(platforms, infisicalToken);
-		const googleAuth = await applyGoogleGithubAuth(platforms, infisicalToken);
+		await ensureBootstrapFolders(infisicalProjectId, infisicalToken);
+		const cloudflareToken = await resolveCloudflareBootstrapToken(infisicalProjectId, infisicalToken);
+		await reconcileR2Credentials({ platforms, infisicalProjectId, infisicalToken, cloudflareToken });
+		await reconcileUpstashApiKey(platforms, infisicalProjectId, infisicalToken);
+		await reconcileNeonApiKeys(platforms, infisicalProjectId, infisicalToken);
+		await reconcileGoogleProjects(platforms, infisicalProjectId, infisicalToken);
+		const googleAuth = await applyGoogleGithubAuth(infisicalProjectId, infisicalToken);
 		for (const environment of ENVIRONMENTS) {
-			const identityId = await reconcileInfisicalIdentity({ platforms, infisicalToken, environment });
+			const identityId = await reconcileInfisicalIdentity({
+				platforms,
+				projectId: infisicalProjectId,
+				infisicalToken,
+				environment,
+			});
 			reconcileGithubEnvironment({ platforms, environment, identityId, googleAuth });
 		}
 		for (const environment of ENVIRONMENTS) {
-			const credentials = await getBackendCredentials(platforms, infisicalToken, environment);
+			const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, environment);
 			if (!(await probeR2Credentials({ platforms, ...credentials }))) {
 				throw new Error(`Final ${environment} R2 verification failed.`);
 			}

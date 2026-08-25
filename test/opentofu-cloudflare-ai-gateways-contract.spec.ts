@@ -93,8 +93,11 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 				},
 			},
 			infisical: {
-				project_id: "954d434f-7e08-4904-af66-0bf62377794e",
-				project_slug: "cataqui-backend-r6c-i",
+				organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
+				project: {
+					name: "Cataquí Backend",
+					slug: "cataqui-backend-6xt3g",
+				},
 			},
 			neon: {
 				organization_id: "org-wandering-pond-46567045",

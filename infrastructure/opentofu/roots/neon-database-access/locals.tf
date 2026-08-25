@@ -1,7 +1,7 @@
 locals {
   platforms = jsondecode(file("${path.module}/../../../platforms.json"))
 
-  infisical_project_id        = regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", local.platforms.infisical.project_id)
+  infisical_project_id        = module.infisical_project.id
   database_name               = regex("^[a-z][a-z0-9_]*$", local.platforms.neon.database.name)
   database_owner_username     = regex("^[a-z][a-z0-9_]*$", local.platforms.neon.database.owner_role)
   database_runtime_username   = regex("^[a-z][a-z0-9_]*$", local.platforms.neon.database.runtime_role)

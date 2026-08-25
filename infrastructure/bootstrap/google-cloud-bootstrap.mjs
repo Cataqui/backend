@@ -63,15 +63,15 @@ function _applyRoot({ root, environmentVariables, variables = [] }) {
 	}
 }
 
-export async function getBackendCredentials(platforms, infisicalToken, environment) {
+export async function getBackendCredentials(infisicalProjectId, infisicalToken, environment) {
 	const accessKeyId = await getBootstrapSecret({
-		platforms,
+		projectId: infisicalProjectId,
 		token: infisicalToken,
 		environment,
 		name: "R2_STATE_ACCESS_KEY_ID",
 	});
 	const secretAccessKey = await getBootstrapSecret({
-		platforms,
+		projectId: infisicalProjectId,
 		token: infisicalToken,
 		environment,
 		name: "R2_STATE_SECRET_ACCESS_KEY",
@@ -81,9 +81,9 @@ export async function getBackendCredentials(platforms, infisicalToken, environme
 	return { accessKeyId, secretAccessKey };
 }
 
-export async function reconcileGoogleProjects(platforms, infisicalToken) {
+export async function reconcileGoogleProjects(platforms, infisicalProjectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
-		const credentials = await getBackendCredentials(platforms, infisicalToken, environment);
+		const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, environment);
 		const root = _initializeRoot({ rootName: "google-cloud-projects", environment, credentials });
 		const environmentVariables = _backendEnvironment(credentials);
 		const projectId = platforms.google_cloud.projects[`cataqui_${environment}`];
@@ -102,8 +102,8 @@ export async function reconcileGoogleProjects(platforms, infisicalToken) {
 	}
 }
 
-export async function applyGoogleGithubAuth(platforms, infisicalToken) {
-	const credentials = await getBackendCredentials(platforms, infisicalToken, "production");
+export async function applyGoogleGithubAuth(infisicalProjectId, infisicalToken) {
+	const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, "production");
 	const root = _initializeRoot({
 		rootName: "google-cloud-github-auth",
 		environment: "production",

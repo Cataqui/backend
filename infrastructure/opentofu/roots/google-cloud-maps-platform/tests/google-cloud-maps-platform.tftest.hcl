@@ -6,7 +6,20 @@ mock_provider "google" {
   }
 }
 
-mock_provider "infisical" {}
+mock_provider "infisical" {
+  mock_data "infisical_projects" {
+    defaults = {
+      id     = "mock-project-id"
+      name   = "Cataquí Backend"
+      org_id = "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+      type   = "secret-manager"
+      environments = {
+        staging    = { id = "staging-id", name = "Staging", slug = "staging" }
+        production = { id = "production-id", name = "Production", slug = "production" }
+      }
+    }
+  }
+}
 
 run "staging_maps_platform" {
   command = plan
@@ -217,7 +230,7 @@ run "runtime_secret_delivery" {
 
   assert {
     condition = (
-      infisical_secret.google_places_api_key.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      infisical_secret.google_places_api_key.workspace_id == module.infisical_project.id &&
       infisical_secret.google_places_api_key.env_slug == "production" &&
       infisical_secret.google_places_api_key.folder_path == "/generated/geosearch/runtime" &&
       infisical_secret.google_places_api_key.name == "GOOGLE_PLACES_API_KEY" &&

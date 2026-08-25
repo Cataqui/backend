@@ -3,11 +3,7 @@ locals {
 
   cloudflare_account_id = regex("^[0-9a-f]{32}$", local.platforms.cloudflare.account_id)
   cataqui_zone_id       = regex("^[0-9a-f]{32}$", local.platforms.cloudflare.zones["cataqui.com"].zone_id)
-  infisical_project_id  = regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", local.platforms.infisical.project_id)
-  infisical_project_slug = regex(
-    "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-    local.platforms.infisical.project_slug,
-  )
+  infisical_project_id  = module.infisical_project.id
 
   permission_groups = {
     ai_gateway_read = {

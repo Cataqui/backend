@@ -137,15 +137,15 @@ export function verifyNeonCliAuthentication(platforms) {
 	_listApiKeys(platforms);
 }
 
-async function _readStoredCredential(platforms, infisicalToken, environment) {
+async function _readStoredCredential(infisicalProjectId, infisicalToken, environment) {
 	const key = await getBootstrapSecret({
-		platforms,
+		projectId: infisicalProjectId,
 		token: infisicalToken,
 		environment,
 		name: "NEON_API_KEY",
 	});
 	const keyId = await getBootstrapSecret({
-		platforms,
+		projectId: infisicalProjectId,
 		token: infisicalToken,
 		environment,
 		name: "NEON_API_KEY_ID",
@@ -153,9 +153,9 @@ async function _readStoredCredential(platforms, infisicalToken, environment) {
 	return { key, keyId };
 }
 
-async function _assertHealthy(platforms, infisicalToken, environment) {
+async function _assertHealthy(platforms, infisicalProjectId, infisicalToken, environment) {
 	const expectedName = getNeonApiKeyName(environment);
-	const stored = await _readStoredCredential(platforms, infisicalToken, environment);
+	const stored = await _readStoredCredential(infisicalProjectId, infisicalToken, environment);
 	const credentialStatus = stored.key ? await _verifyApiKey(platforms, stored.key) : "missing";
 	const decision = decideNeonCredential({
 		expectedName,
@@ -167,10 +167,10 @@ async function _assertHealthy(platforms, infisicalToken, environment) {
 	if (decision.action !== "reuse") throw new Error(`Final Neon credential verification failed for ${environment}.`);
 }
 
-export async function reconcileNeonApiKeys(platforms, infisicalToken) {
+export async function reconcileNeonApiKeys(platforms, infisicalProjectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
 		const expectedName = getNeonApiKeyName(environment);
-		const stored = await _readStoredCredential(platforms, infisicalToken, environment);
+		const stored = await _readStoredCredential(infisicalProjectId, infisicalToken, environment);
 		const decision = await reconcileNeonCredential({
 			expectedName,
 			storedKey: stored.key,
@@ -181,7 +181,7 @@ export async function reconcileNeonApiKeys(platforms, infisicalToken) {
 			createKey: () => _createApiKey(platforms, expectedName),
 			writeKey: (key) =>
 				setBootstrapSecret({
-					platforms,
+					projectId: infisicalProjectId,
 					token: infisicalToken,
 					environment,
 					name: "NEON_API_KEY",
@@ -189,7 +189,7 @@ export async function reconcileNeonApiKeys(platforms, infisicalToken) {
 				}),
 			writeKeyId: (keyId) =>
 				setBootstrapSecret({
-					platforms,
+					projectId: infisicalProjectId,
 					token: infisicalToken,
 					environment,
 					name: "NEON_API_KEY_ID",
@@ -198,5 +198,7 @@ export async function reconcileNeonApiKeys(platforms, infisicalToken) {
 		});
 		log(`Neon API key ${environment}: ${decision.action}.`);
 	}
-	for (const environment of ENVIRONMENTS) await _assertHealthy(platforms, infisicalToken, environment);
+	for (const environment of ENVIRONMENTS) {
+		await _assertHealthy(platforms, infisicalProjectId, infisicalToken, environment);
+	}
 }

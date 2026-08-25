@@ -27,11 +27,11 @@ async function _verifyApiKey(platforms, apiKey) {
 	}
 }
 
-export async function reconcileUpstashApiKey(platforms, infisicalToken) {
+export async function reconcileUpstashApiKey(platforms, infisicalProjectId, infisicalToken) {
 	const storedByEnvironment = {};
 	for (const environment of ENVIRONMENTS) {
 		storedByEnvironment[environment] = await getBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "UPSTASH_API_KEY",
@@ -48,7 +48,7 @@ export async function reconcileUpstashApiKey(platforms, infisicalToken) {
 			}),
 		writeKey: (environment, apiKey) =>
 			setBootstrapSecret({
-				platforms,
+				projectId: infisicalProjectId,
 				token: infisicalToken,
 				environment,
 				name: "UPSTASH_API_KEY",

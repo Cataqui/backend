@@ -9,7 +9,20 @@ mock_provider "upstash" {
   }
 }
 
-mock_provider "infisical" {}
+mock_provider "infisical" {
+  mock_data "infisical_projects" {
+    defaults = {
+      id     = "mock-project-id"
+      name   = "Cataquí Backend"
+      org_id = "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+      type   = "secret-manager"
+      environments = {
+        staging    = { id = "staging-id", name = "Staging", slug = "staging" }
+        production = { id = "production-id", name = "Production", slug = "production" }
+      }
+    }
+  }
+}
 
 run "staging_database" {
   command = plan
@@ -79,7 +92,7 @@ run "runtime_secret_delivery" {
       for secret in [
         infisical_secret.upstash_redis_rest_url,
         infisical_secret.upstash_redis_rest_token,
-      ] : secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" && secret.env_slug == "staging" && secret.folder_path == "/generated/api/runtime" && secret.value_wo_version == 1
+      ] : secret.workspace_id == module.infisical_project.id && secret.env_slug == "staging" && secret.folder_path == "/generated/api/runtime" && secret.value_wo_version == 1
     ])
     error_message = "Every Upstash runtime value must use the matching Infisical runtime folder and write-only version."
   }

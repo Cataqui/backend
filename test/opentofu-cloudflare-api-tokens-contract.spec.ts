@@ -46,11 +46,16 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
 
 		expect(platforms.infisical).toMatchObject({
-			project_id: "954d434f-7e08-4904-af66-0bf62377794e",
-			project_slug: "cataqui-backend-r6c-i",
+			organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
+			project: {
+				name: "Cataquí Backend",
+				slug: "cataqui-backend-6xt3g",
+			},
 		});
-		expect(rootHcl).toMatch(/local\.platforms\.infisical\.project_id/);
-		expect(rootHcl).toMatch(/local\.platforms\.infisical\.project_slug/);
+		expect(rootHcl).toMatch(/module "infisical_project"/);
+		expect(rootHcl).toMatch(/source\s*=\s*"\.\.\/\.\.\/modules\/infisical-project"/);
+		expect(rootHcl).toMatch(/local\.platforms\.infisical\.project\.slug/);
+		expect(rootHcl).toMatch(/module\.infisical_project\.id/);
 	});
 
 	it("should create the exact environment-specific token inventory", () => {

@@ -1,4 +1,17 @@
-mock_provider "infisical" {}
+mock_provider "infisical" {
+  mock_data "infisical_projects" {
+    defaults = {
+      id     = "mock-project-id"
+      name   = "Cataquí Backend"
+      org_id = "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+      type   = "secret-manager"
+      environments = {
+        staging    = { id = "staging-id", name = "Staging", slug = "staging" }
+        production = { id = "production-id", name = "Production", slug = "production" }
+      }
+    }
+  }
+}
 mock_provider "postgresql" {}
 mock_provider "random" {}
 
@@ -82,7 +95,7 @@ run "runtime_secret_delivery" {
 
   assert {
     condition = (
-      infisical_secret.database_app_pooler_url.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      infisical_secret.database_app_pooler_url.workspace_id == module.infisical_project.id &&
       infisical_secret.database_app_pooler_url.env_slug == "production" &&
       infisical_secret.database_app_pooler_url.folder_path == "/generated/api/runtime" &&
       infisical_secret.database_app_pooler_url.name == "DATABASE_APP_POOLER_URL" &&

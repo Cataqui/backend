@@ -1,4 +1,17 @@
-mock_provider "infisical" {}
+mock_provider "infisical" {
+  mock_data "infisical_projects" {
+    defaults = {
+      id     = "mock-project-id"
+      name   = "Cataquí Backend"
+      org_id = "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+      type   = "secret-manager"
+      environments = {
+        staging    = { id = "staging-id", name = "Staging", slug = "staging" }
+        production = { id = "production-id", name = "Production", slug = "production" }
+      }
+    }
+  }
+}
 mock_provider "random" {}
 mock_provider "tls" {}
 
@@ -21,7 +34,7 @@ run "staging_auth_keys" {
 
   assert {
     condition = (
-      infisical_secret.refresh_token_hmac_key_v1.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      infisical_secret.refresh_token_hmac_key_v1.workspace_id == module.infisical_project.id &&
       infisical_secret.refresh_token_hmac_key_v1.env_slug == "staging" &&
       infisical_secret.refresh_token_hmac_key_v1.folder_path == "/generated/api/runtime" &&
       infisical_secret.refresh_token_hmac_key_v1.name == "AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL" &&
@@ -54,7 +67,7 @@ run "production_auth_keys" {
 
   assert {
     condition = (
-      infisical_secret.microservices_auth_jwt_private_key_v1.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      infisical_secret.microservices_auth_jwt_private_key_v1.workspace_id == module.infisical_project.id &&
       infisical_secret.microservices_auth_jwt_private_key_v1.env_slug == "production" &&
       infisical_secret.microservices_auth_jwt_private_key_v1.folder_path == "/generated/api/runtime" &&
       infisical_secret.microservices_auth_jwt_private_key_v1.name == "MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64" &&
@@ -65,7 +78,7 @@ run "production_auth_keys" {
 
   assert {
     condition = (
-      infisical_secret.whatsapp_webhook_verify_token.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      infisical_secret.whatsapp_webhook_verify_token.workspace_id == module.infisical_project.id &&
       infisical_secret.whatsapp_webhook_verify_token.env_slug == "production" &&
       infisical_secret.whatsapp_webhook_verify_token.folder_path == "/generated/webhooks/runtime" &&
       infisical_secret.whatsapp_webhook_verify_token.name == "WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN" &&

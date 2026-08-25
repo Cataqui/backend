@@ -27,11 +27,16 @@ async function _verifyToken(token) {
 	return permissionGroups.result?.some((permission) => permission.name === "API Tokens Write") ?? false;
 }
 
-export async function resolveCloudflareBootstrapToken(platforms, infisicalToken) {
+export async function resolveCloudflareBootstrapToken(infisicalProjectId, infisicalToken) {
 	const stored = [];
 	for (const environment of ENVIRONMENTS) {
 		stored.push(
-			await getBootstrapSecret({ platforms, token: infisicalToken, environment, name: "CLOUDFLARE_API_TOKEN" }),
+			await getBootstrapSecret({
+				projectId: infisicalProjectId,
+				token: infisicalToken,
+				environment,
+				name: "CLOUDFLARE_API_TOKEN",
+			}),
 		);
 	}
 	const distinct = [...new Set(stored.filter(Boolean))];
@@ -47,7 +52,7 @@ export async function resolveCloudflareBootstrapToken(platforms, infisicalToken)
 	}
 	for (const environment of ENVIRONMENTS) {
 		await setBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "CLOUDFLARE_API_TOKEN",
@@ -215,7 +220,7 @@ export function ensurePrivateR2Bucket(platforms) {
 		throw new Error(`R2 state bucket ${bucket} has a public development URL.`);
 }
 
-export async function reconcileR2Credentials({ platforms, infisicalToken, cloudflareToken }) {
+export async function reconcileR2Credentials({ platforms, infisicalProjectId, infisicalToken, cloudflareToken }) {
 	let tokens = await _listTokens(cloudflareToken);
 	const permission = await _getR2PermissionGroup(cloudflareToken);
 	for (const environment of ENVIRONMENTS) {
@@ -226,13 +231,13 @@ export async function reconcileR2Credentials({ platforms, infisicalToken, cloudf
 			throw new Error(`Foreign Cloudflare token conflicts with ${name}.`);
 		}
 		const accessKeyId = await getBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "R2_STATE_ACCESS_KEY_ID",
 		});
 		const secretAccessKey = await getBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "R2_STATE_SECRET_ACCESS_KEY",
@@ -246,14 +251,14 @@ export async function reconcileR2Credentials({ platforms, infisicalToken, cloudf
 		if (token) await _deleteToken(cloudflareToken, token.id);
 		const credentials = await _createR2Token({ platforms, cloudflareToken, name });
 		await setBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "R2_STATE_ACCESS_KEY_ID",
 			value: credentials.id,
 		});
 		await setBootstrapSecret({
-			platforms,
+			projectId: infisicalProjectId,
 			token: infisicalToken,
 			environment,
 			name: "R2_STATE_SECRET_ACCESS_KEY",

@@ -9,6 +9,13 @@ import {
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
 import { decideGoogleProject } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
 import {
+	assertInfisicalOrganizationScope,
+	assertInfisicalProjectContract,
+	decideInfisicalProject,
+	getMissingInfisicalEnvironments,
+	reconcileInfisicalProjectState,
+} from "../infrastructure/bootstrap/infisical-reconciliation.mjs";
+import {
 	classifyNeonCredentialResponse,
 	decideNeonCredential,
 	getNeonApiKeyName,
@@ -46,6 +53,11 @@ describe("infrastructure bootstrap reconciliation", () => {
 			cataqui_backend_staging: "cataqui-backend-opentofu-staging",
 			cataqui_backend_production: "cataqui-backend-opentofu-production",
 		});
+		expect(platforms.infisical.organization_id).toBe("33687647-d8e9-44a7-9cb9-721bd5b28a45");
+		expect(platforms.infisical.project).toEqual({
+			name: "Cataquí Backend",
+			slug: "cataqui-backend-6xt3g",
+		});
 		expect(platforms.github.environments).toEqual({
 			staging: { branches: ["staging"] },
 			production: { branches: ["main"] },
@@ -63,6 +75,12 @@ describe("infrastructure bootstrap reconciliation", () => {
 				infisical: { ...platforms.infisical, api_url: "https://example.com" },
 			}),
 		).toThrow("Unexpected keys in platform object: infisical");
+		expect(() =>
+			validatePlatforms({
+				...platforms,
+				infisical: { ...platforms.infisical, project: { ...platforms.infisical.project, id: randomUUID() } },
+			}),
+		).toThrow("Unexpected keys in platform object: infisical.project");
 		expect(() =>
 			validatePlatforms({
 				...platforms,
@@ -90,6 +108,243 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(() => validatePlatforms({ ...platforms, upstash: { ...platforms.upstash, api_key: "forbidden" } })).toThrow(
 			"Unexpected keys in platform object: upstash",
 		);
+	});
+
+	it("creates or reuses the exact Infisical project by stable slug", () => {
+		const expected = {
+			expectedOrganizationId: platforms.infisical.organization_id,
+			expectedName: platforms.infisical.project.name,
+			expectedSlug: platforms.infisical.project.slug,
+		};
+		expect(decideInfisicalProject({ projects: [], ...expected })).toEqual({ action: "create" });
+		const project = {
+			id: "project-id",
+			orgId: expected.expectedOrganizationId,
+			name: expected.expectedName,
+			slug: expected.expectedSlug,
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [] as Array<{ name: string; slug: string; position: number }>,
+		};
+		expect(decideInfisicalProject({ projects: [project], ...expected })).toEqual({ action: "reuse", project });
+		expect(
+			decideInfisicalProject({ projects: [{ ...project, name: "Drifted", hasDeleteProtection: false }], ...expected }),
+		).toMatchObject({ action: "reconcile" });
+	});
+
+	it("repairs missing Infisical environments while preserving additional ones", () => {
+		const project = {
+			environments: [{ slug: "staging" }, { slug: "development" }],
+		};
+		expect(getMissingInfisicalEnvironments(project)).toEqual(["production"]);
+		expect(
+			getMissingInfisicalEnvironments({
+				environments: [...project.environments, { slug: "production" }],
+			}),
+		).toEqual([]);
+	});
+
+	it("fails closed for ambiguous or foreign Infisical project ownership", () => {
+		const expected = {
+			expectedOrganizationId: platforms.infisical.organization_id,
+			expectedName: platforms.infisical.project.name,
+			expectedSlug: platforms.infisical.project.slug,
+		};
+		const project = {
+			id: "project-id",
+			orgId: expected.expectedOrganizationId,
+			name: expected.expectedName,
+			slug: expected.expectedSlug,
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [],
+		};
+		expect(() => decideInfisicalProject({ projects: [project, { ...project, id: "duplicate" }], ...expected })).toThrow(
+			"Duplicate Infisical projects",
+		);
+		expect(() => decideInfisicalProject({ projects: [{ ...project, orgId: randomUUID() }], ...expected })).toThrow(
+			"foreign organization",
+		);
+		expect(() => decideInfisicalProject({ projects: [{ ...project, type: "kms" }], ...expected })).toThrow(
+			"not a secret-manager",
+		);
+		expect(() => assertInfisicalOrganizationScope([], expected.expectedOrganizationId)).toThrow(
+			"not scoped exclusively",
+		);
+		expect(() =>
+			assertInfisicalOrganizationScope([project, { ...project, orgId: randomUUID() }], expected.expectedOrganizationId),
+		).toThrow("not scoped exclusively");
+		expect(() => getMissingInfisicalEnvironments({ environments: [{ slug: "staging" }, { slug: "staging" }] })).toThrow(
+			"Duplicate Infisical environment",
+		);
+	});
+
+	it("verifies the final Infisical project contract after interrupted reconciliation", () => {
+		const expected = {
+			expectedOrganizationId: platforms.infisical.organization_id,
+			expectedName: platforms.infisical.project.name,
+			expectedSlug: platforms.infisical.project.slug,
+		};
+		const project = {
+			id: "project-id",
+			orgId: expected.expectedOrganizationId,
+			name: expected.expectedName,
+			slug: expected.expectedSlug,
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [{ slug: "staging" }, { slug: "production" }, { slug: "development" }],
+		};
+		expect(assertInfisicalProjectContract({ project, ...expected })).toBe(project);
+		expect(() =>
+			assertInfisicalProjectContract({ project: { ...project, environments: [{ slug: "staging" }] }, ...expected }),
+		).toThrow("failed final verification");
+	});
+
+	it("creates the Infisical project and both environments in dependency order", async () => {
+		const existingProject = {
+			id: "existing-project",
+			orgId: platforms.infisical.organization_id,
+			name: "Existing",
+			slug: "existing",
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [],
+		};
+		const createdProject = {
+			id: "created-project",
+			orgId: platforms.infisical.organization_id,
+			name: platforms.infisical.project.name,
+			slug: platforms.infisical.project.slug,
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [] as Array<{ name: string; slug: string; position: number }>,
+		};
+		const events: string[] = [];
+		await expect(
+			reconcileInfisicalProjectState({
+				expectedOrganizationId: platforms.infisical.organization_id,
+				expectedName: platforms.infisical.project.name,
+				expectedSlug: platforms.infisical.project.slug,
+				listProjects: async () => {
+					events.push("list");
+					return [existingProject, ...(events.length > 1 ? [createdProject] : [])];
+				},
+				createProject: async () => {
+					events.push("create-project");
+					return createdProject;
+				},
+				updateProject: async () => {
+					throw new Error("unexpected update");
+				},
+				createEnvironment: async ({ environment }) => {
+					events.push(`create-environment:${environment}`);
+					createdProject.environments.push({
+						name: environment === "staging" ? "Staging" : "Production",
+						slug: environment,
+						position: environment === "staging" ? 1 : 2,
+					});
+				},
+			}),
+		).resolves.toBe("created-project");
+		expect(createdProject.environments.map((environment) => environment.slug)).toEqual(["staging", "production"]);
+		expect(events).toEqual([
+			"list",
+			"create-project",
+			"list",
+			"create-environment:staging",
+			"create-environment:production",
+			"list",
+		]);
+	});
+
+	it("finishes an interrupted Infisical project and repairs mutable drift", async () => {
+		const project = {
+			id: "project-id",
+			orgId: platforms.infisical.organization_id,
+			name: "Drifted name",
+			slug: platforms.infisical.project.slug,
+			type: "secret-manager",
+			hasDeleteProtection: false,
+			environments: [{ slug: "staging" }],
+		};
+		const events: string[] = [];
+		await expect(
+			reconcileInfisicalProjectState({
+				expectedOrganizationId: platforms.infisical.organization_id,
+				expectedName: platforms.infisical.project.name,
+				expectedSlug: platforms.infisical.project.slug,
+				listProjects: async () => [project],
+				createProject: async () => {
+					throw new Error("unexpected create");
+				},
+				updateProject: async () => {
+					events.push("update");
+					project.name = platforms.infisical.project.name;
+					project.hasDeleteProtection = true;
+					return project;
+				},
+				createEnvironment: async ({ environment }) => {
+					events.push(`environment:${environment}`);
+					project.environments.push({ slug: environment });
+				},
+			}),
+		).resolves.toBe("project-id");
+		expect(events).toEqual(["update", "environment:production"]);
+	});
+
+	it("performs no Infisical writes for a healthy project and propagates inspection failures", async () => {
+		const project = {
+			id: "project-id",
+			orgId: platforms.infisical.organization_id,
+			name: platforms.infisical.project.name,
+			slug: platforms.infisical.project.slug,
+			type: "secret-manager",
+			hasDeleteProtection: true,
+			environments: [{ slug: "staging" }, { slug: "production" }],
+		};
+		const events: string[] = [];
+		await expect(
+			reconcileInfisicalProjectState({
+				expectedOrganizationId: platforms.infisical.organization_id,
+				expectedName: platforms.infisical.project.name,
+				expectedSlug: platforms.infisical.project.slug,
+				listProjects: async () => {
+					events.push("list");
+					return [project];
+				},
+				createProject: async () => events.push("create"),
+				updateProject: async () => events.push("update"),
+				createEnvironment: async () => events.push("environment"),
+			}),
+		).resolves.toBe("project-id");
+		expect(events).toEqual(["list", "list"]);
+
+		await expect(
+			reconcileInfisicalProjectState({
+				expectedOrganizationId: platforms.infisical.organization_id,
+				expectedName: platforms.infisical.project.name,
+				expectedSlug: platforms.infisical.project.slug,
+				listProjects: async () => {
+					throw new Error("GET /api/v1/projects failed with 401");
+				},
+				createProject: async () => undefined,
+				updateProject: async () => undefined,
+				createEnvironment: async () => undefined,
+			}),
+		).rejects.toThrow("failed with 401");
+		await expect(
+			reconcileInfisicalProjectState({
+				expectedOrganizationId: platforms.infisical.organization_id,
+				expectedName: platforms.infisical.project.name,
+				expectedSlug: platforms.infisical.project.slug,
+				listProjects: async () => {
+					throw new Error("GET /api/v1/projects failed with 503");
+				},
+				createProject: async () => undefined,
+				updateProject: async () => undefined,
+				createEnvironment: async () => undefined,
+			}),
+		).rejects.toThrow("failed with 503");
 	});
 
 	it.each([

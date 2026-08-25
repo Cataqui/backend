@@ -1,7 +1,7 @@
 locals {
   platforms = jsondecode(file("${path.module}/../../../platforms.json"))
 
-  infisical_project_id = regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", local.platforms.infisical.project_id)
+  infisical_project_id = module.infisical_project.id
 
   refresh_token_hmac_key_version        = 1
   microservices_auth_jwt_key_version    = 1

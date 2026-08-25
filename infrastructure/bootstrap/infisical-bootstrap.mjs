@@ -1,5 +1,6 @@
 import { constantTimeEqual, ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
 import { knownSecrets, requestJson } from "./bootstrap-runtime.mjs";
+import { INFISICAL_PROJECT_TYPE, reconcileInfisicalProjectState } from "./infisical-reconciliation.mjs";
 
 export const bootstrapSecretPath = "/opentofu/bootstrap";
 const infisicalApiBaseUrl = "https://app.infisical.com";
@@ -30,9 +31,62 @@ function _normalizePermissions(permissions) {
 	);
 }
 
-export async function getBootstrapSecret({ platforms, token, environment, name }) {
+async function _listProjects(token, request) {
+	const payload = await request(`${infisicalApiBaseUrl}/api/v1/projects`, { headers: _headers(token) });
+	if (!Array.isArray(payload.projects)) throw new Error("Infisical returned an invalid project inventory.");
+	return payload.projects;
+}
+
+export async function reconcileInfisicalProject(platforms, infisicalToken, { request = requestJson } = {}) {
+	const expectedOrganizationId = platforms.infisical.organization_id;
+	const expectedName = platforms.infisical.project.name;
+	const expectedSlug = platforms.infisical.project.slug;
+	return reconcileInfisicalProjectState({
+		expectedOrganizationId,
+		expectedName,
+		expectedSlug,
+		listProjects: () => _listProjects(infisicalToken, request),
+		createProject: async () => {
+			const created = await request(`${infisicalApiBaseUrl}/api/v1/projects`, {
+				method: "POST",
+				headers: _headers(infisicalToken),
+				body: {
+					projectName: expectedName,
+					slug: expectedSlug,
+					type: INFISICAL_PROJECT_TYPE,
+					shouldCreateDefaultEnvs: false,
+					hasDeleteProtection: true,
+				},
+				acceptedStatuses: [200, 201],
+			});
+			return created.project;
+		},
+		updateProject: async (project) => {
+			const updated = await request(`${infisicalApiBaseUrl}/api/v1/projects/${project.id}`, {
+				method: "PATCH",
+				headers: _headers(infisicalToken),
+				body: { name: expectedName, slug: expectedSlug, hasDeleteProtection: true },
+				acceptedStatuses: [200],
+			});
+			return updated.project;
+		},
+		createEnvironment: ({ projectId, environment }) =>
+			request(`${infisicalApiBaseUrl}/api/v1/projects/${projectId}/environments`, {
+				method: "POST",
+				headers: _headers(infisicalToken),
+				body: {
+					name: environment === "staging" ? "Staging" : "Production",
+					slug: environment,
+					position: environment === "staging" ? 1 : 2,
+				},
+				acceptedStatuses: [200, 201],
+			}),
+	});
+}
+
+export async function getBootstrapSecret({ projectId, token, environment, name }) {
 	const query = new URLSearchParams({
-		projectId: platforms.infisical.project_id,
+		projectId,
 		environment,
 		secretPath: bootstrapSecretPath,
 		type: "shared",
@@ -49,16 +103,16 @@ export async function getBootstrapSecret({ platforms, token, environment, name }
 	return value;
 }
 
-export async function setBootstrapSecret({ platforms, token, environment, name, value }) {
+export async function setBootstrapSecret({ projectId, token, environment, name, value }) {
 	knownSecrets.add(value);
-	const existing = await getBootstrapSecret({ platforms, token, environment, name });
+	const existing = await getBootstrapSecret({ projectId, token, environment, name });
 	if (existing && constantTimeEqual(existing, value)) return;
 	const method = existing ? "PATCH" : "POST";
 	await requestJson(`${infisicalApiBaseUrl}/api/v4/secrets/${encodeURIComponent(name)}`, {
 		method,
 		headers: _headers(token),
 		body: {
-			projectId: platforms.infisical.project_id,
+			projectId,
 			environment,
 			secretPath: bootstrapSecretPath,
 			secretValue: value,
@@ -69,9 +123,9 @@ export async function setBootstrapSecret({ platforms, token, environment, name, 
 	});
 }
 
-async function _ensureFolder({ platforms, token, environment, path, name }) {
+async function _ensureFolder({ projectId, token, environment, path, name }) {
 	const query = new URLSearchParams({
-		projectId: platforms.infisical.project_id,
+		projectId,
 		environment,
 		path,
 		recursive: "false",
@@ -82,29 +136,29 @@ async function _ensureFolder({ platforms, token, environment, path, name }) {
 	await requestJson(`${infisicalApiBaseUrl}/api/v2/folders`, {
 		method: "POST",
 		headers: _headers(token),
-		body: { projectId: platforms.infisical.project_id, environment, path, name },
+		body: { projectId, environment, path, name },
 		acceptedStatuses: [200, 201],
 	});
 }
 
-export async function ensureBootstrapFolders(platforms, infisicalToken) {
+export async function ensureBootstrapFolders(projectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
-		await _ensureFolder({ platforms, token: infisicalToken, environment, path: "/", name: "opentofu" });
-		await _ensureFolder({ platforms, token: infisicalToken, environment, path: "/opentofu", name: "bootstrap" });
+		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/", name: "opentofu" });
+		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/opentofu", name: "bootstrap" });
 	}
 }
 
-export async function reconcileInfisicalIdentity({ platforms, infisicalToken, environment }) {
+export async function reconcileInfisicalIdentity({ platforms, projectId, infisicalToken, environment }) {
 	const apiUrl = infisicalApiBaseUrl;
 	const headers = _headers(infisicalToken);
 	const name = platforms.infisical.opentofu_identities[`cataqui_backend_${environment}`];
 	const search = new URLSearchParams({ search: name, limit: "100", offset: "0" });
-	const listed = await requestJson(`${apiUrl}/api/v1/projects/${platforms.infisical.project_id}/identities?${search}`, {
+	const listed = await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities?${search}`, {
 		headers,
 	});
 	let identity = resolveUniqueNamedResource(listed.identities ?? [], name);
 	if (!identity) {
-		const created = await requestJson(`${apiUrl}/api/v1/projects/${platforms.infisical.project_id}/identities`, {
+		const created = await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities`, {
 			method: "POST",
 			headers,
 			body: { name, hasDeleteProtection: true, metadata: [] },
@@ -114,7 +168,7 @@ export async function reconcileInfisicalIdentity({ platforms, infisicalToken, en
 	}
 	const identityId = identity.id;
 	if (!identity.hasDeleteProtection) {
-		await requestJson(`${apiUrl}/api/v1/projects/${platforms.infisical.project_id}/identities/${identityId}`, {
+		await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities/${identityId}`, {
 			method: "PATCH",
 			headers,
 			body: {
@@ -142,7 +196,7 @@ export async function reconcileInfisicalIdentity({ platforms, infisicalToken, en
 		}
 	}
 
-	const membershipUrl = `${apiUrl}/api/v1/projects/${platforms.infisical.project_id}/memberships/identities/${identityId}`;
+	const membershipUrl = `${apiUrl}/api/v1/projects/${projectId}/memberships/identities/${identityId}`;
 	const membership = (await requestJson(membershipUrl, { headers })).identityMembership;
 	if (membership.roles?.length !== 1 || membership.roles[0].role !== "no-access" || membership.roles[0].isTemporary) {
 		await requestJson(membershipUrl, {
@@ -154,7 +208,7 @@ export async function reconcileInfisicalIdentity({ platforms, infisicalToken, en
 	}
 
 	const privilegeSlug = `opentofu-${environment}`;
-	const privilegeQuery = new URLSearchParams({ identityId, projectSlug: platforms.infisical.project_slug });
+	const privilegeQuery = new URLSearchParams({ identityId, projectSlug: platforms.infisical.project.slug });
 	const privilegeList = await requestJson(`${apiUrl}/api/v1/additional-privilege/identity?${privilegeQuery}`, {
 		headers,
 	});
@@ -197,7 +251,7 @@ export async function reconcileInfisicalIdentity({ platforms, infisicalToken, en
 				? { slug: privilegeSlug, permissions, type: { isTemporary: false } }
 				: {
 						identityId,
-						projectId: platforms.infisical.project_id,
+						projectId,
 						slug: privilegeSlug,
 						permissions,
 						type: { isTemporary: false },

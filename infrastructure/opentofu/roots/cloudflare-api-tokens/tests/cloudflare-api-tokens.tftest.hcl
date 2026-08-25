@@ -10,7 +10,20 @@ mock_provider "cloudflare" {
   }
 }
 
-mock_provider "infisical" {}
+mock_provider "infisical" {
+  mock_data "infisical_projects" {
+    defaults = {
+      id     = "mock-project-id"
+      name   = "Cataquí Backend"
+      org_id = "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+      type   = "secret-manager"
+      environments = {
+        staging    = { id = "staging-id", name = "Staging", slug = "staging" }
+        production = { id = "production-id", name = "Production", slug = "production" }
+      }
+    }
+  }
+}
 
 run "staging_token_inventory" {
   command = plan
@@ -155,7 +168,7 @@ run "write_only_infisical_delivery" {
   assert {
     condition = alltrue([
       for token_key, secret in infisical_secret.infrastructure_cloudflare_api_token :
-      secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
+      secret.workspace_id == module.infisical_project.id &&
       secret.env_slug == "production" &&
       secret.folder_path == "/generated/opentofu/${token_key}" &&
       secret.name == "CLOUDFLARE_API_TOKEN" &&

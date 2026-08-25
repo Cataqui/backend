@@ -63,7 +63,7 @@ runs:
         echo "authenticate-infisical-provider=$authenticate_infisical_provider" >> "$GITHUB_OUTPUT"
         project_slug="$(
           jq -er \
-            '.infisical.project_slug | select(type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$"))' \
+            '.infisical.project.slug | select(type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$"))' \
             "$GITHUB_WORKSPACE/infrastructure/platforms.json"
         )"
         echo "project-slug=$project_slug" >> "$GITHUB_OUTPUT"
