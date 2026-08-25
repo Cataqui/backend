@@ -44,6 +44,12 @@
       "skillPath": "skills/database-optimizer/SKILL.md",
       "computedHash": "2feb5b0765151417dab90bf014df41514386e4bdb25aad9ab38498c0bd18a1d8"
     },
+    "deploy-checklist": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "engineering/skills/deploy-checklist/SKILL.md",
+      "computedHash": "7d123150a37b0010cf7158de6ddd64863ec64e7af08ed4e58a54decca9911006"
+    },
     "docker-expert": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -145,6 +151,12 @@
       "sourceType": "github",
       "skillPath": "plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md",
       "computedHash": "6a8cf3a5e9120641c1c1953c870c156377c57be4a806e1df6fc5f073a41cc639"
+    },
+    "runbook": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "operations/skills/runbook/SKILL.md",
+      "computedHash": "f23987e7c978f2b08ebcba07401ae46e616cfbb186b56c0f412b82987874268a"
     },
     "sharp-edges": {
       "source": "trailofbits/skills",
