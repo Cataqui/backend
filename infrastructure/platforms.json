@@ -54,5 +54,8 @@
 			"owner_role": "db_owner",
 			"runtime_role": "db_user"
 		}
+	},
+	"upstash": {
+		"account_email": "ryan@ventairy.com"
 	}
 }

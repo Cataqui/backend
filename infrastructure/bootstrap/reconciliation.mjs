@@ -5,6 +5,7 @@ export const ENVIRONMENTS = Object.freeze(["staging", "production"]);
 const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 const GOOGLE_ACCOUNT_PATTERN = /^[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}$/;
 const LOWERCASE_NAME_PATTERN = /^[a-z][a-z0-9-]{1,62}[a-z0-9]$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function _requireString(value, path, pattern) {
 	if (typeof value !== "string" || value.length === 0 || (pattern && !pattern.test(value))) {
@@ -40,9 +41,11 @@ export function validatePlatforms(platforms) {
 		LOWERCASE_NAME_PATTERN,
 	);
 	_requireString(platforms?.github?.repository, "github.repository", /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
+	_requireString(platforms?.upstash?.account_email, "upstash.account_email", EMAIL_PATTERN);
 
 	_requireExactKeys(platforms.cloudflare.r2, ["buckets"], "cloudflare.r2");
 	_requireExactKeys(platforms.cloudflare.r2.buckets, ["opentofu_state"], "cloudflare.r2.buckets");
+	_requireExactKeys(platforms.upstash, ["account_email"], "upstash");
 	_requireExactKeys(platforms.infisical, ["project_id", "project_slug", "opentofu_identities"], "infisical");
 	_requireExactKeys(
 		platforms.google_cloud.projects,

@@ -1,7 +1,5 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { createInterface } from "node:readline/promises";
-import { stdin, stdout } from "node:process";
-import { knownSecrets, requestJson, run } from "./bootstrap-runtime.mjs";
+import { knownSecrets, promptHidden, requestJson, run } from "./bootstrap-runtime.mjs";
 import { classifyCredentialResponse, decideR2Credentials, getR2TokenName } from "./cloudflare-reconciliation.mjs";
 import { getBootstrapSecret, setBootstrapSecret } from "./infisical-bootstrap.mjs";
 import { constantTimeEqual, ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
@@ -29,22 +27,6 @@ async function _verifyToken(token) {
 	return permissionGroups.result?.some((permission) => permission.name === "API Tokens Write") ?? false;
 }
 
-async function _promptHidden(message) {
-	if (!stdin.isTTY || !stdout.isTTY)
-		throw new Error("A valid Cloudflare bootstrap token is missing; rerun from an interactive terminal.");
-	stdout.write(message);
-	run("stty", ["-echo"], { inherit: true });
-	try {
-		const reader = createInterface({ input: stdin, output: stdout });
-		const value = await reader.question("");
-		reader.close();
-		stdout.write("\n");
-		return value.trim();
-	} finally {
-		run("stty", ["echo"], { inherit: true });
-	}
-}
-
 export async function resolveCloudflareBootstrapToken(platforms, infisicalToken) {
 	const stored = [];
 	for (const environment of ENVIRONMENTS) {
@@ -56,7 +38,10 @@ export async function resolveCloudflareBootstrapToken(platforms, infisicalToken)
 	if (distinct.length > 1) throw new Error("Staging and production contain different Cloudflare bootstrap tokens.");
 	let token = distinct[0];
 	if (!token || !(await _verifyToken(token))) {
-		token = await _promptHidden("Cloudflare API token (API Tokens Write): ");
+		token = await promptHidden({
+			message: "Cloudflare API token (API Tokens Write): ",
+			unavailableMessage: "A valid Cloudflare bootstrap token is missing; rerun from an interactive terminal.",
+		});
 		if (!token || !(await _verifyToken(token)))
 			throw new Error("The supplied Cloudflare bootstrap token is invalid or lacks API Tokens Write.");
 	}

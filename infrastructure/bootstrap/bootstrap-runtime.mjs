@@ -1,7 +1,8 @@
 import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { stdout } from "node:process";
+import { stdin, stdout } from "node:process";
+import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { redactSecrets } from "./reconciliation.mjs";
@@ -33,6 +34,23 @@ export function run(command, args, options = {}) {
 
 export function requireTool(command, versionArgs = ["--version"]) {
 	run(command, versionArgs);
+}
+
+export async function promptHidden({ message, unavailableMessage }) {
+	if (!stdin.isTTY || !stdout.isTTY) throw new Error(unavailableMessage);
+	stdout.write(message);
+	run("stty", ["-echo"], { inherit: true });
+	let reader;
+	try {
+		reader = createInterface({ input: stdin, output: stdout });
+		const value = (await reader.question("")).trim();
+		if (value) knownSecrets.add(value);
+		return value;
+	} finally {
+		reader?.close();
+		run("stty", ["echo"], { inherit: true });
+		stdout.write("\n");
+	}
 }
 
 export function acquireLock() {

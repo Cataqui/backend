@@ -20,6 +20,11 @@ import {
 	resolveUniqueNamedResource,
 	validatePlatforms,
 } from "../infrastructure/bootstrap/reconciliation.mjs";
+import {
+	classifyUpstashCredentialResponse,
+	decideUpstashCredential,
+	reconcileUpstashCredential,
+} from "../infrastructure/bootstrap/upstash-reconciliation.mjs";
 
 const platforms = JSON.parse(readFileSync(resolve(process.cwd(), "infrastructure/platforms.json"), "utf8"));
 
@@ -45,6 +50,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 			staging: { branches: ["staging"] },
 			production: { branches: ["main"] },
 		});
+		expect(platforms.upstash).toEqual({ account_email: "ryan@ventairy.com" });
 	});
 
 	it("rejects invalid and unexpected platform values", () => {
@@ -78,6 +84,146 @@ describe("infrastructure bootstrap reconciliation", () => {
 				},
 			}),
 		).toThrow("Invalid branch policy");
+		expect(() => validatePlatforms({ ...platforms, upstash: { account_email: "not-an-email" } })).toThrow(
+			"upstash.account_email",
+		);
+		expect(() => validatePlatforms({ ...platforms, upstash: { ...platforms.upstash, api_key: "forbidden" } })).toThrow(
+			"Unexpected keys in platform object: upstash",
+		);
+	});
+
+	it.each([
+		[200, "accepted"],
+		[204, "accepted"],
+		[401, "rejected"],
+		[403, "rejected"],
+		[408, "indeterminate"],
+		[429, "indeterminate"],
+		[500, "indeterminate"],
+	] as const)("classifies Upstash credential responses", (status, expected) => {
+		expect(classifyUpstashCredentialResponse(status)).toBe(expected);
+	});
+
+	it("reuses a healthy shared Upstash key and repairs one missing environment", () => {
+		const apiKey = randomUUID();
+		expect(
+			decideUpstashCredential({
+				storedByEnvironment: { staging: apiKey, production: apiKey },
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "reuse", writeEnvironments: [] });
+		expect(
+			decideUpstashCredential({
+				storedByEnvironment: { staging: apiKey, production: undefined },
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "reuse", writeEnvironments: ["production"] });
+	});
+
+	it("requests or replaces the shared Upstash key only when missing or rejected", () => {
+		const apiKey = randomUUID();
+		expect(
+			decideUpstashCredential({
+				storedByEnvironment: { staging: undefined, production: undefined },
+				credentialStatus: "missing",
+			}),
+		).toEqual({ action: "request", writeEnvironments: ["staging", "production"] });
+		expect(
+			decideUpstashCredential({
+				storedByEnvironment: { staging: apiKey, production: apiKey },
+				credentialStatus: "rejected",
+			}),
+		).toEqual({ action: "replace", writeEnvironments: ["staging", "production"] });
+	});
+
+	it("fails closed for conflicting or indeterminate Upstash credentials", () => {
+		expect(() =>
+			decideUpstashCredential({
+				storedByEnvironment: { staging: randomUUID(), production: randomUUID() },
+				credentialStatus: "accepted",
+			}),
+		).toThrow("different Upstash bootstrap API keys");
+		expect(() =>
+			decideUpstashCredential({
+				storedByEnvironment: { staging: randomUUID(), production: undefined },
+				credentialStatus: "indeterminate",
+			}),
+		).toThrow("Unable to determine");
+	});
+
+	it("prompts once and writes both environments on first Upstash bootstrap", async () => {
+		const apiKey = randomUUID();
+		const events: string[] = [];
+		await expect(
+			reconcileUpstashCredential({
+				storedByEnvironment: { staging: undefined, production: undefined },
+				verifyKey: async (key) => (key === apiKey ? "accepted" : "rejected"),
+				requestKey: async () => {
+					events.push("prompt");
+					return apiKey;
+				},
+				writeKey: async (environment) => events.push(`write:${environment}`),
+			}),
+		).resolves.toEqual({ action: "request", writtenEnvironments: ["staging", "production"] });
+		expect(events).toEqual(["prompt", "write:staging", "write:production"]);
+	});
+
+	it("repairs or reuses healthy Upstash credentials without prompting or rotation", async () => {
+		const apiKey = randomUUID();
+		const events: string[] = [];
+		const requestKey = async () => {
+			events.push("prompt");
+			return randomUUID();
+		};
+		await reconcileUpstashCredential({
+			storedByEnvironment: { staging: apiKey, production: undefined },
+			verifyKey: async () => "accepted",
+			requestKey,
+			writeKey: async (environment) => events.push(`write:${environment}`),
+		});
+		expect(events).toEqual(["write:production"]);
+		events.length = 0;
+		await reconcileUpstashCredential({
+			storedByEnvironment: { staging: apiKey, production: apiKey },
+			verifyKey: async () => "accepted",
+			requestKey,
+			writeKey: async (environment) => events.push(`write:${environment}`),
+		});
+		expect(events).toEqual([]);
+	});
+
+	it("replaces a rejected Upstash key but never writes after an indeterminate replacement check", async () => {
+		const storedKey = randomUUID();
+		const replacementKey = randomUUID();
+		const events: string[] = [];
+		await reconcileUpstashCredential({
+			storedByEnvironment: { staging: storedKey, production: storedKey },
+			verifyKey: async (key) => (key === storedKey ? "rejected" : "accepted"),
+			requestKey: async () => replacementKey,
+			writeKey: async (environment) => events.push(`write:${environment}`),
+		});
+		expect(events).toEqual(["write:staging", "write:production"]);
+
+		events.length = 0;
+		await expect(
+			reconcileUpstashCredential({
+				storedByEnvironment: { staging: storedKey, production: storedKey },
+				verifyKey: async (key) => (key === storedKey ? "rejected" : "indeterminate"),
+				requestKey: async () => replacementKey,
+				writeKey: async (environment) => events.push(`write:${environment}`),
+			}),
+		).rejects.toThrow("Unable to verify the supplied Upstash bootstrap API key");
+		expect(events).toEqual([]);
+
+		await expect(
+			reconcileUpstashCredential({
+				storedByEnvironment: { staging: storedKey, production: storedKey },
+				verifyKey: async () => "rejected",
+				requestKey: async () => replacementKey,
+				writeKey: async (environment) => events.push(`write:${environment}`),
+			}),
+		).rejects.toThrow("supplied Upstash bootstrap API key is invalid");
+		expect(events).toEqual([]);
 	});
 
 	it("reuses one healthy owned resource and fails closed on duplicates or foreign ownership", () => {
@@ -401,6 +547,10 @@ describe("infrastructure bootstrap reconciliation", () => {
 			"utf8",
 		);
 		const neonSource = readFileSync(resolve(process.cwd(), "infrastructure/bootstrap/neon-bootstrap.mjs"), "utf8");
+		const upstashSource = readFileSync(
+			resolve(process.cwd(), "infrastructure/bootstrap/upstash-bootstrap.mjs"),
+			"utf8",
+		);
 
 		expect(packageJson.scripts["infrastructure:bootstrap"]).toBe("node infrastructure/bootstrap/bootstrap.mjs");
 		expect(source).toContain("if (process.argv.length !== 2)");
@@ -410,6 +560,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(source).toContain('from "./infisical-bootstrap.mjs"');
 		expect(source).toContain('from "./github-bootstrap.mjs"');
 		expect(source).toContain('from "./neon-bootstrap.mjs"');
+		expect(source).toContain('from "./upstash-bootstrap.mjs"');
 		expect(googleSource).toContain('rootName: "google-cloud-projects"');
 		expect(googleSource).toContain('rootName: "google-cloud-github-auth"');
 		expect(packageJson.devDependencies.neon).toBe("4.4.0");
@@ -418,6 +569,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(neonSource).toContain('["profile", "list", "--output", "json", "--no-analytics"]');
 		expect(neonSource).toContain('[...args, "--profile", "DEFAULT", "--output", "json", "--no-analytics"]');
 		expect(neonSource).not.toContain('"--api-key"');
+		expect(upstashSource).not.toMatch(/UPSTASH_API_KEY\s*[:=]\s*["'][^"']+["']/);
 		expect(source).not.toMatch(/--check|--yes|--repair|cloudflare-api-tokens|infisical-generated-folders/);
 		expect(source).not.toMatch(/manifest\.json/);
 	});

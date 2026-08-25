@@ -82,6 +82,7 @@ describe("Upstash Redis OpenTofu contract", () => {
 
 		expect(providers).toContain('provider "upstash" {}');
 		expect(providers).not.toMatch(/email\s*=|api_key\s*=/);
+		expect(committedConfiguration).not.toContain('variable "upstash_api_key"');
 		expect(committedConfiguration).not.toMatch(
 			/(?:api_token|api_key|access_key|secret_access_key|private_key|password)\s*=\s*"[^"$]+"/i,
 		);

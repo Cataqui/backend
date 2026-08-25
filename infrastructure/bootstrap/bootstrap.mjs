@@ -13,6 +13,7 @@ import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects }
 import { ensureBootstrapFolders, reconcileInfisicalIdentity } from "./infisical-bootstrap.mjs";
 import { reconcileNeonApiKeys, verifyNeonCliAuthentication } from "./neon-bootstrap.mjs";
 import { ENVIRONMENTS, redactSecrets, validatePlatforms } from "./reconciliation.mjs";
+import { reconcileUpstashApiKey } from "./upstash-bootstrap.mjs";
 
 function _validateLocalAuthentication(platforms) {
 	for (const tool of ["tofu", "wrangler", "infisical", "gcloud", "gh", "neon"]) requireTool(tool);
@@ -48,6 +49,7 @@ async function _main() {
 		await ensureBootstrapFolders(platforms, infisicalToken);
 		const cloudflareToken = await resolveCloudflareBootstrapToken(platforms, infisicalToken);
 		await reconcileR2Credentials({ platforms, infisicalToken, cloudflareToken });
+		await reconcileUpstashApiKey(platforms, infisicalToken);
 		await reconcileNeonApiKeys(platforms, infisicalToken);
 		await reconcileGoogleProjects(platforms, infisicalToken);
 		const googleAuth = await applyGoogleGithubAuth(platforms, infisicalToken);
