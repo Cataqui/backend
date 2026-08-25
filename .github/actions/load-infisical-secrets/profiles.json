@@ -17,5 +17,11 @@
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
+	},
+	"cloudflare-queues": {
+		"secret_path": "/generated/opentofu/cloudflare-queues",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	}
 }
