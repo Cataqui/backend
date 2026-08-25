@@ -9,7 +9,7 @@ data "cloudflare_api_token_permission_groups_list" "required" {
 resource "cloudflare_api_token" "infrastructure" {
   for_each = local.infrastructure_tokens
 
-  name   = "cataqui-opentofu-${each.value.root}-${var.environment}-${each.value.access}"
+  name   = "cataqui-opentofu-${each.key}-${var.environment}"
   status = "active"
 
   policies = [{
@@ -40,8 +40,10 @@ resource "cloudflare_api_token" "infrastructure" {
   }
 }
 
-resource "cloudflare_api_token" "derive_job_data_ai_gateway_runtime" {
-  name   = "cataqui-derive-job-data-ai-gateway-${var.environment}"
+resource "cloudflare_api_token" "ai_gateway_runtime" {
+  for_each = local.ai_gateway_runtime_tokens
+
+  name   = "cataqui-${each.key}-ai-gateway-${var.environment}"
   status = "active"
 
   policies = [{
@@ -69,7 +71,7 @@ resource "infisical_secret" "infrastructure_cloudflare_api_token" {
 
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/opentofu/${each.value.root}/${each.value.access}"
+  folder_path      = "/generated/opentofu/${each.key}"
   name             = "CLOUDFLARE_API_TOKEN"
   value_wo         = cloudflare_api_token.infrastructure[each.key].value
   value_wo_version = 1
@@ -79,12 +81,14 @@ resource "infisical_secret" "infrastructure_cloudflare_api_token" {
   }
 }
 
-resource "infisical_secret" "derive_job_data_ai_gateway_api_token" {
+resource "infisical_secret" "ai_gateway_api_token" {
+  for_each = local.ai_gateway_runtime_tokens
+
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/api/runtime"
-  name             = "DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"
-  value_wo         = cloudflare_api_token.derive_job_data_ai_gateway_runtime.value
+  folder_path      = each.value.folder_path
+  name             = each.value.secret_name
+  value_wo         = cloudflare_api_token.ai_gateway_runtime[each.key].value
   value_wo_version = 1
 
   lifecycle {

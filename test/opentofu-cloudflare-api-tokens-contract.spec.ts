@@ -54,16 +54,18 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	});
 
 	it("should create the exact environment-specific token inventory", () => {
-		expect(rootHcl).toContain('"cloudflare-ai-gateways/plan"');
-		expect(rootHcl).toContain('"cloudflare-ai-gateways/apply"');
-		expect(rootHcl).toContain('"cloudflare-queues/plan"');
-		expect(rootHcl).toContain('"cloudflare-queues/apply"');
-		expect(rootHcl).toContain('"cloudflare-zone-dns/plan"');
-		expect(rootHcl).toContain('"cloudflare-zone-dns/apply"');
-		expect(rootHcl).toContain('"cloudflare-zone-configuration/plan"');
-		expect(rootHcl).toContain('"cloudflare-zone-configuration/apply"');
+		for (const rootName of [
+			"cloudflare-ai-gateways",
+			"cloudflare-queues",
+			"cloudflare-zone-dns",
+			"cloudflare-zone-configuration",
+		]) {
+			expect(rootHcl).toContain(`${rootName} = {`);
+		}
 		expect(rootHcl).toMatch(/var\.environment == "production" \? local\.production_infrastructure_tokens : {}/);
-		expect(rootHcl).not.toMatch(/cloudflare-api-tokens\/(?:plan|apply)/);
+		expect(rootHcl).not.toMatch(/(?:folder_path|name)\s*=.*(?:plan|apply)/);
+		expect(rootHcl).toMatch(/ai_gateway_runtime_tokens\s*=\s*{\s*api\s*=\s*{/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
 	});
 
 	it("should resolve exact permissions without hardcoded IDs", () => {
@@ -106,12 +108,10 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 
 	it("should deliver only write-only Infisical copies to exact destinations", () => {
 		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(2);
-		expect(rootHcl).toMatch(
-			/folder_path\s*=\s*"\/generated\/opentofu\/\$\{each\.value\.root\}\/\$\{each\.value\.access\}"/,
-		);
+		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/opentofu\/\$\{each\.key\}"/);
 		expect(rootHcl).toContain('name             = "CLOUDFLARE_API_TOKEN"');
-		expect(rootHcl).toContain('folder_path      = "/generated/api/runtime"');
-		expect(rootHcl).toContain('name             = "DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"');
+		expect(rootHcl).toContain('folder_path = "/generated/api/runtime"');
+		expect(rootHcl).toContain('secret_name = "AI_GATEWAY_API_TOKEN"');
 		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(2);
 		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(2);
 		expect(rootHcl).not.toMatch(/^\s*value\s*=/m);
@@ -122,7 +122,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(4);
 		expect(rootHcl).not.toMatch(/\b(?:request_ip|expires_on|not_before)\s*=/);
 		expect(rootHcl).not.toMatch(/^\s*condition\s*=\s*{/m);
-		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-derive-job-data-ai-gateway-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-opentofu-\$\{each\.key\}-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
 	});
 
 	it("should keep the bootstrap issuer and backend credentials external", () => {

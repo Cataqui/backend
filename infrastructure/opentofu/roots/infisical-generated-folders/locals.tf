@@ -12,13 +12,4 @@ locals {
     "cloudflare-ai-gateways",
     "cloudflare-queues",
   ])
-
-  cloudflare_opentofu_access_folders = {
-    for folder in flatten([
-      for root_name in local.cloudflare_opentofu_roots : [
-        { root_name = root_name, access = "plan" },
-        { root_name = root_name, access = "apply" },
-      ]
-    ]) : "${folder.root_name}/${folder.access}" => folder
-  }
 }

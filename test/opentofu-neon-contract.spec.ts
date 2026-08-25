@@ -80,7 +80,7 @@ describe("Neon OpenTofu contract", () => {
 			.map((fileName) => readFileSync(resolve(rootsDirectory, "cloudflare-ai-gateways", fileName), "utf8"))
 			.join("\n");
 
-		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(11);
+		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(10);
 		expect(folderRoot).toMatch(/name\s*=\s*"generated"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"api"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"geosearch"/);
@@ -91,7 +91,7 @@ describe("Neon OpenTofu contract", () => {
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/api"/);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/geosearch"/);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/webhooks"/);
-		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(11);
+		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(10);
 		expect([gatewayRoot, aiGatewayRoot].join("\n")).not.toMatch(/resource "infisical_secret_folder"/);
 	});
 

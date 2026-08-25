@@ -115,9 +115,13 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		expect(_getRootHcl()).not.toMatch(/\boutput\s+"/);
 	});
 
-	it("should prohibit the legacy generic AI gateway runtime contract", () => {
-		expect(_getApplicationConfiguration()).not.toMatch(
-			/(?:^|[^A-Z_])(?:CLOUDFLARE_AI_GATEWAY_ID|AI_GATEWAY_API_TOKEN)(?:[^A-Z_]|$)|\b(?:cloudflareAiGatewayId|aiApiToken)\b/m,
+	it("should use an API-owned token with task-specific gateway IDs", () => {
+		const applicationConfiguration = _getApplicationConfiguration();
+
+		expect(applicationConfiguration).toContain("AI_GATEWAY_API_TOKEN");
+		expect(applicationConfiguration).toContain("aiGatewayApiToken");
+		expect(applicationConfiguration).not.toMatch(
+			/(?:^|[^A-Z_])(?:CLOUDFLARE_AI_GATEWAY_ID|DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN)(?:[^A-Z_]|$)|\b(?:cloudflareAiGatewayId|deriveJobDataAiGatewayApiToken|aiApiToken)\b/m,
 		);
 	});
 

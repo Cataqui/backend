@@ -51,15 +51,9 @@ run "generated_folder_contract" {
       toset(keys(infisical_secret_folder.cloudflare_opentofu_root)) == toset([
         "cloudflare-ai-gateways",
         "cloudflare-queues",
-      ]) &&
-      toset(keys(infisical_secret_folder.cloudflare_opentofu_access)) == toset([
-        "cloudflare-ai-gateways/apply",
-        "cloudflare-ai-gateways/plan",
-        "cloudflare-queues/apply",
-        "cloudflare-queues/plan",
       ])
     )
-    error_message = "Staging must create generated OpenTofu folders only for its account-scoped Cloudflare roots."
+    error_message = "Staging must create one generated credential folder for each account-scoped Cloudflare root."
   }
 }
 
@@ -88,11 +82,9 @@ run "production_folder_environment" {
     condition = (
       infisical_secret_folder.opentofu.environment_slug == "production" &&
       length(infisical_secret_folder.cloudflare_opentofu_root) == 4 &&
-      length(infisical_secret_folder.cloudflare_opentofu_access) == 8 &&
-      alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"]) &&
-      alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_access) : folder.environment_slug == "production"])
+      alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"])
     )
-    error_message = "Production must create plan/apply folders for all four Cloudflare roots."
+    error_message = "Production must create one credential folder for each of its four Cloudflare roots."
   }
 }
 

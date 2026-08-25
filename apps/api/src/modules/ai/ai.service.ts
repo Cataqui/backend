@@ -24,7 +24,7 @@ export class AiService {
 		this._deriveJobDataGateway = createAiGateway({
 			accountId: config.cloudflareAccountId,
 			gateway: config.deriveJobDataAiGatewayId,
-			apiKey: config.deriveJobDataAiGatewayApiToken,
+			apiKey: config.aiGatewayApiToken,
 			options: {
 				collectLog: false,
 				skipCache: true,
