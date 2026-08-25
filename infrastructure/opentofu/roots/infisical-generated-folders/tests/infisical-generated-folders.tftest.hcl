@@ -24,17 +24,23 @@ run "generated_folder_contract" {
       infisical_secret_folder.geosearch.folder_path == "/generated" &&
       infisical_secret_folder.geosearch.name == "geosearch" &&
       !infisical_secret_folder.geosearch.force_delete &&
+      infisical_secret_folder.webhooks.folder_path == "/generated" &&
+      infisical_secret_folder.webhooks.name == "webhooks" &&
+      !infisical_secret_folder.webhooks.force_delete &&
       infisical_secret_folder.api_runtime.folder_path == "/generated/api" &&
       infisical_secret_folder.api_runtime.name == "runtime" &&
       !infisical_secret_folder.api_runtime.force_delete &&
       infisical_secret_folder.geosearch_runtime.folder_path == "/generated/geosearch" &&
       infisical_secret_folder.geosearch_runtime.name == "runtime" &&
       !infisical_secret_folder.geosearch_runtime.force_delete &&
+      infisical_secret_folder.webhooks_runtime.folder_path == "/generated/webhooks" &&
+      infisical_secret_folder.webhooks_runtime.name == "runtime" &&
+      !infisical_secret_folder.webhooks_runtime.force_delete &&
       infisical_secret_folder.deployment.folder_path == "/generated/api" &&
       infisical_secret_folder.deployment.name == "deployment" &&
       !infisical_secret_folder.deployment.force_delete
     )
-    error_message = "API and Geosearch must have protected runtime folders, with deployment nested under API."
+    error_message = "API, Geosearch, and Webhooks must have protected runtime folders, with deployment nested under API."
   }
 }
 
@@ -50,8 +56,10 @@ run "production_folder_environment" {
       infisical_secret_folder.generated.environment_slug == "production" &&
       infisical_secret_folder.api.environment_slug == "production" &&
       infisical_secret_folder.geosearch.environment_slug == "production" &&
+      infisical_secret_folder.webhooks.environment_slug == "production" &&
       infisical_secret_folder.api_runtime.environment_slug == "production" &&
       infisical_secret_folder.geosearch_runtime.environment_slug == "production" &&
+      infisical_secret_folder.webhooks_runtime.environment_slug == "production" &&
       infisical_secret_folder.deployment.environment_slug == "production"
     )
     error_message = "Every folder must use the selected Infisical environment."

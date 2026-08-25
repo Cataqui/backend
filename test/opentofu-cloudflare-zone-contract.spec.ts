@@ -149,7 +149,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 		const runner = _readInfrastructureFile("opentofu/run-root-command.mjs");
 
 		expect(rootNames).toEqual([
-			"api-auth-keys",
+			"auth-secrets",
 			"cloudflare-ai-gateways",
 			"cloudflare-queues",
 			"cloudflare-zone-configuration",

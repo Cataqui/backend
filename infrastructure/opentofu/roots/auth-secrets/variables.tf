@@ -1,5 +1,5 @@
 variable "environment" {
-  description = "Environment whose API authentication keys are generated."
+  description = "Environment whose runtime authentication secrets are generated."
   type        = string
 
   validation {

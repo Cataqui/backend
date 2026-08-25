@@ -94,7 +94,7 @@ run "owns_the_intentional_zone_configuration" {
 
   assert {
     condition = (
-      length(cloudflare_ruleset.custom.rules) == 9 &&
+      length(cloudflare_ruleset.custom.rules) == 8 &&
       length(cloudflare_ruleset.managed_waf.rules) == 1 &&
       length(cloudflare_ruleset.rate_limits.rules) == 5 &&
       length(cloudflare_ruleset.response_compression.rules) == 1 &&
@@ -148,10 +148,10 @@ run "preserves_bot_management_without_browser_challenges_for_api_traffic" {
       cloudflare_bot_management.cataqui.sbfm_likely_automated == "managed_challenge" &&
       cloudflare_bot_management.cataqui.sbfm_verified_bots == "allow" &&
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
-      cloudflare_ruleset.custom.rules[8].ref == "skip_sbfm_for_non_browser_traffic" &&
-      cloudflare_ruleset.custom.rules[8].action == "skip" &&
-      cloudflare_ruleset.custom.rules[8].action_parameters.phases == tolist(["http_request_sbfm"]) &&
-      cloudflare_ruleset.custom.rules[8].action_parameters.products == tolist(["bic"])
+      cloudflare_ruleset.custom.rules[7].ref == "skip_sbfm_for_non_browser_traffic" &&
+      cloudflare_ruleset.custom.rules[7].action == "skip" &&
+      cloudflare_ruleset.custom.rules[7].action_parameters.phases == tolist(["http_request_sbfm"]) &&
+      cloudflare_ruleset.custom.rules[7].action_parameters.products == tolist(["bic"])
     )
     error_message = "Bot protections and the API/webhook SBFM exception must match the live configuration."
   }
@@ -164,7 +164,6 @@ run "preserves_custom_waf_order_and_contracts" {
     condition = [
       for rule in cloudflare_ruleset.custom.rules : rule.ref
       ] == [
-      "00c9ae3599b74918948125288e6523d9",
       "d3e8252afe7746e7b3d2beeef2bf7c4b",
       "cc18571df63646d482095c03e1774138",
       "block_malformed_whatsapp_delivery",
@@ -179,9 +178,9 @@ run "preserves_custom_waf_order_and_contracts" {
 
   assert {
     condition = (
-      strcontains(cloudflare_ruleset.custom.rules[2].expression, "application/json") &&
-      strcontains(cloudflare_ruleset.custom.rules[2].expression, "/publish$") &&
-      strcontains(cloudflare_ruleset.custom.rules[3].expression, "x-hub-signature-256")
+      strcontains(cloudflare_ruleset.custom.rules[1].expression, "application/json") &&
+      strcontains(cloudflare_ruleset.custom.rules[1].expression, "/publish$") &&
+      strcontains(cloudflare_ruleset.custom.rules[2].expression, "x-hub-signature-256")
     )
     error_message = "The JSON, publish, and WhatsApp request contracts must remain protected."
   }

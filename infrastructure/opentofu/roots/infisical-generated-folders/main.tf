@@ -29,6 +29,17 @@ resource "infisical_secret_folder" "geosearch" {
   depends_on = [infisical_secret_folder.generated]
 }
 
+resource "infisical_secret_folder" "webhooks" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "webhooks"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the Webhooks Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
 resource "infisical_secret_folder" "api_runtime" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
@@ -49,6 +60,17 @@ resource "infisical_secret_folder" "geosearch_runtime" {
   force_delete     = false
 
   depends_on = [infisical_secret_folder.geosearch]
+}
+
+resource "infisical_secret_folder" "webhooks_runtime" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "runtime"
+  folder_path      = "/generated/webhooks"
+  description      = "Generated values consumed by the Webhooks Worker runtime."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.webhooks]
 }
 
 resource "infisical_secret_folder" "deployment" {
