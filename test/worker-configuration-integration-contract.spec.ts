@@ -9,8 +9,8 @@ type WorkerEnvironment = {
 	observability?: { logs?: { head_sampling_rate?: number; invocation_logs?: boolean } };
 	vars: {
 		API_CONTAINER_POOL_SIZE?: string;
-		WHATSAPP_AUTH_PHONE_NUMBER_ID?: string;
-		WHATSAPP_AUTH_RECEIVER?: string;
+		WHATSAPP_NOTP_PHONE_NUMBER_ID?: string;
+		WHATSAPP_NOTP_RECEIVER?: string;
 	};
 	queues?: unknown;
 	services?: Array<{ binding: string; service: string; entrypoint?: string }>;
@@ -82,13 +82,13 @@ describe("API and Webhooks Worker configuration integration", () => {
 
 		expect({
 			apiHasPhoneNumberId: apiEnvironments.some(
-				(environment) => environment.vars.WHATSAPP_AUTH_PHONE_NUMBER_ID !== undefined,
+				(environment) => environment.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID !== undefined,
 			),
-			apiReceivers: apiEnvironments.map((environment) => environment.vars.WHATSAPP_AUTH_RECEIVER),
+			apiReceivers: apiEnvironments.map((environment) => environment.vars.WHATSAPP_NOTP_RECEIVER),
 			webhooksHasReceiver: webhooksEnvironments.some(
-				(environment) => environment.vars.WHATSAPP_AUTH_RECEIVER !== undefined,
+				(environment) => environment.vars.WHATSAPP_NOTP_RECEIVER !== undefined,
 			),
-			webhooksPhoneNumberIds: webhooksEnvironments.map((environment) => environment.vars.WHATSAPP_AUTH_PHONE_NUMBER_ID),
+			webhooksPhoneNumberIds: webhooksEnvironments.map((environment) => environment.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID),
 		}).toEqual({
 			apiHasPhoneNumberId: false,
 			apiReceivers: ["+15556625497", "+15556625497", "+5511963270517"],
@@ -109,7 +109,7 @@ describe("API and Webhooks Worker configuration integration", () => {
 
 		expect(
 			workerEnvironments.some((environment) =>
-				JSON.stringify(environment.queues ?? {}).includes("verify-whatsapp-auth-message"),
+				JSON.stringify(environment.queues ?? {}).includes("verify-whatsapp-notp"),
 			),
 		).toBe(false);
 	});

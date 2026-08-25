@@ -1,13 +1,13 @@
 import type { z } from "zod";
 import { DeriveJobDataInputSchema } from "./schemas/derive-job-data-input.schema.js";
-import { VerifyInboundMessageAuthInputSchema } from "./schemas/verify-inbound-message-auth-input.schema.js";
+import { VerifyNotpInputSchema } from "./schemas/verify-notp-input.schema.js";
 
 export const apiContainerInboundManifest = {
 	"derive-job-data": {
 		bodySchema: DeriveJobDataInputSchema,
 	},
-	"verify-whatsapp-auth-message": {
-		bodySchema: VerifyInboundMessageAuthInputSchema,
+	"verify-whatsapp-notp": {
+		bodySchema: VerifyNotpInputSchema,
 	},
 } as const satisfies Record<string, { bodySchema: z.ZodType }>;
 

@@ -32,7 +32,7 @@ export function createWhatsappRoutes(params?: { service?: WhatsappService }): Ho
 		const accepted = await service.receiveMessagesWebhook({
 			apiWorker: context.env.API_WORKER,
 			appSecret: context.env.META_APP_SECRET,
-			authPhoneNumberId: context.env.WHATSAPP_AUTH_PHONE_NUMBER_ID,
+			notpPhoneNumberId: context.env.WHATSAPP_NOTP_PHONE_NUMBER_ID,
 			rawBody: new Uint8Array(await context.req.raw.arrayBuffer()),
 			webhookSignature: context.req.header("x-hub-signature-256") ?? null,
 		});

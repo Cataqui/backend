@@ -170,7 +170,7 @@ describe("Webhooks Worker", () => {
 
 	it("should not preserve the previous authentication-specific WhatsApp route", async () => {
 		const response = await worker.fetch(
-			new Request("https://webhooks.cataqui.com/inbound-message-auth/whatsapp"),
+			new Request("https://webhooks.cataqui.com/notp/whatsapp"),
 			{} as WebhooksWorkerEnv,
 		);
 

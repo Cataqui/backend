@@ -5,18 +5,18 @@ import { InboundReceiver } from "./inbound-receiver.decorator";
 describe("InboundReceiver", () => {
 	it("should expose the receiver beneath the internal inbound path", () => {
 		class TestInboundController {
-			@InboundReceiver("verify-whatsapp-auth-message")
+			@InboundReceiver("verify-whatsapp-notp")
 			receive(): void {}
 		}
 
 		expect(Reflect.getMetadata(PATH_METADATA, TestInboundController.prototype.receive)).toBe(
-			"internal/inbound/verify-whatsapp-auth-message",
+			"internal/inbound/verify-whatsapp-notp",
 		);
 	});
 
 	it("should register inbound receivers as POST endpoints", () => {
 		class TestInboundController {
-			@InboundReceiver("verify-whatsapp-auth-message")
+			@InboundReceiver("verify-whatsapp-notp")
 			receive(): void {}
 		}
 
@@ -25,7 +25,7 @@ describe("InboundReceiver", () => {
 
 	it("should keep inbound receivers outside public URI versioning", () => {
 		class TestInboundController {
-			@InboundReceiver("verify-whatsapp-auth-message")
+			@InboundReceiver("verify-whatsapp-notp")
 			receive(): void {}
 		}
 
@@ -34,7 +34,7 @@ describe("InboundReceiver", () => {
 
 	it("should return no content after an inbound call is accepted", () => {
 		class TestInboundController {
-			@InboundReceiver("verify-whatsapp-auth-message")
+			@InboundReceiver("verify-whatsapp-notp")
 			receive(): void {}
 		}
 

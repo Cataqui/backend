@@ -5,7 +5,7 @@ import { getStorageToken, ThrottlerStorageService } from "@nestjs/throttler";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/core/app.factory";
 import { PrismaService } from "../src/core/prisma/prisma.service";
-import { InboundMessageAuthRepository } from "../src/modules/auth/inbound-message-auth/repositories/inbound-message-auth.repository";
+import { NotpRepository } from "../src/modules/auth/notp/repositories/notp.repository";
 
 process.env["NODE_ENV"] = "production";
 process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
@@ -17,7 +17,7 @@ async function buildApp(): Promise<NestFastifyApplication> {
 	})
 		.overrideProvider(PrismaService)
 		.useValue({})
-		.overrideProvider(InboundMessageAuthRepository)
+		.overrideProvider(NotpRepository)
 		.useValue({})
 		.overrideProvider(HealthCheckService)
 		.useValue({

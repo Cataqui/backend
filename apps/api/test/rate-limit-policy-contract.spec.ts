@@ -4,8 +4,8 @@ import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler
 import { AppController } from "../src/app.controller";
 import { RateLimitConstants } from "../src/core/throttle/rate-limit.constants";
 import { AuthSessionController } from "../src/modules/auth/auth-session.controller";
-import { InboundMessageAuthController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.controller";
-import { InboundMessageAuthInboundController } from "../src/modules/auth/inbound-message-auth/inbound-message-auth.inbound.controller";
+import { NotpController } from "../src/modules/auth/notp/notp.controller";
+import { NotpInboundController } from "../src/modules/auth/notp/notp.inbound.controller";
 import { MicroservicesAuthController } from "../src/modules/auth/microservices-auth/microservices-auth.controller";
 import { FeedController } from "../src/modules/feed/feed.controller";
 import { HealthController } from "../src/modules/health/health.controller";
@@ -52,10 +52,10 @@ describe("endpoint rate-limit policy contract", () => {
 		["session inspection", AuthSessionController, "getCurrentSession"],
 		["current-session logout", AuthSessionController, "logoutCurrentSession"],
 		["all-session revocation", AuthSessionController, "revokeAllSessions"],
-		["auth intent creation", InboundMessageAuthController, "createIntent"],
-		["auth intent exchange", InboundMessageAuthController, "exchangeIntentForSession"],
+		["NOTP intent creation", NotpController, "createIntent"],
+		["NOTP intent exchange", NotpController, "exchangeIntentForSession"],
 		["inbound job derivation", JobInboundController, "deriveData"],
-		["direct WhatsApp auth verification", InboundMessageAuthInboundController, "verifyWhatsappAuthMessage"],
+		["direct WhatsApp auth verification", NotpInboundController, "verifyWhatsappNotp"],
 	] as const)("should leave %s without an application-level request budget", (_name, controller, method) => {
 		expect(_getPolicy(controller, method)).toEqual({ requests: undefined, milliseconds: undefined });
 	});

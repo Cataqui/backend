@@ -346,7 +346,7 @@ Code must be boring, explicit, and easy to review.
 
 Never use ambiguous names. Choose simple, descriptive names for variables, functions, methods, classes, types, files, and modules so a reader can understand what each thing does from its name alone, without reading its implementation or searching for additional context.
 
-Before naming any class, enum, type, variable, function, method, or file, ask whether the same concept can be reused by another known or likely use case. If its meaning and behavior are independent of the current transport, provider, or feature, use a generic domain name so adding the next use case does not require renaming the shared concept. For example, use `AuthIntentStatus` when the lifecycle applies equally to WhatsApp, email, or another authentication transport.
+Before naming any class, enum, type, variable, function, method, or file, ask whether the same concept can be reused by another known or likely use case. If its meaning and behavior are independent of the current transport, provider, or feature, use a generic domain name so adding the next use case does not require renaming the shared concept. For example, use `NotpIntentStatus` when the lifecycle applies equally to WhatsApp, email, or another authentication transport.
 
 When a concept is inherently tied to one integration or transport, make that ownership explicit in its name. For example, Meta webhook verification tokens and WhatsApp phone-number IDs must retain provider-specific names because their meaning does not generalize beyond that integration.
 
@@ -367,10 +367,10 @@ runAuthenticationFlow();
 Prefer the outcome visible to the caller:
 
 ```ts
-verifyWhatsappAuthCode();
+verifyWhatsappNotp();
 enqueueAuthMessagesFromWebhook();
 getCodeOrNull();
-verifyAuthMessageAndReply(); // Two inseparable outcomes: verification always produces the reply.
+verifyNotpAndReply(); // Two inseparable outcomes: verification always produces the reply.
 ```
 
 Framework-mandated method names such as `canActivate` and shared interface methods such as a Queue handler's `handle` may keep the required contract name.

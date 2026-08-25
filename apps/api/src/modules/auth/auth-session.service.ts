@@ -3,7 +3,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { z } from "zod";
 import { AuthTokenService } from "./auth-token.service";
 import { InvalidRefreshTokenError } from "./errors/invalid-refresh-token.error";
-import { InboundMessageAuthRepository } from "./inbound-message-auth/repositories/inbound-message-auth.repository";
+import { NotpRepository } from "./notp/repositories/notp.repository";
 import type { IAuthenticatedSession } from "./interfaces/authenticated-session.interface";
 import { AuthAccessTokenRepository } from "./repositories/auth-access-token.repository";
 import { AuthSessionRepository } from "./repositories/auth-session.repository";
@@ -13,7 +13,7 @@ import { AuthSessionOutputSchema } from "./schemas/auth-session-output.schema";
 export class AuthSessionService {
 	constructor(
 		private readonly _authAccessTokenRepository: AuthAccessTokenRepository,
-		private readonly _inboundMessageAuthRepository: InboundMessageAuthRepository,
+		private readonly _notpRepository: NotpRepository,
 		private readonly _authTokenService: AuthTokenService,
 		private readonly _authSessionRepository: AuthSessionRepository,
 	) {}
@@ -154,7 +154,7 @@ export class AuthSessionService {
 
 		if (session === null) return;
 
-		await this._inboundMessageAuthRepository.deleteIntentsForSessions({ sessionIds: [session.sessionId] });
+		await this._notpRepository.deleteIntentsForSessions({ sessionIds: [session.sessionId] });
 		await this.deleteAccessTokenAndSession({
 			sessionId: session.sessionId,
 			userId: session.userId,
@@ -173,7 +173,7 @@ export class AuthSessionService {
 		});
 
 		const sessionIds = sessions.map((session) => session.sessionId);
-		await this._inboundMessageAuthRepository.deleteIntentsForSessions({ sessionIds: sessionIds });
+		await this._notpRepository.deleteIntentsForSessions({ sessionIds: sessionIds });
 
 		await this._authAccessTokenRepository.deleteAccessTokenSessions({
 			sessionIds: sessionIds,

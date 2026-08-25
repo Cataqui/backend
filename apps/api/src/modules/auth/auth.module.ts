@@ -5,14 +5,14 @@ import { authConfig } from "./auth.config";
 import { AuthSessionService } from "./auth-session.service";
 import { AuthTokenService } from "./auth-token.service";
 import { AccessTokenGuard } from "./guards/access-token.guard";
-import { InboundMessageAuthController } from "./inbound-message-auth/inbound-message-auth.controller";
-import { InboundMessageAuthInboundController } from "./inbound-message-auth/inbound-message-auth.inbound.controller";
-import { inboundMessageAuthConfig } from "./inbound-message-auth/inbound-message-auth.config";
-import { InboundMessageAuthService } from "./inbound-message-auth/inbound-message-auth.service";
+import { NotpController } from "./notp/notp.controller";
+import { NotpInboundController } from "./notp/notp.inbound.controller";
+import { notpConfig } from "./notp/notp.config";
+import { NotpService } from "./notp/notp.service";
 import { microservicesAuthConfig } from "./microservices-auth/microservices-auth.config";
 import { MicroservicesAuthController } from "./microservices-auth/microservices-auth.controller";
 import { MicroservicesAuthService } from "./microservices-auth/microservices-auth.service";
-import { InboundMessageAuthRepository } from "./inbound-message-auth/repositories/inbound-message-auth.repository";
+import { NotpRepository } from "./notp/repositories/notp.repository";
 import { AuthAccessTokenRepository } from "./repositories/auth-access-token.repository";
 import { AuthIdentityRepository } from "./repositories/auth-identity.repository";
 import { AuthSessionRepository } from "./repositories/auth-session.repository";
@@ -21,22 +21,17 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 @Module({
 	imports: [
 		ConfigModule.forFeature(authConfig),
-		ConfigModule.forFeature(inboundMessageAuthConfig),
+		ConfigModule.forFeature(notpConfig),
 		ConfigModule.forFeature(microservicesAuthConfig),
 	],
-	controllers: [
-		AuthSessionController,
-		InboundMessageAuthController,
-		InboundMessageAuthInboundController,
-		MicroservicesAuthController,
-	],
+	controllers: [AuthSessionController, NotpController, NotpInboundController, MicroservicesAuthController],
 	providers: [
-		InboundMessageAuthRepository,
+		NotpRepository,
 		AuthAccessTokenRepository,
 		AuthIdentityRepository,
 		AuthSessionRepository,
 		AuthTokenService,
-		InboundMessageAuthService,
+		NotpService,
 		AuthSessionService,
 		MicroservicesAuthService,
 		AccessTokenGuard,

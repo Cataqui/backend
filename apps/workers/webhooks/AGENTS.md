@@ -30,14 +30,14 @@ This Hono Worker is Cataquí's public ingress for provider webhooks. It authenti
 
 The Worker must remain an ingress boundary. It must not create users, mutate durable application state, execute payment or authentication business rules, or send provider replies. Latency-sensitive delivery may call a narrowly scoped named API Worker entrypoint through a private Service Binding. Use a Queue only when the workflow explicitly requires buffering or durable asynchronous retries.
 
-Each provider owns its public webhook route, signature boundary, provider payload schemas, and provider-to-Cataquí parsing. Business modules such as inbound-message authentication remain route-free and operate only on normalized provider data. A provider route may invoke several business modules so one callback can support multiple use cases without provider behavior leaking into those modules. Do not scaffold a module before its integration is being implemented.
+Each provider owns its public webhook route, signature boundary, provider payload schemas, and provider-to-Cataquí parsing. Business modules such as NOTP remain route-free and operate only on normalized provider data. A provider route may invoke several business modules so one callback can support multiple use cases without provider behavior leaking into those modules. Do not scaffold a module before its integration is being implemented.
 
 ## Provider Boundaries
 
 - Verify provider signatures against the exact raw request bytes before parsing the payload.
 - Keep provider-owned payload field names unchanged at the provider boundary.
 - Convert accepted events into a shared camelCase Cataquí contract before delivery.
-- Never deliver raw provider bodies, plaintext authentication codes, unrelated message text, or unnecessary provider data beyond this boundary.
+- Never deliver raw provider bodies, plaintext NOTP codes, unrelated message text, or unnecessary provider data beyond this boundary.
 - Keep provider-specific parsing, identifiers, secrets, and validation inside the owning provider module.
 - Share a utility only when its contract genuinely applies across provider modules.
 
@@ -46,7 +46,7 @@ Each provider owns its public webhook route, signature boundary, provider payloa
 - Use Cloudflare Workers runtime APIs directly when they provide the required security primitive.
 - Keep secrets in Worker bindings and never hardcode or log them.
 - Log only structured event names, counts, response statuses, and safe operational measurements.
-- Never log request bodies, signatures, authentication codes, access tokens, sender identifiers, phone numbers, or secrets.
+- Never log request bodies, signatures, NOTP codes, access tokens, sender identifiers, phone numbers, or secrets.
 - Await direct application delivery before acknowledging a latency-sensitive provider event. Let delivery failures reach the global error boundary so the provider receives a retryable server error.
 
 ## Error Boundaries

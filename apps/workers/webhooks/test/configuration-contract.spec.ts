@@ -9,8 +9,8 @@ type WorkerEnvironment = {
 	observability?: { logs?: { enabled?: boolean; head_sampling_rate?: number; invocation_logs?: boolean } };
 	vars: {
 		API_CONTAINER_POOL_SIZE?: string;
-		WHATSAPP_AUTH_PHONE_NUMBER_ID?: string;
-		WHATSAPP_AUTH_RECEIVER?: string;
+		WHATSAPP_NOTP_PHONE_NUMBER_ID?: string;
+		WHATSAPP_NOTP_RECEIVER?: string;
 	};
 	queues?: {
 		producers?: Array<{ binding: string; queue: string }>;
@@ -62,21 +62,21 @@ describe("Webhooks Worker configuration", () => {
 
 	it("should configure the reviewed Meta phone number IDs", () => {
 		expect([
-			webhooksConfig.vars.WHATSAPP_AUTH_PHONE_NUMBER_ID,
-			webhooksConfig.env.staging.vars.WHATSAPP_AUTH_PHONE_NUMBER_ID,
-			webhooksConfig.env.production.vars.WHATSAPP_AUTH_PHONE_NUMBER_ID,
+			webhooksConfig.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID,
+			webhooksConfig.env.staging.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID,
+			webhooksConfig.env.production.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID,
 		]).toEqual(["1211194405413752", "1211194405413752", "1203689159488121"]);
 	});
 
-	it("should not own the inbound authentication code receiver", () => {
+	it("should not own the inbound NOTP code receiver", () => {
 		expect(
 			[webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].some(
-				(config) => config.vars.WHATSAPP_AUTH_RECEIVER !== undefined,
+				(config) => config.vars.WHATSAPP_NOTP_RECEIVER !== undefined,
 			),
 		).toBe(false);
 	});
 
-	it("should deliver WhatsApp authentication directly through a private API Worker entrypoint", () => {
+	it("should deliver WhatsApp NOTP verification directly through a private API Worker entrypoint", () => {
 		expect(
 			[webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production].map((config) => config.services?.[0]),
 		).toEqual([
@@ -98,13 +98,11 @@ describe("Webhooks Worker configuration", () => {
 		]);
 	});
 
-	it("should keep WhatsApp authentication out of Cloudflare Queues", () => {
+	it("should keep WhatsApp NOTP verification out of Cloudflare Queues", () => {
 		const allWorkerConfigurations = [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production];
 
 		expect(
-			allWorkerConfigurations.some((config) =>
-				JSON.stringify(config.queues ?? {}).includes("verify-whatsapp-auth-message"),
-			),
+			allWorkerConfigurations.some((config) => JSON.stringify(config.queues ?? {}).includes("verify-whatsapp-notp")),
 		).toBe(false);
 	});
 

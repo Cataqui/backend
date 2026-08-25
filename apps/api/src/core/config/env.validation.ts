@@ -20,9 +20,9 @@ export const EnvSchema = z.object({
 	MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: z.base64(
 		"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 must be base64-encoded PKCS#8 key material",
 	),
-	WHATSAPP_AUTH_RECEIVER: z
+	WHATSAPP_NOTP_RECEIVER: z
 		.string()
-		.regex(/^\+[1-9]\d{1,14}$/, "WHATSAPP_AUTH_RECEIVER must use E.164 format, such as +5511999999999"),
+		.regex(/^\+[1-9]\d{1,14}$/, "WHATSAPP_NOTP_RECEIVER must use E.164 format, such as +5511999999999"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

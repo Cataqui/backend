@@ -11,7 +11,7 @@ export interface ApiWorkerEnvironment {
 		| "cataqui-derive-job-data-production"
 		| "cataqui-derive-job-data-development";
 	API_CONTAINER_POOL_SIZE: "3" | "10" | "1";
-	WHATSAPP_AUTH_RECEIVER: "+15556625497" | "+5511963270517";
+	WHATSAPP_NOTP_RECEIVER: "+15556625497" | "+5511963270517";
 	CLOUDFLARE_ACCOUNT_ID: string;
 	DATABASE_APP_POOLER_URL: string;
 	DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN: string;

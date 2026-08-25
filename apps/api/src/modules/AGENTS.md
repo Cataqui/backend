@@ -8,7 +8,7 @@ These instructions apply to every feature module in this scope and supplement th
 - Use `@AccessTokenRequired()` for access-token-protected NestJS routes. A refresh token is a separate session credential and does not require a still-valid access token to refresh or log out.
 - Use `@RateLimit(...)` by itself for an authenticated per-user rate limit; it already requires the access token before enforcing the Redis limit.
 - Keep access and refresh tokens opaque to clients, store only their hashes, and keep refresh-token signing keys in secret delivery. Do not replace the current session design with JWTs or an auth framework without an explicit architecture decision.
-- Provider authentication proves that a webhook came from the provider; it does not authenticate a Cataquí user until the application validates the auth intent and identity.
+- Provider authentication proves that a webhook came from the provider; it does not authenticate a Cataquí user until the application validates the NOTP intent and identity.
 
 ## API Documentation Scope
 

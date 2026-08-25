@@ -2,12 +2,12 @@ import { routeInboundCall } from "./api-container-inbound.router";
 
 function _createValidInboundCall(): { receiver: string; body: unknown } {
 	return {
-		receiver: "verify-whatsapp-auth-message",
+		receiver: "verify-whatsapp-notp",
 		body: {
 			providerMessageId: "wamid.message",
 			providerSenderId: "provider-sender-id",
 			providerContactIdentifier: "+5511999999999",
-			authCodeHash: "a".repeat(64),
+			notpCodeHash: "a".repeat(64),
 		},
 	};
 }
@@ -19,7 +19,7 @@ describe("routeInboundCall", () => {
 		await routeInboundCall({ ..._createValidInboundCall(), deliver: deliver });
 
 		expect(deliver).toHaveBeenCalledWith({
-			url: "http://localhost/internal/inbound/verify-whatsapp-auth-message",
+			url: "http://localhost/internal/inbound/verify-whatsapp-notp",
 			requestOptions: {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -27,7 +27,7 @@ describe("routeInboundCall", () => {
 					providerMessageId: "wamid.message",
 					providerSenderId: "provider-sender-id",
 					providerContactIdentifier: "+5511999999999",
-					authCodeHash: "a".repeat(64),
+					notpCodeHash: "a".repeat(64),
 				}),
 			},
 		});
@@ -39,18 +39,18 @@ describe("routeInboundCall", () => {
 			providerMessageId: "wamid.legacy-message",
 			providerSenderId: "provider-sender-id",
 			providerContactIdentifier: "+5511999999999",
-			authCodeHash: "a".repeat(64),
+			notpCodeHash: "a".repeat(64),
 		};
 
 		const response = await routeInboundCall({
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: legacyMessage,
 			deliver: deliver,
 		});
 
 		expect(response.status).toBe(204);
 		expect(deliver).toHaveBeenCalledWith({
-			url: "http://localhost/internal/inbound/verify-whatsapp-auth-message",
+			url: "http://localhost/internal/inbound/verify-whatsapp-notp",
 			requestOptions: {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -82,8 +82,8 @@ describe("routeInboundCall", () => {
 
 	it("should reject a receiver body that violates its manifest schema", async () => {
 		const response = await routeInboundCall({
-			receiver: "verify-whatsapp-auth-message",
-			body: { authCodeHash: "plaintext" },
+			receiver: "verify-whatsapp-notp",
+			body: { notpCodeHash: "plaintext" },
 			deliver: vi.fn(),
 		});
 

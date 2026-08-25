@@ -1,0 +1,34 @@
+import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
+import { ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { ErrorOutputSchema } from "../../../../core/errors/error-output";
+import { createSuccessResponseSchema } from "../../../../shared/schemas/success-response.schema";
+import { NotpIntentOutputSchema } from "../schemas/notp-intent-output.schema";
+
+export function ApiCreateNotpIntentDocs(): MethodDecorator & ClassDecorator {
+	const responseSchema = createSuccessResponseSchema({ dataSchema: NotpIntentOutputSchema });
+
+	return applyDecorators(
+		SerializeOptions({ schema: responseSchema }),
+		ApiOperation({
+			summary: "Create an NOTP intent",
+			description:
+				"Creates a short-lived NOTP code, its channel-specific receiver, and a secret intent token for the requested messaging channel. The Cataquí mobile client asks the user to send the code to that receiver through the channel and keeps the intent token private for polling. An unused intent expires after 15 minutes; after message verification, the token remains exchangeable for five minutes.",
+		}),
+		ApiResponse({
+			status: HttpStatus.CREATED,
+			description: "NOTP intent created.",
+			standardSchema: responseSchema,
+			headers: {
+				"Cache-Control": {
+					description: "Prevents caches from storing the NOTP code.",
+					schema: { type: "string", example: "no-store" },
+				},
+			},
+		}),
+		ApiResponse({
+			status: HttpStatus.SERVICE_UNAVAILABLE,
+			description: "Every generated NOTP credential set conflicted with an active intent. The caller should try again.",
+			standardSchema: ErrorOutputSchema,
+		}),
+	);
+}

@@ -7,17 +7,17 @@ describe("inboundCall", () => {
 			providerMessageId: "wamid.message",
 			providerSenderId: "provider-sender-id",
 			providerContactIdentifier: "+5511999999999",
-			authCodeHash: "a".repeat(64),
+			notpCodeHash: "a".repeat(64),
 		};
 
 		await inboundCall({
 			worker: { deliverInbound: deliverInbound },
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: body,
 		});
 
 		expect(deliverInbound).toHaveBeenCalledWith({
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: body,
 		});
 	});
@@ -27,12 +27,12 @@ describe("inboundCall", () => {
 
 		const response = await inboundCall({
 			worker: { deliverInbound: vi.fn().mockResolvedValue(expectedResponse) },
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: {
 				providerMessageId: "wamid.message",
 				providerSenderId: "provider-sender-id",
 				providerContactIdentifier: "+5511999999999",
-				authCodeHash: "a".repeat(64),
+				notpCodeHash: "a".repeat(64),
 			},
 		});
 

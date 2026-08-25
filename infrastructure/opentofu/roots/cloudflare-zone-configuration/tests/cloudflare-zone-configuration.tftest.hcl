@@ -203,7 +203,7 @@ run "preserves_managed_waf_and_rate_limits" {
     condition = (
       cloudflare_ruleset.rate_limits.rules[0].ref == "rate_limit_public_contact_lookup" &&
       cloudflare_ruleset.rate_limits.rules[0].ratelimit.requests_per_period == 120 &&
-      cloudflare_ruleset.rate_limits.rules[1].ref == "rate_limit_auth_intent_creation" &&
+      cloudflare_ruleset.rate_limits.rules[1].ref == "rate_limit_notp_intent_creation" &&
       cloudflare_ruleset.rate_limits.rules[1].ratelimit.requests_per_period == 60 &&
       cloudflare_ruleset.rate_limits.rules[2].ref == "rate_limit_api_health_checks" &&
       !cloudflare_ruleset.rate_limits.rules[2].enabled &&

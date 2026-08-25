@@ -6,7 +6,7 @@ import { type IAuthConfig, authConfig as authConfigFactory } from "./auth.config
 import { AuthSessionUnavailableError } from "./errors/auth-session-unavailable.error";
 import { InvalidRefreshTokenError } from "./errors/invalid-refresh-token.error";
 import { AuthAccessTokenRepository } from "./repositories/auth-access-token.repository";
-import { InboundMessageAuthRepository } from "./inbound-message-auth/repositories/inbound-message-auth.repository";
+import { NotpRepository } from "./notp/repositories/notp.repository";
 import { AuthSessionRepository } from "./repositories/auth-session.repository";
 
 const SESSION_ID = "5c474828-dd9e-4490-a45a-0e82512bc45e";
@@ -36,7 +36,7 @@ describe("AuthSessionService", () => {
 		deleteForSession: ReturnType<typeof vi.fn>;
 		findActiveAccessTokenSession: ReturnType<typeof vi.fn>;
 	};
-	let inboundMessageAuthRepository: { deleteIntentsForSessions: ReturnType<typeof vi.fn> };
+	let notpRepository: { deleteIntentsForSessions: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		repository = {
@@ -53,14 +53,14 @@ describe("AuthSessionService", () => {
 			deleteForSession: vi.fn(),
 			findActiveAccessTokenSession: vi.fn(),
 		};
-		inboundMessageAuthRepository = { deleteIntentsForSessions: vi.fn() };
+		notpRepository = { deleteIntentsForSessions: vi.fn() };
 		const module = await Test.createTestingModule({
 			providers: [
 				AuthTokenService,
 				AuthSessionService,
 				{ provide: authConfigFactory.KEY, useValue: authConfig },
 				{ provide: AuthAccessTokenRepository, useValue: accessTokenRepository },
-				{ provide: InboundMessageAuthRepository, useValue: inboundMessageAuthRepository },
+				{ provide: NotpRepository, useValue: notpRepository },
 				{ provide: AuthSessionRepository, useValue: repository },
 			],
 		}).compile();
@@ -441,7 +441,7 @@ describe("AuthSessionService", () => {
 		await service.logout({ refreshToken: historicalToken.refreshToken });
 
 		expect({
-			intentDeletion: inboundMessageAuthRepository.deleteIntentsForSessions.mock.calls[0]?.[0],
+			intentDeletion: notpRepository.deleteIntentsForSessions.mock.calls[0]?.[0],
 			accessDeletion: accessTokenRepository.deleteForSession.mock.calls[0]?.[0],
 			sessionDeletion: repository.deleteSession.mock.calls[0]?.[0],
 		}).toEqual({
@@ -489,7 +489,7 @@ describe("AuthSessionService", () => {
 			session: { sessionId: SESSION_ID, userId: "user-id", expiresAt: new Date("2026-09-04T15:00:00.000Z") },
 		});
 
-		expect(inboundMessageAuthRepository.deleteIntentsForSessions).toHaveBeenCalledWith({
+		expect(notpRepository.deleteIntentsForSessions).toHaveBeenCalledWith({
 			sessionIds: [SESSION_ID, OTHER_SESSION_ID],
 		});
 	});

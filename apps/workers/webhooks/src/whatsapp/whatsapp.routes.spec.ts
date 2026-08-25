@@ -51,7 +51,7 @@ function _buildPayload(params?: {
 									from_user_id: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 									timestamp: "1786172400",
 									type: "text",
-									text: { body: params?.body ?? "AUTH-K7F9Q2M8VD" },
+									text: { body: params?.body ?? "NOTP-K7F9Q2M8VD" },
 								},
 							],
 						},
@@ -66,7 +66,7 @@ function _buildEnv(deliverInbound: ReturnType<typeof vi.fn>): WebhooksWorkerEnv 
 	return {
 		META_APP_SECRET: webhookSigningSecret,
 		WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN: "verify-token",
-		WHATSAPP_AUTH_PHONE_NUMBER_ID: "1234567890",
+		WHATSAPP_NOTP_PHONE_NUMBER_ID: "1234567890",
 		API_WORKER: { deliverInbound: deliverInbound },
 	} as never;
 }
@@ -196,12 +196,12 @@ describe("WhatsApp routes", () => {
 		});
 	});
 
-	it("should acknowledge malformed authentication text without contacting the API Worker", async () => {
+	it("should acknowledge malformed NOTP text without contacting the API Worker", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 		const deliverInbound = vi.fn();
 
 		const response = await whatsappRoutes.fetch(
-			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD AUTH-AAAAAAAAAA" }))),
+			_buildPostRequest(JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD NOTP-AAAAAAAAAA" }))),
 			_buildEnv(deliverInbound),
 		);
 
@@ -211,27 +211,27 @@ describe("WhatsApp routes", () => {
 		});
 	});
 
-	it("should send a normalized authentication message directly to the API Worker", async () => {
+	it("should send a normalized NOTP message directly to the API Worker", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 		const deliverInbound = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 
 		await whatsappRoutes.fetch(
-			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
+			_buildPostRequest(JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD" }))),
 			_buildEnv(deliverInbound),
 		);
 
 		expect(deliverInbound).toHaveBeenCalledWith({
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: {
 				providerMessageId: "wamid.message",
 				providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 				providerContactIdentifier: "cataqui.user",
-				authCodeHash: "a".repeat(64),
+				notpCodeHash: "a".repeat(64),
 			},
 		});
 	});
 
-	it("should send a burst of valid authentication messages directly to the API Worker without queueing", async () => {
+	it("should send a burst of valid NOTP messages directly to the API Worker without queueing", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 		const deliverInbound = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 
@@ -239,7 +239,7 @@ describe("WhatsApp routes", () => {
 			Array.from({ length: 300 }, (_, messageIndex) =>
 				whatsappRoutes.fetch(
 					_buildPostRequest(
-						JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD", messageId: `wamid.burst-${messageIndex}` })),
+						JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD", messageId: `wamid.burst-${messageIndex}` })),
 					),
 					_buildEnv(deliverInbound),
 				),
@@ -250,13 +250,13 @@ describe("WhatsApp routes", () => {
 		expect(deliverInbound).toHaveBeenCalledTimes(300);
 	});
 
-	it("should ignore authentication messages received by a different WhatsApp number", async () => {
+	it("should ignore NOTP messages received by a different WhatsApp number", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 		const deliverInbound = vi.fn();
 
 		const response = await whatsappRoutes.fetch(
 			_buildPostRequest(
-				JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD", phoneNumberId: "different-phone-number-id" })),
+				JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD", phoneNumberId: "different-phone-number-id" })),
 			),
 			_buildEnv(deliverInbound),
 		);
@@ -267,22 +267,22 @@ describe("WhatsApp routes", () => {
 		});
 	});
 
-	it("should return 500 when the API Worker cannot verify a valid authentication message", async () => {
+	it("should return 500 when the API Worker cannot verify a valid NOTP message", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 
 		const response = await whatsappRoutes.fetch(
-			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
+			_buildPostRequest(JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD" }))),
 			_buildEnv(vi.fn().mockRejectedValue(new Error("API unavailable"))),
 		);
 
 		expect(response.status).toBe(500);
 	});
 
-	it("should return 500 when the API Worker rejects a valid authentication message", async () => {
+	it("should return 500 when the API Worker rejects a valid NOTP message", async () => {
 		isWebhookFromMetaMock.mockResolvedValue(true);
 
 		const response = await whatsappRoutes.fetch(
-			_buildPostRequest(JSON.stringify(_buildPayload({ body: "AUTH-K7F9Q2M8VD" }))),
+			_buildPostRequest(JSON.stringify(_buildPayload({ body: "NOTP-K7F9Q2M8VD" }))),
 			_buildEnv(vi.fn().mockResolvedValue(new Response(null, { status: 500 }))),
 		);
 

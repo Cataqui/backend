@@ -215,7 +215,7 @@ describe("API Worker", () => {
 		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/example", { method: "POST" });
 	});
 
-	it("should deliver a valid WhatsApp authentication message directly to a random API container", async () => {
+	it("should deliver a valid WhatsApp NOTP message directly to a random API container", async () => {
 		const containerFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 		const apiContainerBinding = {};
 		getRandomMock.mockResolvedValue({ containerFetch: containerFetch });
@@ -230,20 +230,20 @@ describe("API Worker", () => {
 			providerMessageId: "wamid.message",
 			providerSenderId: "provider-sender-id",
 			providerContactIdentifier: "+5511999999999",
-			authCodeHash: "a".repeat(64),
+			notpCodeHash: "a".repeat(64),
 		};
 
-		await entrypoint.deliverInbound({ receiver: "verify-whatsapp-auth-message", body: message });
+		await entrypoint.deliverInbound({ receiver: "verify-whatsapp-notp", body: message });
 
 		expect(getRandomMock).toHaveBeenCalledWith(apiContainerBinding, 3);
-		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/inbound/verify-whatsapp-auth-message", {
+		expect(containerFetch).toHaveBeenCalledWith("http://localhost/internal/inbound/verify-whatsapp-notp", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(message),
 		});
 	});
 
-	it("should reject an invalid direct WhatsApp authentication message before selecting a container", async () => {
+	it("should reject an invalid direct WhatsApp NOTP message before selecting a container", async () => {
 		const entrypoint = new ApiContainerInboundEntrypoint(
 			{} as never,
 			{
@@ -253,12 +253,12 @@ describe("API Worker", () => {
 		);
 
 		const response = await entrypoint.deliverInbound({
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: {
 				providerMessageId: "wamid.message",
 				providerSenderId: "provider-sender-id",
 				providerContactIdentifier: "+5511999999999",
-				authCodeHash: "plaintext-code",
+				notpCodeHash: "plaintext-code",
 			},
 		});
 
@@ -278,12 +278,12 @@ describe("API Worker", () => {
 		);
 
 		const response = await entrypoint.deliverInbound({
-			receiver: "verify-whatsapp-auth-message",
+			receiver: "verify-whatsapp-notp",
 			body: {
 				providerMessageId: "wamid.message",
 				providerSenderId: "provider-sender-id",
 				providerContactIdentifier: "+5511999999999",
-				authCodeHash: "a".repeat(64),
+				notpCodeHash: "a".repeat(64),
 			},
 		});
 

@@ -1,17 +1,17 @@
-import { InboundMessageAuthService } from "../inbound-message-auth/inbound-message-auth.service";
+import { NotpService } from "../notp/notp.service";
 import { MetaWebhookAuthService } from "./meta-webhook-auth.service";
 import { getTextMessagesFromWhatsappWebhook } from "./whatsapp-messages-webhook.parser";
 
 export class WhatsappService {
 	constructor(params?: {
-		inboundMessageAuthService?: InboundMessageAuthService;
+		notpService?: NotpService;
 		metaWebhookAuthService?: MetaWebhookAuthService;
 	}) {
-		this._inboundMessageAuthService = params?.inboundMessageAuthService ?? new InboundMessageAuthService();
+		this._notpService = params?.notpService ?? new NotpService();
 		this._metaWebhookAuthService = params?.metaWebhookAuthService ?? new MetaWebhookAuthService();
 	}
 
-	private readonly _inboundMessageAuthService: InboundMessageAuthService;
+	private readonly _notpService: NotpService;
 	private readonly _metaWebhookAuthService: MetaWebhookAuthService;
 
 	async getSubscriptionChallengeOrNull(params: {
@@ -40,7 +40,7 @@ export class WhatsappService {
 	async receiveMessagesWebhook(params: {
 		apiWorker: WebhooksWorkerEnv["API_WORKER"];
 		appSecret: string;
-		authPhoneNumberId: string;
+		notpPhoneNumberId: string;
 		rawBody: Uint8Array;
 		webhookSignature: string | null;
 	}): Promise<boolean> {
@@ -58,11 +58,11 @@ export class WhatsappService {
 			requestBody: JSON.parse(new TextDecoder().decode(params.rawBody)),
 		});
 
-		const authMessageCandidates = await Promise.all(
+		const notpCandidates = await Promise.all(
 			receivedTextMessages
-				.filter((message) => message.recipientPhoneNumberId === params.authPhoneNumberId)
+				.filter((message) => message.recipientPhoneNumberId === params.notpPhoneNumberId)
 				.map((message) =>
-					this._inboundMessageAuthService.getInputOrNull({
+					this._notpService.getInputOrNull({
 						providerMessageId: message.providerMessageId,
 						providerSenderId: message.providerSenderId,
 						providerContactIdentifier: message.providerContactIdentifier,
@@ -71,9 +71,9 @@ export class WhatsappService {
 				),
 		);
 
-		await this._inboundMessageAuthService.verifyInputs({
+		await this._notpService.verifyInputs({
 			apiWorker: params.apiWorker,
-			inputs: authMessageCandidates.filter((message) => message !== null),
+			inputs: notpCandidates.filter((message) => message !== null),
 		});
 
 		return true;

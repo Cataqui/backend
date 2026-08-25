@@ -15,7 +15,7 @@ export default defineConfig({
 				privateKeyEncoding: { format: "der", type: "pkcs8" },
 				publicKeyEncoding: { format: "der", type: "spki" },
 			}).privateKey.toString("base64"),
-			WHATSAPP_AUTH_RECEIVER: "+15556625497",
+			WHATSAPP_NOTP_RECEIVER: "+15556625497",
 			DATABASE_APP_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",

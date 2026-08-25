@@ -46,9 +46,9 @@ resource "cloudflare_ruleset" "rate_limits" {
           status_code  = 429
         }
       }
-      description = "Limit authentication intent creation per environment and NAT-aware visitor"
+      description = "Limit NOTP intent creation per environment and NAT-aware visitor"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/v1/auth/inbound-message/intents\""
+      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/v1/auth/notp/intents\""
       ratelimit = {
         characteristics     = ["cf.colo.id", "cf.unique_visitor_id"]
         mitigation_timeout  = 60
@@ -56,7 +56,7 @@ resource "cloudflare_ruleset" "rate_limits" {
         requests_per_period = 60
         requests_to_origin  = true
       }
-      ref = "rate_limit_auth_intent_creation"
+      ref = "rate_limit_notp_intent_creation"
     },
     {
       action = "block"

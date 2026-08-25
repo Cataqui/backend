@@ -10,7 +10,7 @@ describe("WhatsappMessagesWebhookValueSchema", () => {
 					{
 						from_user_id: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 						id: "wamid.message",
-						text: { body: "AUTH-K7F9Q2M8VD" },
+						text: { body: "NOTP-K7F9Q2M8VD" },
 						timestamp: "1786172400",
 						type: "text",
 					},
@@ -28,7 +28,7 @@ describe("WhatsappMessagesWebhookValueSchema", () => {
 					{
 						from: "5511999999999",
 						id: "wamid.message",
-						text: { body: "AUTH-K7F9Q2M8VD" },
+						text: { body: "NOTP-K7F9Q2M8VD" },
 						timestamp: "1786172400",
 						type: "text",
 					},
@@ -52,7 +52,7 @@ describe("WhatsappMessagesWebhookValueSchema", () => {
 					{
 						from_user_id: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 						id: "wamid.message",
-						text: { body: "AUTH-K7F9Q2M8VD" },
+						text: { body: "NOTP-K7F9Q2M8VD" },
 						timestamp: "1786172400",
 						type: "text",
 					},
@@ -78,7 +78,7 @@ describe("WhatsappMessagesWebhookValueSchema", () => {
 						from: "",
 						from_user_id: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 						id: "wamid.message",
-						text: { body: "AUTH-K7F9Q2M8VD" },
+						text: { body: "NOTP-K7F9Q2M8VD" },
 						timestamp: "1786172400",
 						type: "text",
 					},
@@ -95,7 +95,7 @@ describe("WhatsappMessagesWebhookValueSchema", () => {
 				messages: [
 					{
 						id: "wamid.message",
-						text: { body: "AUTH-K7F9Q2M8VD" },
+						text: { body: "NOTP-K7F9Q2M8VD" },
 						timestamp: "1786172400",
 						type: "text",
 					},
