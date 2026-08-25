@@ -1,0 +1,139 @@
+name: Load Infisical secrets
+description: Authenticate with Infisical and load an approved secret profile into the current job environment.
+
+inputs:
+  environment:
+    description: Infisical environment; must be staging or production.
+    required: true
+  profile:
+    description: Approved profile declared in profiles.json.
+    required: true
+  infisical-identity-id:
+    description: Infisical machine identity ID configured for GitHub OIDC.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve approved profile
+      id: profile
+      shell: bash
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INFISICAL_IDENTITY_ID: ${{ inputs.infisical-identity-id }}
+        PROFILE_MANIFEST: ${{ github.action_path }}/profiles.json
+      run: |
+        set -euo pipefail
+        case "$INPUT_ENVIRONMENT" in
+          staging | production) ;;
+          *) echo "environment must be staging or production." >&2; exit 1 ;;
+        esac
+        if [[ ! "$INFISICAL_IDENTITY_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+          echo "The selected GitHub environment must define INFISICAL_OPENTOFU_IDENTITY_ID as a lowercase UUID." >&2
+          exit 1
+        fi
+        if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+          echo "The caller must grant id-token: write." >&2
+          exit 1
+        fi
+        if ! profile_config="$(jq -cer --arg profile "$INPUT_PROFILE" '.[$profile] // error("unsupported profile")' "$PROFILE_MANIFEST")"; then
+          echo "profile is not declared in profiles.json." >&2
+          exit 1
+        fi
+        if ! jq -e '
+          . as $profile |
+          ($profile.secret_path | type == "string" and test("^/[a-z0-9]+(/[a-z0-9-]+)*$")) and
+          ($profile.required_secrets | type == "array" and length > 0) and
+          (all($profile.required_secrets[]; type == "string" and test("^[A-Z][A-Z0-9_]*$"))) and
+          (($profile.required_secrets | unique | length) == ($profile.required_secrets | length)) and
+          ($profile.environment_aliases | type == "object") and
+          (all($profile.environment_aliases | to_entries[];
+            (.key | test("^[A-Z][A-Z0-9_]*$")) and
+            (.value | type == "string" and test("^[A-Z][A-Z0-9_]*$")))) and
+          (all($profile.environment_aliases[]; . as $source | any($profile.required_secrets[]; . == $source))) and
+          ($profile.authenticate_infisical_provider | type == "boolean")
+        ' <<< "$profile_config" > /dev/null; then
+          echo "profile configuration is invalid." >&2
+          exit 1
+        fi
+        secret_path="$(jq -er '.secret_path' <<< "$profile_config")"
+        authenticate_infisical_provider="$(jq -er '.authenticate_infisical_provider' <<< "$profile_config")"
+        echo "secret-path=$secret_path" >> "$GITHUB_OUTPUT"
+        echo "authenticate-infisical-provider=$authenticate_infisical_provider" >> "$GITHUB_OUTPUT"
+        project_slug="$(
+          jq -er \
+            '.infisical.project_slug | select(type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$"))' \
+            "$GITHUB_WORKSPACE/infrastructure/platforms.json"
+        )"
+        echo "project-slug=$project_slug" >> "$GITHUB_OUTPUT"
+
+    - name: Fetch approved Infisical profile
+      uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+      with:
+        method: oidc
+        identity-id: ${{ inputs.infisical-identity-id }}
+        oidc-audience: https://github.com/Cataqui
+        project-slug: ${{ steps.profile.outputs.project-slug }}
+        env-slug: ${{ inputs.environment }}
+        secret-path: ${{ steps.profile.outputs.secret-path }}
+        recursive: false
+        include-imports: false
+        export-type: env
+
+    - name: Validate and map profile credentials
+      shell: bash
+      env:
+        INPUT_PROFILE: ${{ inputs.profile }}
+        PROFILE_MANIFEST: ${{ github.action_path }}/profiles.json
+      run: |
+        set -euo pipefail
+        mapfile -t required_secrets < <(
+          jq -er --arg profile "$INPUT_PROFILE" '.[$profile].required_secrets[]' "$PROFILE_MANIFEST"
+        )
+        for secret_name in "${required_secrets[@]}"; do
+          secret_value="${!secret_name:-}"
+          if [[ -z "$secret_value" ]]; then
+            echo "$secret_name is required in the selected Infisical profile." >&2
+            exit 1
+          fi
+          if [[ "$secret_value" == *$'\n'* || "$secret_value" == *$'\r'* ]]; then
+            echo "$secret_name must be a single-line value." >&2
+            exit 1
+          fi
+          printf '::add-mask::%s\n' "$secret_value"
+        done
+        while IFS=$'\t' read -r alias_name source_name; do
+          source_value="${!source_name:-}"
+          printf '%s=%s\n' "$alias_name" "$source_value" >> "$GITHUB_ENV"
+        done < <(
+          jq -r --arg profile "$INPUT_PROFILE" \
+            '.[$profile].environment_aliases | to_entries[] | [.key, .value] | @tsv' \
+            "$PROFILE_MANIFEST"
+        )
+
+    - name: Authenticate the Infisical OpenTofu provider
+      if: steps.profile.outputs.authenticate-infisical-provider == 'true'
+      shell: bash
+      env:
+        INFISICAL_IDENTITY_ID: ${{ inputs.infisical-identity-id }}
+      run: |
+        set -euo pipefail
+        oidc_response="$(
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fgithub.com%2FCataqui"
+        )"
+        provider_jwt="$(jq -er '.value | select(type == "string" and length > 0)' <<< "$oidc_response")"
+        unset oidc_response
+        if [[ "$provider_jwt" == *$'\n'* || "$provider_jwt" == *$'\r'* ]]; then
+          echo "GitHub returned an invalid OIDC token." >&2
+          exit 1
+        fi
+        printf '::add-mask::%s\n' "$provider_jwt"
+        {
+          echo "INFISICAL_AUTH_METHOD=oidc"
+          echo "INFISICAL_MACHINE_IDENTITY_ID=$INFISICAL_IDENTITY_ID"
+          echo "INFISICAL_AUTH_JWT=$provider_jwt"
+        } >> "$GITHUB_ENV"
+        unset provider_jwt
