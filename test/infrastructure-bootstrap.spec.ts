@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,6 +8,12 @@ import {
 	getR2TokenName,
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
 import { decideGoogleProject } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
+import {
+	classifyNeonCredentialResponse,
+	decideNeonCredential,
+	getNeonApiKeyName,
+	reconcileNeonCredential,
+} from "../infrastructure/bootstrap/neon-reconciliation.mjs";
 import {
 	constantTimeEqual,
 	redactSecrets,
@@ -149,6 +156,176 @@ describe("infrastructure bootstrap reconciliation", () => {
 	});
 
 	it.each([
+		[200, "accepted"],
+		[204, "accepted"],
+		[401, "rejected"],
+		[403, "indeterminate"],
+		[404, "indeterminate"],
+		[408, "indeterminate"],
+		[429, "indeterminate"],
+		[500, "indeterminate"],
+	] as const)("classifies Neon credential verification responses", (status, expected) => {
+		expect(classifyNeonCredentialResponse(status)).toBe(expected);
+	});
+
+	it("derives stable environment-scoped Neon key names", () => {
+		expect(getNeonApiKeyName("staging")).toBe("cataqui-backend-opentofu-staging");
+		expect(getNeonApiKeyName("production")).toBe("cataqui-backend-opentofu-production");
+	});
+
+	it("reuses or adopts one healthy organization-wide Neon key", () => {
+		const inventory = [{ id: 41, name: "cataqui-backend-opentofu-staging", project_id: undefined }];
+		expect(
+			decideNeonCredential({
+				expectedName: "cataqui-backend-opentofu-staging",
+				storedKey: randomUUID(),
+				storedKeyId: "41",
+				inventory,
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "reuse", keyId: "41" });
+		expect(
+			decideNeonCredential({
+				expectedName: "cataqui-backend-opentofu-staging",
+				storedKey: randomUUID(),
+				storedKeyId: undefined,
+				inventory,
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "adopt", keyId: "41" });
+	});
+
+	it("creates missing Neon keys and replaces one invalid or orphaned key", () => {
+		const expectedName = "cataqui-backend-opentofu-production";
+		expect(
+			decideNeonCredential({
+				expectedName,
+				storedKey: undefined,
+				storedKeyId: undefined,
+				inventory: [],
+				credentialStatus: "missing",
+			}),
+		).toEqual({ action: "create" });
+		expect(
+			decideNeonCredential({
+				expectedName,
+				storedKey: randomUUID(),
+				storedKeyId: "52",
+				inventory: [{ id: 52, name: expectedName, project_id: null }],
+				credentialStatus: "rejected",
+			}),
+		).toEqual({ action: "replace", keyId: "52" });
+		expect(
+			decideNeonCredential({
+				expectedName,
+				storedKey: undefined,
+				storedKeyId: "52",
+				inventory: [{ id: 52, name: expectedName, project_id: null }],
+				credentialStatus: "missing",
+			}),
+		).toEqual({ action: "replace", keyId: "52" });
+	});
+
+	it("fails closed on ambiguous, scoped, foreign, or indeterminate Neon credentials", () => {
+		const expectedName = "cataqui-backend-opentofu-staging";
+		const input = {
+			expectedName,
+			storedKey: randomUUID(),
+			storedKeyId: "61",
+			credentialStatus: "accepted",
+		};
+		expect(() =>
+			decideNeonCredential({
+				...input,
+				inventory: [
+					{ id: 61, name: expectedName, project_id: undefined },
+					{ id: 62, name: expectedName, project_id: undefined },
+				],
+			}),
+		).toThrow("Duplicate Neon bootstrap ownership");
+		expect(() =>
+			decideNeonCredential({
+				...input,
+				inventory: [{ id: 61, name: expectedName, project_id: "project-id" }],
+			}),
+		).toThrow("organization-wide");
+		expect(() =>
+			decideNeonCredential({
+				...input,
+				inventory: [{ id: 61, name: "foreign-key", project_id: undefined }],
+			}),
+		).toThrow("Foreign Neon API key metadata");
+		expect(() =>
+			decideNeonCredential({
+				...input,
+				credentialStatus: "indeterminate",
+				inventory: [{ id: 61, name: expectedName, project_id: undefined }],
+			}),
+		).toThrow("Unable to determine");
+		expect(() =>
+			decideNeonCredential({
+				...input,
+				credentialStatus: "foreign",
+				inventory: [{ id: 61, name: expectedName, project_id: undefined }],
+			}),
+		).toThrow("foreign organization");
+	});
+
+	it("writes a newly issued Neon key before its reconciliation ID", async () => {
+		const events: string[] = [];
+		const generatedKey = randomUUID();
+		await expect(
+			reconcileNeonCredential({
+				expectedName: "cataqui-backend-opentofu-staging",
+				storedKey: undefined,
+				storedKeyId: undefined,
+				inventory: [],
+				verifyKey: async () => "accepted",
+				revokeKey: async () => events.push("revoke"),
+				createKey: async () => ({ id: 71, key: generatedKey }),
+				writeKey: async (key) => events.push(key === generatedKey ? "key" : "unexpected"),
+				writeKeyId: async (keyId) => events.push(`id:${keyId}`),
+			}),
+		).resolves.toEqual({ action: "create", keyId: "71" });
+		expect(events).toEqual(["key", "id:71"]);
+	});
+
+	it("does not mutate a healthy Neon credential and revokes an orphan before replacement", async () => {
+		const expectedName = "cataqui-backend-opentofu-production";
+		const events: string[] = [];
+		await expect(
+			reconcileNeonCredential({
+				expectedName,
+				storedKey: randomUUID(),
+				storedKeyId: "81",
+				inventory: [{ id: 81, name: expectedName, project_id: undefined }],
+				verifyKey: async () => "accepted",
+				revokeKey: async () => events.push("revoke"),
+				createKey: async () => ({ id: 82, key: randomUUID() }),
+				writeKey: async () => events.push("key"),
+				writeKeyId: async () => events.push("id"),
+			}),
+		).resolves.toEqual({ action: "reuse", keyId: "81" });
+		expect(events).toEqual([]);
+
+		await reconcileNeonCredential({
+			expectedName,
+			storedKey: undefined,
+			storedKeyId: "81",
+			inventory: [{ id: 81, name: expectedName, project_id: undefined }],
+			verifyKey: async () => "missing",
+			revokeKey: async (keyId) => events.push(`revoke:${keyId}`),
+			createKey: async () => {
+				events.push("create");
+				return { id: 82, key: randomUUID() };
+			},
+			writeKey: async () => events.push("key"),
+			writeKeyId: async () => events.push("id"),
+		});
+		expect(events).toEqual(["revoke:81", "create", "key", "id"]);
+	});
+
+	it.each([
 		[[], undefined, "create"],
 		[[], { parent: "organizations/945579294313" }, "import"],
 		[[], { parent: { id: "945579294313", type: "organization" }, lifecycleState: "ACTIVE" }, "import"],
@@ -223,6 +400,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 			resolve(process.cwd(), "infrastructure/bootstrap/google-cloud-bootstrap.mjs"),
 			"utf8",
 		);
+		const neonSource = readFileSync(resolve(process.cwd(), "infrastructure/bootstrap/neon-bootstrap.mjs"), "utf8");
 
 		expect(packageJson.scripts["infrastructure:bootstrap"]).toBe("node infrastructure/bootstrap/bootstrap.mjs");
 		expect(source).toContain("if (process.argv.length !== 2)");
@@ -231,8 +409,15 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(source).toContain('from "./google-cloud-bootstrap.mjs"');
 		expect(source).toContain('from "./infisical-bootstrap.mjs"');
 		expect(source).toContain('from "./github-bootstrap.mjs"');
+		expect(source).toContain('from "./neon-bootstrap.mjs"');
 		expect(googleSource).toContain('rootName: "google-cloud-projects"');
 		expect(googleSource).toContain('rootName: "google-cloud-github-auth"');
+		expect(packageJson.devDependencies.neon).toBe("4.4.0");
+		expect(neonSource).toContain("delete environment.NEON_API_KEY");
+		expect(neonSource).toContain("delete environment.NEON_PROFILE");
+		expect(neonSource).toContain('["profile", "list", "--output", "json", "--no-analytics"]');
+		expect(neonSource).toContain('[...args, "--profile", "DEFAULT", "--output", "json", "--no-analytics"]');
+		expect(neonSource).not.toContain('"--api-key"');
 		expect(source).not.toMatch(/--check|--yes|--repair|cloudflare-api-tokens|infisical-generated-folders/);
 		expect(source).not.toMatch(/manifest\.json/);
 	});

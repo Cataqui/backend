@@ -40,9 +40,9 @@ run "environment_service_accounts" {
   assert {
     condition = (
       google_service_account.opentofu["staging"].project == "cataqui-staging-mre5wge" &&
-		google_service_account.opentofu["staging"].account_id == "cataqui-backend-opentofu-stg" &&
+      google_service_account.opentofu["staging"].account_id == "cataqui-backend-opentofu-stg" &&
       google_service_account.opentofu["production"].project == "cataqui-production-jd7bfto" &&
-		google_service_account.opentofu["production"].account_id == "cataqui-backend-opentofu-prod"
+      google_service_account.opentofu["production"].account_id == "cataqui-backend-opentofu-prod"
     )
     error_message = "Each environment must own a distinct keyless OpenTofu service account."
   }

@@ -1,0 +1,97 @@
+name: Neon projects OpenTofu
+description: Plan or apply the neon-projects OpenTofu root.
+
+inputs:
+  environment:
+    description: OpenTofu environment; must be staging or production.
+    required: true
+  operation:
+    description: OpenTofu operation; must be plan or apply.
+    required: true
+
+outputs:
+  has-changes:
+    description: Whether the saved plan contains changes.
+    value: ${{ steps.plan.outputs.has-changes }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate invocation
+      shell: bash
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_OPERATION: ${{ inputs.operation }}
+      run: |
+        set -euo pipefail
+        case "$INPUT_ENVIRONMENT" in
+          staging | production) ;;
+          *) echo "environment must be staging or production." >&2; exit 1 ;;
+        esac
+        case "$INPUT_OPERATION" in
+          plan | apply) ;;
+          *) echo "operation must be plan or apply." >&2; exit 1 ;;
+        esac
+
+    - name: Set up OpenTofu
+      uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      with:
+        tofu_version: 1.12.6
+        tofu_wrapper: false
+
+    - name: Initialize backend
+      shell: bash
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/neon-projects
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        tofu init -reconfigure -input=false \
+          -backend-config="../../backends/r2.s3.tfbackend" \
+          -backend-config="../../environments/$INPUT_ENVIRONMENT/neon-projects.s3.tfbackend"
+
+    - name: Create saved plan
+      id: plan
+      shell: bash
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/neon-projects
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set +e
+        umask 077
+        tofu plan -input=false -detailed-exitcode -lock-timeout=5m \
+          -var="environment=$INPUT_ENVIRONMENT" \
+          -out="$RUNNER_TEMP/neon-projects.tfplan" \
+          > "$RUNNER_TEMP/neon-projects-plan.log" 2>&1
+        status=$?
+        set -e
+        case "$status" in
+          0) echo "has-changes=false" >> "$GITHUB_OUTPUT" ;;
+          2) echo "has-changes=true" >> "$GITHUB_OUTPUT" ;;
+          *)
+            echo "OpenTofu could not create the saved plan; raw output is withheld because it may contain sensitive values." >&2
+            exit "$status"
+            ;;
+        esac
+
+    - name: Apply exact saved plan
+      if: inputs.operation == 'apply'
+      shell: bash
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/neon-projects
+      run: |
+        set -euo pipefail
+        if ! tofu apply -input=false -auto-approve -lock-timeout=5m \
+          "$RUNNER_TEMP/neon-projects.tfplan" \
+          > "$RUNNER_TEMP/neon-projects-apply.log" 2>&1; then
+          echo "OpenTofu could not apply the saved plan; raw output is withheld because it may contain sensitive values." >&2
+          exit 1
+        fi
+
+    - name: Remove temporary plan files
+      if: always()
+      shell: bash
+      run: |
+        rm -f -- \
+          "$RUNNER_TEMP/neon-projects.tfplan" \
+          "$RUNNER_TEMP/neon-projects-plan.log" \
+          "$RUNNER_TEMP/neon-projects-apply.log"

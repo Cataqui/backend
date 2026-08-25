@@ -22,6 +22,7 @@ allowBuilds:
   workerd: true
 minimumReleaseAgeExclude:
   - '@cloudflare/workers-types@5.20260822.1'
+  - neon@4.4.0
 # Nest 12 alpha and AI SDK ranges still resolve vulnerable transitive versions.
 # Keep these centralized pins until their upstream dependency ranges include the patched releases.
 overrides:

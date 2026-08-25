@@ -11,10 +11,11 @@ import { acquireLock, knownSecrets, log, platformsPath, requireTool, run } from 
 import { reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
 import { ensureBootstrapFolders, reconcileInfisicalIdentity } from "./infisical-bootstrap.mjs";
+import { reconcileNeonApiKeys, verifyNeonCliAuthentication } from "./neon-bootstrap.mjs";
 import { ENVIRONMENTS, redactSecrets, validatePlatforms } from "./reconciliation.mjs";
 
 function _validateLocalAuthentication(platforms) {
-	for (const tool of ["tofu", "wrangler", "infisical", "gcloud", "gh"]) requireTool(tool);
+	for (const tool of ["tofu", "wrangler", "infisical", "gcloud", "gh", "neon"]) requireTool(tool);
 	const wranglerIdentity = run("wrangler", ["whoami"]);
 	if (!wranglerIdentity.stdout.includes(platforms.cloudflare.account_id)) {
 		throw new Error(`Wrangler is not authenticated to Cloudflare account ${platforms.cloudflare.account_id}.`);
@@ -25,6 +26,7 @@ function _validateLocalAuthentication(platforms) {
 	}
 	run("gcloud", ["auth", "application-default", "print-access-token"]);
 	run("infisical", ["login", "status", "--json"]);
+	verifyNeonCliAuthentication(platforms);
 }
 
 function _getInfisicalToken() {
@@ -46,6 +48,7 @@ async function _main() {
 		await ensureBootstrapFolders(platforms, infisicalToken);
 		const cloudflareToken = await resolveCloudflareBootstrapToken(platforms, infisicalToken);
 		await reconcileR2Credentials({ platforms, infisicalToken, cloudflareToken });
+		await reconcileNeonApiKeys(platforms, infisicalToken);
 		await reconcileGoogleProjects(platforms, infisicalToken);
 		const googleAuth = await applyGoogleGithubAuth(platforms, infisicalToken);
 		for (const environment of ENVIRONMENTS) {

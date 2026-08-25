@@ -47,6 +47,7 @@
 		"@types/node": "^24.13.3",
 		"@vitest/coverage-v8": "catalog:",
 		"husky": "^9.1.7",
+		"neon": "4.4.0",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
 		"wrangler": "catalog:"
