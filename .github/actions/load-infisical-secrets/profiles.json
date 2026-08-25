@@ -23,5 +23,17 @@
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
+	},
+	"cloudflare-zone-configuration": {
+		"secret_path": "/generated/opentofu/cloudflare-zone-configuration",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"cloudflare-zone-dns": {
+		"secret_path": "/generated/opentofu/cloudflare-zone-dns",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	}
 }
