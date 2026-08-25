@@ -15,7 +15,7 @@ run "staging_maps_platform" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-staging-a1b2c3"
+        project_id     = "cataqui-staging"
         project_number = "123456789012"
       }
     }
@@ -28,11 +28,11 @@ run "staging_maps_platform" {
   assert {
     condition = (
       google_apikeys_key.geosearch_places.name == "cataqui-geosearch-places-staging" &&
-      google_apikeys_key.geosearch_places.project == "cataqui-staging-a1b2c3" &&
+      google_apikeys_key.geosearch_places.project == "cataqui-staging" &&
       google_apikeys_key.mobile_maps_android.name == "cataqui-mobile-maps-android-staging" &&
-      google_apikeys_key.mobile_maps_android.project == "cataqui-staging-a1b2c3" &&
+      google_apikeys_key.mobile_maps_android.project == "cataqui-staging" &&
       google_apikeys_key.mobile_maps_ios.name == "cataqui-mobile-maps-ios-staging" &&
-      google_apikeys_key.mobile_maps_ios.project == "cataqui-staging-a1b2c3"
+      google_apikeys_key.mobile_maps_ios.project == "cataqui-staging"
     )
     error_message = "Staging must create its Geosearch, Android, and iOS keys in the matching Google Cloud project."
   }
@@ -45,7 +45,7 @@ run "production_maps_platform" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-production-a1b2c3"
+        project_id     = "cataqui"
         project_number = "123456789012"
       }
     }
@@ -58,11 +58,11 @@ run "production_maps_platform" {
   assert {
     condition = (
       google_apikeys_key.geosearch_places.name == "cataqui-geosearch-places-production" &&
-      google_apikeys_key.geosearch_places.project == "cataqui-production-a1b2c3" &&
+      google_apikeys_key.geosearch_places.project == "cataqui" &&
       google_apikeys_key.mobile_maps_android.name == "cataqui-mobile-maps-android-production" &&
-      google_apikeys_key.mobile_maps_android.project == "cataqui-production-a1b2c3" &&
+      google_apikeys_key.mobile_maps_android.project == "cataqui" &&
       google_apikeys_key.mobile_maps_ios.name == "cataqui-mobile-maps-ios-production" &&
-      google_apikeys_key.mobile_maps_ios.project == "cataqui-production-a1b2c3"
+      google_apikeys_key.mobile_maps_ios.project == "cataqui"
     )
     error_message = "Production must create its Geosearch, Android, and iOS keys in the matching Google Cloud project."
   }
@@ -75,7 +75,7 @@ run "maps_services_and_places_restriction" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-staging-a1b2c3"
+        project_id     = "cataqui-staging"
         project_number = "123456789012"
       }
     }
@@ -93,7 +93,7 @@ run "maps_services_and_places_restriction" {
         "maps-ios-backend.googleapis.com",
         "places.googleapis.com",
       ]) &&
-      alltrue([for service in google_project_service.maps_platform : service.project == "cataqui-staging-a1b2c3" && !service.disable_on_destroy])
+      alltrue([for service in google_project_service.maps_platform : service.project == "cataqui-staging" && !service.disable_on_destroy])
     )
     error_message = "The root must enable only the approved Maps Platform services without disabling them during state removal."
   }
@@ -140,7 +140,7 @@ run "production_mobile_restrictions" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-production-a1b2c3"
+        project_id     = "cataqui"
         project_number = "123456789012"
       }
     }
@@ -176,7 +176,7 @@ run "key_destruction_protection" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-production-a1b2c3"
+        project_id     = "cataqui"
         project_number = "123456789012"
       }
     }
@@ -205,7 +205,7 @@ run "runtime_secret_delivery" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-production-a1b2c3"
+        project_id     = "cataqui"
         project_number = "123456789012"
       }
     }
@@ -234,7 +234,7 @@ run "reject_unsupported_environment" {
     target = data.terraform_remote_state.google_cloud_projects
     values = {
       outputs = {
-        project_id     = "cataqui-development-a1b2c3"
+        project_id     = "cataqui-development"
         project_number = "123456789012"
       }
     }

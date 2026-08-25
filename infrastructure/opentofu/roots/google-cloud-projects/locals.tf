@@ -6,14 +6,20 @@ locals {
 
   project_by_environment = {
     staging = {
-      name      = "cataqui-staging"
-      id_prefix = "cataqui-staging"
+      name       = "cataqui-staging"
+      project_id = local.platforms.google_cloud.projects.cataqui_staging_id
     }
     production = {
-      name      = "cataqui-production"
-      id_prefix = "cataqui-production"
+      name       = "cataqui-production"
+      project_id = local.platforms.google_cloud.projects.cataqui_production_id
     }
   }
 
-  project = local.project_by_environment[var.environment]
+  project = {
+    name = local.project_by_environment[var.environment].name
+    id = regex(
+      "^[a-z][a-z0-9-]{4,28}[a-z0-9]$",
+      local.project_by_environment[var.environment].project_id,
+    )
+  }
 }

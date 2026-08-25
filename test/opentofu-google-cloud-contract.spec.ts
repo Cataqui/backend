@@ -27,6 +27,10 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(platforms.google_cloud).toEqual({
 			organization_id: "945579294313",
 			billing_account_id: "01A827-CA7CE9-646496",
+			projects: {
+				cataqui_staging_id: "cataqui-staging",
+				cataqui_production_id: "cataqui",
+			},
 		});
 		expect(projectRoot).toMatch(/local\.platforms\.google_cloud\.organization_id/);
 		expect(projectRoot).toMatch(/local\.platforms\.google_cloud\.billing_account_id/);
@@ -46,7 +50,7 @@ describe("Google Cloud OpenTofu contract", () => {
 	});
 
 	it.each([
-		["google-cloud-projects", ['version = "= 7.45.0"', 'version = "= 3.9.0"']],
+		["google-cloud-projects", ['version = "= 7.45.0"']],
 		["google-cloud-maps-platform", ['version = "= 7.45.0"', 'version = "= 0.19.21"']],
 	] as const)("should pin OpenTofu and providers for %s", (rootName, providerVersions) => {
 		const versions = _readInfrastructureFile(`opentofu/roots/${rootName}/versions.tf`);
@@ -76,18 +80,21 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(backend).not.toMatch(/(?:access_key|secret_key|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)\s*=/);
 	});
 
-	it("should create protected randomized projects with non-secret outputs", () => {
+	it("should adopt protected projects with stable identifiers and non-secret outputs", () => {
 		const rootHcl = _getRootHcl("google-cloud-projects");
 		const outputs = _readInfrastructureFile("opentofu/roots/google-cloud-projects/outputs.tf");
 
-		expect(rootHcl).toMatch(/resource "random_id" "project_suffix"[\s\S]*byte_length\s*=\s*3/);
-		expect(rootHcl).toContain('name      = "cataqui-staging"');
-		expect(rootHcl).toContain('name      = "cataqui-production"');
-		expect(rootHcl).toMatch(/project_id\s*=\s*"\$\{local\.project\.id_prefix\}-\$\{random_id\.project_suffix\.hex\}"/);
+		expect(rootHcl).toContain('name       = "cataqui-staging"');
+		expect(rootHcl).toContain('name       = "cataqui-production"');
+		expect(rootHcl).toMatch(/project_id\s*=\s*local\.project\.id/);
+		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_staging_id/);
+		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_production_id/);
 		expect(rootHcl).toMatch(/auto_create_network\s*=\s*false/);
 		expect(rootHcl).toMatch(/deletion_policy\s*=\s*"PREVENT"/);
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
-		expect(rootHcl).not.toMatch(/\bimport\s*{|\binfisical_/);
+		expect(rootHcl).toMatch(/variable "enable_imports"[\s\S]*default\s*=\s*true/);
+		expect(rootHcl).toMatch(/import\s*{[\s\S]*to\s*=\s*google_project\.cataqui[\s\S]*id\s*=\s*local\.project\.id/);
+		expect(rootHcl).not.toMatch(/resource "random_id"|provider "random"|\binfisical_/);
 		expect(outputs.match(/output "/g)).toHaveLength(2);
 		expect(outputs).toMatch(/output "project_id"[\s\S]*google_project\.cataqui\.project_id/);
 		expect(outputs).toMatch(/output "project_number"[\s\S]*google_project\.cataqui\.number/);
