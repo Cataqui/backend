@@ -132,6 +132,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			_readInfrastructureFile("opentofu/environments/production/cloudflare-zone-dns.s3.tfbackend"),
 			_readInfrastructureFile("opentofu/environments/production/cloudflare-zone-configuration.s3.tfbackend"),
 			_readInfrastructureFile("platforms.json"),
+			_readInfrastructureFile("manifest.json"),
 		].join("\n");
 
 		expect(committedConfiguration).not.toMatch(

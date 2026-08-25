@@ -23,20 +23,26 @@ function _getRootHcl(rootName: (typeof rootNames)[number]): string {
 describe("Neon OpenTofu contract", () => {
 	it("should centralize the Neon organization as a committed non-secret identifier", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
-		expect(platforms.neon).toEqual({
-			organization_id: "org-wandering-pond-46567045",
-			database: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
+		expect(platforms.neon).toEqual({ organization_id: "org-wandering-pond-46567045" });
+		expect(manifest.neon.projects).toEqual({
+			cataqui_staging: { name: "cataqui-staging" },
+			cataqui_production: { name: "cataqui-production" },
+		});
+		expect(manifest.neon.databases).toEqual({
+			cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
 		});
 		expect(_getRootHcl("neon-projects")).toMatch(/local\.platforms\.neon\.organization_id/);
 		const projectRoot = _getRootHcl("neon-projects");
 		const accessRoot = _getRootHcl("neon-database-access");
 
-		expect(projectRoot).toMatch(/local\.platforms\.neon\.database\.name/);
-		expect(projectRoot).toMatch(/local\.platforms\.neon\.database\.owner_role/);
-		expect(accessRoot).toMatch(/local\.platforms\.neon\.database\.name/);
-		expect(accessRoot).toMatch(/local\.platforms\.neon\.database\.owner_role/);
-		expect(accessRoot).toMatch(/local\.platforms\.neon\.database\.runtime_role/);
+		expect(projectRoot).toMatch(/local\.manifest\.neon\.databases\.cataqui\.name/);
+		expect(projectRoot).toMatch(/local\.manifest\.neon\.databases\.cataqui\.owner_role/);
+		expect(projectRoot).toMatch(/local\.manifest\.neon\.projects\.cataqui_(?:staging|production)\.name/);
+		expect(accessRoot).toMatch(/local\.manifest\.neon\.databases\.cataqui\.name/);
+		expect(accessRoot).toMatch(/local\.manifest\.neon\.databases\.cataqui\.owner_role/);
+		expect(accessRoot).toMatch(/local\.manifest\.neon\.databases\.cataqui\.runtime_role/);
 		expect(_getRootHcl("neon-projects")).not.toMatch(/neon_organization_id\s*=\s*"org-/);
 	});
 
@@ -98,8 +104,8 @@ describe("Neon OpenTofu contract", () => {
 	it("should create protected cost-first Neon projects", () => {
 		const rootHcl = _getRootHcl("neon-projects");
 
-		expect(rootHcl).toContain('name                      = "cataqui-staging"');
-		expect(rootHcl).toContain('name                      = "cataqui-production"');
+		expect(rootHcl).toContain("name                      = local.manifest.neon.projects.cataqui_staging.name");
+		expect(rootHcl).toContain("name                      = local.manifest.neon.projects.cataqui_production.name");
 		expect(rootHcl).toMatch(/region_id\s*=\s*"aws-sa-east-1"/);
 		expect(rootHcl).toMatch(/pg_version\s*=\s*18/);
 		expect(rootHcl).toMatch(/database_name\s*=\s*local\.database_name/);
@@ -167,6 +173,7 @@ describe("Neon OpenTofu contract", () => {
 				),
 			),
 			_readInfrastructureFile("platforms.json"),
+			_readInfrastructureFile("manifest.json"),
 		].join("\n");
 
 		expect(committedConfiguration).not.toMatch(

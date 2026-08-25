@@ -64,7 +64,7 @@ runs:
         project_slug="$(
           jq -er \
             '.infisical.project.slug | select(type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$"))' \
-            "$GITHUB_WORKSPACE/infrastructure/platforms.json"
+            "$GITHUB_WORKSPACE/infrastructure/manifest.json"
         )"
         echo "project-slug=$project_slug" >> "$GITHUB_OUTPUT"
 

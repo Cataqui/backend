@@ -46,9 +46,14 @@ describe("Upstash Redis OpenTofu contract", () => {
 
 	it("should create protected paid databases matching the API placement and cost profile", () => {
 		const rootHcl = _getRootHcl();
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
-		expect(rootHcl).toContain('name           = "cataqui-api-staging"');
-		expect(rootHcl).toContain('name           = "cataqui-api-production"');
+		expect(manifest.upstash.redis.databases).toEqual({
+			cataqui_api_staging: { name: "cataqui-api-staging" },
+			cataqui_api_production: { name: "cataqui-api-production" },
+		});
+		expect(rootHcl).toContain("name           = local.manifest.upstash.redis.databases.cataqui_api_staging.name");
+		expect(rootHcl).toContain("name           = local.manifest.upstash.redis.databases.cataqui_api_production.name");
 		expect(rootHcl).toMatch(/region\s*=\s*"global"/);
 		expect(rootHcl).toMatch(/primary_region\s*=\s*"sa-east-1"/);
 		expect(rootHcl).toMatch(/read_regions\s*=\s*\[\]/);

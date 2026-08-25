@@ -27,9 +27,9 @@ runs:
             ;;
         esac
 
-        platforms_file="$GITHUB_ACTION_PATH/../../../infrastructure/platforms.json"
-        project_id="$(jq -er --arg key "cataqui_$INPUT_ENVIRONMENT" '.google_cloud.projects[$key]' "$platforms_file")"
-        service_account_id="$(jq -er --arg key "cataqui_backend_$INPUT_ENVIRONMENT" '.google_cloud.github_auth.service_accounts[$key]' "$platforms_file")"
+        manifest_file="$GITHUB_ACTION_PATH/../../../infrastructure/manifest.json"
+        project_id="$(jq -er --arg key "cataqui_$INPUT_ENVIRONMENT" '.google_cloud.projects[$key].id' "$manifest_file")"
+        service_account_id="$(jq -er --arg key "cataqui_backend_$INPUT_ENVIRONMENT" '.google_cloud.github_auth.service_accounts[$key]' "$manifest_file")"
         printf 'email=%s@%s.iam.gserviceaccount.com\n' "$service_account_id" "$project_id" >> "$GITHUB_OUTPUT"
 
     - name: Authenticate to Google Cloud

@@ -1,15 +1,16 @@
 locals {
   platforms = jsondecode(file("${path.module}/../../../platforms.json"))
+  manifest  = jsondecode(file("${path.module}/../../../manifest.json"))
 
   infisical_project_id = module.infisical_project.id
 
   database_by_environment = {
     staging = {
-      name           = "cataqui-api-staging"
+      name           = local.manifest.upstash.redis.databases.cataqui_api_staging.name
       monthly_budget = 5
     }
     production = {
-      name           = "cataqui-api-production"
+      name           = local.manifest.upstash.redis.databases.cataqui_api_production.name
       monthly_budget = 25
     }
   }

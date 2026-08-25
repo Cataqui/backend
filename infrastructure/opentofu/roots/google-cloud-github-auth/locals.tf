@@ -1,20 +1,21 @@
 locals {
   platforms = jsondecode(file("${path.module}/../../../platforms.json"))
+  manifest  = jsondecode(file("${path.module}/../../../manifest.json"))
 
   github_repository             = local.platforms.github.repository
   google_cloud_billing_account  = local.platforms.google_cloud.billing_account_id
-  workload_identity_pool_id     = local.platforms.google_cloud.github_auth.workload_identity_pool_id
-  workload_identity_provider_id = local.platforms.google_cloud.github_auth.workload_identity_provider_id
+  workload_identity_pool_id     = local.manifest.google_cloud.github_auth.workload_identity_pool_id
+  workload_identity_provider_id = local.manifest.google_cloud.github_auth.workload_identity_provider_id
 
   environments = {
     staging = {
-      project_id         = local.platforms.google_cloud.projects.cataqui_staging
-      service_account_id = local.platforms.google_cloud.github_auth.service_accounts.cataqui_backend_staging
+      project_id         = local.manifest.google_cloud.projects.cataqui_staging.id
+      service_account_id = local.manifest.google_cloud.github_auth.service_accounts.cataqui_backend_staging
       github_subject     = "repo:${local.github_repository}:environment:staging"
     }
     production = {
-      project_id         = local.platforms.google_cloud.projects.cataqui_production
-      service_account_id = local.platforms.google_cloud.github_auth.service_accounts.cataqui_backend_production
+      project_id         = local.manifest.google_cloud.projects.cataqui_production.id
+      service_account_id = local.manifest.google_cloud.github_auth.service_accounts.cataqui_backend_production
       github_subject     = "repo:${local.github_repository}:environment:production"
     }
   }

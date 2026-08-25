@@ -35,13 +35,14 @@ function _readInfisicalProjectModule(): string {
 describe("Infisical OpenTofu project resolution", () => {
 	it("commits only the stable organization and project identity", () => {
 		const platforms = JSON.parse(readFileSync(resolve(infrastructureDirectory, "platforms.json"), "utf8"));
+		const manifest = JSON.parse(readFileSync(resolve(infrastructureDirectory, "manifest.json"), "utf8"));
 
-		expect(platforms.infisical).toMatchObject({
-			organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
-			project: { name: "Cataquí Backend", slug: "cataqui-backend-6xt3g" },
-		});
+		expect(platforms.infisical).toEqual({ organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45" });
+		expect(manifest.infisical.project).toEqual({ name: "Cataquí Backend", slug: "cataqui-backend-6xt3g" });
 		expect(platforms.infisical).not.toHaveProperty("project_id");
 		expect(platforms.infisical).not.toHaveProperty("project_slug");
+		expect(manifest.infisical).not.toHaveProperty("project_id");
+		expect(manifest.infisical).not.toHaveProperty("project_slug");
 	});
 
 	it("centralizes project resolution and ownership checks in one module", () => {
@@ -62,12 +63,12 @@ describe("Infisical OpenTofu project resolution", () => {
 		expect(root).toMatch(/module "infisical_project"/);
 		expect(root).toMatch(/source\s*=\s*"\.\.\/\.\.\/modules\/infisical-project"/);
 		expect(root).toMatch(/organization_id\s*=\s*local\.platforms\.infisical\.organization_id/);
-		expect(root).toMatch(/project_name\s*=\s*local\.platforms\.infisical\.project\.name/);
-		expect(root).toMatch(/project_slug\s*=\s*local\.platforms\.infisical\.project\.slug/);
+		expect(root).toMatch(/project_name\s*=\s*local\.manifest\.infisical\.project\.name/);
+		expect(root).toMatch(/project_slug\s*=\s*local\.manifest\.infisical\.project\.slug/);
 		expect(root).toMatch(/environment\s*=\s*var\.environment/);
 		expect(root).toMatch(/infisical_project_id\s*=\s*module\.infisical_project\.id/);
 		expect(root).not.toMatch(/data "infisical_projects"/);
-		expect(root).not.toMatch(/local\.platforms\.infisical\.(?:project_id|project_slug)/);
+		expect(root).not.toMatch(/local\.(?:platforms|manifest)\.infisical\.(?:project_id|project_slug)/);
 		expect(root).not.toMatch(/(?:workspace_id|project_id)\s*=\s*"[0-9a-f-]{36}"/);
 	});
 });

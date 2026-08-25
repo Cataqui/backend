@@ -1,4 +1,4 @@
-bucket = "cataqui-opentofu-state"
+bucket = "cataqui-backend-opentofu-state"
 region = "auto"
 
 endpoints = {

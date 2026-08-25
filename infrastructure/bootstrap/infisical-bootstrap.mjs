@@ -37,10 +37,14 @@ async function _listProjects(token, request) {
 	return payload.projects;
 }
 
-export async function reconcileInfisicalProject(platforms, infisicalToken, { request = requestJson } = {}) {
+export async function reconcileInfisicalProject(
+	{ platforms, manifest },
+	infisicalToken,
+	{ request = requestJson } = {},
+) {
 	const expectedOrganizationId = platforms.infisical.organization_id;
-	const expectedName = platforms.infisical.project.name;
-	const expectedSlug = platforms.infisical.project.slug;
+	const expectedName = manifest.infisical.project.name;
+	const expectedSlug = manifest.infisical.project.slug;
 	return reconcileInfisicalProjectState({
 		expectedOrganizationId,
 		expectedName,
@@ -148,10 +152,10 @@ export async function ensureBootstrapFolders(projectId, infisicalToken) {
 	}
 }
 
-export async function reconcileInfisicalIdentity({ platforms, projectId, infisicalToken, environment }) {
+export async function reconcileInfisicalIdentity({ platforms, manifest, projectId, infisicalToken, environment }) {
 	const apiUrl = infisicalApiBaseUrl;
 	const headers = _headers(infisicalToken);
-	const name = platforms.infisical.opentofu_identities[`cataqui_backend_${environment}`];
+	const name = manifest.infisical.opentofu_identities[`cataqui_backend_${environment}`];
 	const search = new URLSearchParams({ search: name, limit: "100", offset: "0" });
 	const listed = await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities?${search}`, {
 		headers,
@@ -208,7 +212,7 @@ export async function reconcileInfisicalIdentity({ platforms, projectId, infisic
 	}
 
 	const privilegeSlug = `opentofu-${environment}`;
-	const privilegeQuery = new URLSearchParams({ identityId, projectSlug: platforms.infisical.project.slug });
+	const privilegeQuery = new URLSearchParams({ identityId, projectSlug: manifest.infisical.project.slug });
 	const privilegeList = await requestJson(`${apiUrl}/api/v1/additional-privilege/identity?${privilegeQuery}`, {
 		headers,
 	});

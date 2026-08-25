@@ -44,17 +44,16 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 
 	it("should use the centralized Infisical project identity", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
-		expect(platforms.infisical).toMatchObject({
-			organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
-			project: {
-				name: "Cataquí Backend",
-				slug: "cataqui-backend-6xt3g",
-			},
+		expect(platforms.infisical).toEqual({ organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45" });
+		expect(manifest.infisical.project).toEqual({
+			name: "Cataquí Backend",
+			slug: "cataqui-backend-6xt3g",
 		});
 		expect(rootHcl).toMatch(/module "infisical_project"/);
 		expect(rootHcl).toMatch(/source\s*=\s*"\.\.\/\.\.\/modules\/infisical-project"/);
-		expect(rootHcl).toMatch(/local\.platforms\.infisical\.project\.slug/);
+		expect(rootHcl).toMatch(/local\.manifest\.infisical\.project\.slug/);
 		expect(rootHcl).toMatch(/module\.infisical_project\.id/);
 	});
 
@@ -135,6 +134,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		const committedConfiguration = [
 			rootHcl,
 			_readInfrastructureFile("platforms.json"),
+			_readInfrastructureFile("manifest.json"),
 			_readInfrastructureFile("opentofu/backends/r2.s3.tfbackend"),
 		].join("\n");
 

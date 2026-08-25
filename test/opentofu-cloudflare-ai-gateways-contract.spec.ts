@@ -64,20 +64,16 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		const backend = _readInfrastructureFile("opentofu/backends/r2.s3.tfbackend");
 
 		expect(backend).toMatch(
-			/bucket\s*=\s*"cataqui-opentofu-state"[\s\S]*use_lockfile\s*=\s*true[\s\S]*use_path_style\s*=\s*true/,
+			/bucket\s*=\s*"cataqui-backend-opentofu-state"[\s\S]*use_lockfile\s*=\s*true[\s\S]*use_path_style\s*=\s*true/,
 		);
 	});
 
 	it("should centralize stable provider identifiers as committed non-secret configuration", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 		expect(platforms).toMatchObject({
 			cloudflare: {
 				account_id: "1fca946385505503c59dd6a2a4eeb442",
-				r2: {
-					buckets: {
-						opentofu_state: "cataqui-opentofu-state",
-					},
-				},
 				zones: {
 					"cataqui.com": {
 						zone_id: "0c75bfd5c20cdbb338d44e62bcde8acc",
@@ -87,32 +83,44 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 			google_cloud: {
 				organization_id: "945579294313",
 				billing_account_id: "01A827-CA7CE9-646496",
-				projects: {
-					cataqui_staging: "cataqui-staging-mre5wge",
-					cataqui_production: "cataqui-production-jd7bfto",
-				},
 			},
 			infisical: {
 				organization_id: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
-				project: {
-					name: "Cataquí Backend",
-					slug: "cataqui-backend-6xt3g",
-				},
 			},
 			neon: {
 				organization_id: "org-wandering-pond-46567045",
-				database: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
 			},
+		});
+		expect(manifest.cloudflare.r2.buckets.opentofu_state).toBe("cataqui-backend-opentofu-state");
+		expect(manifest.cloudflare.ai_gateways).toEqual({
+			derive_job_data_staging: "cataqui-derive-job-data-staging",
+			derive_job_data_production: "cataqui-derive-job-data-production",
+		});
+		expect(manifest.google_cloud.projects).toEqual({
+			cataqui_staging: { name: "cataqui-staging", id: "cataqui-staging-mre5wge" },
+			cataqui_production: { name: "cataqui-production", id: "cataqui-production-jd7bfto" },
+		});
+		expect(manifest.infisical.project).toEqual({ name: "Cataquí Backend", slug: "cataqui-backend-6xt3g" });
+		expect(manifest.neon.databases.cataqui).toEqual({
+			name: "cataqui",
+			owner_role: "db_owner",
+			runtime_role: "db_user",
 		});
 
 		const rootHcl = _getRootHcl();
 		expect(rootHcl).toMatch(/jsondecode\(file\("\$\{path\.module\}\/\.\.\/\.\.\/\.\.\/platforms\.json"\)\)/);
+		expect(rootHcl).toMatch(/jsondecode\(file\("\$\{path\.module\}\/\.\.\/\.\.\/\.\.\/manifest\.json"\)\)/);
+		expect(rootHcl).toMatch(/local\.manifest\.cloudflare\.ai_gateways\.derive_job_data_(?:staging|production)/);
 		expect(rootHcl).toMatch(/account_id\s*=\s*local\.cloudflare_account_id/);
 		expect(rootHcl).not.toMatch(/(?:cloudflare_account_id|infisical_project_id)\s*=\s*"/);
 	});
 
 	it("should keep gateway credentials out of committed infrastructure values", () => {
-		const committedValues = [_getRootHcl(), _readInfrastructureFile("platforms.json")].join("\n");
+		const committedValues = [
+			_getRootHcl(),
+			_readInfrastructureFile("platforms.json"),
+			_readInfrastructureFile("manifest.json"),
+		].join("\n");
 
 		expect(committedValues).not.toMatch(/(?:api_token|api_key|access_key|secret_access_key)\s*=\s*"[^"$]+"/i);
 	});
@@ -139,11 +147,14 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 
 	it("should commit one derive-job-data gateway ID for each application environment", () => {
 		const wrangler = readFileSync(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8");
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
 		expect(wrangler.match(/cataqui-derive-job-data-(?:development|staging|production)/g)).toEqual([
 			"cataqui-derive-job-data-development",
 			"cataqui-derive-job-data-staging",
 			"cataqui-derive-job-data-production",
 		]);
+		expect(wrangler).toContain(manifest.cloudflare.ai_gateways.derive_job_data_staging);
+		expect(wrangler).toContain(manifest.cloudflare.ai_gateways.derive_job_data_production);
 	});
 });

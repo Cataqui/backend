@@ -22,26 +22,30 @@ function _getRootHcl(rootName: (typeof rootNames)[number]): string {
 describe("Google Cloud OpenTofu contract", () => {
 	it("should centralize stable Google Cloud organization and billing identifiers", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 		const projectRoot = _getRootHcl("google-cloud-projects");
 
-		expect(platforms.google_cloud).toMatchObject({
+		expect(platforms.google_cloud).toEqual({
 			organization_id: "945579294313",
 			billing_account_id: "01A827-CA7CE9-646496",
-			projects: {
-				cataqui_staging: "cataqui-staging-mre5wge",
-				cataqui_production: "cataqui-production-jd7bfto",
-			},
+		});
+		expect(manifest.google_cloud.projects).toEqual({
+			cataqui_staging: { name: "cataqui-staging", id: "cataqui-staging-mre5wge" },
+			cataqui_production: { name: "cataqui-production", id: "cataqui-production-jd7bfto" },
 		});
 		expect(projectRoot).toMatch(/local\.platforms\.google_cloud\.organization_id/);
 		expect(projectRoot).toMatch(/local\.platforms\.google_cloud\.billing_account_id/);
+		expect(projectRoot).toMatch(/local\.manifest\.google_cloud\.projects/);
 		expect(projectRoot).not.toMatch(/(?:organization_id|billing_account)\s*=\s*"[0-9A-F-]+"/);
 	});
 
 	it("should keep Maps application policy inside the owning root", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 		const mapsRoot = _getRootHcl("google-cloud-maps-platform");
 
 		expect(platforms.google_cloud).not.toHaveProperty("maps_platform");
+		expect(manifest.google_cloud).not.toHaveProperty("maps_platform");
 		expect(mapsRoot).toMatch(/mobile_applications\s*=\s*{/);
 		expect(mapsRoot).toContain('package_name = "com.cataqui.mobile.development"');
 		expect(mapsRoot).toContain('package_name = "com.cataqui.mobile"');
@@ -102,11 +106,11 @@ describe("Google Cloud OpenTofu contract", () => {
 		const rootHcl = _getRootHcl("google-cloud-projects");
 		const outputs = _readInfrastructureFile("opentofu/roots/google-cloud-projects/outputs.tf");
 
-		expect(rootHcl).toContain('name       = "cataqui-staging"');
-		expect(rootHcl).toContain('name       = "cataqui-production"');
+		expect(rootHcl).toContain("name       = local.manifest.google_cloud.projects.cataqui_staging.name");
+		expect(rootHcl).toContain("name       = local.manifest.google_cloud.projects.cataqui_production.name");
 		expect(rootHcl).toMatch(/project_id\s*=\s*local\.project\.id/);
-		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_staging/);
-		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_production/);
+		expect(rootHcl).toMatch(/local\.manifest\.google_cloud\.projects\.cataqui_staging\.id/);
+		expect(rootHcl).toMatch(/local\.manifest\.google_cloud\.projects\.cataqui_production\.id/);
 		expect(rootHcl).toMatch(/auto_create_network\s*=\s*false/);
 		expect(rootHcl).toMatch(/deletion_policy\s*=\s*"PREVENT"/);
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
@@ -124,7 +128,7 @@ describe("Google Cloud OpenTofu contract", () => {
 
 		expect(state).toMatch(/data "terraform_remote_state" "google_cloud_projects"/);
 		expect(state).toMatch(/key\s*=\s*"\$\{var\.environment\}\/google-cloud-projects\/terraform\.tfstate"/);
-		expect(state).toMatch(/bucket\s*=\s*"cataqui-opentofu-state"/);
+		expect(state).toMatch(/bucket\s*=\s*local\.opentofu_state_bucket/);
 		expect(state).toMatch(/use_lockfile\s*=\s*true/);
 		expect(state).toMatch(/use_path_style\s*=\s*true/);
 		expect(state).not.toMatch(/(?:access_key|secret_key|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)\s*=/);
@@ -176,6 +180,7 @@ describe("Google Cloud OpenTofu contract", () => {
 				),
 			),
 			_readInfrastructureFile("platforms.json"),
+			_readInfrastructureFile("manifest.json"),
 		].join("\n");
 
 		expect(committedConfiguration).not.toMatch(

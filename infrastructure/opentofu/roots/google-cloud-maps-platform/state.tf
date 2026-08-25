@@ -2,7 +2,7 @@ data "terraform_remote_state" "google_cloud_projects" {
   backend = "s3"
 
   config = {
-    bucket = "cataqui-opentofu-state"
+    bucket = local.opentofu_state_bucket
     key    = "${var.environment}/google-cloud-projects/terraform.tfstate"
     region = "auto"
 

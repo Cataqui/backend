@@ -78,8 +78,21 @@ describe("Cloudflare Queues OpenTofu contract", () => {
 
 	it("should manage one protected derive-job-data primary queue and DLQ", () => {
 		const rootHcl = _getRootHcl();
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
-		expect(rootHcl).toMatch(/derive_job_data\s*=\s*{[\s\S]*base_name\s*=\s*"cataqui-api-derive-job-data"/);
+		expect(manifest.cloudflare.queues).toEqual({
+			derive_job_data_staging: {
+				name: "cataqui-api-derive-job-data-staging",
+				dead_letter_name: "cataqui-api-derive-job-data-staging-dlq",
+			},
+			derive_job_data_production: {
+				name: "cataqui-api-derive-job-data-production",
+				dead_letter_name: "cataqui-api-derive-job-data-production-dlq",
+			},
+		});
+		expect(rootHcl).toMatch(/queue_name\s*=\s*each\.value\.name/);
+		expect(rootHcl).toMatch(/queue_name\s*=\s*each\.value\.dead_letter_name/);
+		expect(rootHcl).not.toMatch(/base_name|\$\{each\.value\.[^}]+\}-\$\{var\.environment\}/);
 		expect(rootHcl).toMatch(/primary_retention_period\s*=\s*345600/);
 		expect(rootHcl).toMatch(/dead_letter_retention_period\s*=\s*1209600/);
 		expect(rootHcl.match(/resource "cloudflare_queue"/g)).toHaveLength(2);
@@ -164,8 +177,17 @@ describe("Cloudflare Queues OpenTofu contract", () => {
 			resolve(repositoryRoot, "packages/api-internal-ingress/src/queue/queue.manifest.ts"),
 			"utf8",
 		);
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
+		const queueFamilyName = "cataqui-api-derive-job-data";
+		const stagingQueue = manifest.cloudflare.queues.derive_job_data_staging;
+		const productionQueue = manifest.cloudflare.queues.derive_job_data_production;
 
-		expect(queueManifest).toContain('"cataqui-api-derive-job-data"');
-		expect(_getRootHcl()).toContain('base_name                    = "cataqui-api-derive-job-data"');
+		expect(queueManifest).toContain(`"${queueFamilyName}"`);
+		expect(stagingQueue.name).toBe(workerConfiguration.env.staging.queues.producers[0]?.queue);
+		expect(stagingQueue.dead_letter_name).toBe(workerConfiguration.env.staging.queues.consumers[0]?.dead_letter_queue);
+		expect(productionQueue.name).toBe(workerConfiguration.env.production.queues.producers[0]?.queue);
+		expect(productionQueue.dead_letter_name).toBe(
+			workerConfiguration.env.production.queues.consumers[0]?.dead_letter_queue,
+		);
 	});
 });

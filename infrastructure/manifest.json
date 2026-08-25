@@ -1,0 +1,92 @@
+{
+	"cloudflare": {
+		"ai_gateways": {
+			"derive_job_data_staging": "cataqui-derive-job-data-staging",
+			"derive_job_data_production": "cataqui-derive-job-data-production"
+		},
+		"queues": {
+			"derive_job_data_staging": {
+				"name": "cataqui-api-derive-job-data-staging",
+				"dead_letter_name": "cataqui-api-derive-job-data-staging-dlq"
+			},
+			"derive_job_data_production": {
+				"name": "cataqui-api-derive-job-data-production",
+				"dead_letter_name": "cataqui-api-derive-job-data-production-dlq"
+			}
+		},
+		"r2": {
+			"buckets": {
+				"opentofu_state": "cataqui-backend-opentofu-state"
+			}
+		}
+	},
+	"google_cloud": {
+		"projects": {
+			"cataqui_staging": {
+				"name": "cataqui-staging",
+				"id": "cataqui-staging-mre5wge"
+			},
+			"cataqui_production": {
+				"name": "cataqui-production",
+				"id": "cataqui-production-jd7bfto"
+			}
+		},
+		"github_auth": {
+			"workload_identity_pool_id": "cataqui-github",
+			"workload_identity_provider_id": "cataqui-backend",
+			"service_accounts": {
+				"cataqui_backend_staging": "cataqui-backend-opentofu-stg",
+				"cataqui_backend_production": "cataqui-backend-opentofu-prod"
+			}
+		}
+	},
+	"infisical": {
+		"project": {
+			"name": "Cataquí Backend",
+			"slug": "cataqui-backend-6xt3g"
+		},
+		"opentofu_identities": {
+			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
+			"cataqui_backend_production": "cataqui-backend-opentofu-production"
+		}
+	},
+	"github": {
+		"environments": {
+			"staging": {
+				"branches": ["staging"]
+			},
+			"production": {
+				"branches": ["main"]
+			}
+		}
+	},
+	"neon": {
+		"projects": {
+			"cataqui_staging": {
+				"name": "cataqui-staging"
+			},
+			"cataqui_production": {
+				"name": "cataqui-production"
+			}
+		},
+		"databases": {
+			"cataqui": {
+				"name": "cataqui",
+				"owner_role": "db_owner",
+				"runtime_role": "db_user"
+			}
+		}
+	},
+	"upstash": {
+		"redis": {
+			"databases": {
+				"cataqui_api_staging": {
+					"name": "cataqui-api-staging"
+				},
+				"cataqui_api_production": {
+					"name": "cataqui-api-production"
+				}
+			}
+		}
+	}
+}

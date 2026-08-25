@@ -81,12 +81,12 @@ export async function getBackendCredentials(infisicalProjectId, infisicalToken, 
 	return { accessKeyId, secretAccessKey };
 }
 
-export async function reconcileGoogleProjects(platforms, infisicalProjectId, infisicalToken) {
+export async function reconcileGoogleProjects({ platforms, manifest }, infisicalProjectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
 		const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, environment);
 		const root = _initializeRoot({ rootName: "google-cloud-projects", environment, credentials });
 		const environmentVariables = _backendEnvironment(credentials);
-		const projectId = platforms.google_cloud.projects[`cataqui_${environment}`];
+		const projectId = manifest.google_cloud.projects[`cataqui_${environment}`].id;
 		const action = decideGoogleProject({
 			expectedProjectId: projectId,
 			expectedOrganizationId: platforms.google_cloud.organization_id,

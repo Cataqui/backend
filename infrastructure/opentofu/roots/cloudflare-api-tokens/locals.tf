@@ -1,5 +1,6 @@
 locals {
   platforms = jsondecode(file("${path.module}/../../../platforms.json"))
+  manifest  = jsondecode(file("${path.module}/../../../manifest.json"))
 
   cloudflare_account_id = regex("^[0-9a-f]{32}$", local.platforms.cloudflare.account_id)
   cataqui_zone_id       = regex("^[0-9a-f]{32}$", local.platforms.cloudflare.zones["cataqui.com"].zone_id)

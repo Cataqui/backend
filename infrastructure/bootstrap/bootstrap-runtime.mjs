@@ -11,6 +11,7 @@ const bootstrapDirectory = dirname(fileURLToPath(import.meta.url));
 
 export const repositoryRoot = resolve(bootstrapDirectory, "../..");
 export const platformsPath = join(repositoryRoot, "infrastructure/platforms.json");
+export const manifestPath = join(repositoryRoot, "infrastructure/manifest.json");
 export const knownSecrets = new Set();
 
 export function log(message) {

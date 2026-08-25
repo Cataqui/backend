@@ -13,6 +13,6 @@ export function decideR2Credentials({ token, accessKeyId, secretAccessKey, probe
 	return probeSucceeded ? "reuse" : "replace";
 }
 
-export function getR2TokenName(platforms, environment) {
-	return `${platforms.cloudflare.r2.buckets.opentofu_state}-${environment}`;
+export function getR2TokenName(manifest, environment) {
+	return `${manifest.cloudflare.r2.buckets.opentofu_state}-${environment}`;
 }

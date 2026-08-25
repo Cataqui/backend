@@ -6,7 +6,7 @@ function _api(repository, path, { method = "GET", fields = [], allowFailure = fa
 	return run("gh", args, { allowFailure });
 }
 
-export function reconcileGithubEnvironment({ platforms, environment, identityId, googleAuth }) {
+export function reconcileGithubEnvironment({ platforms, manifest, environment, identityId, googleAuth }) {
 	const repository = platforms.github.repository;
 	const environmentResult = _api(repository, `/environments/${environment}`, { allowFailure: true });
 	if (environmentResult.status !== 0 && !/HTTP 404|Not Found/i.test(environmentResult.stderr)) {
@@ -37,7 +37,7 @@ export function reconcileGithubEnvironment({ platforms, environment, identityId,
 	const policies =
 		JSON.parse(_api(repository, `/environments/${environment}/deployment-branch-policies`).stdout).branch_policies ??
 		[];
-	const expectedBranches = new Set(platforms.github.environments[environment].branches);
+	const expectedBranches = new Set(manifest.github.environments[environment].branches);
 	for (const policy of policies) {
 		if (!expectedBranches.has(policy.name)) {
 			_api(repository, `/environments/${environment}/deployment-branch-policies/${policy.id}`, {

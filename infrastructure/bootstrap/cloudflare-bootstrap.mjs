@@ -90,8 +90,8 @@ async function _getToken(cloudflareToken, tokenId) {
 	return payload.result;
 }
 
-function _isOwnedR2Token({ platforms, token, permissionGroupId }) {
-	const bucketResource = `com.cloudflare.edge.r2.bucket.${platforms.cloudflare.account_id}_default_${platforms.cloudflare.r2.buckets.opentofu_state}`;
+function _isOwnedR2Token({ platforms, manifest, token, permissionGroupId }) {
+	const bucketResource = `com.cloudflare.edge.r2.bucket.${platforms.cloudflare.account_id}_default_${manifest.cloudflare.r2.buckets.opentofu_state}`;
 	return (
 		token.policies?.length === 1 &&
 		token.policies[0].effect === "allow" &&
@@ -102,10 +102,10 @@ function _isOwnedR2Token({ platforms, token, permissionGroupId }) {
 	);
 }
 
-async function _createR2Token({ platforms, cloudflareToken, name }) {
+async function _createR2Token({ platforms, manifest, cloudflareToken, name }) {
 	const permission = await _getR2PermissionGroup(cloudflareToken);
 	const accountId = platforms.cloudflare.account_id;
-	const bucket = platforms.cloudflare.r2.buckets.opentofu_state;
+	const bucket = manifest.cloudflare.r2.buckets.opentofu_state;
 	const payload = await requestJson(`${cloudflareApiBaseUrl}/user/tokens`, {
 		method: "POST",
 		headers: { authorization: `Bearer ${cloudflareToken}` },
@@ -139,9 +139,9 @@ function _hmac(key, value, encoding) {
 	return createHmac("sha256", key).update(value).digest(encoding);
 }
 
-async function _signedR2Request({ platforms, accessKeyId, secretAccessKey, method, key, body = "" }) {
+async function _signedR2Request({ platforms, manifest, accessKeyId, secretAccessKey, method, key, body = "" }) {
 	const accountId = platforms.cloudflare.account_id;
-	const bucket = platforms.cloudflare.r2.buckets.opentofu_state;
+	const bucket = manifest.cloudflare.r2.buckets.opentofu_state;
 	const host = `${accountId}.r2.cloudflarestorage.com`;
 	const canonicalUri = `/${encodeURIComponent(bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
 	const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
@@ -173,18 +173,18 @@ async function _signedR2Request({ platforms, accessKeyId, secretAccessKey, metho
 	});
 }
 
-export async function probeR2Credentials({ platforms, accessKeyId, secretAccessKey }) {
+export async function probeR2Credentials({ platforms, manifest, accessKeyId, secretAccessKey }) {
 	const key = `__bootstrap_probe__/${randomUUID()}`;
 	const body = randomUUID();
-	const put = await _signedR2Request({ platforms, accessKeyId, secretAccessKey, method: "PUT", key, body });
+	const put = await _signedR2Request({ platforms, manifest, accessKeyId, secretAccessKey, method: "PUT", key, body });
 	if (classifyCredentialResponse(put.status) === "rejected") return false;
 	if (!put.ok) throw new Error(`R2 credential verification could not write its probe (${put.status}).`);
-	const get = await _signedR2Request({ platforms, accessKeyId, secretAccessKey, method: "GET", key });
+	const get = await _signedR2Request({ platforms, manifest, accessKeyId, secretAccessKey, method: "GET", key });
 	if (classifyCredentialResponse(get.status) === "rejected") return false;
 	if (!get.ok) throw new Error(`R2 credential verification could not read its probe (${get.status}).`);
 	if (!constantTimeEqual(await get.text(), body))
 		throw new Error("R2 credential verification read unexpected probe contents.");
-	const deletion = await _signedR2Request({ platforms, accessKeyId, secretAccessKey, method: "DELETE", key });
+	const deletion = await _signedR2Request({ platforms, manifest, accessKeyId, secretAccessKey, method: "DELETE", key });
 	if (!deletion.ok) throw new Error(`R2 credential verification could not remove its probe (${deletion.status}).`);
 	return true;
 }
@@ -197,8 +197,8 @@ function _parseWranglerJson(result, operation) {
 	}
 }
 
-export function ensurePrivateR2Bucket(platforms) {
-	const bucket = platforms.cloudflare.r2.buckets.opentofu_state;
+export function ensurePrivateR2Bucket(manifest) {
+	const bucket = manifest.cloudflare.r2.buckets.opentofu_state;
 	const info = run("wrangler", ["r2", "bucket", "info", bucket, "--json"], { allowFailure: true });
 	if (info.status !== 0) {
 		const output = `${info.stdout}\n${info.stderr}`;
@@ -220,14 +220,20 @@ export function ensurePrivateR2Bucket(platforms) {
 		throw new Error(`R2 state bucket ${bucket} has a public development URL.`);
 }
 
-export async function reconcileR2Credentials({ platforms, infisicalProjectId, infisicalToken, cloudflareToken }) {
+export async function reconcileR2Credentials({
+	platforms,
+	manifest,
+	infisicalProjectId,
+	infisicalToken,
+	cloudflareToken,
+}) {
 	let tokens = await _listTokens(cloudflareToken);
 	const permission = await _getR2PermissionGroup(cloudflareToken);
 	for (const environment of ENVIRONMENTS) {
-		const name = getR2TokenName(platforms, environment);
+		const name = getR2TokenName(manifest, environment);
 		const tokenSummary = resolveUniqueNamedResource(tokens, name);
 		const token = tokenSummary ? await _getToken(cloudflareToken, tokenSummary.id) : undefined;
-		if (token && !_isOwnedR2Token({ platforms, token, permissionGroupId: permission.id })) {
+		if (token && !_isOwnedR2Token({ platforms, manifest, token, permissionGroupId: permission.id })) {
 			throw new Error(`Foreign Cloudflare token conflicts with ${name}.`);
 		}
 		const accessKeyId = await getBootstrapSecret({
@@ -244,12 +250,12 @@ export async function reconcileR2Credentials({ platforms, infisicalProjectId, in
 		});
 		const probeSucceeded =
 			token && accessKeyId && secretAccessKey
-				? await probeR2Credentials({ platforms, accessKeyId, secretAccessKey })
+				? await probeR2Credentials({ platforms, manifest, accessKeyId, secretAccessKey })
 				: false;
 		const action = decideR2Credentials({ token, accessKeyId, secretAccessKey, probeSucceeded });
 		if (action === "reuse") continue;
 		if (token) await _deleteToken(cloudflareToken, token.id);
-		const credentials = await _createR2Token({ platforms, cloudflareToken, name });
+		const credentials = await _createR2Token({ platforms, manifest, cloudflareToken, name });
 		await setBootstrapSecret({
 			projectId: infisicalProjectId,
 			token: infisicalToken,
@@ -264,7 +270,14 @@ export async function reconcileR2Credentials({ platforms, infisicalProjectId, in
 			name: "R2_STATE_SECRET_ACCESS_KEY",
 			value: credentials.secret,
 		});
-		if (!(await probeR2Credentials({ platforms, accessKeyId: credentials.id, secretAccessKey: credentials.secret }))) {
+		if (
+			!(await probeR2Credentials({
+				platforms,
+				manifest,
+				accessKeyId: credentials.id,
+				secretAccessKey: credentials.secret,
+			}))
+		) {
 			throw new Error(`New ${environment} R2 credentials could not access the state bucket.`);
 		}
 		tokens = await _listTokens(cloudflareToken);
