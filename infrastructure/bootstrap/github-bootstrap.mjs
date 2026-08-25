@@ -60,7 +60,6 @@ export function reconcileGithubEnvironment({ platforms, environment, identityId,
 	const variables = {
 		INFISICAL_OPENTOFU_IDENTITY_ID: identityId,
 		GOOGLE_WORKLOAD_IDENTITY_PROVIDER: googleAuth.provider,
-		GOOGLE_OPENTOFU_SERVICE_ACCOUNT: googleAuth.serviceAccounts[environment],
 	};
 	const currentVariables = JSON.parse(
 		_api(repository, `/environments/${environment}/variables?per_page=100`).stdout,

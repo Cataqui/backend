@@ -114,6 +114,5 @@ export async function applyGoogleGithubAuth(platforms, infisicalToken) {
 	const output = JSON.parse(run("tofu", ["output", "-json"], { cwd: root, env: environmentVariables }).stdout);
 	return {
 		provider: output.workload_identity_provider.value,
-		serviceAccounts: output.service_account_emails.value,
 	};
 }
