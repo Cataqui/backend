@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AddressCategory } from "../address-category.enum";
 
 export const AddressSearchOutputSchema = z
 	.object({
@@ -9,6 +10,7 @@ export const AddressSearchOutputSchema = z
 					fullText: z.string().min(1),
 					primaryText: z.string().min(1),
 					secondaryText: z.string().min(1).nullable(),
+					category: z.enum(AddressCategory),
 				})
 				.strict(),
 		),

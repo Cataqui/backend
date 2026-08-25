@@ -10,6 +10,7 @@ export const GooglePlacesAutocompleteOutputSchema = z
 							.object({
 								placeId: z.string().min(1),
 								text: z.object({ text: z.string().min(1) }).strict(),
+								types: z.array(z.string().min(1)).optional(),
 								structuredFormat: z
 									.object({
 										mainText: z.object({ text: z.string().min(1) }).strict(),

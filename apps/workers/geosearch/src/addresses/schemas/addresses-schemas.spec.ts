@@ -40,12 +40,30 @@ describe("Addresses schemas", () => {
 					fullText: "Avenida Paulista, São Paulo",
 					primaryText: "Avenida Paulista",
 					secondaryText: null,
+					category: "STREET",
 				},
 			],
 			attribution: { text: "Google Maps" },
 		};
 
 		expect(AddressSearchOutputSchema.parse(output)).toEqual(output);
+	});
+
+	it("should reject suggestions with unsupported normalized categories", () => {
+		expect(
+			AddressSearchOutputSchema.safeParse({
+				suggestions: [
+					{
+						addressId: "address-id",
+						fullText: "Avenida Paulista, São Paulo",
+						primaryText: "Avenida Paulista",
+						secondaryText: null,
+						category: "GOOGLE_PROVIDER_CATEGORY",
+					},
+				],
+				attribution: { text: "Google Maps" },
+			}).success,
+		).toBe(false);
 	});
 
 	it.each([

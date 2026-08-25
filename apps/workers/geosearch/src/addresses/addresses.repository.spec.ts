@@ -21,6 +21,7 @@ describe("AddressesRepository", () => {
 								mainText: { text: "Avenida Paulista" },
 								secondaryText: { text: "São Paulo" },
 							},
+							types: ["route"],
 						},
 					},
 				],
@@ -49,7 +50,8 @@ describe("AddressesRepository", () => {
 			fieldMask:
 				"suggestions.placePrediction.placeId,suggestions.placePrediction.text.text," +
 				"suggestions.placePrediction.structuredFormat.mainText.text," +
-				"suggestions.placePrediction.structuredFormat.secondaryText.text",
+				"suggestions.placePrediction.structuredFormat.secondaryText.text," +
+				"suggestions.placePrediction.types",
 			body: {
 				input: "Avenida Paulista",
 				languageCode: "pt-BR",
@@ -73,6 +75,7 @@ describe("AddressesRepository", () => {
 							fullText: "Avenida Paulista, São Paulo",
 							primaryText: "Avenida Paulista",
 							secondaryText: "São Paulo",
+							category: "STREET",
 						},
 					],
 					attribution: { text: "Google Maps" },
@@ -119,7 +122,10 @@ describe("AddressesRepository", () => {
 			sessionToken: "session",
 		});
 
-		expect(result.kind === "SUCCESS" ? result.output.suggestions[0]?.secondaryText : undefined).toBeNull();
+		expect(result.kind === "SUCCESS" ? result.output.suggestions[0] : undefined).toMatchObject({
+			secondaryText: null,
+			category: "OTHER",
+		});
 	});
 
 	it("should request only coordinates with the terminating session token", async () => {
@@ -149,6 +155,22 @@ describe("AddressesRepository", () => {
 
 	it.each([
 		{ name: "malformed autocomplete JSON", response: new Response("not-json"), operation: "search" },
+		{
+			name: "malformed autocomplete types",
+			response: Response.json({
+				suggestions: [
+					{
+						placePrediction: {
+							placeId: "id",
+							text: { text: "Address" },
+							structuredFormat: { mainText: { text: "Address" } },
+							types: [42],
+						},
+					},
+				],
+			}),
+			operation: "search",
+		},
 		{ name: "malformed details fields", response: Response.json({ location: {} }), operation: "details" },
 		{ name: "provider failure", response: Response.json({}, { status: 503 }), operation: "search" },
 	])("should return unavailable for $name without exposing provider data", async ({ response, operation }) => {

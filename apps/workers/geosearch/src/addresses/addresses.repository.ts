@@ -3,6 +3,7 @@ import { AddressDetailsOutputSchema } from "./schemas/address-details-output.sch
 import { AddressSearchOutputSchema } from "./schemas/address-search-output.schema";
 import { GooglePlacesAutocompleteOutputSchema } from "./schemas/google-places-autocomplete-output.schema";
 import { GooglePlacesDetailsOutputSchema } from "./schemas/google-places-details-output.schema";
+import { parseGooglePlacesAddressCategory } from "./google-places-address-category.parser";
 
 export class AddressesRepository {
 	constructor(params?: { fetchImplementation?: typeof fetch }) {
@@ -69,7 +70,8 @@ export class AddressesRepository {
 					"X-Goog-FieldMask":
 						"suggestions.placePrediction.placeId,suggestions.placePrediction.text.text," +
 						"suggestions.placePrediction.structuredFormat.mainText.text," +
-						"suggestions.placePrediction.structuredFormat.secondaryText.text",
+						"suggestions.placePrediction.structuredFormat.secondaryText.text," +
+						"suggestions.placePrediction.types",
 				},
 				body: JSON.stringify({
 					input: params.query,
@@ -106,6 +108,7 @@ export class AddressesRepository {
 					fullText: placePrediction.text.text,
 					primaryText: placePrediction.structuredFormat.mainText.text,
 					secondaryText: placePrediction.structuredFormat.secondaryText?.text ?? null,
+					category: parseGooglePlacesAddressCategory({ placeTypes: placePrediction.types ?? [] }),
 				})),
 				attribution: this.attribution,
 			}),
