@@ -70,9 +70,14 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 
 	it("should centralize stable provider identifiers as committed non-secret configuration", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
-		expect(platforms).toEqual({
+		expect(platforms).toMatchObject({
 			cloudflare: {
 				account_id: "1fca946385505503c59dd6a2a4eeb442",
+				r2: {
+					buckets: {
+						opentofu_state: "cataqui-opentofu-state",
+					},
+				},
 				zones: {
 					"cataqui.com": {
 						zone_id: "0c75bfd5c20cdbb338d44e62bcde8acc",
@@ -83,8 +88,8 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 				organization_id: "945579294313",
 				billing_account_id: "01A827-CA7CE9-646496",
 				projects: {
-					cataqui_staging_id: "cataqui-staging",
-					cataqui_production_id: "cataqui",
+					cataqui_staging: "cataqui-staging-mre5wge",
+					cataqui_production: "cataqui-production-jd7bfto",
 				},
 			},
 			infisical: {

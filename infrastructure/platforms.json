@@ -1,6 +1,11 @@
 {
 	"cloudflare": {
 		"account_id": "1fca946385505503c59dd6a2a4eeb442",
+		"r2": {
+			"buckets": {
+				"opentofu_state": "cataqui-opentofu-state"
+			}
+		},
 		"zones": {
 			"cataqui.com": {
 				"zone_id": "0c75bfd5c20cdbb338d44e62bcde8acc"
@@ -11,13 +16,36 @@
 		"organization_id": "945579294313",
 		"billing_account_id": "01A827-CA7CE9-646496",
 		"projects": {
-			"cataqui_staging_id": "cataqui-staging",
-			"cataqui_production_id": "cataqui"
+			"cataqui_staging": "cataqui-staging-mre5wge",
+			"cataqui_production": "cataqui-production-jd7bfto"
+		},
+		"github_auth": {
+			"workload_identity_pool_id": "cataqui-github",
+			"workload_identity_provider_id": "cataqui-backend",
+			"service_accounts": {
+				"cataqui_backend_staging": "cataqui-backend-opentofu-stg",
+				"cataqui_backend_production": "cataqui-backend-opentofu-prod"
+			}
 		}
 	},
 	"infisical": {
 		"project_id": "954d434f-7e08-4904-af66-0bf62377794e",
-		"project_slug": "cataqui-backend-r6c-i"
+		"project_slug": "cataqui-backend-r6c-i",
+		"opentofu_identities": {
+			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
+			"cataqui_backend_production": "cataqui-backend-opentofu-production"
+		}
+	},
+	"github": {
+		"repository": "Cataqui/backend",
+		"environments": {
+			"staging": {
+				"branches": ["staging"]
+			},
+			"production": {
+				"branches": ["main"]
+			}
+		}
 	},
 	"neon": {
 		"organization_id": "org-wandering-pond-46567045",

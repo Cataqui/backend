@@ -22,6 +22,7 @@
 		"clean": "pnpm -r --if-present run clean",
 		"commitlint": "commitlint --edit",
 		"format": "biome check --write .",
+		"infrastructure:bootstrap": "node infrastructure/bootstrap/bootstrap.mjs",
 		"lint": "biome check --write .",
 		"lint:check": "biome ci .",
 		"opentofu:fmt:check": "tofu fmt -check -recursive infrastructure",
@@ -47,6 +48,7 @@
 		"@vitest/coverage-v8": "catalog:",
 		"husky": "^9.1.7",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
 	}
 }

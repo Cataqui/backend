@@ -68,6 +68,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(vite@8.0.14(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.9))
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.119.0(@cloudflare/workers-types@5.20260822.1)
 
   apps/api:
     dependencies:

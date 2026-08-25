@@ -7,11 +7,11 @@ locals {
   project_by_environment = {
     staging = {
       name       = "cataqui-staging"
-      project_id = local.platforms.google_cloud.projects.cataqui_staging_id
+      project_id = local.platforms.google_cloud.projects.cataqui_staging
     }
     production = {
       name       = "cataqui-production"
-      project_id = local.platforms.google_cloud.projects.cataqui_production_id
+      project_id = local.platforms.google_cloud.projects.cataqui_production
     }
   }
 

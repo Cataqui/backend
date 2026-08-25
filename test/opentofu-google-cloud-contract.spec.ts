@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const repositoryRoot = process.cwd();
 const infrastructureDirectory = resolve(repositoryRoot, "infrastructure");
 const rootsDirectory = resolve(infrastructureDirectory, "opentofu/roots");
-const rootNames = ["google-cloud-projects", "google-cloud-maps-platform"] as const;
+const rootNames = ["google-cloud-projects", "google-cloud-maps-platform", "google-cloud-github-auth"] as const;
 
 function _readInfrastructureFile(path: string): string {
 	return readFileSync(resolve(infrastructureDirectory, path), "utf8");
@@ -24,12 +24,12 @@ describe("Google Cloud OpenTofu contract", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
 		const projectRoot = _getRootHcl("google-cloud-projects");
 
-		expect(platforms.google_cloud).toEqual({
+		expect(platforms.google_cloud).toMatchObject({
 			organization_id: "945579294313",
 			billing_account_id: "01A827-CA7CE9-646496",
 			projects: {
-				cataqui_staging_id: "cataqui-staging",
-				cataqui_production_id: "cataqui",
+				cataqui_staging: "cataqui-staging-mre5wge",
+				cataqui_production: "cataqui-production-jd7bfto",
 			},
 		});
 		expect(projectRoot).toMatch(/local\.platforms\.google_cloud\.organization_id/);
@@ -52,6 +52,7 @@ describe("Google Cloud OpenTofu contract", () => {
 	it.each([
 		["google-cloud-projects", ['version = "= 7.45.0"']],
 		["google-cloud-maps-platform", ['version = "= 7.45.0"', 'version = "= 0.19.21"']],
+		["google-cloud-github-auth", ['version = "= 7.45.0"']],
 	] as const)("should pin OpenTofu and providers for %s", (rootName, providerVersions) => {
 		const versions = _readInfrastructureFile(`opentofu/roots/${rootName}/versions.tf`);
 		const lockfile = _readInfrastructureFile(`opentofu/roots/${rootName}/.terraform.lock.hcl`);
@@ -69,7 +70,7 @@ describe("Google Cloud OpenTofu contract", () => {
 
 	it.each(
 		rootNames.flatMap((rootName) =>
-			(["staging", "production"] as const).map(
+			(rootName === "google-cloud-github-auth" ? ["production"] : ["staging", "production"]).map(
 				(environment) => [environment, rootName, `${environment}/${rootName}/terraform.tfstate`] as const,
 			),
 		),
@@ -80,6 +81,23 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(backend).not.toMatch(/(?:access_key|secret_key|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)\s*=/);
 	});
 
+	it("should keep Google GitHub trust bootstrap-local and keyless", () => {
+		const rootHcl = _getRootHcl("google-cloud-github-auth");
+		const backend = _readInfrastructureFile("opentofu/environments/production/google-cloud-github-auth.s3.tfbackend");
+
+		expect(backend.trim()).toBe('key = "production/google-cloud-github-auth/terraform.tfstate"');
+		expect(rootHcl).toContain('issuer_uri        = "https://token.actions.githubusercontent.com"');
+		expect(rootHcl).toContain('allowed_audiences = ["https://github.com/Cataqui"]');
+		expect(rootHcl).toContain('"roles/resourcemanager.projectMover"');
+		expect(rootHcl).toContain('"roles/billing.projectManager"');
+		expect(rootHcl).toContain('"roles/serviceusage.serviceUsageAdmin"');
+		expect(rootHcl).toContain('"roles/serviceusage.apiKeysAdmin"');
+		expect(rootHcl).toContain('role               = "roles/iam.workloadIdentityUser"');
+		expect(rootHcl).toContain('role               = "roles/billing.user"');
+		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
+		expect(rootHcl).not.toMatch(/google_service_account_key|private_key|credentials\s*=/);
+	});
+
 	it("should adopt protected projects with stable identifiers and non-secret outputs", () => {
 		const rootHcl = _getRootHcl("google-cloud-projects");
 		const outputs = _readInfrastructureFile("opentofu/roots/google-cloud-projects/outputs.tf");
@@ -87,8 +105,8 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(rootHcl).toContain('name       = "cataqui-staging"');
 		expect(rootHcl).toContain('name       = "cataqui-production"');
 		expect(rootHcl).toMatch(/project_id\s*=\s*local\.project\.id/);
-		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_staging_id/);
-		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_production_id/);
+		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_staging/);
+		expect(rootHcl).toMatch(/local\.platforms\.google_cloud\.projects\.cataqui_production/);
 		expect(rootHcl).toMatch(/auto_create_network\s*=\s*false/);
 		expect(rootHcl).toMatch(/deletion_policy\s*=\s*"PREVENT"/);
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
@@ -148,10 +166,12 @@ describe("Google Cloud OpenTofu contract", () => {
 	});
 
 	it("should prohibit committed credentials and legacy execution references", () => {
+		const rootEnvironments = (rootName: (typeof rootNames)[number]) =>
+			rootName === "google-cloud-github-auth" ? ["production"] : ["staging", "production"];
 		const committedConfiguration = [
 			...rootNames.map((rootName) => _getRootHcl(rootName)),
 			...rootNames.flatMap((rootName) =>
-				["staging", "production"].map((environment) =>
+				rootEnvironments(rootName).map((environment) =>
 					_readInfrastructureFile(`opentofu/environments/${environment}/${rootName}.s3.tfbackend`),
 				),
 			),

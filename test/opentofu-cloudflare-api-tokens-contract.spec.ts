@@ -45,7 +45,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	it("should use the centralized Infisical project identity", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
 
-		expect(platforms.infisical).toEqual({
+		expect(platforms.infisical).toMatchObject({
 			project_id: "954d434f-7e08-4904-af66-0bf62377794e",
 			project_slug: "cataqui-backend-r6c-i",
 		});

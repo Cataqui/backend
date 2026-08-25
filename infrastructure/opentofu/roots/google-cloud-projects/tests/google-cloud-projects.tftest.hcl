@@ -17,7 +17,7 @@ run "staging_project" {
   assert {
     condition = (
       google_project.cataqui.name == "cataqui-staging" &&
-      google_project.cataqui.project_id == "cataqui-staging" &&
+      google_project.cataqui.project_id == "cataqui-staging-mre5wge" &&
       google_project.cataqui.org_id == "945579294313" &&
       google_project.cataqui.billing_account == "01A827-CA7CE9-646496"
     )
@@ -36,7 +36,7 @@ run "production_project" {
   assert {
     condition = (
       google_project.cataqui.name == "cataqui-production" &&
-      google_project.cataqui.project_id == "cataqui" &&
+      google_project.cataqui.project_id == "cataqui-production-jd7bfto" &&
       google_project.cataqui.org_id == "945579294313" &&
       google_project.cataqui.billing_account == "01A827-CA7CE9-646496"
     )
@@ -74,7 +74,7 @@ run "project_outputs" {
 
   assert {
     condition = (
-      output.project_id == "cataqui-staging" &&
+      output.project_id == "cataqui-staging-mre5wge" &&
       output.project_number == "123456789012"
     )
     error_message = "The projects root must expose only its non-secret project identifiers."

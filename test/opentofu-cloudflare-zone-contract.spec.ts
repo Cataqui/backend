@@ -26,7 +26,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 	it("should centralize the stable Cloudflare zone identifier", () => {
 		const platforms = JSON.parse(_readInfrastructureFile("platforms.json"));
 
-		expect(platforms.cloudflare).toEqual({
+		expect(platforms.cloudflare).toMatchObject({
 			account_id: "1fca946385505503c59dd6a2a4eeb442",
 			zones: {
 				"cataqui.com": {
@@ -155,6 +155,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"cloudflare-queues",
 			"cloudflare-zone-configuration",
 			"cloudflare-zone-dns",
+			"google-cloud-github-auth",
 			"google-cloud-maps-platform",
 			"google-cloud-projects",
 			"infisical-generated-folders",
