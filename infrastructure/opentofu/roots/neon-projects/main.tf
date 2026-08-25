@@ -34,7 +34,7 @@ resource "neon_project" "cataqui" {
 resource "infisical_secret" "database_owner_direct_url" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/deployment"
+  folder_path      = "/generated/api/deployment"
   name             = "DATABASE_OWNER_DIRECT_URL"
   value_wo         = neon_project.cataqui.connection_uri
   value_wo_version = 1
@@ -43,7 +43,7 @@ resource "infisical_secret" "database_owner_direct_url" {
 resource "infisical_secret" "database_owner_host" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/deployment"
+  folder_path      = "/generated/api/deployment"
   name             = "DATABASE_OWNER_HOST"
   value_wo         = neon_project.cataqui.database_host
   value_wo_version = 1
@@ -52,7 +52,7 @@ resource "infisical_secret" "database_owner_host" {
 resource "infisical_secret" "database_owner_password" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/deployment"
+  folder_path      = "/generated/api/deployment"
   name             = "DATABASE_OWNER_PASSWORD"
   value_wo         = neon_project.cataqui.database_password
   value_wo_version = 1
@@ -61,7 +61,7 @@ resource "infisical_secret" "database_owner_password" {
 resource "infisical_secret" "database_pooler_host" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/deployment"
+  folder_path      = "/generated/api/deployment"
   name             = "DATABASE_POOLER_HOST"
   value_wo         = neon_project.cataqui.database_host_pooler
   value_wo_version = 1

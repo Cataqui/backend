@@ -84,7 +84,7 @@ run "runtime_secret_delivery" {
     condition = (
       infisical_secret.database_app_pooler_url.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" &&
       infisical_secret.database_app_pooler_url.env_slug == "production" &&
-      infisical_secret.database_app_pooler_url.folder_path == "/generated/runtime" &&
+      infisical_secret.database_app_pooler_url.folder_path == "/generated/api/runtime" &&
       infisical_secret.database_app_pooler_url.name == "DATABASE_APP_POOLER_URL" &&
       infisical_secret.database_app_pooler_url.value_wo_version == 1
     )

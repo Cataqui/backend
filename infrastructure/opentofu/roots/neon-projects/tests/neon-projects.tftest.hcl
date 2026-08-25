@@ -98,7 +98,7 @@ run "deployment_secret_delivery" {
         infisical_secret.database_owner_host,
         infisical_secret.database_owner_password,
         infisical_secret.database_pooler_host,
-      ] : secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" && secret.env_slug == "staging" && secret.folder_path == "/generated/deployment" && secret.value_wo_version == 1
+      ] : secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" && secret.env_slug == "staging" && secret.folder_path == "/generated/api/deployment" && secret.value_wo_version == 1
     ])
     error_message = "Every Neon-generated deployment value must use the matching Infisical deployment folder and write-only version."
   }

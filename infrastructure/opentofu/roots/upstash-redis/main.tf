@@ -23,7 +23,7 @@ resource "upstash_redis_database" "api" {
 resource "infisical_secret" "upstash_redis_rest_url" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/runtime"
+  folder_path      = "/generated/api/runtime"
   name             = "UPSTASH_REDIS_REST_URL"
   value_wo         = local.redis_rest_url
   value_wo_version = 1
@@ -32,7 +32,7 @@ resource "infisical_secret" "upstash_redis_rest_url" {
 resource "infisical_secret" "upstash_redis_rest_token" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/runtime"
+  folder_path      = "/generated/api/runtime"
   name             = "UPSTASH_REDIS_REST_TOKEN"
   value_wo         = upstash_redis_database.api.rest_token
   value_wo_version = 1

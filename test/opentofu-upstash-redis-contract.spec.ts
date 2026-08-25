@@ -66,7 +66,7 @@ describe("Upstash Redis OpenTofu contract", () => {
 
 		expect(rootHcl).toMatch(/name\s*=\s*"UPSTASH_REDIS_REST_URL"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"UPSTASH_REDIS_REST_TOKEN"/);
-		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/runtime"/g)).toHaveLength(2);
+		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/api\/runtime"/g)).toHaveLength(2);
 		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(2);
 		expect(rootHcl).toMatch(/value_wo\s*=\s*upstash_redis_database\.api\.rest_token/);
 		expect(rootHcl).not.toMatch(/read_only_rest_token|\n\s*value\s*=/);

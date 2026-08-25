@@ -1,21 +1,21 @@
 ephemeral "infisical_secret" "database_owner_host" {
   workspace_id = local.infisical_project_id
   env_slug     = var.environment
-  folder_path  = "/generated/deployment"
+  folder_path  = "/generated/api/deployment"
   name         = "DATABASE_OWNER_HOST"
 }
 
 ephemeral "infisical_secret" "database_owner_password" {
   workspace_id = local.infisical_project_id
   env_slug     = var.environment
-  folder_path  = "/generated/deployment"
+  folder_path  = "/generated/api/deployment"
   name         = "DATABASE_OWNER_PASSWORD"
 }
 
 ephemeral "infisical_secret" "database_pooler_host" {
   workspace_id = local.infisical_project_id
   env_slug     = var.environment
-  folder_path  = "/generated/deployment"
+  folder_path  = "/generated/api/deployment"
   name         = "DATABASE_POOLER_HOST"
 }
 

@@ -80,7 +80,7 @@ resource "postgresql_default_privileges" "types" {
 resource "infisical_secret" "database_app_pooler_url" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/runtime"
+  folder_path      = "/generated/api/runtime"
   name             = "DATABASE_APP_POOLER_URL"
   value_wo         = local.database_app_pooler_url
   value_wo_version = local.db_user_credentials_version

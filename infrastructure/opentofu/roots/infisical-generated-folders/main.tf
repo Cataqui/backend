@@ -7,24 +7,57 @@ resource "infisical_secret_folder" "generated" {
   force_delete     = false
 }
 
-resource "infisical_secret_folder" "runtime" {
+resource "infisical_secret_folder" "api" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
-  name             = "runtime"
+  name             = "api"
   folder_path      = "/generated"
-  description      = "Generated values consumed by application runtimes."
+  description      = "Generated values scoped to the Cataqui API."
   force_delete     = false
 
   depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "geosearch" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "geosearch"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the Geosearch Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "api_runtime" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "runtime"
+  folder_path      = "/generated/api"
+  description      = "Generated values consumed by the Cataqui API runtime."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.api]
+}
+
+resource "infisical_secret_folder" "geosearch_runtime" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "runtime"
+  folder_path      = "/generated/geosearch"
+  description      = "Generated values consumed by the Geosearch Worker runtime."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.geosearch]
 }
 
 resource "infisical_secret_folder" "deployment" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
   name             = "deployment"
-  folder_path      = "/generated"
-  description      = "Generated privileged values consumed only by deployment and migration tooling."
+  folder_path      = "/generated/api"
+  description      = "Generated privileged values consumed only by API deployment and migration tooling."
   force_delete     = false
 
-  depends_on = [infisical_secret_folder.generated]
+  depends_on = [infisical_secret_folder.api]
 }

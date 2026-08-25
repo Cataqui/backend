@@ -83,6 +83,10 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 					},
 				},
 			},
+			google_cloud: {
+				organization_id: "945579294313",
+				billing_account_id: "01A827-CA7CE9-646496",
+			},
 			infisical: { project_id: "954d434f-7e08-4904-af66-0bf62377794e" },
 			neon: {
 				organization_id: "org-wandering-pond-46567045",

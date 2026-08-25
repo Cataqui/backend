@@ -57,7 +57,7 @@ resource "cloudflare_api_token" "derive_job_data_runtime" {
 resource "infisical_secret" "derive_job_data_ai_gateway_api_token" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/runtime"
+  folder_path      = "/generated/api/runtime"
   name             = "DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN"
   value_wo         = cloudflare_api_token.derive_job_data_runtime.value
   value_wo_version = 1

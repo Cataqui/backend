@@ -79,7 +79,7 @@ run "runtime_secret_delivery" {
       for secret in [
         infisical_secret.upstash_redis_rest_url,
         infisical_secret.upstash_redis_rest_token,
-      ] : secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" && secret.env_slug == "staging" && secret.folder_path == "/generated/runtime" && secret.value_wo_version == 1
+      ] : secret.workspace_id == "954d434f-7e08-4904-af66-0bf62377794e" && secret.env_slug == "staging" && secret.folder_path == "/generated/api/runtime" && secret.value_wo_version == 1
     ])
     error_message = "Every Upstash runtime value must use the matching Infisical runtime folder and write-only version."
   }
