@@ -37,7 +37,7 @@ run "staging_database" {
       upstash_redis_database.api.region == "global" &&
       upstash_redis_database.api.primary_region == "sa-east-1" &&
       length(upstash_redis_database.api.read_regions) == 0 &&
-      upstash_redis_database.api.budget == 5
+      upstash_redis_database.api.budget == 20
     )
     error_message = "Staging must use the approved database identity, São Paulo primary, and monthly budget."
   }

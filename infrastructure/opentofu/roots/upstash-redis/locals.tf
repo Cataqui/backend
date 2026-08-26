@@ -7,7 +7,7 @@ locals {
   database_by_environment = {
     staging = {
       name           = local.manifest.upstash.redis.databases.cataqui_api_staging.name
-      monthly_budget = 5
+      monthly_budget = 20
     }
     production = {
       name           = local.manifest.upstash.redis.databases.cataqui_api_production.name
