@@ -139,7 +139,6 @@ run "keeps_geosearch_health_reachable_without_browser_challenges" {
   assert {
     condition = (
       cloudflare_bot_management.cataqui.ai_bots_protection == "block" &&
-      cloudflare_bot_management.cataqui.cf_robots_variant == "off" &&
       cloudflare_bot_management.cataqui.content_bots_protection == "disabled" &&
       cloudflare_bot_management.cataqui.crawler_protection == "enabled" &&
       !cloudflare_bot_management.cataqui.enable_js &&

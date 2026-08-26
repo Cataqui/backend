@@ -1,6 +1,5 @@
 resource "cloudflare_bot_management" "cataqui" {
   ai_bots_protection              = "block"
-  cf_robots_variant               = "off"
   content_bots_protection         = "disabled"
   crawler_protection              = "enabled"
   enable_js                       = false
