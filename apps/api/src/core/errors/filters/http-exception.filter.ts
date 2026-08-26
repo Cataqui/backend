@@ -84,6 +84,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			return { errorCode: ErrorCode.INVALID_REQUEST, message: message };
 		}
 
+		if (status === HttpStatus.UNSUPPORTED_MEDIA_TYPE) {
+			return { errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE, message: UNSUPPORTED_MEDIA_TYPE_MESSAGE };
+		}
+
 		if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
 			return { errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: "Request body exceeds the maximum allowed size." };
 		}
@@ -144,6 +148,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			return { errorCode: ErrorCode.INVALID_REQUEST, message: this._resolveMessage(resp["message"]) };
 		}
 
+		if (status === HttpStatus.UNSUPPORTED_MEDIA_TYPE) {
+			return { errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE, message: UNSUPPORTED_MEDIA_TYPE_MESSAGE };
+		}
+
 		if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
 			return { errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: this._resolveMessage(resp["message"]) };
 		}
@@ -190,3 +198,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		return "An unexpected error occurred";
 	}
 }
+
+const UNSUPPORTED_MEDIA_TYPE_MESSAGE =
+	"Request body media type is unsupported. Send Content-Type: application/json for a JSON body, or omit Content-Type when the request has no body.";

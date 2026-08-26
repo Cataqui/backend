@@ -79,6 +79,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	});
 
 	const fastifyInstance = app.getHttpAdapter().getInstance();
+	fastifyInstance.removeContentTypeParser("text/plain");
 	await fastifyInstance.register(helmet, {
 		contentSecurityPolicy: true,
 		hsts: {

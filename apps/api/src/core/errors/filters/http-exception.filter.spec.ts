@@ -364,6 +364,37 @@ describe("HttpExceptionFilter", () => {
 		});
 	});
 
+	describe("unsupported request media types", () => {
+		it("should return UNSUPPORTED_MEDIA_TYPE for a string response with 415 status", () => {
+			const exception = new HttpException("Unsupported Media Type", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+			const { sendMock, statusMock } = createMockHost(exception);
+
+			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+				httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+				body: {
+					errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+					message:
+						"Request body media type is unsupported. Send Content-Type: application/json for a JSON body, or omit Content-Type when the request has no body.",
+					status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+				},
+			});
+		});
+
+		it("should return UNSUPPORTED_MEDIA_TYPE for an object response with 415 status", () => {
+			const exception = new HttpException({ message: "Unsupported Media Type" }, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+			const { sendMock } = createMockHost(exception);
+
+			expect(sendMock.mock.calls[0]?.[0]).toMatchObject({
+				errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+				message:
+					"Request body media type is unsupported. Send Content-Type: application/json for a JSON body, or omit Content-Type when the request has no body.",
+				status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+			});
+		});
+	});
+
 	describe("route not found", () => {
 		it("should return ROUTE_NOT_FOUND when ExceptionMessage starts with Cannot and status is 404", () => {
 			const exception = new HttpException(
