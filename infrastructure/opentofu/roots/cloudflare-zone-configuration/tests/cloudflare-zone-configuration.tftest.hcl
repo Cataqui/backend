@@ -133,7 +133,7 @@ run "preserves_transport_and_network_baseline" {
   }
 }
 
-run "preserves_bot_management_without_browser_challenges_for_api_traffic" {
+run "keeps_geosearch_health_reachable_without_browser_challenges" {
   command = plan
 
   assert {
@@ -150,10 +150,11 @@ run "preserves_bot_management_without_browser_challenges_for_api_traffic" {
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
       cloudflare_ruleset.custom.rules[7].ref == "skip_sbfm_for_non_browser_traffic" &&
       cloudflare_ruleset.custom.rules[7].action == "skip" &&
+      cloudflare_ruleset.custom.rules[7].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"}" &&
       cloudflare_ruleset.custom.rules[7].action_parameters.phases == tolist(["http_request_sbfm"]) &&
       cloudflare_ruleset.custom.rules[7].action_parameters.products == tolist(["bic"])
     )
-    error_message = "Bot protections and the API/webhook SBFM exception must match the live configuration."
+    error_message = "Bot protections and the API, Geosearch, and Webhooks SBFM exception must match the live configuration."
   }
 }
 
