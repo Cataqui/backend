@@ -87,7 +87,11 @@ runs:
         failures=0
         successes=0
         maximum_attempts=80
-        [[ "$INPUT_ENVIRONMENT" == staging ]] && maximum_attempts=40
+        startup_attempts=40
+        if [[ "$INPUT_ENVIRONMENT" == staging ]]; then
+          maximum_attempts=40
+          startup_attempts=20
+        fi
         for attempt in $(seq 1 "$maximum_attempts"); do
           rollout_state=progressing
           if pnpm exec wrangler containers list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json \
@@ -121,6 +125,11 @@ runs:
             [[ "$successes" -ge 5 ]] && exit 0
           else
             successes=0
+            if [[ "$attempt" -le "$startup_attempts" ]]; then
+              failures=0
+              sleep 15
+              continue
+            fi
             failures=$((failures + 1))
             if [[ "$failures" -ge 3 ]]; then echo "API failed three consecutive health probes." >&2; rollback || true; exit 1; fi
           fi
