@@ -18,6 +18,7 @@ describe("ErrorCode", () => {
 			"JOB_DRAFT_INCOMPLETE",
 			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
 			"INVALID_LOCALE",
+			"UNSUPPORTED_MEDIA_TYPE",
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
@@ -42,6 +43,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(25);
+		expect(Object.keys(ErrorCode)).toHaveLength(26);
 	});
 });

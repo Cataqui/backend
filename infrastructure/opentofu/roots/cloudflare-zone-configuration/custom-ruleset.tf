@@ -15,13 +15,6 @@ resource "cloudflare_ruleset" "custom" {
     },
     {
       action      = "block"
-      description = "Block API writes with non-JSON bodies"
-      enabled     = true
-      expression  = "(http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method in {\"POST\" \"PUT\" \"PATCH\"} and not any(http.request.headers[\"content-type\"][*] wildcard \"*application/json*\") and not (http.request.method eq \"POST\" and http.request.uri.path matches \"^/v1/jobs/[^/]+/publish$\"))"
-      ref         = "cc18571df63646d482095c03e1774138"
-    },
-    {
-      action      = "block"
       description = "Block malformed WhatsApp deliveries before Worker body processing"
       enabled     = true
       expression  = "(http.host in {\"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/whatsapp\" and (not any(http.request.headers[\"content-type\"][*] wildcard \"*application/json*\") or not any(http.request.headers[\"x-hub-signature-256\"][*] matches \"^sha256=[0-9a-fA-F]{64}$\")))"

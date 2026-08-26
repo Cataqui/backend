@@ -94,7 +94,7 @@ run "owns_the_intentional_zone_configuration" {
 
   assert {
     condition = (
-      length(cloudflare_ruleset.custom.rules) == 8 &&
+      length(cloudflare_ruleset.custom.rules) == 7 &&
       length(cloudflare_ruleset.managed_waf.rules) == 1 &&
       length(cloudflare_ruleset.rate_limits.rules) == 5 &&
       length(cloudflare_ruleset.response_compression.rules) == 1 &&
@@ -147,11 +147,11 @@ run "keeps_geosearch_health_reachable_without_browser_challenges" {
       cloudflare_bot_management.cataqui.sbfm_likely_automated == "managed_challenge" &&
       cloudflare_bot_management.cataqui.sbfm_verified_bots == "allow" &&
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
-      cloudflare_ruleset.custom.rules[7].ref == "skip_sbfm_for_non_browser_traffic" &&
-      cloudflare_ruleset.custom.rules[7].action == "skip" &&
-      cloudflare_ruleset.custom.rules[7].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"}" &&
-      cloudflare_ruleset.custom.rules[7].action_parameters.phases == tolist(["http_request_sbfm"]) &&
-      cloudflare_ruleset.custom.rules[7].action_parameters.products == tolist(["bic"])
+      cloudflare_ruleset.custom.rules[6].ref == "skip_sbfm_for_non_browser_traffic" &&
+      cloudflare_ruleset.custom.rules[6].action == "skip" &&
+      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"}" &&
+      cloudflare_ruleset.custom.rules[6].action_parameters.phases == tolist(["http_request_sbfm"]) &&
+      cloudflare_ruleset.custom.rules[6].action_parameters.products == tolist(["bic"])
     )
     error_message = "Bot protections and the API, Geosearch, and Webhooks SBFM exception must match the live configuration."
   }
@@ -165,7 +165,6 @@ run "preserves_custom_waf_order_and_contracts" {
       for rule in cloudflare_ruleset.custom.rules : rule.ref
       ] == [
       "d3e8252afe7746e7b3d2beeef2bf7c4b",
-      "cc18571df63646d482095c03e1774138",
       "block_malformed_whatsapp_delivery",
       "block_private_api_routes",
       "44a35aef2c7e4a5a9f6b12bf742166bb",
@@ -179,10 +178,21 @@ run "preserves_custom_waf_order_and_contracts" {
   assert {
     condition = (
       strcontains(cloudflare_ruleset.custom.rules[1].expression, "application/json") &&
-      strcontains(cloudflare_ruleset.custom.rules[1].expression, "/publish$") &&
-      strcontains(cloudflare_ruleset.custom.rules[2].expression, "x-hub-signature-256")
+      strcontains(cloudflare_ruleset.custom.rules[1].expression, "x-hub-signature-256")
     )
-    error_message = "The JSON, publish, and WhatsApp request contracts must remain protected."
+    error_message = "The WhatsApp request contract must remain protected."
+  }
+}
+
+run "keeps_api_media_type_validation_out_of_the_waf" {
+  command = plan
+
+  assert {
+    condition = !contains(
+      [for rule in cloudflare_ruleset.custom.rules : rule.ref],
+      "cc18571df63646d482095c03e1774138",
+    )
+    error_message = "API media type validation belongs to the application parser, not a method-wide WAF rule."
   }
 }
 
