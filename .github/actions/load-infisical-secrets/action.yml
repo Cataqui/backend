@@ -58,7 +58,7 @@ runs:
           exit 1
         fi
         secret_path="$(jq -er '.secret_path' <<< "$profile_config")"
-        authenticate_infisical_provider="$(jq -er '.authenticate_infisical_provider' <<< "$profile_config")"
+        authenticate_infisical_provider="$(jq -r '.authenticate_infisical_provider' <<< "$profile_config")"
         echo "secret-path=$secret_path" >> "$GITHUB_OUTPUT"
         echo "authenticate-infisical-provider=$authenticate_infisical_provider" >> "$GITHUB_OUTPUT"
         project_slug="$(
