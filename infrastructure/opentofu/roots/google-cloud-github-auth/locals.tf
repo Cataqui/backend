@@ -37,10 +37,13 @@ locals {
 
   identity_services = merge(
     {
-      for environment in keys(local.environments) :
-      "${environment}:iam.googleapis.com" => {
-        environment = environment
-        service     = "iam.googleapis.com"
+      for pair in setproduct(keys(local.environments), [
+        "cloudresourcemanager.googleapis.com",
+        "iam.googleapis.com",
+      ]) :
+      "${pair[0]}:${pair[1]}" => {
+        environment = pair[0]
+        service     = pair[1]
       }
     },
     {

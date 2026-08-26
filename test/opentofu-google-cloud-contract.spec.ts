@@ -101,6 +101,7 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(rootHcl).toContain('"roles/serviceusage.apiKeysAdmin"');
 		expect(rootHcl).toContain('role               = "roles/iam.workloadIdentityUser"');
 		expect(rootHcl).toContain('role               = "roles/billing.user"');
+		expect(rootHcl).toContain('"cloudresourcemanager.googleapis.com"');
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
 		expect(rootHcl).not.toMatch(/google_service_account_key|private_key|credentials\s*=/);
 	});
@@ -140,6 +141,8 @@ describe("Google Cloud OpenTofu contract", () => {
 	it("should enable the exact Maps Platform services and create independently restricted keys", () => {
 		const rootHcl = _getRootHcl("google-cloud-maps-platform");
 
+		expect(rootHcl).toMatch(/billing_project\s*=\s*local\.google_cloud_project_id/);
+		expect(rootHcl).toMatch(/user_project_override\s*=\s*true/);
 		for (const service of [
 			"apikeys.googleapis.com",
 			"maps-android-backend.googleapis.com",
