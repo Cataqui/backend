@@ -36,11 +36,11 @@ locals {
       scope = "com.cloudflare.api.account"
     }
     containers_read = {
-      name  = "Containers Read"
+      name  = "Workers Containers Read"
       scope = "com.cloudflare.api.account"
     }
     containers_write = {
-      name  = "Containers Write"
+      name  = "Workers Containers Write"
       scope = "com.cloudflare.api.account"
     }
     account_settings_read = {
