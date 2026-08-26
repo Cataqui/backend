@@ -84,6 +84,28 @@ resource "infisical_secret_folder" "deployment" {
   depends_on = [infisical_secret_folder.api]
 }
 
+resource "infisical_secret_folder" "geosearch_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/geosearch"
+  description      = "Generated privileged values consumed only by Geosearch deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.geosearch]
+}
+
+resource "infisical_secret_folder" "webhooks_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/webhooks"
+  description      = "Generated privileged values consumed only by Webhooks deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.webhooks]
+}
+
 resource "infisical_secret_folder" "opentofu" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment

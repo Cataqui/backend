@@ -7,6 +7,7 @@ mock_provider "neon" {
       database_name        = "cataqui"
       database_password    = "password"
       database_user        = "db_owner"
+      id                   = "mock-neon-project-id"
     }
   }
 }
@@ -52,6 +53,17 @@ run "staging_project" {
       neon_project.cataqui.maintenance_window[0].weekdays == tolist([6])
     )
     error_message = "Staging must keep the cost-first compute and Saturday maintenance profile."
+  }
+
+  assert {
+    condition = (
+      infisical_secret.neon_project_id.workspace_id == module.infisical_project.id &&
+      infisical_secret.neon_project_id.env_slug == "staging" &&
+      infisical_secret.neon_project_id.folder_path == "/generated/api/deployment" &&
+      infisical_secret.neon_project_id.name == "NEON_PROJECT_ID" &&
+      infisical_secret.neon_project_id.value == neon_project.cataqui.id
+    )
+    error_message = "The non-secret Neon project ID must be published for deployment automation."
   }
 }
 

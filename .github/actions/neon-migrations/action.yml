@@ -1,0 +1,105 @@
+name: Neon migration safety gate
+description: Validate Prisma migrations on an expiring Neon branch, then apply them once to main.
+
+inputs:
+  environment:
+    description: Deployment environment; staging or production.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate and apply migrations
+      shell: bash
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        case "$INPUT_ENVIRONMENT" in staging | production) ;; *) exit 1 ;; esac
+        command -v docker >/dev/null
+        real_database_owner_direct_url="$DATABASE_OWNER_DIRECT_URL"
+        database_name="$(jq -er .neon.databases.cataqui.name infrastructure/manifest.json)"
+        owner_role="$(jq -er .neon.databases.cataqui.owner_role infrastructure/manifest.json)"
+
+        branch_name="ci-migration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        container_name="cataqui-api-migration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        expires_at="$(node -e 'process.stdout.write(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())')"
+        branch_created=false
+        container_started=false
+        cleanup() {
+          if [[ "$container_started" == true ]]; then docker rm -f "$container_name" >/dev/null 2>&1 || true; fi
+          if [[ "$branch_created" == true ]]; then
+            pnpm exec neon branches delete "$branch_name" --project-id "$NEON_PROJECT_ID" --output json --no-analytics >/dev/null 2>&1 || true
+          fi
+          unset branch_url DATABASE_OWNER_DIRECT_URL PGOPTIONS
+        }
+        trap cleanup EXIT
+
+        branch_json="$(pnpm exec neon branches create \
+          --project-id "$NEON_PROJECT_ID" \
+          --name "$branch_name" \
+          --parent main \
+          --expires-at "$expires_at" \
+          --output json \
+          --no-analytics)"
+        branch_created=true
+        printf '%s' "$branch_json" | node -e 'let value="";process.stdin.on("data",c=>value+=c).on("end",()=>{const payload=JSON.parse(value);if(!(payload.id??payload.branch?.id))process.exit(1)})'
+        unset branch_json
+        connection_json="$(pnpm exec neon connection-string "$branch_name" \
+          --project-id "$NEON_PROJECT_ID" \
+          --database-name "$database_name" \
+          --role-name "$owner_role" \
+          --output json \
+          --no-analytics)"
+        branch_url="$(printf '%s' "$connection_json" | node -e '
+          let value=""; process.stdin.on("data", c => value += c).on("end", () => {
+            const payload=JSON.parse(value); const visit=(item) => {
+              if (typeof item === "string" && /^postgres(?:ql)?:\/\//.test(item)) return item;
+              if (item && typeof item === "object") for (const child of Object.values(item)) { const found=visit(child); if (found) return found; }
+            }; const result=visit(payload); if (!result) process.exit(1); process.stdout.write(result);
+          });')"
+        unset connection_json
+        if [[ "$branch_url" == *-pooler.* ]]; then
+          echo "Neon returned a pooled URL for migration validation." >&2
+          exit 1
+        fi
+        export DATABASE_OWNER_DIRECT_URL="$branch_url"
+        pnpm --filter @cataqui/api prisma:migrate:deploy >/dev/null
+        pnpm --filter @cataqui/api exec prisma migrate status >/dev/null
+
+        docker build --file apps/api/Dockerfile --tag "cataqui-api-candidate:$GITHUB_SHA" . >/dev/null
+        export NODE_ENV="$INPUT_ENVIRONMENT"
+        export CLOUDFLARE_ACCOUNT_ID
+        export DATABASE_APP_POOLER_URL="$branch_url"
+        export DERIVE_JOB_DATA_AI_GATEWAY_ID="cataqui-derive-job-data-$INPUT_ENVIRONMENT"
+        export CORS_ORIGINS="https://${INPUT_ENVIRONMENT/staging/staging.}cataqui.com"
+        export WHATSAPP_NOTP_RECEIVER="+15556625497"
+        if [[ "$INPUT_ENVIRONMENT" == production ]]; then
+          CORS_ORIGINS="https://cataqui.com"
+          WHATSAPP_NOTP_RECEIVER="+5511963270517"
+        fi
+        docker run --detach --name "$container_name" --publish 127.0.0.1:3000:3000 \
+          -e NODE_ENV -e CLOUDFLARE_ACCOUNT_ID -e DATABASE_APP_POOLER_URL -e CORS_ORIGINS \
+          -e AI_GATEWAY_API_TOKEN -e DERIVE_JOB_DATA_AI_GATEWAY_ID \
+          -e UPSTASH_REDIS_REST_URL -e UPSTASH_REDIS_REST_TOKEN \
+          -e AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL \
+          -e MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 \
+          -e WHATSAPP_NOTP_RECEIVER \
+          "cataqui-api-candidate:$GITHUB_SHA" >/dev/null
+        container_started=true
+        for attempt in $(seq 1 24); do
+          live="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/health/live || true)"
+          ready="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/health || true)"
+          jwks="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/auth/microservices/jwks || true)"
+          if [[ "$live" == 204 && "$ready" == 200 && "$jwks" == 200 ]]; then break; fi
+          if [[ "$attempt" == 24 ]]; then echo "Candidate API failed migration-branch probes." >&2; exit 1; fi
+          sleep 5
+        done
+        docker rm -f "$container_name" >/dev/null
+        container_started=false
+
+        export DATABASE_OWNER_DIRECT_URL
+        DATABASE_OWNER_DIRECT_URL="$real_database_owner_direct_url"
+        export PGOPTIONS='-c lock_timeout=5s -c statement_timeout=300s'
+        pnpm --filter @cataqui/api prisma:migrate:deploy >/dev/null
+        pnpm --filter @cataqui/api exec prisma migrate status >/dev/null

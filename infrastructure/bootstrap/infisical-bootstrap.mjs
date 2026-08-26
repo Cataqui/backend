@@ -1,5 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { existsSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { constantTimeEqual, ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
-import { knownSecrets, requestJson } from "./bootstrap-runtime.mjs";
+import { knownSecrets, repositoryRoot, requestJson, run } from "./bootstrap-runtime.mjs";
 import { INFISICAL_PROJECT_TYPE, reconcileInfisicalProjectState } from "./infisical-reconciliation.mjs";
 
 export const bootstrapSecretPath = "/opentofu/bootstrap";
@@ -88,11 +92,11 @@ export async function reconcileInfisicalProject(
 	});
 }
 
-export async function getBootstrapSecret({ projectId, token, environment, name }) {
+export async function getInfisicalSecret({ projectId, token, environment, secretPath, name }) {
 	const query = new URLSearchParams({
 		projectId,
 		environment,
-		secretPath: bootstrapSecretPath,
+		secretPath,
 		type: "shared",
 		viewSecretValue: "true",
 		expandSecretReferences: "false",
@@ -107,9 +111,9 @@ export async function getBootstrapSecret({ projectId, token, environment, name }
 	return value;
 }
 
-export async function setBootstrapSecret({ projectId, token, environment, name, value }) {
+export async function setInfisicalSecret({ projectId, token, environment, secretPath, name, value }) {
 	knownSecrets.add(value);
-	const existing = await getBootstrapSecret({ projectId, token, environment, name });
+	const existing = await getInfisicalSecret({ projectId, token, environment, secretPath, name });
 	if (existing && constantTimeEqual(existing, value)) return;
 	const method = existing ? "PATCH" : "POST";
 	await requestJson(`${infisicalApiBaseUrl}/api/v4/secrets/${encodeURIComponent(name)}`, {
@@ -118,12 +122,48 @@ export async function setBootstrapSecret({ projectId, token, environment, name, 
 		body: {
 			projectId,
 			environment,
-			secretPath: bootstrapSecretPath,
+			secretPath,
 			secretValue: value,
 			skipMultilineEncoding: true,
 			type: "shared",
 		},
 		acceptedStatuses: method === "POST" ? [200, 201] : [200],
+	});
+}
+
+export async function deleteInfisicalSecret({ projectId, token, environment, secretPath, name }) {
+	const existing = await getInfisicalSecret({ projectId, token, environment, secretPath, name });
+	if (!existing) return;
+	await requestJson(`${infisicalApiBaseUrl}/api/v4/secrets/${encodeURIComponent(name)}`, {
+		method: "DELETE",
+		headers: _headers(token),
+		body: { projectId, environment, secretPath, type: "shared" },
+		acceptedStatuses: [200],
+	});
+}
+
+export function getBootstrapSecret({ projectId, token, environment, name }) {
+	return getInfisicalSecret({ projectId, token, environment, secretPath: bootstrapSecretPath, name });
+}
+
+export function setBootstrapSecret({ projectId, token, environment, name, value }) {
+	return setInfisicalSecret({
+		projectId,
+		token,
+		environment,
+		secretPath: bootstrapSecretPath,
+		name,
+		value,
+	});
+}
+
+export function deleteBootstrapSecret({ projectId, token, environment, name }) {
+	return deleteInfisicalSecret({
+		projectId,
+		token,
+		environment,
+		secretPath: bootstrapSecretPath,
+		name,
 	});
 }
 
@@ -149,6 +189,67 @@ export async function ensureBootstrapFolders(projectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
 		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/", name: "opentofu" });
 		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/opentofu", name: "bootstrap" });
+	}
+}
+
+export async function applyGeneratedFolders(infisicalProjectId, infisicalToken) {
+	const root = join(repositoryRoot, "infrastructure/opentofu/roots/infisical-generated-folders");
+	for (const environment of ENVIRONMENTS) {
+		const accessKeyId = await getBootstrapSecret({
+			projectId: infisicalProjectId,
+			token: infisicalToken,
+			environment,
+			name: "R2_STATE_ACCESS_KEY_ID",
+		});
+		const secretAccessKey = await getBootstrapSecret({
+			projectId: infisicalProjectId,
+			token: infisicalToken,
+			environment,
+			name: "R2_STATE_SECRET_ACCESS_KEY",
+		});
+		if (!accessKeyId || !secretAccessKey) {
+			throw new Error(`Missing ${environment} R2 backend credentials before generated-folder reconciliation.`);
+		}
+
+		const environmentVariables = {
+			...process.env,
+			AWS_ACCESS_KEY_ID: accessKeyId,
+			AWS_SECRET_ACCESS_KEY: secretAccessKey,
+			INFISICAL_TOKEN: infisicalToken,
+			TF_IN_AUTOMATION: "1",
+		};
+		delete environmentVariables.INFISICAL_AUTH_JWT;
+		delete environmentVariables.INFISICAL_AUTH_METHOD;
+		delete environmentVariables.INFISICAL_MACHINE_IDENTITY_ID;
+
+		run(
+			"tofu",
+			[
+				"init",
+				"-reconfigure",
+				"-input=false",
+				"-backend-config=../../backends/r2.s3.tfbackend",
+				`-backend-config=../../environments/${environment}/infisical-generated-folders.s3.tfbackend`,
+			],
+			{ cwd: root, env: environmentVariables },
+		);
+
+		const planPath = join(
+			tmpdir(),
+			`cataqui-bootstrap-infisical-generated-folders-${environment}-${randomUUID()}.tfplan`,
+		);
+		try {
+			run("tofu", ["plan", "-input=false", "-lock-timeout=5m", `-var=environment=${environment}`, "-out", planPath], {
+				cwd: root,
+				env: environmentVariables,
+			});
+			run("tofu", ["apply", "-input=false", "-lock-timeout=5m", planPath], {
+				cwd: root,
+				env: environmentVariables,
+			});
+		} finally {
+			if (existsSync(planPath)) unlinkSync(planPath);
+		}
 	}
 }
 

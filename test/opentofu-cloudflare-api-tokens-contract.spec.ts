@@ -70,6 +70,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl).not.toMatch(/(?:folder_path|name)\s*=.*(?:plan|apply)/);
 		expect(rootHcl).toMatch(/ai_gateway_runtime_tokens\s*=\s*{\s*api\s*=\s*{/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/worker_deployment_tokens\s*=\s*{\s*api\s*=\s*{/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-workers-deployment-\$\{var\.environment\}"/);
 	});
 
 	it("should resolve exact permissions without hardcoded IDs", () => {
@@ -79,9 +81,16 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 			"AI Gateway Run",
 			"Queues Read",
 			"Queues Write",
+			"Workers Scripts Read",
+			"Workers Scripts Write",
+			"Containers Read",
+			"Containers Write",
+			"Account Settings Read",
 			"Zone Read",
 			"DNS Read",
 			"DNS Write",
+			"Workers Routes Read",
+			"Workers Routes Write",
 			"Zone Settings Read",
 			"Zone Settings Write",
 			"Zone WAF Read",
@@ -111,23 +120,32 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	});
 
 	it("should deliver only write-only Infisical copies to exact destinations", () => {
-		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(2);
+		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(3);
 		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/opentofu\/\$\{each\.key\}"/);
 		expect(rootHcl).toContain('name             = "CLOUDFLARE_API_TOKEN"');
 		expect(rootHcl).toContain('folder_path = "/generated/api/runtime"');
 		expect(rootHcl).toContain('secret_name = "AI_GATEWAY_API_TOKEN"');
-		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(2);
-		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(2);
+		expect(rootHcl).toContain("folder_path      = each.value.folder_path");
+		for (const path of [
+			"/generated/api/deployment",
+			"/generated/geosearch/deployment",
+			"/generated/webhooks/deployment",
+		]) {
+			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));
+		}
+		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(3);
+		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(3);
 		expect(rootHcl).not.toMatch(/^\s*value\s*=/m);
 		expect(rootHcl).not.toMatch(/\boutput\s+"/);
 	});
 
 	it("should protect tokens and their destination secrets without expiration or IP conditions", () => {
-		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(4);
+		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(6);
 		expect(rootHcl).not.toMatch(/\b(?:request_ip|expires_on|not_before)\s*=/);
 		expect(rootHcl).not.toMatch(/^\s*condition\s*=\s*{/m);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-opentofu-\$\{each\.key\}-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-workers-deployment-\$\{var\.environment\}"/);
 	});
 
 	it("should keep the bootstrap issuer and backend credentials external", () => {

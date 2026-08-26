@@ -17,13 +17,36 @@
 		"required_secrets": [
 			"R2_STATE_ACCESS_KEY_ID",
 			"R2_STATE_SECRET_ACCESS_KEY",
-			"NEON_API_KEY"
+			"NEON_ACCOUNT_API_KEY"
 		],
 		"environment_aliases": {
 			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
-			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY"
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_API_KEY": "NEON_ACCOUNT_API_KEY"
 		},
 		"authenticate_infisical_provider": true
+	},
+	"neon-api-keys": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": [
+			"R2_STATE_ACCESS_KEY_ID",
+			"R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_ACCOUNT_API_KEY"
+		],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_API_KEY": "NEON_ACCOUNT_API_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"neon-project-context": {
+		"secret_path": "/generated/api/deployment",
+		"required_secrets": ["NEON_PROJECT_ID"],
+		"environment_aliases": {
+			"TF_VAR_neon_project_id": "NEON_PROJECT_ID"
+		},
+		"authenticate_infisical_provider": false
 	},
 	"neon-database-access": {
 		"secret_path": "/opentofu/bootstrap",
@@ -72,6 +95,56 @@
 	},
 	"cloudflare-zone-dns": {
 		"secret_path": "/generated/opentofu/cloudflare-zone-dns",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"api-runtime": {
+		"secret_path": "/generated/api/runtime",
+		"required_secrets": [
+			"DATABASE_APP_POOLER_URL",
+			"AI_GATEWAY_API_TOKEN",
+			"UPSTASH_REDIS_REST_URL",
+			"UPSTASH_REDIS_REST_TOKEN",
+			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+		],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"api-deployment": {
+		"secret_path": "/generated/api/deployment",
+		"required_secrets": [
+			"CLOUDFLARE_API_TOKEN",
+			"DATABASE_OWNER_DIRECT_URL",
+			"NEON_PROJECT_ID",
+			"NEON_PROJECT_API_KEY"
+		],
+		"environment_aliases": {
+			"NEON_API_KEY": "NEON_PROJECT_API_KEY"
+		},
+		"authenticate_infisical_provider": false
+	},
+	"geosearch-runtime": {
+		"secret_path": "/generated/geosearch/runtime",
+		"required_secrets": ["GOOGLE_PLACES_API_KEY"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"geosearch-deployment": {
+		"secret_path": "/generated/geosearch/deployment",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"webhooks-runtime": {
+		"secret_path": "/generated/webhooks/runtime",
+		"required_secrets": ["WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN", "META_APP_SECRET"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"webhooks-deployment": {
+		"secret_path": "/generated/webhooks/deployment",
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false

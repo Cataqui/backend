@@ -61,6 +61,19 @@
 		}
 	},
 	"neon": {
+		"api_keys": {
+			"account_bootstrap": {
+				"name": "cataqui-backend-opentofu-bootstrap"
+			},
+			"project_access": {
+				"cataqui_staging": {
+					"name": "cataqui-backend-project-access-staging"
+				},
+				"cataqui_production": {
+					"name": "cataqui-backend-project-access-production"
+				}
+			}
+		},
 		"projects": {
 			"cataqui_staging": {
 				"name": "cataqui-staging"

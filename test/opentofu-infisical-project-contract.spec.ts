@@ -10,6 +10,7 @@ const infisicalRoots = [
 	"cloudflare-api-tokens",
 	"google-cloud-maps-platform",
 	"infisical-generated-folders",
+	"neon-api-keys",
 	"neon-database-access",
 	"neon-projects",
 	"upstash-redis",

@@ -2,9 +2,9 @@ import { knownSecrets, log, run } from "./bootstrap-runtime.mjs";
 import { getBootstrapSecret, setBootstrapSecret } from "./infisical-bootstrap.mjs";
 import {
 	classifyNeonCredentialResponse,
-	decideNeonCredential,
-	getNeonApiKeyName,
-	reconcileNeonCredential,
+	decideNeonAccountCredential,
+	getNeonAccountApiKeyName,
+	reconcileNeonAccountCredential,
 } from "./neon-reconciliation.mjs";
 import { ENVIRONMENTS } from "./reconciliation.mjs";
 
@@ -23,6 +23,14 @@ function _runNeon(args) {
 	});
 }
 
+function _parseJson(result, operation) {
+	try {
+		return JSON.parse(result.stdout);
+	} catch {
+		throw new Error(`Neon CLI returned invalid JSON while attempting to ${operation}.`);
+	}
+}
+
 function _assertOAuthProfile() {
 	const payload = _parseJson(
 		run("neon", ["profile", "list", "--output", "json", "--no-analytics"], {
@@ -37,19 +45,7 @@ function _assertOAuthProfile() {
 	}
 }
 
-function _parseJson(result, operation) {
-	try {
-		return JSON.parse(result.stdout);
-	} catch {
-		throw new Error(`Neon CLI returned invalid JSON while attempting to ${operation}.`);
-	}
-}
-
-function _listApiKeys(platforms) {
-	const payload = _parseJson(
-		_runNeon(["api-keys", "list", "--org-id", platforms.neon.organization_id]),
-		"list organization API keys",
-	);
+function _normalizeApiKeyInventory(payload) {
 	if (!Array.isArray(payload)) throw new Error("Neon CLI returned an invalid API key inventory.");
 	return payload.map((key) => {
 		if (
@@ -64,48 +60,64 @@ function _listApiKeys(platforms) {
 	});
 }
 
-async function _verifyApiKey(platforms, key) {
-	knownSecrets.add(key);
-	let response;
+function _listAccountApiKeys() {
+	return _normalizeApiKeyInventory(_parseJson(_runNeon(["api-keys", "list"]), "list account API keys"));
+}
+
+async function _fetchWithCredential(url, key) {
 	try {
-		response = await fetch(`${neonApiBaseUrl}/users/me/organizations`, {
+		return await fetch(url, {
 			headers: { accept: "application/json", authorization: `Bearer ${key}` },
 		});
 	} catch {
-		return "indeterminate";
+		return undefined;
 	}
-	const status = classifyNeonCredentialResponse(response.status);
-	if (status !== "accepted") return status;
-	let payload;
-	try {
-		payload = await response.json();
-	} catch {
-		return "indeterminate";
-	}
-	if (!Array.isArray(payload?.organizations)) return "indeterminate";
-	if (payload.organizations.length !== 1 || payload.organizations[0]?.id !== platforms.neon.organization_id) {
-		return "foreign";
-	}
-
-	let inventoryResponse;
-	try {
-		inventoryResponse = await fetch(
-			`${neonApiBaseUrl}/organizations/${encodeURIComponent(platforms.neon.organization_id)}/api_keys`,
-			{ headers: { accept: "application/json", authorization: `Bearer ${key}` } },
-		);
-	} catch {
-		return "indeterminate";
-	}
-	if (inventoryResponse.ok) return "accepted";
-	if (inventoryResponse.status === 403) return "foreign";
-	return "indeterminate";
 }
 
-function _createApiKey(platforms, expectedName) {
-	const payload = _parseJson(
-		_runNeon(["api-keys", "create", "--name", expectedName, "--org-id", platforms.neon.organization_id]),
-		`create ${expectedName}`,
+async function _verifyAccountApiKey(platforms, key) {
+	knownSecrets.add(key);
+	const userResponse = await _fetchWithCredential(`${neonApiBaseUrl}/users/me`, key);
+	if (!userResponse) return "indeterminate";
+	const userStatus = classifyNeonCredentialResponse(userResponse.status);
+	if (userStatus !== "accepted") return userStatus;
+	let user;
+	try {
+		user = await userResponse.json();
+	} catch {
+		return "indeterminate";
+	}
+	const userId = user?.id ?? user?.user?.id;
+	if (typeof userId !== "string" || !userId) return "indeterminate";
+
+	const accountKeysResponse = await _fetchWithCredential(`${neonApiBaseUrl}/api_keys`, key);
+	if (!accountKeysResponse) return "indeterminate";
+	if (accountKeysResponse.status === 401) return "rejected";
+	if (accountKeysResponse.status === 403) return "foreign";
+	if (!accountKeysResponse.ok) return "indeterminate";
+
+	const membersResponse = await _fetchWithCredential(
+		`${neonApiBaseUrl}/organizations/${encodeURIComponent(platforms.neon.organization_id)}/members?limit=500`,
+		key,
 	);
+	if (!membersResponse) return "indeterminate";
+	if (membersResponse.status === 401) return "rejected";
+	if (membersResponse.status === 403 || membersResponse.status === 404) return "foreign";
+	if (!membersResponse.ok) return "indeterminate";
+	let membersPayload;
+	try {
+		membersPayload = await membersResponse.json();
+	} catch {
+		return "indeterminate";
+	}
+	if (!Array.isArray(membersPayload?.members)) return "indeterminate";
+	const accountMembership = membersPayload.members.find(
+		(entry) => (entry?.member?.user_id ?? entry?.user_id) === userId,
+	);
+	return (accountMembership?.member?.role ?? accountMembership?.role) === "admin" ? "accepted" : "foreign";
+}
+
+function _createAccountApiKey(expectedName) {
+	const payload = _parseJson(_runNeon(["api-keys", "create", "--name", expectedName]), `create ${expectedName}`);
 	if (typeof payload?.key === "string" && payload.key) knownSecrets.add(payload.key);
 	if (
 		Object.keys(payload ?? {})
@@ -122,83 +134,80 @@ function _createApiKey(platforms, expectedName) {
 	return payload;
 }
 
-function _revokeApiKey(platforms, keyId) {
-	const payload = _parseJson(
-		_runNeon(["api-keys", "revoke", String(keyId), "--org-id", platforms.neon.organization_id]),
-		`revoke Neon API key ${keyId}`,
-	);
+function _revokeAccountApiKey(keyId) {
+	const payload = _parseJson(_runNeon(["api-keys", "revoke", String(keyId)]), `revoke Neon account API key ${keyId}`);
 	if (payload?.id !== Number(keyId) || payload.revoked !== true) {
-		throw new Error(`Neon CLI could not verify revocation of API key ${keyId}.`);
+		throw new Error(`Neon CLI could not verify revocation of account API key ${keyId}.`);
 	}
 }
 
-export function verifyNeonCliAuthentication(platforms) {
-	_assertOAuthProfile();
-	_listApiKeys(platforms);
+async function _readStoredAccountCredential(infisicalProjectId, infisicalToken) {
+	const storedByEnvironment = {};
+	for (const environment of ENVIRONMENTS) {
+		storedByEnvironment[environment] = {
+			key: await getBootstrapSecret({
+				projectId: infisicalProjectId,
+				token: infisicalToken,
+				environment,
+				name: "NEON_ACCOUNT_API_KEY",
+			}),
+			id: await getBootstrapSecret({
+				projectId: infisicalProjectId,
+				token: infisicalToken,
+				environment,
+				name: "NEON_ACCOUNT_API_KEY_ID",
+			}),
+		};
+	}
+	return storedByEnvironment;
 }
 
-async function _readStoredCredential(infisicalProjectId, infisicalToken, environment) {
-	const key = await getBootstrapSecret({
-		projectId: infisicalProjectId,
-		token: infisicalToken,
-		environment,
-		name: "NEON_API_KEY",
-	});
-	const keyId = await getBootstrapSecret({
-		projectId: infisicalProjectId,
-		token: infisicalToken,
-		environment,
-		name: "NEON_API_KEY_ID",
-	});
-	return { key, keyId };
-}
-
-async function _assertHealthy(platforms, infisicalProjectId, infisicalToken, environment) {
-	const expectedName = getNeonApiKeyName(environment);
-	const stored = await _readStoredCredential(infisicalProjectId, infisicalToken, environment);
-	const credentialStatus = stored.key ? await _verifyApiKey(platforms, stored.key) : "missing";
-	const decision = decideNeonCredential({
+async function _assertHealthy({ platforms, manifest }, infisicalProjectId, infisicalToken) {
+	const expectedName = getNeonAccountApiKeyName(manifest);
+	const storedByEnvironment = await _readStoredAccountCredential(infisicalProjectId, infisicalToken);
+	const storedKey = storedByEnvironment.staging.key ?? storedByEnvironment.production.key;
+	const credentialStatus = storedKey ? await _verifyAccountApiKey(platforms, storedKey) : "missing";
+	const decision = decideNeonAccountCredential({
 		expectedName,
-		storedKey: stored.key,
-		storedKeyId: stored.keyId,
-		inventory: _listApiKeys(platforms),
+		storedByEnvironment,
+		inventory: _listAccountApiKeys(),
 		credentialStatus,
 	});
-	if (decision.action !== "reuse") throw new Error(`Final Neon credential verification failed for ${environment}.`);
+	if (decision.action !== "reuse") throw new Error("Final Neon account API key verification failed.");
 }
 
-export async function reconcileNeonApiKeys(platforms, infisicalProjectId, infisicalToken) {
-	for (const environment of ENVIRONMENTS) {
-		const expectedName = getNeonApiKeyName(environment);
-		const stored = await _readStoredCredential(infisicalProjectId, infisicalToken, environment);
-		const decision = await reconcileNeonCredential({
-			expectedName,
-			storedKey: stored.key,
-			storedKeyId: stored.keyId,
-			inventory: _listApiKeys(platforms),
-			verifyKey: (key) => _verifyApiKey(platforms, key),
-			revokeKey: (keyId) => _revokeApiKey(platforms, keyId),
-			createKey: () => _createApiKey(platforms, expectedName),
-			writeKey: (key) =>
-				setBootstrapSecret({
-					projectId: infisicalProjectId,
-					token: infisicalToken,
-					environment,
-					name: "NEON_API_KEY",
-					value: key,
-				}),
-			writeKeyId: (keyId) =>
-				setBootstrapSecret({
-					projectId: infisicalProjectId,
-					token: infisicalToken,
-					environment,
-					name: "NEON_API_KEY_ID",
-					value: keyId,
-				}),
-		});
-		log(`Neon API key ${environment}: ${decision.action}.`);
-	}
-	for (const environment of ENVIRONMENTS) {
-		await _assertHealthy(platforms, infisicalProjectId, infisicalToken, environment);
-	}
+export function verifyNeonCliAuthentication() {
+	_assertOAuthProfile();
+	_listAccountApiKeys();
+}
+
+export async function reconcileNeonAccountApiKey({ platforms, manifest }, infisicalProjectId, infisicalToken) {
+	const expectedName = getNeonAccountApiKeyName(manifest);
+	const storedByEnvironment = await _readStoredAccountCredential(infisicalProjectId, infisicalToken);
+	const decision = await reconcileNeonAccountCredential({
+		expectedName,
+		storedByEnvironment,
+		inventory: _listAccountApiKeys(),
+		verifyKey: (key) => _verifyAccountApiKey(platforms, key),
+		revokeKey: (keyId) => _revokeAccountApiKey(keyId),
+		createKey: () => _createAccountApiKey(expectedName),
+		writeKey: (environment, key) =>
+			setBootstrapSecret({
+				projectId: infisicalProjectId,
+				token: infisicalToken,
+				environment,
+				name: "NEON_ACCOUNT_API_KEY",
+				value: key,
+			}),
+		writeKeyId: (environment, keyId) =>
+			setBootstrapSecret({
+				projectId: infisicalProjectId,
+				token: infisicalToken,
+				environment,
+				name: "NEON_ACCOUNT_API_KEY_ID",
+				value: keyId,
+			}),
+	});
+	log(`Neon account API key: ${decision.action}.`);
+	await _assertHealthy({ platforms, manifest }, infisicalProjectId, infisicalToken);
 }

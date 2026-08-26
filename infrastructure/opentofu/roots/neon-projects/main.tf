@@ -66,3 +66,15 @@ resource "infisical_secret" "database_pooler_host" {
   value_wo         = neon_project.cataqui.database_host_pooler
   value_wo_version = 1
 }
+
+resource "infisical_secret" "neon_project_id" {
+  workspace_id = local.infisical_project_id
+  env_slug     = var.environment
+  folder_path  = "/generated/api/deployment"
+  name         = "NEON_PROJECT_ID"
+  value        = neon_project.cataqui.id
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

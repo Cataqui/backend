@@ -160,6 +160,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"google-cloud-maps-platform",
 			"google-cloud-projects",
 			"infisical-generated-folders",
+			"neon-api-keys",
 			"neon-database-access",
 			"neon-projects",
 			"upstash-redis",

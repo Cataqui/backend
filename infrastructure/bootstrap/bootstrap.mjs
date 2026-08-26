@@ -11,11 +11,13 @@ import { acquireLock, knownSecrets, log, manifestPath, platformsPath, requireToo
 import { reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
 import {
+	applyGeneratedFolders,
 	ensureBootstrapFolders,
 	reconcileInfisicalIdentity,
 	reconcileInfisicalProject,
 } from "./infisical-bootstrap.mjs";
-import { reconcileNeonApiKeys, verifyNeonCliAuthentication } from "./neon-bootstrap.mjs";
+import { reconcileNeonAccountApiKey, verifyNeonCliAuthentication } from "./neon-bootstrap.mjs";
+import { reconcileMetaAppSecret } from "./meta-bootstrap.mjs";
 import { ENVIRONMENTS, redactSecrets, validateManifest, validatePlatforms } from "./reconciliation.mjs";
 import { reconcileUpstashApiKey } from "./upstash-bootstrap.mjs";
 
@@ -31,7 +33,7 @@ function _validateLocalAuthentication(platforms) {
 	}
 	run("gcloud", ["auth", "application-default", "print-access-token"]);
 	run("infisical", ["login", "status", "--json"]);
-	verifyNeonCliAuthentication(platforms);
+	verifyNeonCliAuthentication();
 }
 
 function _getInfisicalToken() {
@@ -55,8 +57,10 @@ async function _main() {
 		await ensureBootstrapFolders(infisicalProjectId, infisicalToken);
 		const cloudflareToken = await resolveCloudflareBootstrapToken(infisicalProjectId, infisicalToken);
 		await reconcileR2Credentials({ platforms, manifest, infisicalProjectId, infisicalToken, cloudflareToken });
+		await applyGeneratedFolders(infisicalProjectId, infisicalToken);
+		await reconcileMetaAppSecret(infisicalProjectId, infisicalToken);
 		await reconcileUpstashApiKey(platforms, infisicalProjectId, infisicalToken);
-		await reconcileNeonApiKeys(platforms, infisicalProjectId, infisicalToken);
+		await reconcileNeonAccountApiKey({ platforms, manifest }, infisicalProjectId, infisicalToken);
 		await reconcileGoogleProjects({ platforms, manifest }, infisicalProjectId, infisicalToken);
 		const googleAuth = await applyGoogleGithubAuth(infisicalProjectId, infisicalToken);
 		for (const environment of ENVIRONMENTS) {

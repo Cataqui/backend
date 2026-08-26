@@ -1,51 +1,77 @@
+import { constantTimeEqual, ENVIRONMENTS } from "./reconciliation.mjs";
+
 export function classifyNeonCredentialResponse(status) {
 	if (status >= 200 && status < 300) return "accepted";
 	if (status === 401) return "rejected";
 	return "indeterminate";
 }
 
-export function getNeonApiKeyName(environment) {
-	return `cataqui-backend-opentofu-${environment}`;
+export function getNeonAccountApiKeyName(manifest) {
+	return manifest.neon.api_keys.account_bootstrap.name;
 }
 
-export function decideNeonCredential({ expectedName, storedKey, storedKeyId, inventory, credentialStatus }) {
+export function getNeonProjectApiKeyName(manifest, environment) {
+	return manifest.neon.api_keys.project_access[`cataqui_${environment}`].name;
+}
+
+function _getSharedStoredCredential(storedByEnvironment) {
+	const staging = storedByEnvironment.staging ?? {};
+	const production = storedByEnvironment.production ?? {};
+	if (staging.key && production.key && !constantTimeEqual(staging.key, production.key)) {
+		throw new Error("Staging and production contain conflicting Neon account API keys.");
+	}
+	if (staging.id && production.id && String(staging.id) !== String(production.id)) {
+		throw new Error("Staging and production contain conflicting Neon account API key IDs.");
+	}
+	return {
+		key: staging.key ?? production.key,
+		id: staging.id ? String(staging.id) : production.id ? String(production.id) : undefined,
+	};
+}
+
+function _resolveExpectedInventory(inventory, expectedName) {
 	const namedKeys = inventory.filter((key) => key.name === expectedName);
 	if (namedKeys.length > 1) throw new Error(`Duplicate Neon bootstrap ownership for ${expectedName}.`);
-	const namedKey = namedKeys[0];
-	const normalizedStoredKeyId = storedKeyId ? String(storedKeyId) : undefined;
-	const metadataKey = normalizedStoredKeyId
-		? inventory.find((key) => String(key.id) === normalizedStoredKeyId)
-		: undefined;
+	return namedKeys[0];
+}
+
+export function decideNeonAccountCredential({ expectedName, storedByEnvironment, inventory, credentialStatus }) {
+	const stored = _getSharedStoredCredential(storedByEnvironment);
+	const namedKey = _resolveExpectedInventory(inventory, expectedName);
+	const metadataKey = stored.id ? inventory.find((key) => String(key.id) === stored.id) : undefined;
 
 	if (metadataKey && metadataKey.name !== expectedName) {
-		throw new Error(`Foreign Neon API key metadata conflicts with ${expectedName}.`);
+		throw new Error(`Foreign Neon account API key metadata conflicts with ${expectedName}.`);
 	}
-	if (namedKey?.project_id) {
-		throw new Error(`Neon API key ${expectedName} must be organization-wide, not project-scoped.`);
-	}
-	if (namedKey && normalizedStoredKeyId && String(namedKey.id) !== normalizedStoredKeyId) {
-		throw new Error(`Neon API key metadata does not match ${expectedName}.`);
+	if (namedKey && stored.id && String(namedKey.id) !== stored.id) {
+		throw new Error(`Neon account API key metadata does not match ${expectedName}.`);
 	}
 	if (credentialStatus === "indeterminate") {
-		throw new Error(`Unable to determine whether Neon API key ${expectedName} is valid.`);
+		throw new Error(`Unable to determine whether Neon account API key ${expectedName} is valid.`);
 	}
 	if (credentialStatus === "foreign") {
-		throw new Error(`Neon API key ${expectedName} belongs to a foreign organization or has the wrong scope.`);
+		throw new Error(`Neon account API key ${expectedName} has the wrong account or organization role.`);
 	}
 	if (credentialStatus === "accepted") {
-		if (!storedKey || !namedKey) throw new Error(`Foreign Neon credential conflicts with ${expectedName}.`);
-		return normalizedStoredKeyId
-			? { action: "reuse", keyId: normalizedStoredKeyId }
-			: { action: "adopt", keyId: String(namedKey.id) };
+		if (!stored.key || !namedKey) throw new Error(`Foreign Neon account credential conflicts with ${expectedName}.`);
+		const keyId = String(namedKey.id);
+		const missingEnvironments = ENVIRONMENTS.filter(
+			(environment) =>
+				!storedByEnvironment[environment]?.key || String(storedByEnvironment[environment]?.id ?? "") !== keyId,
+		);
+		return {
+			action: missingEnvironments.length === 0 ? "reuse" : "repair",
+			keyId,
+			missingEnvironments,
+		};
 	}
 	if (namedKey) return { action: "replace", keyId: String(namedKey.id) };
 	return { action: "create" };
 }
 
-export async function reconcileNeonCredential({
+export async function reconcileNeonAccountCredential({
 	expectedName,
-	storedKey,
-	storedKeyId,
+	storedByEnvironment,
 	inventory,
 	verifyKey,
 	revokeKey,
@@ -53,22 +79,30 @@ export async function reconcileNeonCredential({
 	writeKey,
 	writeKeyId,
 }) {
-	const credentialStatus = storedKey ? await verifyKey(storedKey) : "missing";
-	const decision = decideNeonCredential({
+	const stored = _getSharedStoredCredential(storedByEnvironment);
+	const credentialStatus = stored.key ? await verifyKey(stored.key) : "missing";
+	const decision = decideNeonAccountCredential({
 		expectedName,
-		storedKey,
-		storedKeyId,
+		storedByEnvironment,
 		inventory,
 		credentialStatus,
 	});
 	if (decision.action === "reuse") return decision;
-	if (decision.action === "adopt") {
-		await writeKeyId(decision.keyId);
-		return decision;
+
+	let credential;
+	let targets;
+	if (decision.action === "repair") {
+		credential = { id: decision.keyId, key: stored.key };
+		targets = decision.missingEnvironments;
+	} else {
+		if (decision.action === "replace") await revokeKey(decision.keyId);
+		credential = await createKey();
+		targets = ENVIRONMENTS;
 	}
-	if (decision.action === "replace") await revokeKey(decision.keyId);
-	const created = await createKey();
-	await writeKey(created.key);
-	await writeKeyId(String(created.id));
-	return { action: decision.action, keyId: String(created.id) };
+	if (!credential?.id || !credential?.key) throw new Error("Neon did not return a complete account API key.");
+	for (const environment of targets) {
+		await writeKey(environment, credential.key);
+		await writeKeyId(environment, String(credential.id));
+	}
+	return { action: decision.action, keyId: String(credential.id) };
 }

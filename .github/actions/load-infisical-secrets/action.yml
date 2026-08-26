@@ -111,6 +111,15 @@ runs:
             '.[$profile].environment_aliases | to_entries[] | [.key, .value] | @tsv' \
             "$PROFILE_MANIFEST"
         )
+        case "$INPUT_PROFILE" in
+          neon-projects | neon-api-keys) ;;
+          *)
+            {
+              echo "NEON_ACCOUNT_API_KEY="
+              echo "NEON_ACCOUNT_API_KEY_ID="
+            } >> "$GITHUB_ENV"
+            ;;
+        esac
 
     - name: Authenticate the Infisical OpenTofu provider
       if: steps.profile.outputs.authenticate-infisical-provider == 'true'

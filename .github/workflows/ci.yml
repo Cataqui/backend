@@ -37,11 +37,20 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting and linting
         run: pnpm lint:check
+
+      - name: Validate OpenTofu roots
+        run: pnpm check:opentofu
 
       - name: Type-check every workspace
         run: pnpm typecheck
@@ -51,3 +60,15 @@ jobs:
 
       - name: Build applications and packages
         run: pnpm build
+
+  deploy:
+    name: Deploy validated commit
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    needs: validate
+    permissions:
+      contents: read
+      deployments: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      scope: automatic

@@ -27,6 +27,26 @@ locals {
       name  = "Queues Write"
       scope = "com.cloudflare.api.account"
     }
+    workers_scripts_read = {
+      name  = "Workers Scripts Read"
+      scope = "com.cloudflare.api.account"
+    }
+    workers_scripts_write = {
+      name  = "Workers Scripts Write"
+      scope = "com.cloudflare.api.account"
+    }
+    containers_read = {
+      name  = "Containers Read"
+      scope = "com.cloudflare.api.account"
+    }
+    containers_write = {
+      name  = "Containers Write"
+      scope = "com.cloudflare.api.account"
+    }
+    account_settings_read = {
+      name  = "Account Settings Read"
+      scope = "com.cloudflare.api.account"
+    }
     zone_read = {
       name  = "Zone Read"
       scope = "com.cloudflare.api.account.zone"
@@ -37,6 +57,14 @@ locals {
     }
     dns_write = {
       name  = "DNS Write"
+      scope = "com.cloudflare.api.account.zone"
+    }
+    workers_routes_read = {
+      name  = "Workers Routes Read"
+      scope = "com.cloudflare.api.account.zone"
+    }
+    workers_routes_write = {
+      name  = "Workers Routes Write"
       scope = "com.cloudflare.api.account.zone"
     }
     zone_settings_read = {
@@ -124,6 +152,32 @@ locals {
     api = {
       folder_path = "/generated/api/runtime"
       secret_name = "AI_GATEWAY_API_TOKEN"
+    }
+  }
+
+  worker_deployment_tokens = {
+    api = {
+      account_permissions = [
+        "workers_scripts_read",
+        "workers_scripts_write",
+        "containers_read",
+        "containers_write",
+        "queues_read",
+        "queues_write",
+        "account_settings_read",
+      ]
+      zone_permissions = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path      = "/generated/api/deployment"
+    }
+    geosearch = {
+      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
+      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path         = "/generated/geosearch/deployment"
+    }
+    webhooks = {
+      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
+      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path         = "/generated/webhooks/deployment"
     }
   }
 }

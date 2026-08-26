@@ -17,6 +17,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#workspace-map">Workspace map</a> ·
   <a href="#development-workflow">Development</a> ·
+  <a href="#operations-documentation">Operations</a> ·
   <a href="#guide-for-coding-agents">Agent guide</a> ·
   <a href="#infrastructure">Infrastructure</a>
 </p>
@@ -243,9 +244,14 @@ Keep development, staging, and production credentials separate. Secrets belong i
 
 This README is the repository map; [`AGENTS.md`](AGENTS.md) is the authoritative operating contract. Before acting, read it and every nested `AGENTS.md` down to the target, then select the relevant skill from [`.agents/skills`](.agents/skills). Inspect the owning `package.json` and current configuration instead of inventing commands or contracts. For cross-runtime changes, trace producers, consumers, manifests, generated bindings, and tests before editing; use the validation map above for the first pass and the authoritative handoff gate in `AGENTS.md` for completion.
 
+## Operations documentation
+
+- [`docs/infrastructure-bootstrap.md`](docs/infrastructure-bootstrap.md) explains the privileged, local bootstrap that establishes remote state, provider credentials, identities, and deployment trust.
+- [`docs/deployment.md`](docs/deployment.md) covers staging and production deployment, verification, rollback, migration recovery, and escalation.
+
 ## Infrastructure
 
-OpenTofu roots under [`infrastructure/opentofu/roots`](infrastructure/opentofu/roots) own independent state keys for each environment and platform concern. The bootstrap exists only to establish state, credentials, identities, and trust that normal roots cannot create without a circular dependency.
+OpenTofu roots under [`infrastructure/opentofu/roots`](infrastructure/opentofu/roots) own independent state keys for each environment and platform concern. The bootstrap exists only to establish state, credentials, identities, and trust that normal roots cannot create without a circular dependency. Follow the [infrastructure bootstrap runbook](docs/infrastructure-bootstrap.md) for the privileged setup and the [deployment runbook](docs/deployment.md) for delivery after bootstrap.
 
 ### Validate infrastructure
 
@@ -254,54 +260,3 @@ pnpm check:opentofu
 ```
 
 The command checks recursive formatting, initializes every configured root, validates configuration, and runs OpenTofu tests. State and plans are sensitive even when individual attributes are marked `sensitive`.
-
-### Privileged bootstrap
-
-> [!CAUTION]
-> `pnpm infrastructure:bootstrap` is immediately mutating. It has no plan or check mode and reconciles both staging and production. Do not run it as a test or as part of ordinary local setup.
-
-Before bootstrap, these external account boundaries must already exist and match [`infrastructure/platforms.json`](infrastructure/platforms.json):
-
-- the Cloudflare account, with R2 activated;
-- the Google Cloud organization and billing account;
-- the Infisical organization;
-- the paid Neon organization;
-- the Upstash account;
-- the `Cataqui/backend` GitHub repository.
-
-The local operator must be able to manage:
-
-- Cloudflare R2 resources in the configured account;
-- projects in the configured Infisical organization;
-- Neon organization API keys;
-- Google Cloud projects, billing attachment, service accounts, Workload Identity Federation, and required IAM bindings—the Google principal needs Project Creator on the organization and Billing Account User on the billing account at minimum;
-- GitHub environments, deployment branch policies, and environment variables for the repository.
-
-
-OpenTofu, the Infisical CLI, Google Cloud CLI, GitHub CLI, and provider authentication must be installed and ready:
-
-```sh
-pnpm install --frozen-lockfile
-pnpm exec wrangler login
-infisical login
-gcloud auth login
-gcloud auth application-default login
-gh auth login
-pnpm exec neon auth
-```
-
-Two credentials originate manually because bootstrap cannot create the credentials it needs to authenticate itself:
-
-- a Cloudflare API token with `API Tokens Write`;
-- an account-wide Upstash Management API key from the Upstash Console.
-
-Bootstrap requests either value through a hidden prompt only when no valid stored value exists. Do not commit them or pass them through command arguments.
-
-After confirming the live target and operator access:
-
-```sh
-pnpm infrastructure:bootstrap
-```
-
-Bootstrap creates or reconciles the Infisical project and environments, `/opentofu/bootstrap`, the private R2 state bucket and credentials, Neon management keys, Google Cloud projects and GitHub authentication trust, Infisical OIDC identities, and GitHub environment configuration. It does **not** apply product infrastructure roots.
-

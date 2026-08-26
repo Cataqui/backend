@@ -6,7 +6,7 @@ const repositoryRoot = process.cwd();
 const infrastructureDirectory = resolve(repositoryRoot, "infrastructure");
 const rootsDirectory = resolve(infrastructureDirectory, "opentofu/roots");
 
-const rootNames = ["infisical-generated-folders", "neon-projects", "neon-database-access"] as const;
+const rootNames = ["infisical-generated-folders", "neon-projects", "neon-api-keys", "neon-database-access"] as const;
 
 function _readInfrastructureFile(path: string): string {
 	return readFileSync(resolve(infrastructureDirectory, path), "utf8");
@@ -33,6 +33,13 @@ describe("Neon OpenTofu contract", () => {
 		expect(manifest.neon.databases).toEqual({
 			cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
 		});
+		expect(manifest.neon.api_keys).toEqual({
+			account_bootstrap: { name: "cataqui-backend-opentofu-bootstrap" },
+			project_access: {
+				cataqui_staging: { name: "cataqui-backend-project-access-staging" },
+				cataqui_production: { name: "cataqui-backend-project-access-production" },
+			},
+		});
 		expect(_getRootHcl("neon-projects")).toMatch(/local\.platforms\.neon\.organization_id/);
 		const projectRoot = _getRootHcl("neon-projects");
 		const accessRoot = _getRootHcl("neon-database-access");
@@ -49,6 +56,7 @@ describe("Neon OpenTofu contract", () => {
 	it.each([
 		["infisical-generated-folders", ['version = "= 0.19.21"']],
 		["neon-projects", ['version = "= 0.19.21"', 'version = "= 0.15.0"']],
+		["neon-api-keys", ['version = "= 0.19.21"', 'version = "= 0.15.0"']],
 		["neon-database-access", ['version = "= 0.19.21"', 'version = "= 1.27.0"', 'version = "= 3.9.0"']],
 	] as const)("should pin OpenTofu and providers for %s", (rootName, providerVersions) => {
 		const versions = _readInfrastructureFile(`opentofu/roots/${rootName}/versions.tf`);
@@ -86,18 +94,18 @@ describe("Neon OpenTofu contract", () => {
 			.map((fileName) => readFileSync(resolve(rootsDirectory, "cloudflare-ai-gateways", fileName), "utf8"))
 			.join("\n");
 
-		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(10);
+		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(12);
 		expect(folderRoot).toMatch(/name\s*=\s*"generated"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"api"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"geosearch"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"webhooks"/);
-		expect(folderRoot).toMatch(/name\s*=\s*"deployment"/);
+		expect(folderRoot.match(/name\s*=\s*"deployment"/g)).toHaveLength(3);
 		expect(folderRoot).toMatch(/name\s*=\s*"opentofu"/);
 		expect(folderRoot.match(/name\s*=\s*"runtime"/g)).toHaveLength(3);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/api"/);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/geosearch"/);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/webhooks"/);
-		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(10);
+		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(12);
 		expect([gatewayRoot, aiGatewayRoot].join("\n")).not.toMatch(/resource "infisical_secret_folder"/);
 	});
 
@@ -117,7 +125,7 @@ describe("Neon OpenTofu contract", () => {
 		expect(rootHcl).not.toMatch(/\bquota\s*{|allowed_ips|block_public_connections|resource "neon_(?:branch|endpoint)"/);
 	});
 
-	it("should transfer owner values only through Infisical write-only fields", () => {
+	it("should transfer owner values write-only and publish only the non-secret project ID", () => {
 		const rootHcl = _getRootHcl("neon-projects");
 		const expectedSecrets = [
 			"DATABASE_OWNER_DIRECT_URL",
@@ -130,9 +138,28 @@ describe("Neon OpenTofu contract", () => {
 			expect(rootHcl).toContain(`name             = "${secretName}"`);
 		}
 		expect(rootHcl).not.toMatch(/name\s*=\s*"(?:DATABASE_OWNER_USERNAME|DATABASE_NAME)"/);
-		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/api\/deployment"/g)).toHaveLength(4);
+		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/api\/deployment"/g)).toHaveLength(5);
 		expect(rootHcl.match(/value_wo\s*=\s*neon_project\.cataqui\./g)).toHaveLength(4);
-		expect(rootHcl).not.toMatch(/\n\s*value\s*=/);
+		expect(rootHcl).toMatch(
+			/resource "infisical_secret" "neon_project_id"[\s\S]*name\s*=\s*"NEON_PROJECT_ID"[\s\S]*value\s*=\s*neon_project\.cataqui\.id[\s\S]*prevent_destroy\s*=\s*true/,
+		);
+		expect(rootHcl.match(/\n\s*value\s*=/g)).toHaveLength(1);
+	});
+
+	it("should generate protected project-scoped Neon API keys into Infisical write-only", () => {
+		const rootHcl = _getRootHcl("neon-api-keys");
+
+		expect(rootHcl).toMatch(/resource "neon_org_api_key" "project_access"/);
+		expect(rootHcl).toMatch(/name\s*=\s*local\.project_api_key\.name/);
+		expect(rootHcl).toMatch(/org_id\s*=\s*local\.neon_organization_id/);
+		expect(rootHcl).toMatch(/project_id\s*=\s*var\.neon_project_id/);
+		expect(rootHcl).toMatch(/local\.manifest\.neon\.api_keys\.project_access\.cataqui_staging\.name/);
+		expect(rootHcl).toMatch(/local\.manifest\.neon\.api_keys\.project_access\.cataqui_production\.name/);
+		expect(rootHcl).toMatch(
+			/resource "infisical_secret" "neon_project_api_key"[\s\S]*folder_path\s*=\s*"\/generated\/api\/deployment"[\s\S]*name\s*=\s*"NEON_PROJECT_API_KEY"[\s\S]*value_wo\s*=\s*neon_org_api_key\.project_access\.key[\s\S]*value_wo_version\s*=\s*local\.project_api_key_version/,
+		);
+		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(2);
+		expect(rootHcl).not.toMatch(/\boutput\s+"|\n\s*value\s*=\s*neon_org_api_key/);
 	});
 
 	it("should keep database credentials ephemeral through least-privilege access provisioning", () => {

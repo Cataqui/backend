@@ -51,9 +51,15 @@ run "generated_folder_contract" {
       !infisical_secret_folder.webhooks_runtime.force_delete &&
       infisical_secret_folder.deployment.folder_path == "/generated/api" &&
       infisical_secret_folder.deployment.name == "deployment" &&
-      !infisical_secret_folder.deployment.force_delete
+      !infisical_secret_folder.deployment.force_delete &&
+      infisical_secret_folder.geosearch_deployment.folder_path == "/generated/geosearch" &&
+      infisical_secret_folder.geosearch_deployment.name == "deployment" &&
+      !infisical_secret_folder.geosearch_deployment.force_delete &&
+      infisical_secret_folder.webhooks_deployment.folder_path == "/generated/webhooks" &&
+      infisical_secret_folder.webhooks_deployment.name == "deployment" &&
+      !infisical_secret_folder.webhooks_deployment.force_delete
     )
-    error_message = "API, Geosearch, and Webhooks must have protected runtime folders, with deployment nested under API."
+    error_message = "API, Geosearch, and Webhooks must each have protected runtime and deployment folders."
   }
 
   assert {
@@ -86,7 +92,9 @@ run "production_folder_environment" {
       infisical_secret_folder.api_runtime.environment_slug == "production" &&
       infisical_secret_folder.geosearch_runtime.environment_slug == "production" &&
       infisical_secret_folder.webhooks_runtime.environment_slug == "production" &&
-      infisical_secret_folder.deployment.environment_slug == "production"
+      infisical_secret_folder.deployment.environment_slug == "production" &&
+      infisical_secret_folder.geosearch_deployment.environment_slug == "production" &&
+      infisical_secret_folder.webhooks_deployment.environment_slug == "production"
     )
     error_message = "Every folder must use the selected Infisical environment."
   }

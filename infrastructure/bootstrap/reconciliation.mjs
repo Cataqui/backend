@@ -114,9 +114,21 @@ export function validateManifest(manifest) {
 	);
 	_requireExactKeys(manifest.github, ["environments"], "manifest.github");
 	_requireExactKeys(manifest.github.environments, ENVIRONMENTS, "manifest.github.environments");
-	_requireExactKeys(manifest.neon, ["projects", "databases"], "manifest.neon");
+	_requireExactKeys(manifest.neon, ["api_keys", "projects", "databases"], "manifest.neon");
+	_requireExactKeys(manifest.neon.api_keys, ["account_bootstrap", "project_access"], "manifest.neon.api_keys");
+	_requireExactKeys(manifest.neon.api_keys.account_bootstrap, ["name"], "manifest.neon.api_keys.account_bootstrap");
+	_requireExactKeys(
+		manifest.neon.api_keys.project_access,
+		["cataqui_staging", "cataqui_production"],
+		"manifest.neon.api_keys.project_access",
+	);
 	_requireExactKeys(manifest.neon.projects, ["cataqui_staging", "cataqui_production"], "manifest.neon.projects");
 	for (const environment of ENVIRONMENTS) {
+		_requireExactKeys(
+			manifest.neon.api_keys.project_access[`cataqui_${environment}`],
+			["name"],
+			`manifest.neon.api_keys.project_access.cataqui_${environment}`,
+		);
 		_requireExactKeys(
 			manifest.neon.projects[`cataqui_${environment}`],
 			["name"],
@@ -162,6 +174,11 @@ export function validateManifest(manifest) {
 		LOWERCASE_NAME_PATTERN,
 	);
 	_requireString(manifest.neon.databases.cataqui.name, "neon.databases.cataqui.name", /^[a-z][a-z0-9_]*$/);
+	_requireString(
+		manifest.neon.api_keys.account_bootstrap.name,
+		"neon.api_keys.account_bootstrap.name",
+		LOWERCASE_NAME_PATTERN,
+	);
 	_requireString(manifest.neon.databases.cataqui.owner_role, "neon.databases.cataqui.owner_role", /^[a-z][a-z0-9_]*$/);
 	_requireString(
 		manifest.neon.databases.cataqui.runtime_role,
@@ -170,6 +187,11 @@ export function validateManifest(manifest) {
 	);
 
 	for (const environment of ENVIRONMENTS) {
+		_requireString(
+			manifest.neon.api_keys.project_access[`cataqui_${environment}`].name,
+			`neon.api_keys.project_access.cataqui_${environment}.name`,
+			LOWERCASE_NAME_PATTERN,
+		);
 		_requireString(
 			manifest.cloudflare.ai_gateways[`derive_job_data_${environment}`],
 			`cloudflare.ai_gateways.derive_job_data_${environment}`,
