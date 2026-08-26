@@ -67,12 +67,36 @@ runs:
       working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/cloudflare-zone-configuration
       run: |
         set -euo pipefail
-        if ! tofu apply -input=false -auto-approve -lock-timeout=5m \
+        set +e
+        tofu apply -input=false -auto-approve -lock-timeout=5m \
           "$RUNNER_TEMP/cloudflare-zone-configuration.tfplan" \
-          > "$RUNNER_TEMP/cloudflare-zone-configuration-apply.log" 2>&1; then
+          > "$RUNNER_TEMP/cloudflare-zone-configuration-apply.log" 2>&1
+        apply_status=$?
+        set -e
+        if [[ "$apply_status" -ne 0 ]]; then
           node "$GITHUB_ACTION_PATH/../summarize-opentofu-failure.mjs" "$RUNNER_TEMP/$(basename "$GITHUB_ACTION_PATH")-apply.log" apply
-          exit 1
         fi
+
+        set +e
+        tofu plan -input=false -detailed-exitcode -lock-timeout=5m \
+          > "$RUNNER_TEMP/cloudflare-zone-configuration-verify.log" 2>&1
+        verify_status=$?
+        set -e
+        case "$verify_status" in
+          0)
+            if [[ "$apply_status" -ne 0 ]]; then
+              echo "Cloudflare reported a post-apply provider error, but a fresh plan verified exact convergence."
+            fi
+            ;;
+          2)
+            echo "Cloudflare zone configuration still has changes after apply." >&2
+            exit 1
+            ;;
+          *)
+            node "$GITHUB_ACTION_PATH/../summarize-opentofu-failure.mjs" "$RUNNER_TEMP/$(basename "$GITHUB_ACTION_PATH")-verify.log" plan
+            exit "$verify_status"
+            ;;
+        esac
 
     - name: Remove temporary plan files
       if: always()
@@ -81,4 +105,5 @@ runs:
         rm -f -- \
           "$RUNNER_TEMP/cloudflare-zone-configuration.tfplan" \
           "$RUNNER_TEMP/cloudflare-zone-configuration-plan.log" \
-          "$RUNNER_TEMP/cloudflare-zone-configuration-apply.log"
+          "$RUNNER_TEMP/cloudflare-zone-configuration-apply.log" \
+          "$RUNNER_TEMP/cloudflare-zone-configuration-verify.log"

@@ -125,6 +125,13 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 		expect(zoneRoots).not.toMatch(/ssl_automatic_mode/);
 	});
 
+	it("should leave the robots variant unset when managed robots are disabled", () => {
+		const botManagement = _readInfrastructureFile("opentofu/roots/cloudflare-zone-configuration/bot-management.tf");
+
+		expect(botManagement).toContain("is_robots_txt_managed           = false");
+		expect(botManagement).not.toContain("cf_robots_variant");
+	});
+
 	it("should prohibit credentials, HCP configuration, and outputs", () => {
 		const committedConfiguration = [
 			zoneRoots,
