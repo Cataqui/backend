@@ -1,3 +1,4 @@
+import path from "node:path";
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule as NestConfigModule } from "@nestjs/config";
 import { databaseConfig } from "./database.config";
@@ -10,7 +11,7 @@ import { upstashRedisConfig } from "./upstash-redis.config";
 	imports: [
 		NestConfigModule.forRoot({
 			isGlobal: true,
-			envFilePath: ".env",
+			envFilePath: path.resolve(process.cwd(), "../../.env"),
 			load: [requestSizeConfig, upstashRedisConfig],
 			validate: (config: Record<string, unknown>) => {
 				const result = EnvSchema.safeParse(config);

@@ -58,11 +58,16 @@ Each provider owns its public webhook route, signature boundary, provider payloa
 
 ## Validation
 
-Run focused tests for the changed module, then validate the complete Worker and repository with:
+Run focused tests for the changed module, then validate the owning Worker with:
 
 ```bash
-pnpm typecheck
+pnpm test:webhooks
+pnpm --filter @cataqui/webhooks-worker test:cov
+pnpm --filter @cataqui/webhooks-worker typecheck
+pnpm --filter @cataqui/webhooks-worker build
 pnpm lint:check
 ```
 
-Use `pnpm cf:dev:webhooks` for isolated Webhooks Worker behavior when a runtime-specific API cannot execute under the standard Vitest environment. Use `pnpm cf:dev` when the behavior must cross the local Queue into the API Worker and container.
+Before handoff, expand through affected consumers and the repository-level gate required by the root instructions.
+
+Use `pnpm --filter @cataqui/webhooks-worker cf:dev` for isolated Webhooks Worker behavior when a runtime-specific API cannot execute under the standard Vitest environment. When behavior must cross the private `API_WORKER` Service Binding, make the configured API Worker target available; a direct NestJS process alone is not that boundary.
