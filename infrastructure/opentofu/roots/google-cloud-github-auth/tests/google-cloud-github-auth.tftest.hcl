@@ -19,6 +19,10 @@ mock_provider "google" {
   }
 }
 
+variables {
+  github_oidc_subject_prefix = "repo:Cataqui@288484515/backend@1252587238"
+}
+
 run "github_trust" {
   command = plan
 
@@ -31,6 +35,14 @@ run "github_trust" {
       google_iam_workload_identity_pool_provider.github.oidc[0].allowed_audiences[0] == "https://github.com/Cataqui"
     )
     error_message = "GitHub trust must use the stable production-hosted pool and GitHub issuer."
+  }
+
+  assert {
+    condition = (
+      strcontains(google_iam_workload_identity_pool_provider.github.attribute_condition, "repo:Cataqui@288484515/backend@1252587238:environment:staging") &&
+      strcontains(google_iam_workload_identity_pool_provider.github.attribute_condition, "repo:Cataqui@288484515/backend@1252587238:environment:production")
+    )
+    error_message = "GitHub trust must use the repository's immutable OIDC subject prefix."
   }
 }
 

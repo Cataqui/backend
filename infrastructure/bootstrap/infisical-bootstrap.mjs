@@ -264,7 +264,13 @@ export async function applyGeneratedFolders(infisicalProjectId, infisicalToken) 
 	}
 }
 
-export async function reconcileInfisicalIdentity({ platforms, manifest, projectId, infisicalToken, environment }) {
+export async function reconcileInfisicalIdentity({
+	manifest,
+	projectId,
+	infisicalToken,
+	environment,
+	githubOidcSubjectPrefix,
+}) {
 	const apiUrl = infisicalApiBaseUrl;
 	const headers = _headers(infisicalToken);
 	const name = manifest.infisical.opentofu_identities[`cataqui_backend_${environment}`];
@@ -301,7 +307,7 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 		});
 	}
 
-	const expectedSubject = `repo:${platforms.github.repository}:environment:${environment}`;
+	const expectedSubject = `${githubOidcSubjectPrefix}:environment:${environment}`;
 	const oidcUrl = `${apiUrl}/api/v1/auth/oidc-auth/identities/${identityId}`;
 	const existingOidc = await fetch(oidcUrl, { headers: { accept: "application/json", ...headers } });
 	const existingOidcPayload = await existingOidc.json().catch(() => undefined);

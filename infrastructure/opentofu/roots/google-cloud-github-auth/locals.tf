@@ -11,12 +11,12 @@ locals {
     staging = {
       project_id         = local.manifest.google_cloud.projects.cataqui_staging.id
       service_account_id = local.manifest.google_cloud.github_auth.service_accounts.cataqui_backend_staging
-      github_subject     = "repo:${local.github_repository}:environment:staging"
+      github_subject     = "${var.github_oidc_subject_prefix}:environment:staging"
     }
     production = {
       project_id         = local.manifest.google_cloud.projects.cataqui_production.id
       service_account_id = local.manifest.google_cloud.github_auth.service_accounts.cataqui_backend_production
-      github_subject     = "repo:${local.github_repository}:environment:production"
+      github_subject     = "${var.github_oidc_subject_prefix}:environment:production"
     }
   }
 

@@ -92,6 +92,9 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(backend.trim()).toBe('key = "production/google-cloud-github-auth/terraform.tfstate"');
 		expect(rootHcl).toContain('issuer_uri        = "https://token.actions.githubusercontent.com"');
 		expect(rootHcl).toContain('allowed_audiences = ["https://github.com/Cataqui"]');
+		expect(rootHcl).toContain('variable "github_oidc_subject_prefix"');
+		expect(rootHcl).toMatch(/github_subject\s*= "\$\{var\.github_oidc_subject_prefix}:environment:staging"/);
+		expect(rootHcl).toMatch(/github_subject\s*= "\$\{var\.github_oidc_subject_prefix}:environment:production"/);
 		expect(rootHcl).toContain('"roles/resourcemanager.projectMover"');
 		expect(rootHcl).toContain('"roles/billing.projectManager"');
 		expect(rootHcl).toContain('"roles/serviceusage.serviceUsageAdmin"');

@@ -6,6 +6,28 @@ async function _api(repository, path, { method = "GET", fields = [], allowFailur
 	return runAsync("gh", args, { allowFailure });
 }
 
+export function parseGithubOidcSubjectPrefix(repository, payload) {
+	const [expectedOwner, expectedRepository] = repository.split("/");
+	const prefix = payload?.sub_claim_prefix;
+	const match =
+		typeof prefix === "string" ? /^repo:([^/@]+)@([1-9][0-9]*)\/([^/@]+)@([1-9][0-9]*)$/.exec(prefix) : undefined;
+	if (!match || match[1] !== expectedOwner || match[3] !== expectedRepository) {
+		throw new Error(`GitHub returned an invalid immutable OIDC subject prefix for ${repository}.`);
+	}
+	return prefix;
+}
+
+export async function getGithubOidcSubjectPrefix(repository) {
+	const result = await _api(repository, "/actions/oidc/customization/sub");
+	let payload;
+	try {
+		payload = JSON.parse(result.stdout);
+	} catch {
+		throw new Error(`GitHub returned invalid OIDC subject configuration for ${repository}.`);
+	}
+	return parseGithubOidcSubjectPrefix(repository, payload);
+}
+
 export async function reconcileGithubEnvironment({ platforms, manifest, environment, identityId, googleAuth }) {
 	const repository = platforms.github.repository;
 	const environmentResult = await _api(repository, `/environments/${environment}`, { allowFailure: true });

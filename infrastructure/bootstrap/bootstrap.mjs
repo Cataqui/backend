@@ -19,7 +19,7 @@ import {
 	runBootstrapPhase,
 	startBootstrapUi,
 } from "./bootstrap-runtime.mjs";
-import { reconcileGithubEnvironment } from "./github-bootstrap.mjs";
+import { getGithubOidcSubjectPrefix, reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
 import {
 	applyGeneratedFolders,
@@ -65,14 +65,15 @@ async function _main() {
 	const releaseLock = acquireLock();
 	try {
 		startBootstrapUi();
-		const { platforms, manifest } = await _phase(
+		const { platforms, manifest, githubOidcSubjectPrefix } = await _phase(
 			"Checking configuration and local authentication",
 			"Local prerequisites verified",
 			async () => {
 				const platforms = validatePlatforms(JSON.parse(readFileSync(platformsPath, "utf8")));
 				const manifest = validateManifest(JSON.parse(readFileSync(manifestPath, "utf8")));
 				await _validateLocalAuthentication(platforms);
-				return { platforms, manifest };
+				const githubOidcSubjectPrefix = await getGithubOidcSubjectPrefix(platforms.github.repository);
+				return { platforms, manifest, githubOidcSubjectPrefix };
 			},
 		);
 		const { infisicalToken, infisicalProjectId } = await _phase(
@@ -103,17 +104,17 @@ async function _main() {
 			"Google Cloud trust ready",
 			async () => {
 				await reconcileGoogleProjects({ platforms, manifest }, infisicalProjectId, infisicalToken);
-				return applyGoogleGithubAuth(infisicalProjectId, infisicalToken);
+				return applyGoogleGithubAuth(infisicalProjectId, infisicalToken, githubOidcSubjectPrefix);
 			},
 		);
 		await _phase("Reconciling CI execution identities", "CI execution identities ready", async () => {
 			for (const environment of ENVIRONMENTS) {
 				const identityId = await reconcileInfisicalIdentity({
-					platforms,
 					manifest,
 					projectId: infisicalProjectId,
 					infisicalToken,
 					environment,
+					githubOidcSubjectPrefix,
 				});
 				await reconcileGithubEnvironment({ platforms, manifest, environment, identityId, googleAuth });
 			}

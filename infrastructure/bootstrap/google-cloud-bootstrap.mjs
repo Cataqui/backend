@@ -151,7 +151,7 @@ export async function reconcileGoogleProjects({ platforms, manifest }, infisical
 	}
 }
 
-export async function applyGoogleGithubAuth(infisicalProjectId, infisicalToken) {
+export async function applyGoogleGithubAuth(infisicalProjectId, infisicalToken, githubOidcSubjectPrefix) {
 	const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, "production");
 	const root = await _initializeRoot({
 		rootName: "google-cloud-github-auth",
@@ -159,7 +159,11 @@ export async function applyGoogleGithubAuth(infisicalProjectId, infisicalToken) 
 		credentials,
 	});
 	const environmentVariables = _backendEnvironment(credentials);
-	await _applyRoot({ root, environmentVariables });
+	await _applyRoot({
+		root,
+		environmentVariables,
+		variables: [`-var=github_oidc_subject_prefix=${githubOidcSubjectPrefix}`],
+	});
 	const output = JSON.parse(
 		(await runAsync("tofu", ["output", "-json"], { cwd: root, env: environmentVariables })).stdout,
 	);
