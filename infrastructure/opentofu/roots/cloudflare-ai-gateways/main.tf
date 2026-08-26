@@ -4,7 +4,7 @@ resource "cloudflare_ai_gateway" "derive_job_data" {
   authentication             = true
   cache_invalidate_on_update = true
   cache_ttl                  = 0
-  collect_logs               = false
+  collect_logs               = true
   logpush                    = false
   rate_limiting_interval     = 0
   rate_limiting_limit        = 0

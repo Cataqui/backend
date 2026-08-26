@@ -46,7 +46,7 @@ run "gateway_security_and_cost_controls" {
   assert {
     condition = (
       cloudflare_ai_gateway.derive_job_data.authentication &&
-      !cloudflare_ai_gateway.derive_job_data.collect_logs &&
+      cloudflare_ai_gateway.derive_job_data.collect_logs &&
       !cloudflare_ai_gateway.derive_job_data.logpush &&
       cloudflare_ai_gateway.derive_job_data.cache_invalidate_on_update &&
       cloudflare_ai_gateway.derive_job_data.cache_ttl == 0 &&
@@ -58,7 +58,7 @@ run "gateway_security_and_cost_controls" {
       cloudflare_ai_gateway.derive_job_data.workers_ai_billing_mode == "postpaid" &&
       !cloudflare_ai_gateway.derive_job_data.zdr
     )
-    error_message = "The gateway must remain authenticated, private, uncached, application-retried, and without unsupported ZDR."
+    error_message = "The gateway must remain authenticated, observable, uncached, application-retried, and without unsupported ZDR."
   }
 
   assert {

@@ -16,6 +16,7 @@ describe("aiConfig", () => {
 	});
 
 	it("should load cloudflareAccountId from CLOUDFLARE_ACCOUNT_ID", () => {
+		process.env["NODE_ENV"] = "test";
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
 		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
 		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
@@ -26,6 +27,7 @@ describe("aiConfig", () => {
 	});
 
 	it("should load aiGatewayApiToken from AI_GATEWAY_API_TOKEN", () => {
+		process.env["NODE_ENV"] = "test";
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
 		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
 		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
@@ -36,6 +38,7 @@ describe("aiConfig", () => {
 	});
 
 	it("should load deriveJobDataAiGatewayId from DERIVE_JOB_DATA_AI_GATEWAY_ID", () => {
+		process.env["NODE_ENV"] = "test";
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
 		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
 		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
@@ -45,7 +48,19 @@ describe("aiConfig", () => {
 		expect(config.deriveJobDataAiGatewayId).toBe("test-gateway");
 	});
 
-	it("should load all three config values", () => {
+	it("should load environment from NODE_ENV", () => {
+		process.env["NODE_ENV"] = "staging";
+		process.env["CLOUDFLARE_ACCOUNT_ID"] = "test-account";
+		process.env["AI_GATEWAY_API_TOKEN"] = "test-token";
+		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "test-gateway";
+
+		const config: IAiConfig = aiConfig();
+
+		expect(config.environment).toBe("staging");
+	});
+
+	it("should load all four config values", () => {
+		process.env["NODE_ENV"] = "production";
 		process.env["CLOUDFLARE_ACCOUNT_ID"] = "account-123";
 		process.env["AI_GATEWAY_API_TOKEN"] = "token-456";
 		process.env["DERIVE_JOB_DATA_AI_GATEWAY_ID"] = "gateway-789";
@@ -56,6 +71,7 @@ describe("aiConfig", () => {
 			cloudflareAccountId: "account-123",
 			aiGatewayApiToken: "token-456",
 			deriveJobDataAiGatewayId: "gateway-789",
+			environment: "production",
 		});
 	});
 });

@@ -6,9 +6,7 @@ import { aiConfig } from "./ai.config";
 import { AiService } from "./ai.service";
 
 const mockGenerateText = vi.hoisted(() => vi.fn());
-const mockGatewayFn = vi.hoisted(() => vi.fn(() => ({})));
 const mockUnifiedFn = vi.hoisted(() => vi.fn((model: string) => model));
-const mockCreateAiGateway = vi.hoisted(() => vi.fn(() => mockGatewayFn));
 const mockCreateUnified = vi.hoisted(() => vi.fn(() => mockUnifiedFn));
 const mockOutputObject = vi.hoisted(() => vi.fn((params: unknown) => params));
 const mockNoObjectGeneratedErrorIsInstance = vi.hoisted(() => vi.fn<(error: unknown) => boolean>(() => false));
@@ -23,10 +21,6 @@ vi.mock("ai", () => ({
 	},
 }));
 
-vi.mock("ai-gateway-provider", () => ({
-	createAiGateway: mockCreateAiGateway,
-}));
-
 vi.mock("ai-gateway-provider/providers/unified", () => ({
 	createUnified: mockCreateUnified,
 }));
@@ -35,6 +29,7 @@ const mockConfig = {
 	cloudflareAccountId: "test-account",
 	aiGatewayApiToken: "test-token",
 	deriveJobDataAiGatewayId: "test-gateway",
+	environment: "test" as const,
 };
 
 describe("AiService", () => {
@@ -54,28 +49,57 @@ describe("AiService", () => {
 		expect(service).toBeDefined();
 	});
 
-	it("should configure the unified provider for native structured outputs", async () => {
+	it("should disable gateway logging during tests", async () => {
 		await Test.createTestingModule({
 			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
 		}).compile();
 
-		expect(mockCreateUnified).toHaveBeenCalledWith({ supportsStructuredOutputs: true });
+		expect(mockCreateUnified).toHaveBeenCalledWith({
+			baseURL: "https://gateway.ai.cloudflare.com/v1/test-account/test-gateway/compat",
+			headers: {
+				"cf-aig-authorization": "Bearer test-token",
+				"cf-aig-collect-log": "false",
+				"cf-aig-skip-cache": "true",
+			},
+			supportsStructuredOutputs: true,
+		});
 	});
 
-	it("should configure a no-cache and no-log gateway for sensitive structured data", async () => {
+	it.each(["development", "staging"] as const)("should collect full gateway logs in %s", async (environment) => {
 		await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [AiService, { provide: aiConfig.KEY, useValue: { ...mockConfig, environment: environment } }],
 		}).compile();
 
-		expect(mockCreateAiGateway).toHaveBeenCalledWith({
-			accountId: "test-account",
-			gateway: "test-gateway",
-			apiKey: "test-token",
-			options: {
-				collectLog: false,
-				skipCache: true,
-			},
-		});
+		expect(mockCreateUnified).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: {
+					"cf-aig-authorization": "Bearer test-token",
+					"cf-aig-collect-log": "true",
+					"cf-aig-collect-log-payload": "true",
+					"cf-aig-skip-cache": "true",
+				},
+			}),
+		);
+	});
+
+	it("should collect metadata-only gateway logs in production", async () => {
+		await Test.createTestingModule({
+			providers: [
+				AiService,
+				{ provide: aiConfig.KEY, useValue: { ...mockConfig, environment: "production" as const } },
+			],
+		}).compile();
+
+		expect(mockCreateUnified).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: {
+					"cf-aig-authorization": "Bearer test-token",
+					"cf-aig-collect-log": "true",
+					"cf-aig-collect-log-payload": "false",
+					"cf-aig-skip-cache": "true",
+				},
+			}),
+		);
 	});
 
 	it("should return a valid structured object", async () => {
