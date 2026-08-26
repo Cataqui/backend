@@ -7,13 +7,20 @@ import {
 	decideR2Credentials,
 	getR2TokenName,
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
-import { decideGoogleProject } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
+import {
+	classifyGoogleProjectDiscovery,
+	decideGoogleProject,
+} from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
 import { decideMetaAppSecret, reconcileMetaAppSecretState } from "../infrastructure/bootstrap/meta-reconciliation.mjs";
 import {
 	assertInfisicalOrganizationScope,
 	assertInfisicalProjectContract,
+	classifyInfisicalOidcInspection,
 	decideInfisicalProject,
+	explainInfisicalIdentityCreationFailure,
 	getMissingInfisicalEnvironments,
+	isInfisicalPrivilegeAlreadyPresent,
+	resolveInfisicalPrivilege,
 	reconcileInfisicalProjectState,
 } from "../infrastructure/bootstrap/infisical-reconciliation.mjs";
 import {
@@ -21,6 +28,7 @@ import {
 	decideNeonAccountCredential,
 	getNeonAccountApiKeyName,
 	getNeonProjectApiKeyName,
+	normalizeCreatedNeonAccountApiKey,
 	reconcileNeonAccountCredential,
 } from "../infrastructure/bootstrap/neon-reconciliation.mjs";
 import {
@@ -195,6 +203,55 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(
 			decideInfisicalProject({ projects: [{ ...project, name: "Drifted", hasDeleteProtection: false }], ...expected }),
 		).toMatchObject({ action: "reconcile" });
+	});
+
+	it("recognizes Infisical's exact missing-OIDC response without hiding other failures", () => {
+		expect(classifyInfisicalOidcInspection({ status: 200, payload: {} })).toBe("present");
+		expect(classifyInfisicalOidcInspection({ status: 404, payload: {} })).toBe("missing");
+		expect(
+			classifyInfisicalOidcInspection({
+				status: 400,
+				payload: { message: "The identity does not have OIDC Auth attached" },
+			}),
+		).toBe("missing");
+		expect(() => classifyInfisicalOidcInspection({ status: 400, payload: { message: "Invalid identity" } })).toThrow(
+			"Unable to inspect Infisical OIDC trust (400)",
+		);
+		expect(() => classifyInfisicalOidcInspection({ status: 403, payload: {} })).toThrow(
+			"Unable to inspect Infisical OIDC trust (403)",
+		);
+	});
+
+	it("explains exhausted Infisical identity capacity without weakening environment isolation", () => {
+		expect(() => {
+			throw explainInfisicalIdentityCreationFailure(
+				new Error("Failed to create identity due to identity limit reached. Upgrade plan to create more identities."),
+				"production",
+			);
+		}).toThrow(
+			"Infisical identity capacity is exhausted. The production environment requires its own OIDC identity to preserve staging and production isolation.",
+		);
+		const providerError = new Error("Infisical request failed with 503.");
+		expect(explainInfisicalIdentityCreationFailure(providerError, "staging")).toBe(providerError);
+	});
+
+	it("recognizes only the exact Infisical additional-privilege conflict", () => {
+		expect(
+			isInfisicalPrivilegeAlreadyPresent(
+				new Error("Additional privilege with name opentofu-staging exists"),
+				"opentofu-staging",
+			),
+		).toBe(true);
+		expect(isInfisicalPrivilegeAlreadyPresent(new Error("Permission denied"), "opentofu-staging")).toBe(false);
+	});
+
+	it("resolves Infisical additional privileges by slug", () => {
+		const privilege = { id: "privilege-id", slug: "opentofu-staging" };
+		expect(resolveInfisicalPrivilege([privilege], "opentofu-staging")).toBe(privilege);
+		expect(resolveInfisicalPrivilege([], "opentofu-staging")).toBeUndefined();
+		expect(() => resolveInfisicalPrivilege([privilege, { ...privilege, id: "duplicate" }], "opentofu-staging")).toThrow(
+			"Duplicate Infisical privileges use slug opentofu-staging",
+		);
 	});
 
 	it("repairs missing Infisical environments while preserving additional ones", () => {
@@ -609,42 +666,51 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(decideR2Credentials(input)).toBe(expected);
 	});
 
-	it("reuses, repairs, and prompts for one shared Meta app secret", async () => {
-		const value = randomUUID();
-		expect(decideMetaAppSecret({ staging: value, production: value })).toEqual({
+	it("reconciles staging and production Meta app secrets independently", async () => {
+		const stagingSecret = randomUUID();
+		const productionSecret = randomUUID();
+		expect(decideMetaAppSecret({ staging: stagingSecret, production: productionSecret })).toEqual({
 			action: "reuse",
-			value,
-			missingEnvironments: [],
+			environments: [],
 		});
-		expect(decideMetaAppSecret({ staging: value, production: undefined })).toEqual({
-			action: "repair",
-			value,
-			missingEnvironments: ["production"],
+		expect(decideMetaAppSecret({ staging: stagingSecret, production: undefined })).toEqual({
+			action: "prompt",
+			environments: ["production"],
 		});
-		const writes: string[] = [];
+		const writes: Array<[string, string]> = [];
 		await expect(
 			reconcileMetaAppSecretState({
 				storedByEnvironment: { staging: undefined, production: undefined },
-				requestSecret: async () => value,
-				writeSecret: async (environment) => writes.push(environment),
+				requestSecret: async (environment) => (environment === "staging" ? stagingSecret : productionSecret),
+				writeSecret: async (environment, value) => {
+					writes.push([environment, value]);
+				},
 			}),
-		).resolves.toBe(value);
-		expect(writes).toEqual(["staging", "production"]);
+		).resolves.toEqual({ action: "prompt", environments: ["staging", "production"] });
+		expect(writes).toEqual([
+			["staging", stagingSecret],
+			["production", productionSecret],
+		]);
 	});
 
-	it("rejects conflicting Meta app secrets without prompting or writing", async () => {
-		const events: string[] = [];
+	it("replaces an accidentally shared Meta app secret with environment-specific values", async () => {
+		const sharedSecret = randomUUID();
+		const prompts: string[] = [];
+		const writes: string[] = [];
 		await expect(
 			reconcileMetaAppSecretState({
-				storedByEnvironment: { staging: randomUUID(), production: randomUUID() },
-				requestSecret: async () => {
-					events.push("prompt");
+				storedByEnvironment: { staging: sharedSecret, production: sharedSecret },
+				requestSecret: async (environment) => {
+					prompts.push(environment);
 					return randomUUID();
 				},
-				writeSecret: async () => events.push("write"),
+				writeSecret: async (environment) => {
+					writes.push(environment);
+				},
 			}),
-		).rejects.toThrow("conflicting");
-		expect(events).toEqual([]);
+		).resolves.toEqual({ action: "replace-shared", environments: ["staging", "production"] });
+		expect(prompts).toEqual(["staging", "production"]);
+		expect(writes).toEqual(["staging", "production"]);
 	});
 
 	it.each([
@@ -676,6 +742,26 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(getNeonAccountApiKeyName(manifest)).toBe("cataqui-backend-opentofu-bootstrap");
 		expect(getNeonProjectApiKeyName(manifest, "staging")).toBe("cataqui-backend-project-access-staging");
 		expect(getNeonProjectApiKeyName(manifest, "production")).toBe("cataqui-backend-project-access-production");
+	});
+
+	it("accepts Neon account-key creation metadata without weakening scope validation", () => {
+		const name = "cataqui-backend-opentofu-bootstrap";
+		const key = randomUUID();
+		expect(
+			normalizeCreatedNeonAccountApiKey(
+				{
+					id: 41,
+					name,
+					key,
+					created_at: "2026-01-01T00:00:00Z",
+					created_by: { id: randomUUID() },
+				},
+				name,
+			),
+		).toEqual({ id: 41, name, key });
+		expect(() => normalizeCreatedNeonAccountApiKey({ id: 1, name, key, project_id: "foreign-project" }, name)).toThrow(
+			"invalid credentials",
+		);
 	});
 
 	it("reuses or repairs one healthy shared Neon account key", () => {
@@ -713,6 +799,14 @@ describe("infrastructure bootstrap reconciliation", () => {
 				credentialStatus: "missing",
 			}),
 		).toEqual({ action: "create" });
+		expect(
+			decideNeonAccountCredential({
+				expectedName,
+				storedByEnvironment: { staging: {}, production: {} },
+				inventory: [{ id: 51, name: expectedName, project_id: undefined }],
+				credentialStatus: "missing",
+			}),
+		).toEqual({ action: "replace", keyId: "51" });
 		expect(
 			decideNeonAccountCredential({
 				expectedName,
@@ -837,23 +931,96 @@ describe("infrastructure bootstrap reconciliation", () => {
 	});
 
 	it.each([
-		[[], undefined, "create"],
-		[[], { parent: "organizations/945579294313" }, "import"],
-		[[], { parent: { id: "945579294313", type: "organization" }, lifecycleState: "ACTIVE" }, "import"],
-		[["cataqui-staging-mre5wge"], { parent: "organizations/945579294313" }, "reconcile"],
+		[[], { kind: "missing" }, "create"],
+		[[], { kind: "hidden-or-missing" }, "claim"],
+		[[], { kind: "found", project: { parent: "organizations/945579294313" } }, "import"],
+		[
+			[],
+			{
+				kind: "found",
+				project: { parent: { id: "945579294313", type: "organization" }, lifecycleState: "ACTIVE" },
+			},
+			"import",
+		],
+		[["cataqui-staging-mre5wge"], { kind: "found", project: { parent: "organizations/945579294313" } }, "reconcile"],
 	] as const)(
 		"chooses the Google project create, import, or reconciliation path",
-		(remoteStateProjectIds, discoveredProject, expected) => {
+		(remoteStateProjectIds, projectDiscovery, expected) => {
 			expect(
 				decideGoogleProject({
 					expectedProjectId: "cataqui-staging-mre5wge",
 					expectedOrganizationId: "945579294313",
 					remoteStateProjectIds: [...remoteStateProjectIds],
-					discoveredProject,
+					projectDiscovery,
 				}),
 			).toBe(expected);
 		},
 	);
+
+	it("recovers only a verified expected Google project left tainted by partial creation", () => {
+		expect(
+			decideGoogleProject({
+				expectedProjectId: "cataqui-staging-mre5wge",
+				expectedOrganizationId: "945579294313",
+				remoteStateProjectIds: ["cataqui-staging-mre5wge"],
+				taintedProjectIds: ["cataqui-staging-mre5wge"],
+				projectDiscovery: { kind: "found", project: { parent: "organizations/945579294313" } },
+			}),
+		).toBe("recover");
+		expect(() =>
+			decideGoogleProject({
+				expectedProjectId: "cataqui-staging-mre5wge",
+				expectedOrganizationId: "945579294313",
+				remoteStateProjectIds: [],
+				taintedProjectIds: ["cataqui-staging-mre5wge"],
+				projectDiscovery: { kind: "found", project: { parent: "organizations/945579294313" } },
+			}),
+		).toThrow("invalid tainted project instance");
+	});
+
+	it("classifies Google project discovery without treating provider failures as absence", () => {
+		expect(
+			classifyGoogleProjectDiscovery({
+				projectId: "cataqui-staging-mre5wge",
+				status: 0,
+				stdout: JSON.stringify({ parent: "organizations/945579294313" }),
+				stderr: "",
+			}),
+		).toEqual({ kind: "found", project: { parent: "organizations/945579294313" } });
+		expect(
+			classifyGoogleProjectDiscovery({
+				projectId: "cataqui-staging-mre5wge",
+				status: 1,
+				stdout: "",
+				stderr: "NOT_FOUND: project does not exist",
+			}),
+		).toEqual({ kind: "missing" });
+		expect(
+			classifyGoogleProjectDiscovery({
+				projectId: "cataqui-staging-mre5wge",
+				status: 1,
+				stdout: "",
+				stderr:
+					"ryan@ventairy.com does not have permission to access projects instance [cataqui-staging-mre5wge] (or it may not exist): The caller does not have permission.",
+			}),
+		).toEqual({ kind: "hidden-or-missing" });
+		expect(() =>
+			classifyGoogleProjectDiscovery({
+				projectId: "cataqui-staging-mre5wge",
+				status: 0,
+				stdout: "not-json",
+				stderr: "",
+			}),
+		).toThrow("invalid project metadata");
+		expect(() =>
+			classifyGoogleProjectDiscovery({
+				projectId: "cataqui-staging-mre5wge",
+				status: 1,
+				stdout: "",
+				stderr: "UNAUTHENTICATED: login expired",
+			}),
+		).toThrow("Unable to determine ownership");
+	});
 
 	it("rejects foreign projects and protected legacy state", () => {
 		expect(() =>
@@ -861,7 +1028,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 				expectedProjectId: "cataqui-staging-mre5wge",
 				expectedOrganizationId: "945579294313",
 				remoteStateProjectIds: [],
-				discoveredProject: { parent: "organizations/111111111111" },
+				projectDiscovery: { kind: "found", project: { parent: "organizations/111111111111" } },
 			}),
 		).toThrow("outside the declared organization");
 		expect(() =>
@@ -869,7 +1036,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 				expectedProjectId: "cataqui-production-jd7bfto",
 				expectedOrganizationId: "945579294313",
 				remoteStateProjectIds: ["cataqui"],
-				discoveredProject: undefined,
+				projectDiscovery: { kind: "missing" },
 			}),
 		).toThrow("unexpected protected project");
 		expect(() =>
@@ -877,7 +1044,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 				expectedProjectId: "cataqui-production-jd7bfto",
 				expectedOrganizationId: "945579294313",
 				remoteStateProjectIds: ["cataqui-production-jd7bfto"],
-				discoveredProject: undefined,
+				projectDiscovery: { kind: "missing" },
 			}),
 		).toThrow("no longer exists");
 		expect(() =>
@@ -885,9 +1052,20 @@ describe("infrastructure bootstrap reconciliation", () => {
 				expectedProjectId: "cataqui-production-jd7bfto",
 				expectedOrganizationId: "945579294313",
 				remoteStateProjectIds: [],
-				discoveredProject: { parent: "organizations/945579294313", lifecycleState: "DELETE_REQUESTED" },
+				projectDiscovery: {
+					kind: "found",
+					project: { parent: "organizations/945579294313", lifecycleState: "DELETE_REQUESTED" },
+				},
 			}),
 		).toThrow("not active");
+		expect(() =>
+			decideGoogleProject({
+				expectedProjectId: "cataqui-production-jd7bfto",
+				expectedOrganizationId: "945579294313",
+				remoteStateProjectIds: ["cataqui-production-jd7bfto"],
+				projectDiscovery: { kind: "hidden-or-missing" },
+			}),
+		).toThrow("ownership cannot be verified");
 	});
 
 	it("redacts every known secret without exposing short identifiers", () => {
@@ -907,6 +1085,14 @@ describe("infrastructure bootstrap reconciliation", () => {
 	it("keeps the local command automatic, scoped, and free of a second manifest", () => {
 		const packageJson = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8"));
 		const source = readFileSync(resolve(process.cwd(), "infrastructure/bootstrap/bootstrap.mjs"), "utf8");
+		const runtimeSource = readFileSync(
+			resolve(process.cwd(), "infrastructure/bootstrap/bootstrap-runtime.mjs"),
+			"utf8",
+		);
+		const cloudflareSource = readFileSync(
+			resolve(process.cwd(), "infrastructure/bootstrap/cloudflare-bootstrap.mjs"),
+			"utf8",
+		);
 		const googleSource = readFileSync(
 			resolve(process.cwd(), "infrastructure/bootstrap/google-cloud-bootstrap.mjs"),
 			"utf8",
@@ -923,8 +1109,27 @@ describe("infrastructure bootstrap reconciliation", () => {
 		);
 
 		expect(packageJson.scripts["infrastructure:bootstrap"]).toBe("node infrastructure/bootstrap/bootstrap.mjs");
+		expect(packageJson.devDependencies["@clack/prompts"]).toBe("1.7.0");
 		expect(source).toContain("if (process.argv.length !== 2)");
-		expect(source.split("\n").length).toBeLessThan(120);
+		expect(source.split("\n").length).toBeLessThan(160);
+		expect(source).toContain("startBootstrapUi()");
+		expect(source).toContain("finishBootstrapUi()");
+		expect(source).toContain("runBootstrapPhase({ pending, complete }, operation)");
+		expect(runtimeSource).toContain("password({");
+		expect(runtimeSource).toContain("spinner()");
+		expect(runtimeSource).toContain("export async function runBootstrapPhase");
+		expect(runtimeSource).toContain("export function runAsync");
+		expect(runtimeSource).toContain("spawn(command, args");
+		expect(runtimeSource).toContain("setImmediate(resolvePromise)");
+		expect(cloudflareSource).toContain('await runAsync("wrangler"');
+		expect(cloudflareSource).not.toContain('run("wrangler"');
+		expect(source).toContain("requireToolAsync(tool)");
+		expect(source).toContain("verifyNeonCliAuthenticationAsync()");
+		expect(source).toContain('await runAsync("infisical", ["user", "get", "token"');
+		expect(source).not.toContain('const token = run("infisical"');
+		expect(runtimeSource).toContain('mask: "•"');
+		expect(runtimeSource).toContain('"A value is required."');
+		expect(runtimeSource).not.toContain('run("stty"');
 		expect(source).toContain('from "./cloudflare-bootstrap.mjs"');
 		expect(source).toContain('from "./google-cloud-bootstrap.mjs"');
 		expect(source).toContain('from "./infisical-bootstrap.mjs"');

@@ -960,19 +960,6 @@ Verify that:
 - output mappers convert database representations without exposing private fields
 - request schemas validate camelCase payloads
 
-### Bug Fixes
-
-Every bug fix must include a regression test.
-
-The regression test must:
-
-- reproduce the bug
-- fail before the fix
-- pass after the fix
-- be named after the scenario
-
-Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
-
 ### Non-Obvious Correctness Invariants
 
 Always add a focused regression test when correctness depends on a relationship that is easy to break during an otherwise reasonable refactor. Examples include operation ordering, database persistence before Queue publication, atomic state transitions, authorization scope, idempotency, retry behavior, and cleanup after partial failure.

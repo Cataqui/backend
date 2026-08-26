@@ -30,6 +30,7 @@ Never use a blind create, treat every inspection failure as absence, or silently
 - Separate discovery and decision logic from side effects. Model explicit outcomes such as `create`, `reuse`, `import`, `reconcile`, or `replace`, and unit-test every outcome plus ambiguous, foreign, partial, stale, and provider-error states.
 - Preserve user-controlled settings when updating shared provider objects. For example, GitHub environment reconciliation carries forward existing reviewers, wait timers, and self-review policy while owning branch policy and bootstrap variables.
 - Serialize local runs with the bootstrap lock, validate required CLI authentication up front, and reject command-line modes or flags that would make behavior diverge between runs.
+- Keep every potentially slow CLI, network, or provider operation interactive and visibly associated with a named progress phase. Use asynchronous execution so the loading indicator can continue animating; never introduce a silent wait or block the event loop with a synchronous child process inside an interactive phase.
 - Use temporary OpenTofu plan files with unpredictable names, apply the saved plan, and remove it in `finally`. Initialize each root against its explicit environment-specific backend; do not use Terraform workspaces for isolation.
 - After mutation, read the resource back and compare the owned contract. Temporary functional probes must use unique markers and clean up only their own data.
 

@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { knownSecrets, promptHidden, requestJson, run } from "./bootstrap-runtime.mjs";
+import { knownSecrets, promptHidden, requestJson, runAsync } from "./bootstrap-runtime.mjs";
 import { classifyCredentialResponse, decideR2Credentials, getR2TokenName } from "./cloudflare-reconciliation.mjs";
 import { getBootstrapSecret, setBootstrapSecret } from "./infisical-bootstrap.mjs";
 import { constantTimeEqual, ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
@@ -44,7 +44,13 @@ export async function resolveCloudflareBootstrapToken(infisicalProjectId, infisi
 	let token = distinct[0];
 	if (!token || !(await _verifyToken(token))) {
 		token = await promptHidden({
-			message: "Cloudflare API token (API Tokens Write): ",
+			title: "Cloudflare bootstrap token",
+			message: "Paste CLOUDFLARE_API_TOKEN",
+			guidance: [
+				"Create a Cloudflare API token with API Tokens Write.",
+				"This is the external issuer used to create narrower OpenTofu-managed tokens.",
+				"Bootstrap stores it in both environments at /opentofu/bootstrap.",
+			].join("\n"),
 			unavailableMessage: "A valid Cloudflare bootstrap token is missing; rerun from an interactive terminal.",
 		});
 		if (!token || !(await _verifyToken(token)))
@@ -197,24 +203,24 @@ function _parseWranglerJson(result, operation) {
 	}
 }
 
-export function ensurePrivateR2Bucket(manifest) {
+export async function ensurePrivateR2Bucket(manifest) {
 	const bucket = manifest.cloudflare.r2.buckets.opentofu_state;
-	const info = run("wrangler", ["r2", "bucket", "info", bucket, "--json"], { allowFailure: true });
+	const info = await runAsync("wrangler", ["r2", "bucket", "info", bucket, "--json"], { allowFailure: true });
 	if (info.status !== 0) {
 		const output = `${info.stdout}\n${info.stderr}`;
 		if (!/not found|does not exist|10006/i.test(output))
 			throw new Error(`Unable to inspect R2 bucket ${bucket}: ${output.trim()}`);
-		run("wrangler", ["r2", "bucket", "create", bucket]);
+		await runAsync("wrangler", ["r2", "bucket", "create", bucket]);
 	} else {
 		const details = _parseWranglerJson(info, bucket);
 		if (details.name && details.name !== bucket)
 			throw new Error(`Wrangler returned a foreign R2 bucket for ${bucket}.`);
 	}
-	const domains = run("wrangler", ["r2", "bucket", "domain", "list", bucket], { allowFailure: true });
+	const domains = await runAsync("wrangler", ["r2", "bucket", "domain", "list", bucket], { allowFailure: true });
 	if (domains.status !== 0) throw new Error(`Unable to verify custom-domain exposure for ${bucket}.`);
 	if (/https?:\/\//i.test(domains.stdout) && !/no custom domains/i.test(domains.stdout))
 		throw new Error(`R2 state bucket ${bucket} has a public custom domain.`);
-	const devUrl = run("wrangler", ["r2", "bucket", "dev-url", "get", bucket], { allowFailure: true });
+	const devUrl = await runAsync("wrangler", ["r2", "bucket", "dev-url", "get", bucket], { allowFailure: true });
 	if (devUrl.status !== 0) throw new Error(`Unable to verify public development URL exposure for ${bucket}.`);
 	if (/enabled/i.test(devUrl.stdout) && !/disabled/i.test(devUrl.stdout))
 		throw new Error(`R2 state bucket ${bucket} has a public development URL.`);

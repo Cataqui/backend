@@ -14,6 +14,20 @@ export function getNeonProjectApiKeyName(manifest, environment) {
 	return manifest.neon.api_keys.project_access[`cataqui_${environment}`].name;
 }
 
+export function normalizeCreatedNeonAccountApiKey(payload, expectedName) {
+	if (
+		!Number.isSafeInteger(payload?.id) ||
+		payload.id <= 0 ||
+		payload.name !== expectedName ||
+		typeof payload.key !== "string" ||
+		!payload.key ||
+		(payload.project_id !== undefined && payload.project_id !== null)
+	) {
+		throw new Error(`Neon CLI returned invalid credentials for ${expectedName}.`);
+	}
+	return { id: payload.id, name: payload.name, key: payload.key };
+}
+
 function _getSharedStoredCredential(storedByEnvironment) {
 	const staging = storedByEnvironment.staging ?? {};
 	const production = storedByEnvironment.production ?? {};

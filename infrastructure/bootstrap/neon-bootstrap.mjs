@@ -1,9 +1,10 @@
-import { knownSecrets, log, run } from "./bootstrap-runtime.mjs";
+import { knownSecrets, log, runAsync } from "./bootstrap-runtime.mjs";
 import { getBootstrapSecret, setBootstrapSecret } from "./infisical-bootstrap.mjs";
 import {
 	classifyNeonCredentialResponse,
 	decideNeonAccountCredential,
 	getNeonAccountApiKeyName,
+	normalizeCreatedNeonAccountApiKey,
 	reconcileNeonAccountCredential,
 } from "./neon-reconciliation.mjs";
 import { ENVIRONMENTS } from "./reconciliation.mjs";
@@ -17,8 +18,8 @@ function _managementEnvironment() {
 	return environment;
 }
 
-function _runNeon(args) {
-	return run("neon", [...args, "--profile", "DEFAULT", "--output", "json", "--no-analytics"], {
+function _runNeonAsync(args) {
+	return runAsync("neon", [...args, "--profile", "DEFAULT", "--output", "json", "--no-analytics"], {
 		env: _managementEnvironment(),
 	});
 }
@@ -28,20 +29,6 @@ function _parseJson(result, operation) {
 		return JSON.parse(result.stdout);
 	} catch {
 		throw new Error(`Neon CLI returned invalid JSON while attempting to ${operation}.`);
-	}
-}
-
-function _assertOAuthProfile() {
-	const payload = _parseJson(
-		run("neon", ["profile", "list", "--output", "json", "--no-analytics"], {
-			env: _managementEnvironment(),
-		}),
-		"inspect the authenticated profile",
-	);
-	if (!Array.isArray(payload)) throw new Error("Neon CLI returned an invalid profile inventory.");
-	const defaultProfiles = payload.filter((profile) => profile?.name === "DEFAULT");
-	if (defaultProfiles.length !== 1 || defaultProfiles[0].auth !== "oauth") {
-		throw new Error("Neon DEFAULT profile must be authenticated through `neon auth` before bootstrap.");
 	}
 }
 
@@ -60,8 +47,8 @@ function _normalizeApiKeyInventory(payload) {
 	});
 }
 
-function _listAccountApiKeys() {
-	return _normalizeApiKeyInventory(_parseJson(_runNeon(["api-keys", "list"]), "list account API keys"));
+async function _listAccountApiKeys() {
+	return _normalizeApiKeyInventory(_parseJson(await _runNeonAsync(["api-keys", "list"]), "list account API keys"));
 }
 
 async function _fetchWithCredential(url, key) {
@@ -116,26 +103,20 @@ async function _verifyAccountApiKey(platforms, key) {
 	return (accountMembership?.member?.role ?? accountMembership?.role) === "admin" ? "accepted" : "foreign";
 }
 
-function _createAccountApiKey(expectedName) {
-	const payload = _parseJson(_runNeon(["api-keys", "create", "--name", expectedName]), `create ${expectedName}`);
+async function _createAccountApiKey(expectedName) {
+	const payload = _parseJson(
+		await _runNeonAsync(["api-keys", "create", "--name", expectedName]),
+		`create ${expectedName}`,
+	);
 	if (typeof payload?.key === "string" && payload.key) knownSecrets.add(payload.key);
-	if (
-		Object.keys(payload ?? {})
-			.sort()
-			.join(",") !== "id,key,name" ||
-		!Number.isSafeInteger(payload.id) ||
-		payload.id <= 0 ||
-		payload.name !== expectedName ||
-		typeof payload.key !== "string" ||
-		!payload.key
-	) {
-		throw new Error(`Neon CLI returned invalid credentials for ${expectedName}.`);
-	}
-	return payload;
+	return normalizeCreatedNeonAccountApiKey(payload, expectedName);
 }
 
-function _revokeAccountApiKey(keyId) {
-	const payload = _parseJson(_runNeon(["api-keys", "revoke", String(keyId)]), `revoke Neon account API key ${keyId}`);
+async function _revokeAccountApiKey(keyId) {
+	const payload = _parseJson(
+		await _runNeonAsync(["api-keys", "revoke", String(keyId)]),
+		`revoke Neon account API key ${keyId}`,
+	);
 	if (payload?.id !== Number(keyId) || payload.revoked !== true) {
 		throw new Error(`Neon CLI could not verify revocation of account API key ${keyId}.`);
 	}
@@ -170,15 +151,25 @@ async function _assertHealthy({ platforms, manifest }, infisicalProjectId, infis
 	const decision = decideNeonAccountCredential({
 		expectedName,
 		storedByEnvironment,
-		inventory: _listAccountApiKeys(),
+		inventory: await _listAccountApiKeys(),
 		credentialStatus,
 	});
 	if (decision.action !== "reuse") throw new Error("Final Neon account API key verification failed.");
 }
 
-export function verifyNeonCliAuthentication() {
-	_assertOAuthProfile();
-	_listAccountApiKeys();
+export async function verifyNeonCliAuthenticationAsync() {
+	const profiles = _parseJson(
+		await runAsync("neon", ["profile", "list", "--output", "json", "--no-analytics"], {
+			env: _managementEnvironment(),
+		}),
+		"inspect the authenticated profile",
+	);
+	if (!Array.isArray(profiles)) throw new Error("Neon CLI returned an invalid profile inventory.");
+	const defaultProfiles = profiles.filter((profile) => profile?.name === "DEFAULT");
+	if (defaultProfiles.length !== 1 || defaultProfiles[0].auth !== "oauth") {
+		throw new Error("Neon DEFAULT profile must be authenticated through `neon auth` before bootstrap.");
+	}
+	_normalizeApiKeyInventory(_parseJson(await _runNeonAsync(["api-keys", "list"]), "list account API keys"));
 }
 
 export async function reconcileNeonAccountApiKey({ platforms, manifest }, infisicalProjectId, infisicalToken) {
@@ -187,7 +178,7 @@ export async function reconcileNeonAccountApiKey({ platforms, manifest }, infisi
 	const decision = await reconcileNeonAccountCredential({
 		expectedName,
 		storedByEnvironment,
-		inventory: _listAccountApiKeys(),
+		inventory: await _listAccountApiKeys(),
 		verifyKey: (key) => _verifyAccountApiKey(platforms, key),
 		revokeKey: (keyId) => _revokeAccountApiKey(keyId),
 		createKey: () => _createAccountApiKey(expectedName),

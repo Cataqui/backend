@@ -2,6 +2,35 @@ import { ENVIRONMENTS } from "./reconciliation.mjs";
 
 export const INFISICAL_PROJECT_TYPE = "secret-manager";
 
+export function classifyInfisicalOidcInspection({ status, payload }) {
+	if (status >= 200 && status < 300) return "present";
+	if (status === 404 || (status === 400 && payload?.message === "The identity does not have OIDC Auth attached")) {
+		return "missing";
+	}
+	throw new Error(`Unable to inspect Infisical OIDC trust (${status}).`);
+}
+
+export function explainInfisicalIdentityCreationFailure(error, environment) {
+	const message = error instanceof Error ? error.message : String(error);
+	if (/identity limit reached/i.test(message)) {
+		return new Error(
+			`Infisical identity capacity is exhausted. The ${environment} environment requires its own OIDC identity to preserve staging and production isolation. Increase the organization's identity capacity or intentionally remove an unused identity, then rerun bootstrap.`,
+		);
+	}
+	return error instanceof Error ? error : new Error(message);
+}
+
+export function isInfisicalPrivilegeAlreadyPresent(error, privilegeSlug) {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes(`Additional privilege with name ${privilegeSlug} exists`);
+}
+
+export function resolveInfisicalPrivilege(privileges, privilegeSlug) {
+	const matches = privileges.filter((privilege) => privilege.slug === privilegeSlug);
+	if (matches.length > 1) throw new Error(`Duplicate Infisical privileges use slug ${privilegeSlug}.`);
+	return matches[0];
+}
+
 export function decideInfisicalProject({ projects, expectedOrganizationId, expectedName, expectedSlug }) {
 	const matches = projects.filter((project) => project.slug === expectedSlug);
 	if (matches.length > 1) throw new Error(`Duplicate Infisical projects use slug ${expectedSlug}.`);

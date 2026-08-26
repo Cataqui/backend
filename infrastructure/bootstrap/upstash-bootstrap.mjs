@@ -43,7 +43,13 @@ export async function reconcileUpstashApiKey(platforms, infisicalProjectId, infi
 		verifyKey: (apiKey) => _verifyApiKey(platforms, apiKey),
 		requestKey: () =>
 			promptHidden({
-				message: "Upstash Management API key: ",
+				title: "Upstash management credential",
+				message: "Paste UPSTASH_API_KEY",
+				guidance: [
+					"Create or copy the account-wide Management API key from the Upstash Console.",
+					`Account: ${platforms.upstash.account_email}`,
+					"Bootstrap validates it and stores the same key in both environments.",
+				].join("\n"),
 				unavailableMessage: "A valid Upstash API key is missing; rerun from an interactive terminal.",
 			}),
 		writeKey: (environment, apiKey) =>

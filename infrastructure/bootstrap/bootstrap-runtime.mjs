@@ -1,10 +1,10 @@
+import { log as clackLog, intro, isCancel, note, outro, password, spinner } from "@clack/prompts";
 import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { stdin, stdout } from "node:process";
-import { createInterface } from "node:readline/promises";
+import { stderr, stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { redactSecrets } from "./reconciliation.mjs";
 
 const bootstrapDirectory = dirname(fileURLToPath(import.meta.url));
@@ -14,43 +14,123 @@ export const platformsPath = join(repositoryRoot, "infrastructure/platforms.json
 export const manifestPath = join(repositoryRoot, "infrastructure/manifest.json");
 export const knownSecrets = new Set();
 
+const isInteractive = Boolean(stdin.isTTY && stdout.isTTY);
+let activePhase;
+
 export function log(message) {
-	stdout.write(`${message}\n`);
-}
-
-export function run(command, args, options = {}) {
-	const result = spawnSync(command, args, {
-		cwd: options.cwd ?? repositoryRoot,
-		env: options.env ?? process.env,
-		encoding: "utf8",
-		stdio: options.inherit ? "inherit" : "pipe",
-	});
-	if (result.error) throw new Error(`Unable to execute ${command}: ${result.error.message}`);
-	if (result.status !== 0 && !options.allowFailure) {
-		const detail = redactSecrets(result.stderr || result.stdout || "command failed", knownSecrets);
-		throw new Error(`${command} failed: ${detail.trim()}`);
+	if (activePhase) {
+		activePhase.message = message;
+		activePhase.control.message(message);
+		return;
 	}
-	return result;
+	if (isInteractive) clackLog.step(message);
+	else stdout.write(`${message}\n`);
 }
 
-export function requireTool(command, versionArgs = ["--version"]) {
-	run(command, versionArgs);
+export function startBootstrapUi() {
+	if (!isInteractive) return;
+	intro("Cataquí infrastructure bootstrap");
+	note(
+		[
+			"Reconciles staging and production immediately.",
+			"Healthy resources and credentials are reused.",
+			"A protected secret field appears only when a required external credential is missing.",
+		].join("\n"),
+		"What this command does",
+	);
 }
 
-export async function promptHidden({ message, unavailableMessage }) {
-	if (!stdin.isTTY || !stdout.isTTY) throw new Error(unavailableMessage);
-	stdout.write(message);
-	run("stty", ["-echo"], { inherit: true });
-	let reader;
+export function finishBootstrapUi() {
+	if (isInteractive) outro("Infrastructure bootstrap is healthy.");
+	else stdout.write("Infrastructure bootstrap is healthy.\n");
+}
+
+export function failBootstrapUi(message) {
+	if (isInteractive) clackLog.error(message);
+	else stderr.write(`${message}\n`);
+}
+
+export async function runBootstrapPhase({ pending, complete }, operation) {
+	if (!isInteractive) {
+		stdout.write(`${pending}...\n`);
+		const result = await operation();
+		stdout.write(`${complete}.\n`);
+		return result;
+	}
+
+	const control = spinner();
+	activePhase = { control, message: pending };
+	control.start(pending);
 	try {
-		reader = createInterface({ input: stdin, output: stdout });
-		const value = (await reader.question("")).trim();
+		await new Promise((resolvePromise) => setImmediate(resolvePromise));
+		const result = await operation();
+		control.stop(complete);
+		return result;
+	} catch (error) {
+		control.error(`${pending} failed`);
+		throw error;
+	} finally {
+		activePhase = undefined;
+	}
+}
+
+export function runAsync(command, args, options = {}) {
+	return new Promise((resolvePromise, rejectPromise) => {
+		const child = spawn(command, args, {
+			cwd: options.cwd ?? repositoryRoot,
+			env: options.env ?? process.env,
+			stdio: options.inherit ? "inherit" : ["ignore", "pipe", "pipe"],
+		});
+		let commandStdout = "";
+		let commandStderr = "";
+		child.stdout?.setEncoding("utf8");
+		child.stderr?.setEncoding("utf8");
+		child.stdout?.on("data", (chunk) => {
+			commandStdout += chunk;
+		});
+		child.stderr?.on("data", (chunk) => {
+			commandStderr += chunk;
+		});
+		child.once("error", (error) => rejectPromise(new Error(`Unable to execute ${command}: ${error.message}`)));
+		child.once("close", (status) => {
+			const result = { status, stdout: commandStdout, stderr: commandStderr };
+			if (status !== 0 && !options.allowFailure) {
+				const detail = redactSecrets(commandStderr || commandStdout || "command failed", knownSecrets);
+				rejectPromise(new Error(`${command} failed: ${detail.trim()}`));
+				return;
+			}
+			resolvePromise(result);
+		});
+	});
+}
+
+export function requireToolAsync(command, versionArgs = ["--version"]) {
+	return runAsync(command, versionArgs);
+}
+
+export async function promptHidden({ title, message, guidance, unavailableMessage }) {
+	if (!stdin.isTTY || !stdout.isTTY) throw new Error(unavailableMessage);
+	const suspendedPhase = activePhase;
+	if (suspendedPhase) {
+		suspendedPhase.control.stop("Credential input required");
+		activePhase = undefined;
+	}
+	try {
+		note(guidance, title);
+		const response = await password({
+			message,
+			mask: "•",
+			validate: (value) => (value.trim() ? undefined : "A value is required."),
+		});
+		if (isCancel(response)) throw new Error("Infrastructure bootstrap was cancelled.");
+		const value = response.trim();
 		if (value) knownSecrets.add(value);
 		return value;
 	} finally {
-		reader?.close();
-		run("stty", ["echo"], { inherit: true });
-		stdout.write("\n");
+		if (suspendedPhase) {
+			activePhase = suspendedPhase;
+			suspendedPhase.control.start(suspendedPhase.message);
+		}
 	}
 }
 

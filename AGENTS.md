@@ -49,6 +49,19 @@ Before changing a file, check its directory and parent directories for nested `A
 - Documentation-only and skills-only changes must not deploy runtime applications.
 - Keep staging and production credentials environment-scoped. Never weaken OIDC trust, bypass an environment gate, or expose deployment secrets to untrusted pull requests.
 
+### Bug Fixes
+
+Every bug fix must include a regression test.
+
+The regression test must:
+
+- reproduce the bug
+- fail before the fix
+- pass after the fix
+- be named after the scenario
+
+Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
+
 ## Skills
 
 Skills are available at `.agents/skills/`. Always check available skills before performing actions to ensure you are doing the correct stuff. Never think alone about something if a skill to help you is available.

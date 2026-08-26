@@ -19,10 +19,16 @@ export async function reconcileMetaAppSecret(infisicalProjectId, infisicalToken)
 	}
 	return reconcileMetaAppSecretState({
 		storedByEnvironment,
-		requestSecret: () =>
+		requestSecret: (environment) =>
 			promptHidden({
-				message: "Meta app secret: ",
-				unavailableMessage: "META_APP_SECRET is missing; rerun bootstrap from an interactive terminal.",
+				title: `${environment === "staging" ? "Staging" : "Production"} Meta Webhooks credential`,
+				message: `Paste the ${environment} META_APP_SECRET`,
+				guidance: [
+					`Open the ${environment} Meta app, then copy its App Secret from App settings > Basic.`,
+					"Webhooks uses it to verify WhatsApp request signatures.",
+					`Bootstrap stores it only in the ${environment} environment at /generated/webhooks/runtime.`,
+				].join("\n"),
+				unavailableMessage: `${environment} META_APP_SECRET is missing; rerun bootstrap from an interactive terminal.`,
 			}),
 		writeSecret: (environment, value) =>
 			setInfisicalSecret({

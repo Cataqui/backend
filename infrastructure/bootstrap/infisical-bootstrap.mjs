@@ -3,8 +3,15 @@ import { existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { constantTimeEqual, ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
-import { knownSecrets, repositoryRoot, requestJson, run } from "./bootstrap-runtime.mjs";
-import { INFISICAL_PROJECT_TYPE, reconcileInfisicalProjectState } from "./infisical-reconciliation.mjs";
+import { knownSecrets, repositoryRoot, requestJson, runAsync } from "./bootstrap-runtime.mjs";
+import {
+	classifyInfisicalOidcInspection,
+	explainInfisicalIdentityCreationFailure,
+	INFISICAL_PROJECT_TYPE,
+	isInfisicalPrivilegeAlreadyPresent,
+	reconcileInfisicalProjectState,
+	resolveInfisicalPrivilege,
+} from "./infisical-reconciliation.mjs";
 
 export const bootstrapSecretPath = "/opentofu/bootstrap";
 const infisicalApiBaseUrl = "https://app.infisical.com";
@@ -222,7 +229,7 @@ export async function applyGeneratedFolders(infisicalProjectId, infisicalToken) 
 		delete environmentVariables.INFISICAL_AUTH_METHOD;
 		delete environmentVariables.INFISICAL_MACHINE_IDENTITY_ID;
 
-		run(
+		await runAsync(
 			"tofu",
 			[
 				"init",
@@ -239,11 +246,15 @@ export async function applyGeneratedFolders(infisicalProjectId, infisicalToken) 
 			`cataqui-bootstrap-infisical-generated-folders-${environment}-${randomUUID()}.tfplan`,
 		);
 		try {
-			run("tofu", ["plan", "-input=false", "-lock-timeout=5m", `-var=environment=${environment}`, "-out", planPath], {
-				cwd: root,
-				env: environmentVariables,
-			});
-			run("tofu", ["apply", "-input=false", "-lock-timeout=5m", planPath], {
+			await runAsync(
+				"tofu",
+				["plan", "-input=false", "-lock-timeout=5m", `-var=environment=${environment}`, "-out", planPath],
+				{
+					cwd: root,
+					env: environmentVariables,
+				},
+			);
+			await runAsync("tofu", ["apply", "-input=false", "-lock-timeout=5m", planPath], {
 				cwd: root,
 				env: environmentVariables,
 			});
@@ -263,12 +274,17 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 	});
 	let identity = resolveUniqueNamedResource(listed.identities ?? [], name);
 	if (!identity) {
-		const created = await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities`, {
-			method: "POST",
-			headers,
-			body: { name, hasDeleteProtection: true, metadata: [] },
-			acceptedStatuses: [200, 201],
-		});
+		let created;
+		try {
+			created = await requestJson(`${apiUrl}/api/v1/projects/${projectId}/identities`, {
+				method: "POST",
+				headers,
+				body: { name, hasDeleteProtection: true, metadata: [] },
+				acceptedStatuses: [200, 201],
+			});
+		} catch (error) {
+			throw explainInfisicalIdentityCreationFailure(error, environment);
+		}
 		identity = created.identity;
 	}
 	const identityId = identity.id;
@@ -288,11 +304,16 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 	const expectedSubject = `repo:${platforms.github.repository}:environment:${environment}`;
 	const oidcUrl = `${apiUrl}/api/v1/auth/oidc-auth/identities/${identityId}`;
 	const existingOidc = await fetch(oidcUrl, { headers: { accept: "application/json", ...headers } });
-	if (existingOidc.status !== 404 && !existingOidc.ok)
-		throw new Error(`Unable to inspect Infisical OIDC trust for ${environment}.`);
+	const existingOidcPayload = await existingOidc.json().catch(() => undefined);
+	let oidcInspection;
+	try {
+		oidcInspection = classifyInfisicalOidcInspection({ status: existingOidc.status, payload: existingOidcPayload });
+	} catch {
+		throw new Error(`Unable to inspect Infisical OIDC trust for ${environment} (${existingOidc.status}).`);
+	}
 	let existingOidcConfiguration;
-	if (existingOidc.ok) {
-		existingOidcConfiguration = (await existingOidc.json()).identityOidcAuth;
+	if (oidcInspection === "present") {
+		existingOidcConfiguration = existingOidcPayload.identityOidcAuth;
 		if (
 			existingOidcConfiguration.boundSubject !== expectedSubject ||
 			existingOidcConfiguration.boundIssuer !== "https://token.actions.githubusercontent.com"
@@ -320,7 +341,7 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 	if ((privilegeList.privileges ?? []).some((candidate) => candidate.slug !== privilegeSlug)) {
 		throw new Error(`Infisical identity ${name} has privileges not owned by bootstrap.`);
 	}
-	const privilege = resolveUniqueNamedResource(privilegeList.privileges ?? [], privilegeSlug, () => true);
+	let privilege = resolveInfisicalPrivilege(privilegeList.privileges ?? [], privilegeSlug);
 	const environmentCondition = { $eq: environment };
 	const permissions = [
 		{
@@ -344,23 +365,38 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 			conditions: { environment: environmentCondition, secretPath: { $glob: "/generated{,/**}" } },
 		},
 	];
+	if (!privilege) {
+		try {
+			await requestJson(`${apiUrl}/api/v2/identity-project-additional-privilege`, {
+				method: "POST",
+				headers,
+				body: {
+					identityId,
+					projectId,
+					slug: privilegeSlug,
+					permissions,
+					type: { isTemporary: false },
+				},
+				acceptedStatuses: [200, 201],
+			});
+		} catch (error) {
+			if (!isInfisicalPrivilegeAlreadyPresent(error, privilegeSlug)) throw error;
+			const refreshed = await requestJson(`${apiUrl}/api/v1/additional-privilege/identity?${privilegeQuery}`, {
+				headers,
+			});
+			privilege = resolveInfisicalPrivilege(refreshed.privileges ?? [], privilegeSlug);
+			if (!privilege) throw error;
+		}
+	}
 	if (
-		!privilege ||
-		privilege.isTemporary ||
-		_stableJson(_normalizePermissions(privilege.permissions)) !== _stableJson(_normalizePermissions(permissions))
+		privilege &&
+		(privilege.isTemporary ||
+			_stableJson(_normalizePermissions(privilege.permissions)) !== _stableJson(_normalizePermissions(permissions)))
 	) {
-		await requestJson(`${apiUrl}/api/v2/identity-project-additional-privilege${privilege ? `/${privilege.id}` : ""}`, {
-			method: privilege ? "PATCH" : "POST",
+		await requestJson(`${apiUrl}/api/v2/identity-project-additional-privilege/${privilege.id}`, {
+			method: "PATCH",
 			headers,
-			body: privilege
-				? { slug: privilegeSlug, permissions, type: { isTemporary: false } }
-				: {
-						identityId,
-						projectId,
-						slug: privilegeSlug,
-						permissions,
-						type: { isTemporary: false },
-					},
+			body: { slug: privilegeSlug, permissions, type: { isTemporary: false } },
 			acceptedStatuses: [200, 201],
 		});
 	}
@@ -377,13 +413,13 @@ export async function reconcileInfisicalIdentity({ platforms, manifest, projectI
 		accessTokenNumUsesLimit: 0,
 	};
 	const oidcHasDrift =
-		existingOidc.status === 404 ||
+		oidcInspection === "missing" ||
 		Object.entries(desiredOidc).some(
 			([key, value]) => _stableJson(existingOidcConfiguration?.[key]) !== _stableJson(value),
 		);
 	if (oidcHasDrift) {
 		await requestJson(oidcUrl, {
-			method: existingOidc.status === 404 ? "POST" : "PATCH",
+			method: oidcInspection === "missing" ? "POST" : "PATCH",
 			headers,
 			body: desiredOidc,
 			acceptedStatuses: [200, 201],

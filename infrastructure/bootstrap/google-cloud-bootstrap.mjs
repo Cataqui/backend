@@ -2,8 +2,8 @@ import { existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { log, repositoryRoot, run } from "./bootstrap-runtime.mjs";
-import { decideGoogleProject } from "./google-cloud-reconciliation.mjs";
+import { log, repositoryRoot, runAsync } from "./bootstrap-runtime.mjs";
+import { classifyGoogleProjectDiscovery, decideGoogleProject } from "./google-cloud-reconciliation.mjs";
 import { getBootstrapSecret } from "./infisical-bootstrap.mjs";
 import { ENVIRONMENTS } from "./reconciliation.mjs";
 
@@ -16,9 +16,9 @@ function _backendEnvironment(credentials) {
 	};
 }
 
-function _initializeRoot({ rootName, environment, credentials }) {
+async function _initializeRoot({ rootName, environment, credentials }) {
 	const root = join(repositoryRoot, "infrastructure/opentofu/roots", rootName);
-	run(
+	await runAsync(
 		"tofu",
 		[
 			"init",
@@ -32,32 +32,54 @@ function _initializeRoot({ rootName, environment, credentials }) {
 	return root;
 }
 
-function _stateProjectIds({ root, environmentVariables }) {
-	const state = run("tofu", ["state", "pull"], { cwd: root, env: environmentVariables, allowFailure: true });
+async function _stateProjects({ root, environmentVariables }) {
+	const state = await runAsync("tofu", ["state", "pull"], {
+		cwd: root,
+		env: environmentVariables,
+		allowFailure: true,
+	});
 	if (state.status !== 0) {
-		if (/No stored state|state snapshot was not found/i.test(state.stderr)) return [];
+		if (/No stored state|state snapshot was not found/i.test(state.stderr)) {
+			return { projectIds: [], taintedProjectIds: [] };
+		}
 		throw new Error(`Unable to inspect Google project state: ${state.stderr.trim()}`);
 	}
 	const payload = JSON.parse(state.stdout);
-	return (payload.resources ?? [])
+	const instances = (payload.resources ?? [])
 		.filter((resource) => resource.type === "google_project" && resource.name === "cataqui")
-		.flatMap((resource) => resource.instances ?? [])
-		.map((instance) => instance.attributes?.project_id)
-		.filter(Boolean);
+		.flatMap((resource) => resource.instances ?? []);
+	return {
+		projectIds: instances.map((instance) => instance.attributes?.project_id).filter(Boolean),
+		taintedProjectIds: instances
+			.filter((instance) => instance.status === "tainted")
+			.map((instance) => instance.attributes?.project_id)
+			.filter(Boolean),
+	};
 }
 
-function _discoverProject(projectId) {
-	const result = run("gcloud", ["projects", "describe", projectId, "--format=json"], { allowFailure: true });
-	if (result.status === 0) return JSON.parse(result.stdout);
-	if (/NOT_FOUND|not found|does not exist/i.test(`${result.stdout}\n${result.stderr}`)) return undefined;
-	throw new Error(`Unable to determine ownership of Google project ${projectId}: ${result.stderr.trim()}`);
+async function _discoverProject(projectId) {
+	const result = await runAsync("gcloud", ["projects", "describe", projectId, "--format=json"], {
+		allowFailure: true,
+	});
+	return classifyGoogleProjectDiscovery({
+		projectId,
+		status: result.status,
+		stdout: result.stdout,
+		stderr: result.stderr,
+	});
 }
 
-function _applyRoot({ root, environmentVariables, variables = [] }) {
+async function _applyRoot({ root, environmentVariables, variables = [] }) {
 	const planPath = join(tmpdir(), `cataqui-bootstrap-${basename(root)}-${randomUUID()}.tfplan`);
 	try {
-		run("tofu", ["plan", "-input=false", "-out", planPath, ...variables], { cwd: root, env: environmentVariables });
-		run("tofu", ["apply", "-input=false", "-auto-approve", planPath], { cwd: root, env: environmentVariables });
+		await runAsync("tofu", ["plan", "-input=false", "-out", planPath, ...variables], {
+			cwd: root,
+			env: environmentVariables,
+		});
+		await runAsync("tofu", ["apply", "-input=false", "-auto-approve", planPath], {
+			cwd: root,
+			env: environmentVariables,
+		});
 	} finally {
 		if (existsSync(planPath)) unlinkSync(planPath);
 	}
@@ -84,34 +106,63 @@ export async function getBackendCredentials(infisicalProjectId, infisicalToken, 
 export async function reconcileGoogleProjects({ platforms, manifest }, infisicalProjectId, infisicalToken) {
 	for (const environment of ENVIRONMENTS) {
 		const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, environment);
-		const root = _initializeRoot({ rootName: "google-cloud-projects", environment, credentials });
+		const root = await _initializeRoot({ rootName: "google-cloud-projects", environment, credentials });
 		const environmentVariables = _backendEnvironment(credentials);
 		const projectId = manifest.google_cloud.projects[`cataqui_${environment}`].id;
+		const projectDiscovery = await _discoverProject(projectId);
+		const stateProjects = await _stateProjects({ root, environmentVariables });
 		const action = decideGoogleProject({
 			expectedProjectId: projectId,
 			expectedOrganizationId: platforms.google_cloud.organization_id,
-			remoteStateProjectIds: _stateProjectIds({ root, environmentVariables }),
-			discoveredProject: _discoverProject(projectId),
+			remoteStateProjectIds: stateProjects.projectIds,
+			taintedProjectIds: stateProjects.taintedProjectIds,
+			projectDiscovery,
 		});
 		log(`Google project ${environment}: ${action}.`);
-		_applyRoot({
-			root,
-			environmentVariables,
-			variables: [`-var=environment=${environment}`, `-var=enable_imports=${action === "import"}`],
+		if (action === "recover") {
+			await runAsync("tofu", ["untaint", "google_project.cataqui"], {
+				cwd: root,
+				env: environmentVariables,
+			});
+		}
+		try {
+			await _applyRoot({
+				root,
+				environmentVariables,
+				variables: [`-var=environment=${environment}`, `-var=enable_imports=${action === "import"}`],
+			});
+		} catch (error) {
+			if (action !== "claim") throw error;
+			throw new Error(
+				`Google could not inspect ${projectId}, and its atomic creation attempt failed. The project ID may already belong to another account, or the active account may lack Project Creator or Billing Account User access. ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+		const verifiedStateProjects = await _stateProjects({ root, environmentVariables });
+		const verifiedAction = decideGoogleProject({
+			expectedProjectId: projectId,
+			expectedOrganizationId: platforms.google_cloud.organization_id,
+			remoteStateProjectIds: verifiedStateProjects.projectIds,
+			taintedProjectIds: verifiedStateProjects.taintedProjectIds,
+			projectDiscovery: await _discoverProject(projectId),
 		});
+		if (verifiedAction !== "reconcile") {
+			throw new Error(`Google project ${projectId} was not owned by the expected state after ${action}.`);
+		}
 	}
 }
 
 export async function applyGoogleGithubAuth(infisicalProjectId, infisicalToken) {
 	const credentials = await getBackendCredentials(infisicalProjectId, infisicalToken, "production");
-	const root = _initializeRoot({
+	const root = await _initializeRoot({
 		rootName: "google-cloud-github-auth",
 		environment: "production",
 		credentials,
 	});
 	const environmentVariables = _backendEnvironment(credentials);
-	_applyRoot({ root, environmentVariables });
-	const output = JSON.parse(run("tofu", ["output", "-json"], { cwd: root, env: environmentVariables }).stdout);
+	await _applyRoot({ root, environmentVariables });
+	const output = JSON.parse(
+		(await runAsync("tofu", ["output", "-json"], { cwd: root, env: environmentVariables })).stdout,
+	);
 	return {
 		provider: output.workload_identity_provider.value,
 	};

@@ -1,14 +1,14 @@
-import { run } from "./bootstrap-runtime.mjs";
+import { runAsync } from "./bootstrap-runtime.mjs";
 
-function _api(repository, path, { method = "GET", fields = [], allowFailure = false } = {}) {
+async function _api(repository, path, { method = "GET", fields = [], allowFailure = false } = {}) {
 	const args = ["api", `repos/${repository}${path}`, "--method", method];
 	for (const [key, value] of fields) args.push("-F", `${key}=${value}`);
-	return run("gh", args, { allowFailure });
+	return runAsync("gh", args, { allowFailure });
 }
 
-export function reconcileGithubEnvironment({ platforms, manifest, environment, identityId, googleAuth }) {
+export async function reconcileGithubEnvironment({ platforms, manifest, environment, identityId, googleAuth }) {
 	const repository = platforms.github.repository;
-	const environmentResult = _api(repository, `/environments/${environment}`, { allowFailure: true });
+	const environmentResult = await _api(repository, `/environments/${environment}`, { allowFailure: true });
 	if (environmentResult.status !== 0 && !/HTTP 404|Not Found/i.test(environmentResult.stderr)) {
 		throw new Error(`Unable to inspect GitHub environment ${environment}: ${environmentResult.stderr.trim()}`);
 	}
@@ -31,23 +31,23 @@ export function reconcileGithubEnvironment({ platforms, manifest, environment, i
 		current.deployment_branch_policy?.protected_branches !== false ||
 		current.deployment_branch_policy?.custom_branch_policies !== true
 	) {
-		_api(repository, `/environments/${environment}`, { method: "PUT", fields });
+		await _api(repository, `/environments/${environment}`, { method: "PUT", fields });
 	}
 
 	const policies =
-		JSON.parse(_api(repository, `/environments/${environment}/deployment-branch-policies`).stdout).branch_policies ??
-		[];
+		JSON.parse((await _api(repository, `/environments/${environment}/deployment-branch-policies`)).stdout)
+			.branch_policies ?? [];
 	const expectedBranches = new Set(manifest.github.environments[environment].branches);
 	for (const policy of policies) {
 		if (!expectedBranches.has(policy.name)) {
-			_api(repository, `/environments/${environment}/deployment-branch-policies/${policy.id}`, {
+			await _api(repository, `/environments/${environment}/deployment-branch-policies/${policy.id}`, {
 				method: "DELETE",
 			});
 		}
 	}
 	for (const branch of expectedBranches) {
 		if (!policies.some((policy) => policy.name === branch)) {
-			_api(repository, `/environments/${environment}/deployment-branch-policies`, {
+			await _api(repository, `/environments/${environment}/deployment-branch-policies`, {
 				method: "POST",
 				fields: [
 					["name", branch],
@@ -62,15 +62,15 @@ export function reconcileGithubEnvironment({ platforms, manifest, environment, i
 		GOOGLE_WORKLOAD_IDENTITY_PROVIDER: googleAuth.provider,
 	};
 	const currentVariables = JSON.parse(
-		_api(repository, `/environments/${environment}/variables?per_page=100`).stdout,
+		(await _api(repository, `/environments/${environment}/variables?per_page=100`)).stdout,
 	).variables;
 	for (const [name, value] of Object.entries(variables)) {
 		if (currentVariables.find((variable) => variable.name === name)?.value !== value) {
-			run("gh", ["variable", "set", name, "--repo", repository, "--env", environment, "--body", value]);
+			await runAsync("gh", ["variable", "set", name, "--repo", repository, "--env", environment, "--body", value]);
 		}
 	}
 
-	const verifiedEnvironment = JSON.parse(_api(repository, `/environments/${environment}`).stdout);
+	const verifiedEnvironment = JSON.parse((await _api(repository, `/environments/${environment}`)).stdout);
 	if (
 		verifiedEnvironment.deployment_branch_policy?.protected_branches !== false ||
 		verifiedEnvironment.deployment_branch_policy?.custom_branch_policies !== true
@@ -78,13 +78,13 @@ export function reconcileGithubEnvironment({ platforms, manifest, environment, i
 		throw new Error(`GitHub environment policy verification failed for ${environment}.`);
 	}
 	const verifiedPolicies = JSON.parse(
-		_api(repository, `/environments/${environment}/deployment-branch-policies`).stdout,
+		(await _api(repository, `/environments/${environment}/deployment-branch-policies`)).stdout,
 	).branch_policies.map((policy) => policy.name);
 	if (JSON.stringify(verifiedPolicies.sort()) !== JSON.stringify([...expectedBranches].sort())) {
 		throw new Error(`GitHub branch policy verification failed for ${environment}.`);
 	}
 	const verifiedVariables = JSON.parse(
-		_api(repository, `/environments/${environment}/variables?per_page=100`).stdout,
+		(await _api(repository, `/environments/${environment}/variables?per_page=100`)).stdout,
 	).variables;
 	for (const [name, value] of Object.entries(variables)) {
 		if (verifiedVariables.find((variable) => variable.name === name)?.value !== value) {
