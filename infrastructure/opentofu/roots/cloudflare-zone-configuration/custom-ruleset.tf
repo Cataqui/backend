@@ -81,9 +81,9 @@ resource "cloudflare_ruleset" "custom" {
         phases   = ["http_request_sbfm"]
         products = ["bic"]
       }
-      description = "Keep native app and webhooks free of browser-only checks"
+      description = "Keep APIs and webhooks free of browser-only checks"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"}"
+      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"}"
       logging = {
         enabled = true
       }
@@ -95,4 +95,3 @@ resource "cloudflare_ruleset" "custom" {
     prevent_destroy = true
   }
 }
-
