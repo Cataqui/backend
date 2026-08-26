@@ -45,20 +45,29 @@ runs:
         branch_created=true
         printf '%s' "$branch_json" | node -e 'let value="";process.stdin.on("data",c=>value+=c).on("end",()=>{const payload=JSON.parse(value);if(!(payload.id??payload.branch?.id))process.exit(1)})'
         unset branch_json
-        connection_json="$(pnpm exec neon connection-string "$branch_name" \
+        connection_value="$(pnpm exec neon connection-string "$branch_name" \
           --project-id "$NEON_PROJECT_ID" \
           --database-name "$database_name" \
           --role-name "$owner_role" \
           --output json \
           --no-analytics)"
-        branch_url="$(printf '%s' "$connection_json" | node -e '
-          let value=""; process.stdin.on("data", c => value += c).on("end", () => {
-            const payload=JSON.parse(value); const visit=(item) => {
-              if (typeof item === "string" && /^postgres(?:ql)?:\/\//.test(item)) return item;
-              if (item && typeof item === "object") for (const child of Object.values(item)) { const found=visit(child); if (found) return found; }
-            }; const result=visit(payload); if (!result) process.exit(1); process.stdout.write(result);
-          });')"
-        unset connection_json
+        echo "::add-mask::$connection_value"
+        if ! branch_url="$(CONNECTION_VALUE="$connection_value" node -e '
+          const value=process.env.CONNECTION_VALUE.trim();
+          let payload=value;
+          try { payload=JSON.parse(value); } catch {}
+          const visit=(item) => {
+            if (typeof item === "string" && /^postgres(?:ql)?:\/\//.test(item)) return item;
+            if (item && typeof item === "object") for (const child of Object.values(item)) { const found=visit(child); if (found) return found; }
+          };
+          const result=visit(payload);
+          if (!result) process.exit(1);
+          process.stdout.write(result);
+        ')"; then
+          echo "Neon CLI returned an unsupported connection-string response." >&2
+          exit 1
+        fi
+        unset connection_value
         if [[ "$branch_url" == *-pooler.* ]]; then
           echo "Neon returned a pooled URL for migration validation." >&2
           exit 1

@@ -45,12 +45,13 @@ runs:
             --strict --tag "$GITHUB_SHA" --message "First deploy $GITHUB_SHA" --secrets-file "$secrets_file" >"$command_log" 2>&1 || {
               echo "First Webhooks deployment failed; no prior version exists." >&2; exit 1;
             }
-          for attempt in $(seq 1 8); do
-            status="$(printf 'header = "X-Hub-Signature-256: %s"\n' "$signature" | curl --config - --silent --output /dev/null --write-out '%{http_code}' --request POST --header "Content-Type: application/json" --data-binary "$payload" "$base_url" || true)"
-            [[ "$status" == 200 ]] && exit 0
+          last_status=000
+          for attempt in $(seq 1 40); do
+            last_status="$(printf 'header = "X-Hub-Signature-256: %s"\n' "$signature" | curl --config - --silent --output /dev/null --write-out '%{http_code}' --request POST --header "Content-Type: application/json" --data-binary "$payload" "$base_url" || true)"
+            [[ "$last_status" == 200 ]] && exit 0
             sleep 15
           done
-          echo "First Webhooks deployment failed smoke verification; no prior version exists." >&2
+          echo "First Webhooks deployment failed smoke verification with HTTP $last_status after 10 minutes; no prior version exists." >&2
           exit 1
         fi
         pnpm exec wrangler versions upload --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
@@ -59,9 +60,9 @@ runs:
           }
         pnpm exec wrangler versions list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json >"$versions_file" 2>/dev/null
         candidate_version="$(node - "$versions_file" "$GITHUB_SHA" <<'NODE'
-        const { readFileSync } = require("node:fs"); const value=JSON.parse(readFileSync(process.argv[2],"utf8")); const list=Array.isArray(value)?value:value.versions??value.result??[]; const found=list.find(v=>(v.tag??v.annotations?.tag)===process.argv[3]); if(!found)process.exit(1); process.stdout.write(found.id??found.version_id);
+        const { readFileSync } = require("node:fs"); const value=JSON.parse(readFileSync(process.argv[2],"utf8")); const list=Array.isArray(value)?value:value.versions??value.result??[]; const found=list.find(v=>(v.tag??v.annotations?.["workers/tag"])===process.argv[3]); if(!found)process.exit(1); process.stdout.write(found.id??found.version_id);
         NODE
-        )"
+        )" || { echo "Webhooks candidate version could not be resolved after upload." >&2; exit 1; }
         probe() {
           local override="${1:-}"
           local headers=(--header "Content-Type: application/json")
