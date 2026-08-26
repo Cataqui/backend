@@ -1,0 +1,63 @@
+name: Authenticate Google Cloud
+description: Authenticate the current job to Google Cloud through GitHub OIDC and service-account impersonation.
+
+inputs:
+  environment:
+    description: Cataquí infrastructure environment to authenticate as.
+    required: true
+  workload-identity-provider:
+    description: Fully qualified Google Workload Identity Provider resource name.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve Google service account
+      id: google-service-account
+      shell: bash
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        case "$INPUT_ENVIRONMENT" in
+          staging|production) ;;
+          *)
+            echo "Unsupported environment: $INPUT_ENVIRONMENT" >&2
+            exit 1
+            ;;
+        esac
+
+        manifest_file="$GITHUB_ACTION_PATH/../../../infrastructure/manifest.json"
+        project_id="$(jq -er --arg key "cataqui_$INPUT_ENVIRONMENT" '.google_cloud.projects[$key].id' "$manifest_file")"
+        service_account_id="$(jq -er --arg key "cataqui_backend_$INPUT_ENVIRONMENT" '.google_cloud.github_auth.service_accounts[$key]' "$manifest_file")"
+        printf 'email=%s@%s.iam.gserviceaccount.com\n' "$service_account_id" "$project_id" >> "$GITHUB_OUTPUT"
+
+    - name: Authenticate to Google Cloud
+      id: google-auth
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ steps.google-service-account.outputs.email }}
+        audience: https://github.com/Cataqui
+        token_format: access_token
+        access_token_lifetime: 3600s
+        create_credentials_file: true
+        export_environment_variables: true
+        cleanup_credentials: true
+
+    - name: Export OpenTofu Google access token
+      shell: bash
+      env:
+        GOOGLE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+      run: |
+        set -euo pipefail
+        if [[ -z "$GOOGLE_ACCESS_TOKEN" ]]; then
+          echo "Google Cloud authentication did not return an access token." >&2
+          exit 1
+        fi
+        if [[ "$GOOGLE_ACCESS_TOKEN" == *$'\n'* || "$GOOGLE_ACCESS_TOKEN" == *$'\r'* ]]; then
+          echo "Google Cloud authentication returned an invalid access token." >&2
+          exit 1
+        fi
+        printf '::add-mask::%s\n' "$GOOGLE_ACCESS_TOKEN"
+        printf 'GOOGLE_OAUTH_ACCESS_TOKEN=%s\n' "$GOOGLE_ACCESS_TOKEN" >> "$GITHUB_ENV"

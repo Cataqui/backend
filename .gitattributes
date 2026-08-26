@@ -1,0 +1,2 @@
+# Registry-installed skills are tracked byte-for-byte so a pinned restore is drift-free.
+.agents/skills/** -whitespace

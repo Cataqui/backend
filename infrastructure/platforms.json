@@ -1,0 +1,26 @@
+{
+	"cloudflare": {
+		"account_id": "1fca946385505503c59dd6a2a4eeb442",
+		"zones": {
+			"cataqui.com": {
+				"zone_id": "0c75bfd5c20cdbb338d44e62bcde8acc"
+			}
+		}
+	},
+	"google_cloud": {
+		"organization_id": "945579294313",
+		"billing_account_id": "01A827-CA7CE9-646496"
+	},
+	"infisical": {
+		"organization_id": "33687647-d8e9-44a7-9cb9-721bd5b28a45"
+	},
+	"github": {
+		"repository": "Cataqui/backend"
+	},
+	"neon": {
+		"organization_id": "org-wandering-pond-46567045"
+	},
+	"upstash": {
+		"account_email": "ryan@ventairy.com"
+	}
+}

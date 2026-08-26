@@ -1,0 +1,90 @@
+name: Deploy Geosearch Worker safely
+description: Upload, smoke-test, gradually promote, and automatically restore the previous Geosearch version.
+
+inputs:
+  environment:
+    description: Deployment environment; staging or production.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy Geosearch version
+      shell: bash
+      working-directory: ${{ github.workspace }}/apps/workers/geosearch
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        case "$INPUT_ENVIRONMENT" in staging | production) ;; *) exit 1 ;; esac
+        umask 077
+        secrets_file="$RUNNER_TEMP/geosearch-secrets.json"
+        versions_file="$RUNNER_TEMP/geosearch-versions.json"
+        deployments_file="$RUNNER_TEMP/geosearch-deployments.json"
+        command_log="$RUNNER_TEMP/geosearch-deploy.log"
+        cleanup() { rm -f -- "$secrets_file" "$versions_file" "$deployments_file" "$command_log"; }
+        trap cleanup EXIT
+        node - "$secrets_file" <<'NODE'
+        const { writeFileSync } = require("node:fs");
+        if (!process.env.GOOGLE_PLACES_API_KEY) process.exit(1);
+        writeFileSync(process.argv[2], JSON.stringify({ GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY }), { mode: 0o600 });
+        NODE
+        worker_name="cataqui-geosearch-$INPUT_ENVIRONMENT"
+        base_url="https://geosearch.cataqui.com"
+        [[ "$INPUT_ENVIRONMENT" == staging ]] && base_url="https://staging.geosearch.cataqui.com"
+        pnpm exec wrangler deployments list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json >"$deployments_file" 2>/dev/null || true
+        previous_version="$(node - "$deployments_file" <<'NODE'
+        const { readFileSync } = require("node:fs"); try { const value=JSON.parse(readFileSync(process.argv[2],"utf8")); const list=Array.isArray(value)?value:value.deployments??value.result??[]; const versions=list[0]?.versions??[]; const stable=versions.find(v=>Number(v.percentage??v.traffic??100)===100)??versions[0]; process.stdout.write(stable?.version_id??stable?.id??""); } catch {}
+        NODE
+        )"
+        if [[ -z "$previous_version" ]]; then
+          pnpm exec wrangler deploy --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
+            --strict --tag "$GITHUB_SHA" --message "First deploy $GITHUB_SHA" --secrets-file "$secrets_file" >"$command_log" 2>&1 || {
+              echo "First Geosearch deployment failed; no prior version exists." >&2; exit 1;
+            }
+          for attempt in $(seq 1 8); do
+            [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)" == 204 ]] && exit 0
+            sleep 15
+          done
+          echo "First Geosearch deployment failed health verification; no prior version exists." >&2
+          exit 1
+        fi
+        pnpm exec wrangler versions upload --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
+          --strict --tag "$GITHUB_SHA" --message "Deploy $GITHUB_SHA" --secrets-file "$secrets_file" >"$command_log" 2>&1 || {
+            echo "Geosearch version upload failed; raw output is withheld." >&2; exit 1;
+          }
+        pnpm exec wrangler versions list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json >"$versions_file" 2>/dev/null
+        candidate_version="$(node - "$versions_file" "$GITHUB_SHA" <<'NODE'
+        const { readFileSync } = require("node:fs"); const value=JSON.parse(readFileSync(process.argv[2],"utf8")); const list=Array.isArray(value)?value:value.versions??value.result??[]; const found=list.find(v=>(v.tag??v.annotations?.tag)===process.argv[3]); if(!found)process.exit(1); process.stdout.write(found.id??found.version_id);
+        NODE
+        )"
+        probe() {
+          local override="${1:-}"
+          local status
+          if [[ -n "$override" ]]; then
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' --header "Cloudflare-Workers-Version-Overrides: $worker_name=\"$override\"" "$base_url/v1/health" || true)"
+          else
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)"
+          fi
+          [[ "$status" == 204 ]]
+        }
+        restore() {
+          if [[ -z "$previous_version" ]]; then echo "First Geosearch deployment failed; no prior version exists." >&2; return 1; fi
+          pnpm exec wrangler versions deploy "$previous_version@100%" --config wrangler.jsonc \
+            --env "$INPUT_ENVIRONMENT" --message "Automatic rollback after failed $GITHUB_SHA" --yes >"$command_log" 2>&1
+        }
+        pnpm exec wrangler versions deploy "$previous_version@100%" "$candidate_version@0%" \
+          --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --yes >"$command_log" 2>&1
+        for attempt in $(seq 1 8); do probe "$candidate_version" && break; [[ "$attempt" == 8 ]] && { restore || true; exit 1; }; sleep 15; done
+        hold_attempts=4
+        [[ "$INPUT_ENVIRONMENT" == production ]] && hold_attempts=20
+        for percentage in 10 50 100; do
+          if [[ "$percentage" == 100 ]]; then specs=("$candidate_version@100%"); else specs=("$previous_version@$((100-percentage))%" "$candidate_version@$percentage%"); fi
+          pnpm exec wrangler versions deploy "${specs[@]}" --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --yes >"$command_log" 2>&1
+          failures=0
+          for attempt in $(seq 1 "$hold_attempts"); do
+            if probe; then failures=0; else failures=$((failures+1)); fi
+            if [[ "$failures" -ge 2 ]]; then echo "Geosearch failed two consecutive rollout probes." >&2; restore || true; exit 1; fi
+            sleep 15
+          done
+        done

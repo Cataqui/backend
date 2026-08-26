@@ -1,84 +1,152 @@
 {
-	"application-deploy": {
-		"credentials": ["CLOUDFLARE_DEPLOYMENT_API_TOKEN"],
-		"secretPath": "/deploy"
+	"opentofu-bootstrap": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": [
+			"R2_STATE_ACCESS_KEY_ID",
+			"R2_STATE_SECRET_ACCESS_KEY",
+			"CLOUDFLARE_API_TOKEN"
+		],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"neon-projects": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": [
+			"R2_STATE_ACCESS_KEY_ID",
+			"R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_ACCOUNT_API_KEY"
+		],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_API_KEY": "NEON_ACCOUNT_API_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"neon-api-keys": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": [
+			"R2_STATE_ACCESS_KEY_ID",
+			"R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_ACCOUNT_API_KEY"
+		],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY",
+			"NEON_API_KEY": "NEON_ACCOUNT_API_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"neon-project-context": {
+		"secret_path": "/generated/api/deployment",
+		"required_secrets": ["NEON_PROJECT_ID"],
+		"environment_aliases": {
+			"TF_VAR_neon_project_id": "NEON_PROJECT_ID"
+		},
+		"authenticate_infisical_provider": false
+	},
+	"neon-database-access": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": ["R2_STATE_ACCESS_KEY_ID", "R2_STATE_SECRET_ACCESS_KEY"],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"auth-secrets": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": ["R2_STATE_ACCESS_KEY_ID", "R2_STATE_SECRET_ACCESS_KEY"],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"upstash-redis": {
+		"secret_path": "/opentofu/bootstrap",
+		"required_secrets": ["R2_STATE_ACCESS_KEY_ID", "R2_STATE_SECRET_ACCESS_KEY", "UPSTASH_API_KEY"],
+		"environment_aliases": {
+			"AWS_ACCESS_KEY_ID": "R2_STATE_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY": "R2_STATE_SECRET_ACCESS_KEY"
+		},
+		"authenticate_infisical_provider": true
+	},
+	"cloudflare-ai-gateways": {
+		"secret_path": "/generated/opentofu/cloudflare-ai-gateways",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"cloudflare-queues": {
+		"secret_path": "/generated/opentofu/cloudflare-queues",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"cloudflare-zone-configuration": {
+		"secret_path": "/generated/opentofu/cloudflare-zone-configuration",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"cloudflare-zone-dns": {
+		"secret_path": "/generated/opentofu/cloudflare-zone-dns",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	},
 	"api-runtime": {
-		"credentials": [
-			"AI_GATEWAY_API_TOKEN",
-			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-			"CLOUDFLARE_ACCOUNT_ID",
+		"secret_path": "/generated/api/runtime",
+		"required_secrets": [
 			"DATABASE_APP_POOLER_URL",
+			"AI_GATEWAY_API_TOKEN",
+			"UPSTASH_REDIS_REST_URL",
 			"UPSTASH_REDIS_REST_TOKEN",
-			"UPSTASH_REDIS_REST_URL"
+			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
 		],
-		"secretPath": "/runtime"
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"api-deployment": {
+		"secret_path": "/generated/api/deployment",
+		"required_secrets": [
+			"CLOUDFLARE_API_TOKEN",
+			"DATABASE_OWNER_DIRECT_URL",
+			"NEON_PROJECT_ID",
+			"NEON_PROJECT_API_KEY"
+		],
+		"environment_aliases": {
+			"NEON_API_KEY": "NEON_PROJECT_API_KEY"
+		},
+		"authenticate_infisical_provider": false
+	},
+	"geosearch-runtime": {
+		"secret_path": "/generated/geosearch/runtime",
+		"required_secrets": ["GOOGLE_PLACES_API_KEY"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"geosearch-deployment": {
+		"secret_path": "/generated/geosearch/deployment",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	},
 	"webhooks-runtime": {
-		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
-			"META_APP_SECRET",
-			"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"
-		],
-		"secretPath": "/runtime"
+		"secret_path": "/generated/webhooks/runtime",
+		"required_secrets": ["WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN", "META_APP_SECRET"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	},
-	"cloudflare-terraform-apply": {
-		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
-			"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
-			"CLOUDFLARE_TERRAFORM_WRITE_API_TOKEN",
-			"HCP_TERRAFORM_ORGANIZATION",
-			"TERRAFORM_API_TOKEN"
-		],
-		"secretPath": "/terraform/cloudflare/apply"
-	},
-	"cloudflare-terraform-drift": {
-		"credentials": [
-			"CLOUDFLARE_ACCOUNT_ID",
-			"CLOUDFLARE_TERRAFORM_READ_API_TOKEN",
-			"HCP_TERRAFORM_ORGANIZATION",
-			"TERRAFORM_API_TOKEN"
-		],
-		"secretPath": "/terraform/cloudflare/drift"
-	},
-	"database-migration": {
-		"credentials": ["DATABASE_OWNER_DIRECT_URL", "NEON_API_KEY", "NEON_PROJECT_ID"],
-		"secretPath": "/database"
-	},
-	"neon-terraform-apply": {
-		"credentials": [
-			"HCP_TERRAFORM_ORGANIZATION",
-			"NEON_API_KEY",
-			"NEON_ORGANIZATION_ID",
-			"TERRAFORM_API_TOKEN"
-		],
-		"secretPath": "/terraform/neon/apply"
-	},
-	"neon-terraform-drift": {
-		"credentials": [
-			"HCP_TERRAFORM_ORGANIZATION",
-			"NEON_API_KEY",
-			"NEON_ORGANIZATION_ID",
-			"TERRAFORM_API_TOKEN"
-		],
-		"secretPath": "/terraform/neon/drift"
-	},
-	"upstash-terraform-apply": {
-		"credentials": [
-			"HCP_TERRAFORM_ORGANIZATION",
-			"TERRAFORM_API_TOKEN",
-			"UPSTASH_TERRAFORM_API_KEY",
-			"UPSTASH_TERRAFORM_EMAIL"
-		],
-		"secretPath": "/terraform/upstash/apply"
-	},
-	"upstash-terraform-drift": {
-		"credentials": [
-			"HCP_TERRAFORM_ORGANIZATION",
-			"TERRAFORM_API_TOKEN",
-			"UPSTASH_TERRAFORM_API_KEY",
-			"UPSTASH_TERRAFORM_EMAIL"
-		],
-		"secretPath": "/terraform/upstash/drift"
+	"webhooks-deployment": {
+		"secret_path": "/generated/webhooks/deployment",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	}
 }

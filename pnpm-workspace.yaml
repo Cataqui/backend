@@ -1,3 +1,17 @@
+packages:
+  - 'apps/api'
+  - 'apps/workers/*'
+  - 'packages/*'
+injectWorkspacePackages: true
+catalog:
+  '@cloudflare/workers-types': ^5.20260822.1
+  '@vitest/coverage-v8': ^4.1.10
+  fast-check: ^4.9.0
+  hono: ^4.13.1
+  typescript: ^6.0.3
+  vitest: ^4.1.10
+  wrangler: ^4.119.0
+  zod: ^4.4.3
 allowBuilds:
   "@nestjs/core": false
   "@prisma/engines": true
@@ -6,6 +20,9 @@ allowBuilds:
   prisma: true
   sharp: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260822.1'
+  - neon@4.4.0
 # Nest 12 alpha and AI SDK ranges still resolve vulnerable transitive versions.
 # Keep these centralized pins until their upstream dependency ranges include the patched releases.
 overrides:

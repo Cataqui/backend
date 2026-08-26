@@ -1,4 +1,5 @@
 node_modules/
+gha-creds-*.json
 dist/
 .env
 .infisical-secrets
@@ -19,12 +20,15 @@ bun.lockb
 # Cloudflare Workers
 .wrangler/
 
-# Terraform
+# OpenTofu and Terraform-compatible artifacts
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
 tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
 crash.log
 crash.*.log
 override.tf

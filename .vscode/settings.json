@@ -7,6 +7,13 @@
 	},
 	"typescript.enablePromptUseWorkspaceTsdk": true,
 	"typescript.tsdk": "node_modules/typescript/lib",
+	"opentofu.experimentalFeatures.validateOnSave": true,
+	"opentofu.validation.enableEnhancedValidation": false,
+	"[opentofu][opentofu-vars]": {
+		"editor.defaultFormatter": "opentofu.vscode-opentofu",
+		"editor.formatOnSave": true,
+		"editor.formatOnSaveMode": "file"
+	},
 	"[prisma]": {
 		"editor.defaultFormatter": "Prisma.prisma"
 	}

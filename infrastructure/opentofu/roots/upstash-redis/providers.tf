@@ -1,0 +1,3 @@
+provider "infisical" {}
+
+provider "upstash" {}

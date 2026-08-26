@@ -1,0 +1,76 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+	"enabledManagers": ["npm", "github-actions", "terraform"],
+	"timezone": "America/Sao_Paulo",
+	"schedule": ["after 9am and before 12pm on monday"],
+	"prConcurrentLimit": 5,
+	"branchConcurrentLimit": 5,
+	"dependencyDashboard": true,
+	"automerge": false,
+	"semanticCommits": "enabled",
+	"semanticCommitType": "chore",
+	"semanticCommitScope": "deps",
+	"packageRules": [
+		{
+			"description": "Wait three days before proposing non-security npm releases",
+			"matchDatasources": ["npm"],
+			"minimumReleaseAge": "3 days",
+			"internalChecksFilter": "strict",
+			"prCreation": "not-pending"
+		},
+		{
+			"description": "Group non-major NestJS updates",
+			"matchPackageNames": ["/^@nestjs\\//"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "NestJS"
+		},
+		{
+			"description": "Group non-major Prisma updates",
+			"matchPackageNames": ["prisma", "/^@prisma\\//"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "Prisma"
+		},
+		{
+			"description": "Group non-major Vitest updates",
+			"matchPackageNames": ["vitest", "/^@vitest\\//"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "Vitest"
+		},
+		{
+			"description": "Group non-major Cloudflare updates",
+			"matchPackageNames": ["cloudflare", "wrangler", "/^@cloudflare\\//"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "Cloudflare"
+		},
+		{
+			"description": "Group non-major GitHub Actions updates",
+			"matchManagers": ["github-actions"],
+			"matchUpdateTypes": ["digest", "minor", "patch"],
+			"groupName": "GitHub Actions"
+		},
+		{
+			"description": "Resolve providers and modules through the OpenTofu registry",
+			"matchDatasources": ["terraform-provider", "terraform-module"],
+			"registryUrls": ["https://registry.opentofu.org"]
+		},
+		{
+			"description": "Keep OpenTofu CLI constraints owned by the checksum-verified setup action",
+			"matchManagers": ["terraform"],
+			"matchDepTypes": ["required_version"],
+			"enabled": false
+		},
+		{
+			"description": "Group non-major OpenTofu provider updates",
+			"matchDatasources": ["terraform-provider"],
+			"matchUpdateTypes": ["minor", "patch"],
+			"groupName": "OpenTofu providers"
+		}
+	],
+	"vulnerabilityAlerts": {
+		"enabled": true,
+		"labels": ["security"],
+		"minimumReleaseAge": null,
+		"prCreation": "immediate"
+	}
+}

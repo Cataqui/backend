@@ -1,0 +1,227 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
+	"name": "cataqui-api-development",
+	"main": "./src/platform/cloudflare/workers/api/worker.ts",
+	"tsconfig": "./src/platform/cloudflare/tsconfig.json",
+	"compatibility_date": "2025-12-18",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"cache": {
+		"enabled": false,
+		"cross_version_cache": false
+	},
+	"exports": {
+		"MicroservicesAuthJwksEntrypoint": {
+			"type": "worker",
+			"cache": { "enabled": true }
+		}
+	},
+	"containers": [
+		{
+			"class_name": "ApiContainer",
+			"image": "./Dockerfile",
+			"image_build_context": "../..",
+			"max_instances": 10,
+			"instance_type": "basic",
+			"constraints": { "regions": ["SAM"] }
+		}
+	],
+
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "API_CONTAINER",
+				"class_name": "ApiContainer"
+			}
+		]
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "DERIVE_JOB_DATA_QUEUE",
+				"queue": "cataqui-api-derive-job-data-development"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "cataqui-api-derive-job-data-development",
+				"max_batch_size": 1,
+				"max_batch_timeout": 1,
+				"max_concurrency": 3,
+				"max_retries": 3,
+				"retry_delay": 60,
+				"dead_letter_queue": "cataqui-api-derive-job-data-development-dlq"
+			}
+		]
+	},
+
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["ApiContainer"]
+		}
+	],
+
+	"vars": {
+		"NODE_ENV": "development",
+		"SLEEP_AFTER": "5m",
+		"CORS_ORIGINS": "http://localhost:3000",
+		"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-development",
+		"API_CONTAINER_POOL_SIZE": "1",
+		"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+	},
+	"secrets": {
+		"required": [
+			"CLOUDFLARE_ACCOUNT_ID",
+			"DATABASE_APP_POOLER_URL",
+			"AI_GATEWAY_API_TOKEN",
+			"UPSTASH_REDIS_REST_URL",
+			"UPSTASH_REDIS_REST_TOKEN",
+			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+		]
+	},
+
+	"observability": {
+		"enabled": true,
+		"logs": { "enabled": true, "head_sampling_rate": 1 }
+	},
+
+	"env": {
+		"staging": {
+			"name": "cataqui-api-staging",
+			"workers_dev": false,
+			"containers": [
+				{
+					"class_name": "ApiContainer",
+					"image": "./Dockerfile",
+					"image_build_context": "../..",
+					"max_instances": 3,
+					"instance_type": "basic",
+					"constraints": { "regions": ["SAM"] },
+					"rollout_active_grace_period": 60,
+					"rollout_step_percentage": [10, 50, 100]
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "API_CONTAINER",
+						"class_name": "ApiContainer"
+					}
+				]
+			},
+			"queues": {
+				"producers": [
+					{
+						"binding": "DERIVE_JOB_DATA_QUEUE",
+						"queue": "cataqui-api-derive-job-data-staging"
+					}
+				],
+				"consumers": [
+					{
+						"queue": "cataqui-api-derive-job-data-staging",
+						"max_batch_size": 1,
+						"max_batch_timeout": 1,
+						"max_concurrency": 1,
+						"max_retries": 3,
+						"retry_delay": 60,
+						"dead_letter_queue": "cataqui-api-derive-job-data-staging-dlq"
+					}
+				]
+			},
+			"routes": [{ "pattern": "staging.api.cataqui.com", "custom_domain": true }],
+			"vars": {
+				"NODE_ENV": "staging",
+				"SLEEP_AFTER": "5m",
+				"CORS_ORIGINS": "https://staging.cataqui.com",
+				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-staging",
+				"API_CONTAINER_POOL_SIZE": "3",
+				"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+			},
+			"secrets": {
+				"required": [
+					"CLOUDFLARE_ACCOUNT_ID",
+					"DATABASE_APP_POOLER_URL",
+					"AI_GATEWAY_API_TOKEN",
+					"UPSTASH_REDIS_REST_URL",
+					"UPSTASH_REDIS_REST_TOKEN",
+					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+				]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": { "enabled": true, "head_sampling_rate": 1 }
+			}
+		},
+		"production": {
+			"name": "cataqui-api-production",
+			"workers_dev": false,
+			"containers": [
+				{
+					"class_name": "ApiContainer",
+					"image": "./Dockerfile",
+					"image_build_context": "../..",
+					"max_instances": 10,
+					"instance_type": "standard-1",
+					"constraints": { "regions": ["SAM"] },
+					"rollout_active_grace_period": 300,
+					"rollout_step_percentage": [10, 25, 50, 100]
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "API_CONTAINER",
+						"class_name": "ApiContainer"
+					}
+				]
+			},
+			"queues": {
+				"producers": [
+					{
+						"binding": "DERIVE_JOB_DATA_QUEUE",
+						"queue": "cataqui-api-derive-job-data-production"
+					}
+				],
+				"consumers": [
+					{
+						"queue": "cataqui-api-derive-job-data-production",
+						"max_batch_size": 1,
+						"max_batch_timeout": 1,
+						"max_concurrency": 3,
+						"max_retries": 3,
+						"retry_delay": 60,
+						"dead_letter_queue": "cataqui-api-derive-job-data-production-dlq"
+					}
+				]
+			},
+			"routes": [{ "pattern": "api.cataqui.com", "custom_domain": true }],
+			"vars": {
+				"NODE_ENV": "production",
+				"SLEEP_AFTER": "1h",
+				"CORS_ORIGINS": "https://cataqui.com",
+				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-production",
+				"API_CONTAINER_POOL_SIZE": "10",
+				"WHATSAPP_NOTP_RECEIVER": "+5511963270517"
+			},
+			"secrets": {
+				"required": [
+					"CLOUDFLARE_ACCOUNT_ID",
+					"DATABASE_APP_POOLER_URL",
+					"AI_GATEWAY_API_TOKEN",
+					"UPSTASH_REDIS_REST_URL",
+					"UPSTASH_REDIS_REST_TOKEN",
+					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+				]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false }
+			}
+		}
+	}
+}

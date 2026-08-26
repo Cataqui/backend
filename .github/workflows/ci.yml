@@ -3,34 +3,12 @@ name: CI
 on:
   push:
     branches: [staging, main]
-    paths:
-      - 'src/**'
-      - 'prisma/**'
-      - 'infra/**'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'nest-cli.json'
-      - 'tsconfig.json'
-      - 'test/**'
-      - '.github/actions/**'
-      - '.github/workflows/**'
+    paths-ignore:
+      - '**/*.md'
   pull_request:
     branches: [staging, main]
-    paths:
-      - 'src/**'
-      - 'prisma/**'
-      - 'infra/**'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'nest-cli.json'
-      - 'tsconfig.json'
-      - 'test/**'
-      - '.github/actions/**'
-      - '.github/workflows/**'
+    paths-ignore:
+      - '**/*.md'
 
 permissions:
   contents: read
@@ -40,40 +18,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Quality Checks
+  validate:
+    name: Validate applications and packages
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
 
-      - name: Generate Prisma client
-        run: pnpm prisma:generate
-        env:
-          DATABASE_OWNER_DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Lint
+      - name: Check formatting and linting
         run: pnpm lint:check
 
-      - name: Typecheck
+      - name: Validate OpenTofu roots
+        run: pnpm check:opentofu
+
+      - name: Type-check every workspace
         run: pnpm typecheck
 
-      - name: Test with coverage
+      - name: Run coverage gates
         run: pnpm test:cov
-        env:
-          CORS_ORIGINS: http://localhost:3000
 
-      - name: Build
+      - name: Build applications and packages
         run: pnpm build
+
+  deploy:
+    name: Deploy validated commit
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    needs: validate
+    permissions:
+      contents: read
+      deployments: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      scope: automatic

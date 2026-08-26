@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"declaration": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"incremental": true,
+		"lib": ["ES2023"],
+		"outDir": "./dist",
+		"removeComments": true,
+		"sourceMap": true,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src/**/*", "test/**/*.ts"],
+	"exclude": ["node_modules", "dist", "src/platform/cloudflare"]
+}
