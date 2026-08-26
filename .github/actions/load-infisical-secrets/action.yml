@@ -49,7 +49,7 @@ runs:
           (($profile.required_secrets | unique | length) == ($profile.required_secrets | length)) and
           ($profile.environment_aliases | type == "object") and
           (all($profile.environment_aliases | to_entries[];
-            (.key | test("^[A-Z][A-Z0-9_]*$")) and
+            (.key | test("^[A-Za-z_][A-Za-z0-9_]*$")) and
             (.value | type == "string" and test("^[A-Z][A-Z0-9_]*$")))) and
           (all($profile.environment_aliases[]; . as $source | any($profile.required_secrets[]; . == $source))) and
           ($profile.authenticate_infisical_provider | type == "boolean")
