@@ -79,7 +79,7 @@ runs:
         if ! pnpm exec wrangler deploy --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
           --strict --containers-rollout gradual --tag "$GITHUB_SHA" --message "Deploy $GITHUB_SHA" \
           --secrets-file "$secrets_file" >"$deploy_log" 2>&1; then
-          echo "API deployment command failed; raw output is withheld." >&2
+          node "$GITHUB_WORKSPACE/.github/actions/summarize-wrangler-failure.mjs" "$deploy_log" API
           rollback || true
           exit 1
         fi
