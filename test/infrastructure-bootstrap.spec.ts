@@ -11,7 +11,7 @@ import {
 	classifyGoogleProjectDiscovery,
 	decideGoogleProject,
 } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
-import { parseGithubOidcSubjectPrefix } from "../infrastructure/bootstrap/github-bootstrap.mjs";
+import { parseGithubOidcSubjectPrefix } from "../infrastructure/bootstrap/github-reconciliation.mjs";
 import { decideMetaAppSecret, reconcileMetaAppSecretState } from "../infrastructure/bootstrap/meta-reconciliation.mjs";
 import {
 	assertInfisicalOrganizationScope,
@@ -69,6 +69,9 @@ describe("infrastructure bootstrap reconciliation", () => {
 				sub_claim_prefix: "repo:Foreign@288484515/backend@1252587238",
 			}),
 		).toThrow("invalid immutable OIDC subject prefix");
+		expect(() => parseGithubOidcSubjectPrefix("Cataqui/backend", undefined)).toThrow(
+			"invalid immutable OIDC subject prefix",
+		);
 	});
 
 	it("accepts the committed stable bootstrap contract", () => {

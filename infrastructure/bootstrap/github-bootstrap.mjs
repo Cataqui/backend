@@ -1,20 +1,10 @@
 import { runAsync } from "./bootstrap-runtime.mjs";
+import { parseGithubOidcSubjectPrefix } from "./github-reconciliation.mjs";
 
 async function _api(repository, path, { method = "GET", fields = [], allowFailure = false } = {}) {
 	const args = ["api", `repos/${repository}${path}`, "--method", method];
 	for (const [key, value] of fields) args.push("-F", `${key}=${value}`);
 	return runAsync("gh", args, { allowFailure });
-}
-
-export function parseGithubOidcSubjectPrefix(repository, payload) {
-	const [expectedOwner, expectedRepository] = repository.split("/");
-	const prefix = payload?.sub_claim_prefix;
-	const match =
-		typeof prefix === "string" ? /^repo:([^/@]+)@([1-9][0-9]*)\/([^/@]+)@([1-9][0-9]*)$/.exec(prefix) : undefined;
-	if (!match || match[1] !== expectedOwner || match[3] !== expectedRepository) {
-		throw new Error(`GitHub returned an invalid immutable OIDC subject prefix for ${repository}.`);
-	}
-	return prefix;
 }
 
 export async function getGithubOidcSubjectPrefix(repository) {
