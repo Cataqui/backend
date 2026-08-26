@@ -1,5 +1,4 @@
 export enum AddressCategory {
-	ADDRESS = "ADDRESS",
 	STREET = "STREET",
 	NEIGHBORHOOD = "NEIGHBORHOOD",
 	CITY = "CITY",

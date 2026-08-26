@@ -36,8 +36,11 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ category: AddressCategory.PLACE_OF_WORSHIP, placeType: "place_of_worship" },
 		{ category: AddressCategory.GOVERNMENT_OFFICE, placeType: "government_office" },
 		{ category: AddressCategory.HOTEL, placeType: "hotel" },
-		{ category: AddressCategory.ADDRESS, placeType: "street_address" },
 		{ category: AddressCategory.STREET, placeType: "route" },
+		{ category: AddressCategory.STREET, placeType: "street_address" },
+		{ category: AddressCategory.STREET, placeType: "premise" },
+		{ category: AddressCategory.STREET, placeType: "subpremise" },
+		{ category: AddressCategory.STREET, placeType: "street_number" },
 		{ category: AddressCategory.NEIGHBORHOOD, placeType: "neighborhood" },
 		{ category: AddressCategory.CITY, placeType: "locality" },
 	])("should normalize $placeType as $category", ({ category, placeType }) => {

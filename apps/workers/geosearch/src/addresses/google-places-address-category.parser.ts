@@ -68,10 +68,9 @@ const _categoryMappings: ReadonlyArray<{
 	},
 	{ category: AddressCategory.HOTEL, placeTypes: ["hotel", "extended_stay_hotel", "resort_hotel"] },
 	{
-		category: AddressCategory.ADDRESS,
-		placeTypes: ["street_address", "premise", "subpremise", "street_number"],
+		category: AddressCategory.STREET,
+		placeTypes: ["route", "street_address", "premise", "subpremise", "street_number"],
 	},
-	{ category: AddressCategory.STREET, placeTypes: ["route"] },
 	{ category: AddressCategory.NEIGHBORHOOD, placeTypes: ["neighborhood", "sublocality"] },
 	{ category: AddressCategory.CITY, placeTypes: ["locality"] },
 ];
