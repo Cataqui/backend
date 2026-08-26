@@ -102,6 +102,7 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(rootHcl).toContain('role               = "roles/iam.workloadIdentityUser"');
 		expect(rootHcl).toContain('role               = "roles/billing.user"');
 		expect(rootHcl).toContain('"cloudresourcemanager.googleapis.com"');
+		expect(rootHcl).toContain('"serviceusage.googleapis.com"');
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
 		expect(rootHcl).not.toMatch(/google_service_account_key|private_key|credentials\s*=/);
 	});

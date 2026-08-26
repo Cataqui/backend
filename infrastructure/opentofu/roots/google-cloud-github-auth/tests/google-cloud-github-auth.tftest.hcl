@@ -65,15 +65,18 @@ run "environment_api_prerequisites" {
 
   assert {
     condition = (
-      length(google_project_service.identity) == 6 &&
+      length(google_project_service.identity) == 8 &&
       alltrue([
         for environment in ["staging", "production"] :
         google_project_service.identity["${environment}:cloudresourcemanager.googleapis.com"].project == local.environments[environment].project_id &&
         google_project_service.identity["${environment}:cloudresourcemanager.googleapis.com"].service == "cloudresourcemanager.googleapis.com" &&
-        !google_project_service.identity["${environment}:cloudresourcemanager.googleapis.com"].disable_on_destroy
+        !google_project_service.identity["${environment}:cloudresourcemanager.googleapis.com"].disable_on_destroy &&
+        google_project_service.identity["${environment}:serviceusage.googleapis.com"].project == local.environments[environment].project_id &&
+        google_project_service.identity["${environment}:serviceusage.googleapis.com"].service == "serviceusage.googleapis.com" &&
+        !google_project_service.identity["${environment}:serviceusage.googleapis.com"].disable_on_destroy
       ])
     )
-    error_message = "Bootstrap must enable Cloud Resource Manager in both projects before CI uses them as quota projects."
+    error_message = "Bootstrap must enable Cloud Resource Manager and Service Usage in both projects before CI uses them as quota projects."
   }
 }
 

@@ -40,6 +40,7 @@ locals {
       for pair in setproduct(keys(local.environments), [
         "cloudresourcemanager.googleapis.com",
         "iam.googleapis.com",
+        "serviceusage.googleapis.com",
       ]) :
       "${pair[0]}:${pair[1]}" => {
         environment = pair[0]
