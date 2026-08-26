@@ -42,11 +42,13 @@ runs:
             --strict --tag "$GITHUB_SHA" --message "First deploy $GITHUB_SHA" --secrets-file "$secrets_file" >"$command_log" 2>&1 || {
               echo "First Geosearch deployment failed; no prior version exists." >&2; exit 1;
             }
-          for attempt in $(seq 1 8); do
-            [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)" == 204 ]] && exit 0
+          last_status=000
+          for attempt in $(seq 1 40); do
+            last_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)"
+            [[ "$last_status" == 204 ]] && exit 0
             sleep 15
           done
-          echo "First Geosearch deployment failed health verification; no prior version exists." >&2
+          echo "First Geosearch deployment failed health verification with HTTP $last_status after 10 minutes; no prior version exists." >&2
           exit 1
         fi
         pnpm exec wrangler versions upload --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
