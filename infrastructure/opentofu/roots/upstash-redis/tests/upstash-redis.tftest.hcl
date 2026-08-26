@@ -1,7 +1,7 @@
 mock_provider "upstash" {
   mock_resource "upstash_redis_database" {
     defaults = {
-      database_type = "paid"
+      database_type = "Pay as You Go"
       endpoint      = "cataqui-api.upstash.io"
       rest_token    = "mock-rest-token"
       state         = "active"

@@ -62,7 +62,7 @@ describe("Upstash Redis OpenTofu contract", () => {
 		expect(rootHcl).toMatch(/auto_scale\s*=\s*false/);
 		expect(rootHcl).toMatch(/prod_pack\s*=\s*false/);
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
-		expect(rootHcl).toMatch(/condition\s*=\s*self\.database_type == "paid"/);
+		expect(rootHcl).toMatch(/condition\s*=\s*self\.database_type == "Pay as You Go"/);
 		expect(rootHcl).not.toMatch(/ip_allowlist|\bmultizone\s*=|\bconsistent\s*=/);
 	});
 

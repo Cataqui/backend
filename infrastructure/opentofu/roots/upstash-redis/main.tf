@@ -14,7 +14,7 @@ resource "upstash_redis_database" "api" {
     prevent_destroy = true
 
     postcondition {
-      condition     = self.database_type == "paid"
+      condition     = self.database_type == "Pay as You Go"
       error_message = "The Upstash account must create a paid Redis database before runtime credentials can be published."
     }
   }
