@@ -1,4 +1,7 @@
-import { HttpException, HttpStatus } from "@nestjs/common";
+import { HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { ApiErrorOrigin } from "../../observability/api-error-origin.enum";
+import type { ObservabilityService } from "../../observability/observability.service";
+import { DomainError } from "../domain-error";
 import { ErrorCode } from "../error-code.enum";
 import { RequestValidationError } from "../request-validation.error";
 import { HttpExceptionFilter } from "./http-exception.filter";
@@ -19,18 +22,27 @@ function createMockHost(exception: unknown, requestId?: string) {
 			getRequest: () => request,
 		}),
 	};
+	const recordApiError = vi.fn();
 
-	const filter = new HttpExceptionFilter();
+	const filter = new HttpExceptionFilter({
+		observabilityService: { recordApiError: recordApiError } satisfies Pick<ObservabilityService, "recordApiError">,
+	});
 	filter.catch(exception, host as never);
 
-	return { statusMock, sendMock, response, request };
+	return {
+		statusMock: statusMock,
+		sendMock: sendMock,
+		response: response,
+		request: request,
+		recordApiError: recordApiError,
+	};
 }
 
 describe("HttpExceptionFilter", () => {
 	it("should handle DomainError subclass with camelCase and metadata", () => {
-		class TestNotFoundError extends HttpException {
+		class TestNotFoundError extends DomainError {
 			constructor(message: string) {
-				super({ errorCode: ErrorCode.NOT_FOUND, message }, HttpStatus.NOT_FOUND);
+				super(ErrorCode.NOT_FOUND, message, HttpStatus.NOT_FOUND);
 			}
 		}
 
@@ -187,12 +199,89 @@ describe("HttpExceptionFilter", () => {
 	});
 
 	it("should handle non-HttpException Error", () => {
-		const { sendMock, statusMock } = createMockHost(new Error("unexpected failure"));
+		const error = new Error("unexpected failure");
+		const { sendMock, statusMock, recordApiError } = createMockHost(error);
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: statusMock.mock.calls[0]?.[0],
+			body: sendMock.mock.calls[0]?.[0],
+			recordedApiError: recordApiError.mock.calls[0]?.[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
+			recordedApiError: {
+				errorCode: ErrorCode.INTERNAL_ERROR,
+				exception: error,
+				method: "GET",
+				origin: ApiErrorOrigin.SERVER,
+				route: "UNMATCHED",
+				statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+			},
 		});
+	});
+
+	it("should not expose an unowned server HttpException message to the client", () => {
+		const exception = new HttpException("Database password private-value", HttpStatus.SERVICE_UNAVAILABLE);
+
+		const { sendMock, statusMock } = createMockHost(exception);
+
+		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
+		});
+	});
+
+	it("should reject an unregistered error code from an unowned client HttpException", () => {
+		const exception = new HttpException(
+			{ errorCode: "PROVIDER_PRIVATE_CODE", message: "The request was invalid" },
+			HttpStatus.BAD_REQUEST,
+		);
+
+		const { sendMock } = createMockHost(exception);
+
+		expect(sendMock.mock.calls[0]?.[0]).toMatchObject({
+			errorCode: ErrorCode.INVALID_REQUEST,
+			message: "The request was invalid",
+		});
+	});
+
+	it("should log the complete server exception for local development", () => {
+		vi.stubEnv("NODE_ENV", "development");
+		const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+		const error = new Error("feed query failed", { cause: new Error("database connection was refused") });
+
+		createMockHost(error, "local-request-id");
+
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorCause: expect.stringContaining("database connection was refused"),
+				errorMessage: "feed query failed",
+				errorStack: expect.stringContaining("Error: feed query failed"),
+				event: "api.http.request.failed",
+				requestId: "local-request-id",
+			}),
+		);
+
+		loggerError.mockRestore();
+		vi.unstubAllEnvs();
+	});
+
+	it("should keep arbitrary server exception details out of non-development logs", () => {
+		vi.stubEnv("NODE_ENV", "staging");
+		const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		createMockHost(new Error("provider returned customer data"));
+
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.not.objectContaining({
+				errorCause: expect.anything(),
+				errorMessage: expect.anything(),
+				errorStack: expect.anything(),
+			}),
+		);
+
+		loggerError.mockRestore();
+		vi.unstubAllEnvs();
 	});
 
 	it("should handle unknown throwable (not an Error)", () => {

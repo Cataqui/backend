@@ -3,11 +3,20 @@ vi.mock("@cloudflare/containers", () => ({ Container: class {}, ContainerProxy: 
 import { ApiContainer } from "./api-container";
 
 describe("ApiContainer request boundary", () => {
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it("should forward only the explicitly allowed API process environment values", () => {
 		const container = new ApiContainer(
-			{} as never,
+			{ id: { toString: () => "container-instance-id" } } as never,
 			{
 				NODE_ENV: "development",
+				WORKER_VERSION_METADATA: {
+					id: "worker-version-id",
+					tag: "worker-version",
+					timestamp: "2026-08-27T12:00:00.000Z",
+				},
 				DATABASE_APP_POOLER_URL: "postgresql://pooler",
 				CORS_ORIGINS: "https://cataqui.com",
 				CLOUDFLARE_ACCOUNT_ID: "account-id",
@@ -18,6 +27,11 @@ describe("ApiContainer request boundary", () => {
 				AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 				MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 				WHATSAPP_NOTP_RECEIVER: "+5511963270517",
+				OBSERVABILITY_TRACE_SAMPLE_RATIO: "1",
+				OTEL_EXPORTER_OTLP_ENDPOINT: "https://cloudflare.integrations.otlp.datadoghq.com",
+				OTEL_EXPORTER_OTLP_HEADERS: "disabled",
+				OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "delta",
+				OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",
 				SLEEP_AFTER: "5m",
 				API_CONTAINER_POOL_SIZE: "10",
 				API_CONTAINER: {},
@@ -27,6 +41,8 @@ describe("ApiContainer request boundary", () => {
 
 		expect(container.envVars).toEqual({
 			NODE_ENV: "development",
+			SERVICE_INSTANCE_ID: "container-instance-id",
+			SERVICE_VERSION: "worker-version",
 			DATABASE_APP_POOLER_URL: "postgresql://pooler",
 			CORS_ORIGINS: "https://cataqui.com",
 			CLOUDFLARE_ACCOUNT_ID: "account-id",
@@ -37,14 +53,25 @@ describe("ApiContainer request boundary", () => {
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 			WHATSAPP_NOTP_RECEIVER: "+5511963270517",
+			OBSERVABILITY_TRACE_SAMPLE_RATIO: "1",
+			OTEL_EXPORTER_OTLP_ENDPOINT: "https://cloudflare.integrations.otlp.datadoghq.com",
+			OTEL_EXPORTER_OTLP_HEADERS: "disabled",
+			OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "delta",
+			OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",
 		});
 	});
 
 	it("should use process liveness for container startup checks", () => {
 		const container = new ApiContainer(
-			{} as never,
+			{ id: { toString: () => "container-instance-id" } } as never,
 			{
+				NODE_ENV: "development",
 				SLEEP_AFTER: "5m",
+				WORKER_VERSION_METADATA: {
+					id: "worker-version-id",
+					tag: "worker-version",
+					timestamp: "2026-08-27T12:00:00.000Z",
+				},
 			} as ApiWorkerEnv,
 		);
 
@@ -118,26 +145,101 @@ describe("ApiContainer request boundary", () => {
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 		const error = Object.assign(new Error("Application process exited"), { exitCode: 1 });
 
-		ApiContainer.prototype.onError.call({} as ApiContainer, error);
+		ApiContainer.prototype.onError.call(
+			{
+				_deploymentEnvironment: "staging",
+				_serviceVersion: "worker-version",
+				_workerServiceName: "cataqui-api-staging",
+			} as never,
+			error,
+		);
 
 		expect(consoleError).toHaveBeenCalledWith({
-			event: "api.container.start.failed",
+			env: "staging",
+			event: "api.container.runtime.failed",
 			errorName: "Error",
-			errorMessage: "Application process exited",
+			errorStackFrames: expect.stringContaining("api-container.spec.ts"),
 			exitCode: 1,
-			diagnosticEvent: "api.application.start.failed",
+			service: "cataqui-api-staging",
+			version: "worker-version",
+		});
+	});
+
+	it("should omit an exit code that the container runtime did not provide", () => {
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+		ApiContainer.prototype.onError.call(
+			{
+				_deploymentEnvironment: "production",
+				_serviceVersion: "worker-version",
+				_workerServiceName: "cataqui-api-production",
+			} as never,
+			new Error("Container runtime failed"),
+		);
+
+		expect(consoleError.mock.calls[0]?.[0]).not.toHaveProperty("exitCode");
+	});
+
+	it("should emit the searchable container startup lifecycle", () => {
+		const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+		ApiContainer.prototype.onStart.call({
+			_deploymentEnvironment: "staging",
+			_serviceVersion: "worker-version",
+			_workerServiceName: "cataqui-api-staging",
+			sleepAfter: "5m",
+		} as never);
+
+		expect(consoleLog).toHaveBeenCalledWith({
+			env: "staging",
+			event: "api.container.started",
+			service: "cataqui-api-staging",
+			sleepAfter: "5m",
+			version: "worker-version",
 		});
 	});
 
 	it("should emit the nonzero exit code when the API process stops unexpectedly", () => {
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-		ApiContainer.prototype.onStop.call({} as ApiContainer, { exitCode: 1, reason: "exit" });
+		ApiContainer.prototype.onStop.call(
+			{
+				_deploymentEnvironment: "staging",
+				_serviceVersion: "worker-version",
+				_workerServiceName: "cataqui-api-staging",
+			} as never,
+			{ exitCode: 1, reason: "exit" },
+		);
 
 		expect(consoleError).toHaveBeenCalledWith({
-			event: "api.container.stopped",
+			env: "staging",
+			event: "api.container.stopped.unexpected",
 			exitCode: 1,
 			reason: "exit",
+			service: "cataqui-api-staging",
+			version: "worker-version",
+		});
+	});
+
+	it("should emit a normal container stop at informational severity", () => {
+		const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+		ApiContainer.prototype.onStop.call(
+			{
+				_deploymentEnvironment: "staging",
+				_serviceVersion: "worker-version",
+				_workerServiceName: "cataqui-api-staging",
+			} as never,
+			{ exitCode: 0, reason: "exit" },
+		);
+
+		expect(consoleLog).toHaveBeenCalledWith({
+			env: "staging",
+			event: "api.container.stopped",
+			exitCode: 0,
+			reason: "exit",
+			service: "cataqui-api-staging",
+			version: "worker-version",
 		});
 	});
 });

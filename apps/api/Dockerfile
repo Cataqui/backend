@@ -18,6 +18,7 @@ COPY apps/workers/geosearch/package.json apps/workers/geosearch/package.json
 COPY apps/workers/webhooks/package.json apps/workers/webhooks/package.json
 COPY packages/api-internal-ingress/package.json packages/api-internal-ingress/package.json
 COPY packages/microservices-auth-contracts/package.json packages/microservices-auth-contracts/package.json
+COPY packages/observability-contracts/package.json packages/observability-contracts/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 	pnpm install --frozen-lockfile --ignore-scripts \
@@ -54,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 	CMD wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health/live || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "--enable-source-maps", "--import", "./register-opentelemetry-instrumentation.mjs", "dist/src/main.js"]

@@ -1,3 +1,4 @@
+import { getSourceSafeErrorTelemetryFields } from "@cataqui/observability-contracts";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { GeosearchErrorCode } from "./shared/geosearch-error-code.enum";
@@ -26,14 +27,7 @@ export function createGeosearchErrorResponseFromError(params: {
 		});
 	}
 
-	console.error({
-		event: "geosearch.request.failed",
-		method: params.context.req.method,
-		path: new URL(params.context.req.url).pathname,
-		requestId: params.context.get("requestId"),
-		responseStatus: 500,
-		errorName: params.error.name,
-	});
+	params.context.set("requestErrorTelemetry", getSourceSafeErrorTelemetryFields({ error: params.error }));
 
 	return createGeosearchErrorResponse(params.context, {
 		errorCode: GeosearchErrorCode.INTERNAL_ERROR,

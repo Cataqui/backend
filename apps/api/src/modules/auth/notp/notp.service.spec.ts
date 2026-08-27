@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
 import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
@@ -6,9 +7,12 @@ import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
 import { NotpChannel } from "./enums/notp-channel.enum";
 import { NotpIntentStatus } from "./enums/notp-intent-status.enum";
+import { NotpRecoveryOutcome } from "./enums/notp-recovery-outcome.enum";
+import { NotpVerificationOutcome } from "./enums/notp-verification-outcome.enum";
 import { NotpIntentCreationCollisionError } from "./errors/notp-intent-creation-collision.error";
 import { NotpIntentNotFoundError } from "./errors/notp-intent-not-found.error";
 import { notpConfig } from "./notp.config";
+import { NotpObservabilityConstants } from "./notp-observability.constants";
 import { NotpService } from "./notp.service";
 import { NotpRepository } from "./repositories/notp.repository";
 
@@ -66,6 +70,7 @@ describe("NotpService", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should create a code with the AUTH prefix and ten uppercase alphanumeric characters", async () => {
@@ -386,6 +391,24 @@ describe("NotpService", () => {
 		expect(identityRepository.saveVerifiedIdentityAndContact).not.toHaveBeenCalled();
 	});
 
+	it("should record a bounded no-match verification outcome", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(null);
+
+		await service.verifyNotp({
+			channel: NotpChannel.WHATSAPP,
+			providerMessageId: "wamid.message",
+			providerSubject: "+5511999999999",
+			contactIdentifier: "+5511999999999",
+			notpCodeHash: "a".repeat(64),
+		});
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.VERIFICATION_COMPLETED_EVENT,
+			outcome: NotpVerificationOutcome.NO_MATCH,
+		});
+	});
+
 	it("should derive the WhatsApp identity provider from the NOTP channel", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
@@ -485,6 +508,26 @@ describe("NotpService", () => {
 		});
 	});
 
+	it("should record a bounded verified outcome after the intent becomes exchangeable", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
+		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
+
+		await service.verifyNotp({
+			channel: NotpChannel.WHATSAPP,
+			providerMessageId: "wamid.message",
+			providerSubject: "+5511999999999",
+			contactIdentifier: "+5511999999999",
+			notpCodeHash: "a".repeat(64),
+		});
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.VERIFICATION_COMPLETED_EVENT,
+			outcome: NotpVerificationOutcome.VERIFIED,
+		});
+	});
+
 	it("should propagate failures that happen before an intent becomes processing", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockRejectedValue(new Error("redis unavailable"));
 
@@ -535,5 +578,35 @@ describe("NotpService", () => {
 				notpCodeHash: "a".repeat(64),
 			}),
 		).rejects.toThrow("NOTP intent processing ownership was lost");
+	});
+
+	it("should report uncertain processing state when verification recovery also fails", async () => {
+		const logError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+		vi.stubEnv("NODE_ENV", "production");
+		const verificationError = new Error("private database failure");
+		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
+		repository.markProcessingIntentAsPending.mockRejectedValue(new Error("private Redis recovery failure"));
+		identityRepository.saveVerifiedIdentityAndContact.mockRejectedValue(verificationError);
+
+		const error = await service
+			.verifyNotp({
+				channel: NotpChannel.WHATSAPP,
+				providerMessageId: "wamid.message",
+				providerSubject: "+5511999999999",
+				contactIdentifier: "+5511999999999",
+				notpCodeHash: "a".repeat(64),
+			})
+			.catch((caught: unknown) => caught);
+
+		expect({ error: error, log: logError.mock.calls[0]?.[0] }).toEqual({
+			error: verificationError,
+			log: expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("notp.service.spec.ts"),
+				event: NotpObservabilityConstants.VERIFICATION_RECOVERY_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.PROCESSING_STATE_UNCERTAIN,
+				reason: "Error",
+			}),
+		});
 	});
 });

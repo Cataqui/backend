@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import type { z } from "zod";
 import { configureApp } from "../src/core/app.factory";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
+import { ObservabilityModule } from "../src/core/observability/observability.module";
 import { RefreshTokenInputSchema } from "../src/modules/auth/schemas/refresh-token-input.schema";
 
 @Controller("content-type-test")
@@ -27,7 +28,10 @@ describe("API request content types (e2e)", () => {
 	let app: NestFastifyApplication;
 
 	beforeAll(async () => {
-		const module = await Test.createTestingModule({ controllers: [ContentTypeTestController] }).compile();
+		const module = await Test.createTestingModule({
+			controllers: [ContentTypeTestController],
+			imports: [ObservabilityModule],
+		}).compile();
 		app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 		await configureApp(app);
 		await app.init();

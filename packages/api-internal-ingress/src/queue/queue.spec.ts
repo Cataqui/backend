@@ -92,6 +92,25 @@ describe("routeQueueBatch", () => {
 		expect(message.retry).toHaveBeenCalledOnce();
 	});
 
+	it("should log an invalid Queue payload without exporting its message identifier", async () => {
+		const message = _buildQueueMessage({ body: { jobId: "not-a-uuid" } });
+
+		await routeQueueBatch({
+			batch: { queue: "cataqui-api-derive-job-data-development", messages: [message] } as never,
+			environment: "development",
+			deliver: vi.fn(),
+		});
+		const loggedFields = vi.mocked(console.error).mock.calls[0]?.[0];
+
+		expect({ loggedFields: loggedFields, leakedMessageId: JSON.stringify(loggedFields).includes(message.id) }).toEqual({
+			loggedFields: {
+				event: "queue.message.invalid",
+				queue: "cataqui-api-derive-job-data-development",
+			},
+			leakedMessageId: false,
+		});
+	});
+
 	it("should retry a message when the internal endpoint rejects delivery", async () => {
 		const message = _buildQueueMessage({ body: { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" } });
 
@@ -102,6 +121,26 @@ describe("routeQueueBatch", () => {
 		});
 
 		expect(message.retry).toHaveBeenCalledOnce();
+	});
+
+	it("should log a rejected Queue delivery without exporting its message identifier", async () => {
+		const message = _buildQueueMessage({ body: { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" } });
+
+		await routeQueueBatch({
+			batch: { queue: "cataqui-api-derive-job-data-development", messages: [message] } as never,
+			environment: "development",
+			deliver: vi.fn().mockResolvedValue(new Response(null, { status: 500 })),
+		});
+		const loggedFields = vi.mocked(console.error).mock.calls[0]?.[0];
+
+		expect({ loggedFields: loggedFields, leakedMessageId: JSON.stringify(loggedFields).includes(message.id) }).toEqual({
+			loggedFields: {
+				event: "queue.delivery.failed",
+				queue: "cataqui-api-derive-job-data-development",
+				responseStatus: 500,
+			},
+			leakedMessageId: false,
+		});
 	});
 
 	it("should retry a message when container transport fails", async () => {

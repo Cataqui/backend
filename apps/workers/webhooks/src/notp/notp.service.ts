@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { VerifyNotpInputSchema } from "@cataqui/api-internal-ingress";
+import type { NotpDeliveryTelemetry } from "./notp-delivery-telemetry";
 import { NotpRepository } from "./notp.repository";
 
 export class NotpService {
@@ -36,9 +37,15 @@ export class NotpService {
 	async verifyInputs(params: {
 		apiWorker: WebhooksWorkerEnv["API_WORKER"];
 		inputs: z.infer<typeof VerifyNotpInputSchema>[];
+		telemetry: NotpDeliveryTelemetry;
 	}): Promise<void> {
-		if (params.inputs.length === 0) return;
+		const [firstInput, ...remainingInputs] = params.inputs;
+		if (firstInput === undefined) return;
 
-		await this._repository.verifyMessages({ apiWorker: params.apiWorker, messages: params.inputs });
+		await this._repository.verifyMessages({
+			apiWorker: params.apiWorker,
+			messages: [firstInput, ...remainingInputs],
+			telemetry: params.telemetry,
+		});
 	}
 }

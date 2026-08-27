@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../../generated/prisma/client.js";
 import { type IDatabaseConfig, databaseConfig } from "../config/database.config";
+import { getDevelopmentErrorLogFields, getSafeErrorTelemetryFields } from "../observability/safe-error-telemetry";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -26,15 +28,25 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
 			// This pre-warms the Neon compute on container start, preventing cold-start penalties on the first request.
 			await this.$queryRaw`SELECT 1`;
-			this._logger.log("Database connected");
-		} catch (error) {
-			this._logger.warn("Database connection failed — app will run without DB");
-			this._logger.debug(`Connection error: ${(error as Error).message}`);
+			this._logger.log({
+				event: ObservabilityEventConstants.API_DATABASE_CONNECTION_ESTABLISHED_EVENT,
+				status: "READY",
+			});
+		} catch (error: unknown) {
+			this._logger.warn({
+				event: ObservabilityEventConstants.API_DATABASE_CONNECTION_FAILED_EVENT,
+				outcome: "DEGRADED",
+				...getSafeErrorTelemetryFields({ error: error }),
+				...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: error }) : {}),
+			});
 		}
 	}
 
 	async onModuleDestroy(): Promise<void> {
 		await this.$disconnect();
-		this._logger.log("Database disconnected");
+		this._logger.log({
+			event: ObservabilityEventConstants.API_DATABASE_CONNECTION_CLOSED_EVENT,
+			status: "STOPPED",
+		});
 	}
 }

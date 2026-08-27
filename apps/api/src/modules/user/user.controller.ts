@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Header, HttpCode, HttpStatus, Post, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
+import { ProductAnalyticsEvent } from "../../core/observability/product-analytics-event.decorator";
+import { ProductAnalyticsEventName } from "../../core/observability/product-analytics-event-name.enum";
 import { AccessTokenRequired } from "../auth/decorators/access-token-required.decorator";
 import { CurrentAuthSession } from "../auth/decorators/current-auth-session.decorator";
 import type { IAuthenticatedSession } from "../auth/interfaces/authenticated-session.interface";
@@ -21,6 +23,7 @@ export class UserController {
 	@Header("Cache-Control", "no-store")
 	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.SAVED_CONTACTS_READ_REQUEST_SUCCEEDED })
 	@ApiGetContactsDocs()
 	async getContacts(
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
@@ -33,6 +36,7 @@ export class UserController {
 	@Header("Cache-Control", "no-store")
 	@AccessTokenRequired()
 	@HttpCode(HttpStatus.CREATED)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.SAVED_CONTACT_CREATE_REQUEST_SUCCEEDED })
 	@ApiAddContactDocs()
 	async addContact(
 		@Body({ schema: ContactInputSchema }) contact: z.infer<typeof ContactInputSchema>,

@@ -18,15 +18,17 @@ allowBuilds:
   "@scarf/scarf": false
   esbuild: true
   prisma: true
+  protobufjs: false
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
   - '@cloudflare/workers-types@5.20260822.1'
   - neon@4.4.0
-# Nest 12 alpha and AI SDK ranges still resolve vulnerable transitive versions.
+# Nest 12 alpha, AI SDK, and Prisma ranges still resolve vulnerable transitive versions.
 # Keep these centralized pins until their upstream dependency ranges include the patched releases.
 overrides:
   brace-expansion: 5.0.9
+  deepmerge-ts: 8.0.0
   fast-uri: 3.1.5
   fastify: 5.11.2
   find-my-way: 9.7.0

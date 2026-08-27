@@ -26,10 +26,15 @@ function _requireExactKeys(value, expectedKeys, path) {
 }
 
 export function validatePlatforms(platforms) {
-	_requireExactKeys(platforms, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "platforms");
+	_requireExactKeys(
+		platforms,
+		["cloudflare", "datadog", "google_cloud", "infisical", "github", "neon", "upstash"],
+		"platforms",
+	);
 	_requireExactKeys(platforms.cloudflare, ["account_id", "zones"], "platforms.cloudflare");
 	_requireExactKeys(platforms.cloudflare.zones, ["cataqui.com"], "platforms.cloudflare.zones");
 	_requireExactKeys(platforms.cloudflare.zones["cataqui.com"], ["zone_id"], "platforms.cloudflare.zones.cataqui.com");
+	_requireExactKeys(platforms.datadog, ["api_url", "site"], "platforms.datadog");
 	_requireExactKeys(platforms.google_cloud, ["organization_id", "billing_account_id"], "platforms.google_cloud");
 	_requireExactKeys(platforms.infisical, ["organization_id"], "platforms.infisical");
 	_requireExactKeys(platforms.github, ["repository"], "platforms.github");
@@ -42,6 +47,8 @@ export function validatePlatforms(platforms) {
 		"cloudflare.zones.cataqui.com.zone_id",
 		/^[a-f0-9]{32}$/,
 	);
+	_requireString(platforms?.datadog?.api_url, "datadog.api_url", /^https:\/\/api\.datadoghq\.com$/);
+	_requireString(platforms?.datadog?.site, "datadog.site", /^datadoghq\.com$/);
 	_requireString(platforms?.google_cloud?.organization_id, "google_cloud.organization_id", /^\d+$/);
 	_requireString(
 		platforms?.google_cloud?.billing_account_id,

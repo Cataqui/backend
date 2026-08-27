@@ -64,10 +64,16 @@ function _buildPayload(params?: {
 
 function _buildEnv(deliverInbound: ReturnType<typeof vi.fn>): WebhooksWorkerEnv {
 	return {
+		NODE_ENV: "staging",
 		META_APP_SECRET: webhookSigningSecret,
 		WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN: "verify-token",
 		WHATSAPP_NOTP_PHONE_NUMBER_ID: "1234567890",
 		API_WORKER: { deliverInbound: deliverInbound },
+		WORKER_VERSION_METADATA: {
+			id: "webhooks-worker-version-id",
+			tag: "webhooks-worker-version",
+			timestamp: "2026-08-27T12:00:00.000Z",
+		},
 	} as never;
 }
 
@@ -102,6 +108,8 @@ describe("WhatsApp routes", () => {
 		isWebhookFromMetaMock.mockReset();
 		timingSafeEqualMock.mockReset();
 		vi.spyOn(console, "error").mockImplementation(() => undefined);
+		vi.spyOn(console, "log").mockImplementation(() => undefined);
+		vi.spyOn(console, "warn").mockImplementation(() => undefined);
 	});
 
 	it("should return Meta's challenge for a valid WhatsApp subscription request", async () => {
@@ -246,8 +254,10 @@ describe("WhatsApp routes", () => {
 			),
 		);
 
-		expect(new Set(responses.map((response) => response.status))).toEqual(new Set([200]));
-		expect(deliverInbound).toHaveBeenCalledTimes(300);
+		expect({
+			responseStatuses: new Set(responses.map((response) => response.status)),
+			verificationCallCount: deliverInbound.mock.calls.length,
+		}).toEqual({ responseStatuses: new Set([200]), verificationCallCount: 300 });
 	});
 
 	it("should ignore NOTP messages received by a different WhatsApp number", async () => {

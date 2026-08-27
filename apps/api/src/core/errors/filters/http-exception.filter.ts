@@ -1,14 +1,24 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { RequestUtils } from "../../../shared/utils/request.utils";
+import { ApiErrorOrigin } from "../../observability/api-error-origin.enum";
+import type { ObservabilityService } from "../../observability/observability.service";
+import { getDevelopmentErrorLogFields, getSafeErrorTelemetryFields } from "../../observability/safe-error-telemetry";
 import { ValidationViolationSchema } from "../../validation/validation-violation.schema";
+import { DomainError } from "../domain-error";
 import { ErrorCode } from "../error-code.enum";
 import { ErrorOutputSchema, toErrorOutput } from "../error-output";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
 	private readonly _logger = new Logger(HttpExceptionFilter.name);
+	private readonly _observabilityService: Pick<ObservabilityService, "recordApiError">;
+
+	constructor(params: { observabilityService: Pick<ObservabilityService, "recordApiError"> }) {
+		this._observabilityService = params.observabilityService;
+	}
 
 	catch(exception: unknown, host: ArgumentsHost): void {
 		const ctx = host.switchToHttp();
@@ -17,7 +27,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 		const { status, body } = this._resolveError(exception, request);
 
-		this._logger.warn(`${request.method} ${RequestUtils.resolveEndpoint(request)} → ${status} ${body.errorCode}`);
+		const route = RequestUtils.getNormalizedRouteTemplate(request);
+		const origin = status >= HttpStatus.INTERNAL_SERVER_ERROR ? ApiErrorOrigin.SERVER : ApiErrorOrigin.CLIENT;
+		this._observabilityService.recordApiError({
+			errorCode: body.errorCode,
+			exception: exception,
+			method: request.method,
+			origin: origin,
+			route: route,
+			statusCode: status,
+		});
+		const logFields = {
+			errorCode: body.errorCode,
+			event: ObservabilityEventConstants.API_HTTP_REQUEST_FAILED_EVENT,
+			method: request.method,
+			requestId: RequestUtils.getOrCreateRequestId(request),
+			route: route,
+			statusCode: status,
+			...(origin === ApiErrorOrigin.SERVER ? getSafeErrorTelemetryFields({ error: exception }) : {}),
+			...(origin === ApiErrorOrigin.SERVER && process.env["NODE_ENV"] === "development"
+				? getDevelopmentErrorLogFields({ error: exception })
+				: {}),
+		};
+		if (origin === ApiErrorOrigin.SERVER) this._logger.error(logFields);
+		else this._logger.warn(logFields);
 
 		response.status(status).send(body);
 	}
@@ -27,10 +60,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		request: FastifyRequest,
 	): { status: HttpStatus; body: z.infer<typeof ErrorOutputSchema> } {
 		if (exception instanceof HttpException) return this._resolveHttpException(exception, request);
-
-		if (exception instanceof Error) {
-			this._logger.error(`Unhandled error: ${exception.message}`, exception.stack);
-		}
 
 		return this._buildErrorOutput({
 			errorCode: ErrorCode.INTERNAL_ERROR,
@@ -48,6 +77,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		body: z.infer<typeof ErrorOutputSchema>;
 	} {
 		const status = exception.getStatus();
+		if (status >= HttpStatus.INTERNAL_SERVER_ERROR && !(exception instanceof DomainError)) {
+			return this._buildErrorOutput({
+				errorCode: ErrorCode.INTERNAL_ERROR,
+				message: "An unexpected error occurred",
+				status: status,
+				request: request,
+			});
+		}
 		const exceptionResponse = exception.getResponse();
 
 		if (typeof exceptionResponse === "string") {
@@ -130,8 +167,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		resp: Record<string, unknown>,
 		status: HttpStatus,
 	): { errorCode: ErrorCode; message: string } {
-		if (typeof resp["errorCode"] === "string") {
-			return { errorCode: resp["errorCode"] as ErrorCode, message: this._resolveMessage(resp["message"]) };
+		const errorCode = Object.values(ErrorCode).find((candidate) => candidate === resp["errorCode"]);
+		if (errorCode !== undefined) {
+			return { errorCode: errorCode, message: this._resolveMessage(resp["message"]) };
 		}
 
 		if (status === HttpStatus.NOT_FOUND) {
@@ -183,9 +221,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				errorCode: params.errorCode,
 				message: params.message,
 				status: params.status,
-				requestId: RequestUtils.resolveRequestId(params.request),
+				requestId: RequestUtils.getOrCreateRequestId(params.request),
 				timestamp: new Date().toISOString(),
-				endpoint: RequestUtils.resolveEndpoint(params.request),
+				endpoint: RequestUtils.getPathWithoutQuery(params.request),
 				...(params.violations === undefined ? {} : { violations: params.violations }),
 			}),
 		};

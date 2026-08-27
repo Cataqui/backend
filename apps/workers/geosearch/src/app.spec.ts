@@ -32,6 +32,11 @@ function _createEnv(params?: {
 		ENVIRONMENT: "development",
 		GOOGLE_PLACES_API_KEY: "google-key",
 		MICROSERVICES_AUTH_JWKS_URL: microservicesAuthJwksUrl,
+		WORKER_VERSION_METADATA: {
+			id: "geosearch-worker-version-id",
+			tag: "0123456789abcdef0123456789abcdef01234567",
+			timestamp: "2026-08-27T12:00:00.000Z",
+		},
 	} as never;
 }
 
@@ -88,6 +93,12 @@ describe("Geosearch Worker", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	beforeEach(() => {
+		vi.spyOn(console, "error").mockImplementation(() => undefined);
+		vi.spyOn(console, "log").mockImplementation(() => undefined);
+		vi.spyOn(console, "warn").mockImplementation(() => undefined);
 	});
 
 	it("should expose an unauthenticated versioned readiness route", async () => {
@@ -423,6 +434,7 @@ describe("Geosearch Worker", () => {
 			providerResult: () => Promise.resolve(new Response(null, { status: 404 })),
 			status: 404,
 			output: { errorCode: "ADDRESS_NOT_FOUND", message: "The requested address was not found." },
+			expectedErrorEvents: [],
 		},
 		{
 			name: "provider rejection",
@@ -431,6 +443,7 @@ describe("Geosearch Worker", () => {
 			providerResult: () => Promise.resolve(new Response(null, { status: 503 })),
 			status: 502,
 			output: { errorCode: "PROVIDER_UNAVAILABLE", message: "Address search is temporarily unavailable." },
+			expectedErrorEvents: ["geosearch.provider.request.rejected", "geosearch.request.rejected"],
 		},
 		{
 			name: "provider timeout",
@@ -439,19 +452,27 @@ describe("Geosearch Worker", () => {
 			providerResult: () => Promise.reject(new DOMException("timed out", "TimeoutError")),
 			status: 504,
 			output: { errorCode: "PROVIDER_UNAVAILABLE", message: "Address search is temporarily unavailable." },
+			expectedErrorEvents: ["geosearch.provider.request.rejected", "geosearch.request.rejected"],
 		},
-	])("should centrally translate $name service errors", async ({ body, output, path, providerResult, status }) => {
-		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-		vi.spyOn(globalThis, "fetch").mockImplementation(providerResult);
+	])(
+		"should centrally translate $name service errors",
+		async ({ body, expectedErrorEvents, output, path, providerResult, status }) => {
+			const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+			vi.spyOn(globalThis, "fetch").mockImplementation(providerResult);
 
-		const response = await worker.fetch(await _createQueryRequest({ path: path, body: body }), _createEnv());
+			const response = await worker.fetch(await _createQueryRequest({ path: path, body: body }), _createEnv());
 
-		expect({ status: response.status, body: await response.json(), unexpectedLogs: consoleError.mock.calls }).toEqual({
-			status: status,
-			body: output,
-			unexpectedLogs: [],
-		});
-	});
+			expect({
+				status: response.status,
+				body: await response.json(),
+				errorEvents: consoleError.mock.calls.map((call) => (call[0] as { event: string }).event),
+			}).toEqual({
+				status: status,
+				body: output,
+				errorEvents: expectedErrorEvents,
+			});
+		},
+	);
 
 	it("should return coordinates from a terminating details request", async () => {
 		const detailsRateLimit = vi.fn().mockResolvedValue({ success: true });
@@ -527,17 +548,58 @@ describe("Geosearch Worker", () => {
 			env,
 		);
 
-		expect({ status: response.status, log: consoleError.mock.calls[0]?.[0] }).toEqual({
+		const serializedLogs = JSON.stringify(consoleError.mock.calls);
+		expect({
+			status: response.status,
+			log: consoleError.mock.calls[0]?.[0],
+			leaksAddress: serializedLogs.includes("private address"),
+			leaksSession: serializedLogs.includes("private-session"),
+		}).toEqual({
 			status: 500,
 			log: expect.objectContaining({
+				env: "development",
 				event: "geosearch.request.failed",
 				method: "QUERY",
-				path: "/v1/addresses/search",
+				outcome: "THREW",
 				responseStatus: 500,
+				route: "/v1/addresses/search",
+				service: "cataqui-geosearch-development",
+				version: "0123456789abcdef0123456789abcdef01234567",
 				errorName: "Error",
 			}),
+			leaksAddress: false,
+			leaksSession: false,
 		});
-		expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private address");
-		expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private-session");
+	});
+
+	it("should safely handle a non-error value thrown outside Hono's error handler", async () => {
+		const env = _createEnv({
+			searchRateLimit: vi.fn().mockRejectedValue({ privateBindingValue: "must-not-be-logged" }),
+		});
+
+		const response = await worker.fetch(
+			await _createQueryRequest({
+				path: "/v1/addresses/search",
+				body: { query: "Address", sessionToken: "session" },
+			}),
+			env,
+		);
+
+		const serializedLogs = JSON.stringify(vi.mocked(console.error).mock.calls);
+		expect({
+			status: response.status,
+			body: await response.json(),
+			log: vi.mocked(console.error).mock.calls[0]?.[0],
+			leaksThrownValue: serializedLogs.includes("must-not-be-logged"),
+		}).toEqual({
+			status: 500,
+			body: { errorCode: "INTERNAL_ERROR", message: "An unexpected error occurred." },
+			log: expect.objectContaining({
+				errorName: "UnknownError",
+				event: "geosearch.request.failed",
+				outcome: "THREW",
+			}),
+			leaksThrownValue: false,
+		});
 	});
 });

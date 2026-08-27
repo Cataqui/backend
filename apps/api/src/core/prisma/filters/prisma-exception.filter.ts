@@ -1,9 +1,13 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from "@nestjs/common";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { RequestUtils } from "../../../shared/utils/request.utils";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { toErrorOutput } from "../../errors/error-output.js";
+import { ApiErrorOrigin } from "../../observability/api-error-origin.enum.js";
+import type { ObservabilityService } from "../../observability/observability.service.js";
+import { getDevelopmentErrorLogFields, getSafeErrorTelemetryFields } from "../../observability/safe-error-telemetry.js";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
@@ -33,6 +37,11 @@ const PRISMA_ERROR_MAP: Record<
 @Catch(Prisma.PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
 	private readonly _logger = new Logger(PrismaExceptionFilter.name);
+	private readonly _observabilityService: Pick<ObservabilityService, "recordApiError">;
+
+	constructor(params: { observabilityService: Pick<ObservabilityService, "recordApiError"> }) {
+		this._observabilityService = params.observabilityService;
+	}
 
 	private _sanitizeMeta(meta: unknown): Record<string, unknown> | undefined {
 		if (!meta || typeof meta !== "object") return undefined;
@@ -52,37 +61,47 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
 		const mapping = PRISMA_ERROR_MAP[exception.code];
 		const sanitizedMeta = this._sanitizeMeta(exception.meta);
-		const endpoint = RequestUtils.resolveEndpoint(request);
-
-		const logMetadata = {
-			code: exception.code,
-			meta: sanitizedMeta,
+		const route = RequestUtils.getNormalizedRouteTemplate(request);
+		const status = mapping?.status ?? HttpStatus.INTERNAL_SERVER_ERROR;
+		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
+		const logFields = {
+			errorCode: errorCode,
+			event: ObservabilityEventConstants.API_DATABASE_REQUEST_FAILED_EVENT,
+			metadata: sanitizedMeta,
 			method: request.method,
-			endpoint: endpoint,
+			prismaCode: exception.code,
+			requestId: RequestUtils.getOrCreateRequestId(request),
+			route: route,
+			statusCode: status,
 		};
 
 		if (mapping) {
-			this._logger.warn(
-				`Prisma error ${exception.code} on ${request.method} ${endpoint} - Meta: ${JSON.stringify(sanitizedMeta)}`,
-			);
+			this._logger.warn(logFields);
 		} else {
-			this._logger.error(
-				`Unhandled Prisma database error ${exception.code} on ${request.method} ${endpoint}`,
-				JSON.stringify(logMetadata),
-			);
+			this._logger.error({
+				...logFields,
+				...getSafeErrorTelemetryFields({ error: exception }),
+				...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: exception }) : {}),
+			});
 		}
 
-		const status = mapping?.status ?? HttpStatus.INTERNAL_SERVER_ERROR;
-		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
+		this._observabilityService.recordApiError({
+			errorCode: errorCode,
+			exception: exception,
+			method: request.method,
+			origin: status >= HttpStatus.INTERNAL_SERVER_ERROR ? ApiErrorOrigin.SERVER : ApiErrorOrigin.CLIENT,
+			route: route,
+			statusCode: status,
+		});
 		const userMessage = mapping?.message ?? "An unexpected database error occurred.";
 
 		const body = toErrorOutput({
 			errorCode: errorCode,
 			message: userMessage,
 			status: status,
-			requestId: RequestUtils.resolveRequestId(request),
+			requestId: RequestUtils.getOrCreateRequestId(request),
 			timestamp: new Date().toISOString(),
-			endpoint: RequestUtils.resolveEndpoint(request),
+			endpoint: RequestUtils.getPathWithoutQuery(request),
 		});
 
 		response.status(status).send(body);

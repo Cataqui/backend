@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import { Logger } from "@nestjs/common";
 import { HealthCheckService, TerminusModule } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
 import type { FastifyReply } from "fastify";
@@ -40,6 +41,11 @@ describe("HealthController", () => {
 
 		controller = module.get(HealthController);
 		healthCheckService = module.get(HealthCheckService);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should return healthy output when all dependencies are up", async () => {
@@ -128,6 +134,21 @@ describe("HealthController", () => {
 			await controller.check(mockReply);
 			expect(mockReply.status).toHaveBeenCalledWith(503);
 		});
+	});
+
+	it("should include the complete unexpected health-check failure in local development", async () => {
+		vi.stubEnv("NODE_ENV", "development");
+		vi.spyOn(healthCheckService, "check").mockRejectedValue(new Error("Dependency health probe crashed"));
+		const log = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await controller.check(mockReply);
+
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorMessage: "Dependency health probe crashed",
+				errorStack: expect.stringContaining("health.controller.spec.ts"),
+			}),
+		);
 	});
 
 	it("should map multiple dependencies in details", async () => {

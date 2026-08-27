@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import { Prisma } from "../generated/prisma/client";
 import { configureApp } from "../src/core/app.factory";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
+import { ObservabilityService } from "../src/core/observability/observability.service";
 
 @Controller("prisma-filter-order")
 class PrismaFilterOrderTestController {
@@ -19,7 +20,21 @@ class PrismaFilterOrderTestController {
 
 describe("Prisma exception filter order (e2e)", () => {
 	it("should route a known Prisma error through the Prisma-specific filter", async () => {
-		const module = await Test.createTestingModule({ controllers: [PrismaFilterOrderTestController] }).compile();
+		const module = await Test.createTestingModule({
+			controllers: [PrismaFilterOrderTestController],
+			providers: [
+				{
+					provide: ObservabilityService,
+					useValue: {
+						addActiveHttpRequests: vi.fn(),
+						recordApiError: vi.fn(),
+						recordHttpRequestCompleted: vi.fn(),
+						recordHttpRequestTerminated: vi.fn(),
+						recordProductAnalyticsEvent: vi.fn(),
+					},
+				},
+			],
+		}).compile();
 		const app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 		await configureApp(app);
 		await app.init();

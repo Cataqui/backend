@@ -14,4 +14,12 @@ describe("JobDataDerivationUnavailableError", () => {
 			status: HttpStatus.SERVICE_UNAVAILABLE,
 		});
 	});
+
+	it("should preserve an internal derivation failure as its cause", () => {
+		const cause = new Error("provider unavailable");
+
+		const error = new JobDataDerivationUnavailableError({ cause: cause });
+
+		expect(error.cause).toBe(cause);
+	});
 });

@@ -8,6 +8,7 @@ import {
 	JobStatus,
 	JobType,
 } from "../../../generated/prisma/client.js";
+import { ObservabilityService } from "../../core/observability/observability.service";
 import { AiService } from "../ai/ai.service";
 import { LocationService } from "../location/location.service";
 import { UserService } from "../user/user.service";
@@ -220,6 +221,12 @@ describe("Updating every field in UpdateJobInputSchema", () => {
 							latitude: params.latitude,
 							longitude: params.longitude,
 						})),
+					},
+				},
+				{
+					provide: ObservabilityService,
+					useValue: {
+						observeOperation: vi.fn(async (params: { operation: () => Promise<unknown> }) => params.operation()),
 					},
 				},
 			],

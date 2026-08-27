@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Post, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
+import { ProductAnalyticsEvent } from "../../core/observability/product-analytics-event.decorator";
+import { ProductAnalyticsEventName } from "../../core/observability/product-analytics-event-name.enum";
 import { AuthSessionService } from "./auth-session.service";
 import { AccessTokenRequired } from "./decorators/access-token-required.decorator";
 import {
@@ -24,6 +26,7 @@ export class AuthSessionController {
 	@Version("1")
 	@Header("Cache-Control", "no-store")
 	@HttpCode(HttpStatus.OK)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.AUTH_SESSION_REFRESH_REQUEST_SUCCEEDED })
 	@ApiRefreshAuthSessionDocs()
 	async refreshSession(
 		@Body({ schema: RefreshTokenInputSchema }) body: z.infer<typeof RefreshTokenInputSchema>,
@@ -36,6 +39,7 @@ export class AuthSessionController {
 	@Header("Cache-Control", "no-store")
 	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.AUTH_SESSION_READ_REQUEST_SUCCEEDED })
 	@ApiGetCurrentAuthSessionDocs()
 	getCurrentSession(
 		@CurrentAuthSession() session: IAuthenticatedSession,
@@ -51,6 +55,7 @@ export class AuthSessionController {
 	@Version("1")
 	@Header("Cache-Control", "no-store")
 	@HttpCode(HttpStatus.NO_CONTENT)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.AUTH_SESSION_LOGOUT_REQUEST_SUCCEEDED })
 	@ApiLogoutCurrentAuthSessionDocs()
 	async logoutCurrentSession(
 		@Body({ schema: RefreshTokenInputSchema }) body: z.infer<typeof RefreshTokenInputSchema>,
@@ -62,6 +67,7 @@ export class AuthSessionController {
 	@Version("1")
 	@AccessTokenRequired()
 	@HttpCode(HttpStatus.NO_CONTENT)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.AUTH_SESSIONS_REVOKE_REQUEST_SUCCEEDED })
 	@ApiRevokeAllAuthSessionsDocs()
 	async revokeAllSessions(@CurrentAuthSession() session: IAuthenticatedSession): Promise<void> {
 		await this._authSessionService.revokeAll({ session: session });

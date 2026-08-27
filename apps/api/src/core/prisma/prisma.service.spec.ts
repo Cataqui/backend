@@ -1,4 +1,5 @@
 import { Test } from "@nestjs/testing";
+import { Logger } from "@nestjs/common";
 import { databaseConfig } from "../config/database.config";
 import { PrismaService } from "./prisma.service";
 
@@ -40,6 +41,11 @@ describe("PrismaService", () => {
 		}).compile();
 
 		prismaService = module.get(PrismaService);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should be defined", () => {
@@ -84,23 +90,58 @@ describe("PrismaService", () => {
 
 	it("should call $connect on module init", async () => {
 		const connectSpy = vi.spyOn(prismaService, "$connect").mockResolvedValue(undefined);
+		vi.spyOn(prismaService, "$queryRaw").mockResolvedValue([{ result: 1 }]);
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
 
 		await prismaService.onModuleInit();
 
-		expect(connectSpy).toHaveBeenCalledOnce();
+		expect({ connectCallCount: connectSpy.mock.calls.length, logCall: log.mock.calls[0] }).toEqual({
+			connectCallCount: 1,
+			logCall: [{ event: "api.database.connection.established", status: "READY" }],
+		});
 	});
 
 	it("should not throw when $connect fails", async () => {
 		vi.spyOn(prismaService, "$connect").mockRejectedValue(new Error("Connection refused"));
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
 
-		await expect(prismaService.onModuleInit()).resolves.toBeUndefined();
+		const result = await prismaService.onModuleInit();
+
+		expect({ result: result, warning: warn.mock.calls[0]?.[0] }).toEqual({
+			result: undefined,
+			warning: expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("prisma.service.spec.ts"),
+				event: "api.database.connection.failed",
+				outcome: "DEGRADED",
+			}),
+		});
+	});
+
+	it("should include the complete connection failure in local development", async () => {
+		vi.stubEnv("NODE_ENV", "development");
+		vi.spyOn(prismaService, "$connect").mockRejectedValue(new Error("Neon connection was refused"));
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+
+		await prismaService.onModuleInit();
+
+		expect(warn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorMessage: "Neon connection was refused",
+				errorStack: expect.stringContaining("prisma.service.spec.ts"),
+			}),
+		);
 	});
 
 	it("should call $disconnect on module destroy", async () => {
 		const disconnectSpy = vi.spyOn(prismaService, "$disconnect").mockResolvedValue(undefined);
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
 
 		await prismaService.onModuleDestroy();
 
-		expect(disconnectSpy).toHaveBeenCalledOnce();
+		expect({ disconnectCallCount: disconnectSpy.mock.calls.length, logCall: log.mock.calls[0] }).toEqual({
+			disconnectCallCount: 1,
+			logCall: [{ event: "api.database.connection.closed", status: "STOPPED" }],
+		});
 	});
 });

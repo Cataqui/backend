@@ -1,3 +1,4 @@
+import type { NotpDeliveryTelemetry } from "../notp/notp-delivery-telemetry";
 import { NotpService } from "../notp/notp.service";
 import { MetaWebhookAuthService } from "./meta-webhook-auth.service";
 import { getTextMessagesFromWhatsappWebhook } from "./whatsapp-messages-webhook.parser";
@@ -42,6 +43,7 @@ export class WhatsappService {
 		appSecret: string;
 		notpPhoneNumberId: string;
 		rawBody: Uint8Array;
+		telemetry: NotpDeliveryTelemetry;
 		webhookSignature: string | null;
 	}): Promise<boolean> {
 		if (
@@ -74,6 +76,7 @@ export class WhatsappService {
 		await this._notpService.verifyInputs({
 			apiWorker: params.apiWorker,
 			inputs: notpCandidates.filter((message) => message !== null),
+			telemetry: params.telemetry,
 		});
 
 		return true;

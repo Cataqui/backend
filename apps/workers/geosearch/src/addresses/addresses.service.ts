@@ -9,6 +9,7 @@ import type { AddressDetailsInputSchema } from "./schemas/address-details-input.
 import type { AddressDetailsOutputSchema } from "./schemas/address-details-output.schema";
 import type { AddressSearchInputSchema } from "./schemas/address-search-input.schema";
 import { AddressSearchOutputSchema } from "./schemas/address-search-output.schema";
+import type { GeosearchTelemetryContext } from "../shared/geosearch-telemetry";
 
 export class AddressesService {
 	constructor(params?: { repository?: AddressesRepository }) {
@@ -22,6 +23,7 @@ export class AddressesService {
 		input: z.infer<typeof AddressDetailsInputSchema>;
 		rateLimitKey: string;
 		rateLimiter: RateLimit;
+		telemetryContext: GeosearchTelemetryContext;
 	}): Promise<z.infer<typeof AddressDetailsOutputSchema>> {
 		const rateLimit = await params.rateLimiter.limit({ key: params.rateLimitKey });
 
@@ -33,6 +35,7 @@ export class AddressesService {
 			addressId: params.input.addressId,
 			apiKey: params.apiKey,
 			sessionToken: params.input.sessionToken,
+			telemetryContext: params.telemetryContext,
 		});
 
 		switch (result.kind) {
@@ -53,6 +56,7 @@ export class AddressesService {
 		languageCode: string;
 		rateLimitKey: string;
 		rateLimiter: RateLimit;
+		telemetryContext: GeosearchTelemetryContext;
 	}): Promise<z.infer<typeof AddressSearchOutputSchema>> {
 		if (params.input.query.length === 0) {
 			return AddressSearchOutputSchema.parse({ suggestions: [], attribution: this._repository.attribution });
@@ -68,6 +72,7 @@ export class AddressesService {
 			languageCode: params.languageCode,
 			query: params.input.query,
 			sessionToken: params.input.sessionToken,
+			telemetryContext: params.telemetryContext,
 		});
 
 		switch (result.kind) {

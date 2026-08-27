@@ -1,8 +1,10 @@
 import { Logger } from "@nestjs/common";
 import type { ThrottlerStorage } from "@nestjs/throttler";
 import type { ThrottlerStorageRecord } from "@nestjs/throttler/dist/throttler-storage-record.interface";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import { randomUUID } from "node:crypto";
-import { RateLimitedError } from "../errors/rate-limited.error";
+import { RateLimitEnforcementUnavailableError } from "../errors/rate-limit-enforcement-unavailable.error";
+import { getDevelopmentErrorLogFields, getSafeErrorTelemetryFields } from "../observability/safe-error-telemetry";
 import { RedisService } from "../redis/redis.service";
 
 export class RedisThrottlerStorage implements ThrottlerStorage {
@@ -69,10 +71,15 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
 				isBlocked: isBlocked === 1,
 				timeToBlockExpire: timeToBlockExpire,
 			};
-		} catch {
-			this._logger.error("The Redis-backed rate limit is unavailable; the protected request was rejected.");
+		} catch (error: unknown) {
+			this._logger.error({
+				event: ObservabilityEventConstants.API_RATE_LIMIT_ENFORCEMENT_FAILED_EVENT,
+				outcome: "REJECTED",
+				...getSafeErrorTelemetryFields({ error: error }),
+				...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: error }) : {}),
+			});
 
-			throw new RateLimitedError();
+			throw new RateLimitEnforcementUnavailableError({ cause: error });
 		}
 	}
 

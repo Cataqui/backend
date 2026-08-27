@@ -1,0 +1,6 @@
+export enum HttpTrafficSurface {
+	HEALTH = "HEALTH",
+	INTERNAL_INBOUND = "INTERNAL_INBOUND",
+	PUBLIC_API = "PUBLIC_API",
+	UNMATCHED = "UNMATCHED",
+}

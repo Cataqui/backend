@@ -7,6 +7,7 @@ import {
 	JobStatus,
 	JobType,
 } from "../../../generated/prisma/client.js";
+import { ObservabilityService } from "../../core/observability/observability.service";
 import { AiService } from "../ai/ai.service";
 import { LocationService } from "../location/location.service";
 import { UserService } from "../user/user.service";
@@ -148,6 +149,12 @@ describe("JobService", () => {
 				{ provide: UserService, useValue: userService },
 				{ provide: AiService, useValue: aiService },
 				{ provide: LocationService, useValue: locationService },
+				{
+					provide: ObservabilityService,
+					useValue: {
+						observeOperation: vi.fn(async (params: { operation: () => Promise<unknown> }) => params.operation()),
+					},
+				},
 			],
 		}).compile();
 

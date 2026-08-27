@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { vi } from "vitest";
 import { z } from "zod";
+import { ObservabilityService } from "../../core/observability/observability.service";
 import { AiTask } from "./ai-task.enum";
 import { aiConfig } from "./ai.config";
 import { AiService } from "./ai.service";
@@ -10,6 +11,9 @@ const mockUnifiedFn = vi.hoisted(() => vi.fn((model: string) => model));
 const mockCreateUnified = vi.hoisted(() => vi.fn(() => mockUnifiedFn));
 const mockOutputObject = vi.hoisted(() => vi.fn((params: unknown) => params));
 const mockNoObjectGeneratedErrorIsInstance = vi.hoisted(() => vi.fn<(error: unknown) => boolean>(() => false));
+const mockObservabilityService = {
+	observeOperation: vi.fn((params: { operation: () => Promise<unknown> }) => params.operation()),
+};
 
 vi.mock("ai", () => ({
 	generateText: mockGenerateText,
@@ -35,13 +39,18 @@ const mockConfig = {
 describe("AiService", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockObservabilityService.observeOperation.mockImplementation((params) => params.operation());
 		mockGenerateText.mockReset();
 		mockNoObjectGeneratedErrorIsInstance.mockReset().mockReturnValue(false);
 	});
 
 	it("should be defined", async () => {
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 
 		const service = module.get(AiService);
@@ -51,7 +60,11 @@ describe("AiService", () => {
 
 	it("should disable gateway logging during tests", async () => {
 		await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 
 		expect(mockCreateUnified).toHaveBeenCalledWith({
@@ -67,7 +80,11 @@ describe("AiService", () => {
 
 	it.each(["development", "staging"] as const)("should collect full gateway logs in %s", async (environment) => {
 		await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: { ...mockConfig, environment: environment } }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: { ...mockConfig, environment: environment } },
+			],
 		}).compile();
 
 		expect(mockCreateUnified).toHaveBeenCalledWith(
@@ -86,6 +103,7 @@ describe("AiService", () => {
 		await Test.createTestingModule({
 			providers: [
 				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
 				{ provide: aiConfig.KEY, useValue: { ...mockConfig, environment: "production" as const } },
 			],
 		}).compile();
@@ -107,7 +125,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: output });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -132,7 +154,11 @@ describe("AiService", () => {
 			.mockResolvedValueOnce({ output: { title: "Auxiliar de cozinha" } });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -158,7 +184,11 @@ describe("AiService", () => {
 		mockGenerateText.mockRejectedValueOnce(firstInvalidObjectError).mockRejectedValueOnce(secondInvalidObjectError);
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -179,7 +209,11 @@ describe("AiService", () => {
 		mockGenerateText.mockRejectedValue(new Error("gateway unavailable"));
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -202,7 +236,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: {} });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -223,7 +261,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: {} });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 		const abortController = new AbortController();
@@ -251,7 +293,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: {} });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -272,7 +318,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: { title: "Montador de móveis" } });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 
@@ -293,7 +343,11 @@ describe("AiService", () => {
 		mockGenerateText.mockResolvedValue({ output: { title: "Montador de móveis" } });
 
 		const module = await Test.createTestingModule({
-			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
+			providers: [
+				AiService,
+				{ provide: ObservabilityService, useValue: mockObservabilityService },
+				{ provide: aiConfig.KEY, useValue: mockConfig },
+			],
 		}).compile();
 		const service = module.get(AiService);
 

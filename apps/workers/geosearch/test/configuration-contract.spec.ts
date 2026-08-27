@@ -5,16 +5,26 @@ import ts from "typescript";
 type GeosearchWorkerEnvironment = {
 	name: string;
 	workers_dev?: boolean;
+	version_metadata: { binding: string };
 	routes?: Array<{ custom_domain: boolean; pattern: string }>;
 	vars: { ENVIRONMENT: string; MICROSERVICES_AUTH_JWKS_URL: string };
 	ratelimits: Array<{ name: string; namespace_id: string; simple: { limit: number; period: number } }>;
 	secrets: { required: string[] };
-	observability: { logs: { enabled: boolean; head_sampling_rate: number; invocation_logs?: boolean } };
+	observability: {
+		logs: {
+			enabled: boolean;
+			head_sampling_rate: number;
+			invocation_logs: boolean;
+			persist: boolean;
+		};
+		traces: { enabled: boolean };
+	};
 };
 
 type GeosearchWorkerConfig = GeosearchWorkerEnvironment & {
 	account_id?: string;
 	main: string;
+	upload_source_maps: boolean;
 	env: Record<"production" | "staging", GeosearchWorkerEnvironment>;
 };
 
@@ -41,13 +51,39 @@ describe("Geosearch Worker configuration", () => {
 			typecheck: packageScripts["typecheck"],
 			authContracts: packageManifest.dependencies["@cataqui/microservices-auth-contracts"],
 		}).toEqual({
-			build: "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
+			build: 'wrangler deploy --dry-run --config wrangler.jsonc --env="" --outdir dist',
 			clean:
 				"node -e \"for (const target of ['coverage','dist']) require('node:fs').rmSync(target,{recursive:true,force:true})\"",
 			test: "vitest run",
 			testCoverage: "vitest run --coverage",
 			typecheck: "tsc --noEmit && pnpm cf:types:check",
 			authContracts: "workspace:*",
+		});
+	});
+
+	it("should persist only bounded application logs with immutable version and source-map correlation", () => {
+		const environments = [
+			geosearchWorkerConfig,
+			geosearchWorkerConfig.env.staging,
+			geosearchWorkerConfig.env.production,
+		];
+
+		expect({
+			uploadSourceMaps: geosearchWorkerConfig.upload_source_maps,
+			versionBindings: environments.map((environment) => environment.version_metadata.binding),
+			observability: environments.map((environment) => environment.observability),
+			generatedHasVersionMetadata: geosearchEnvironmentSource.includes(
+				"WORKER_VERSION_METADATA: WorkerVersionMetadata",
+			),
+		}).toEqual({
+			uploadSourceMaps: true,
+			versionBindings: ["WORKER_VERSION_METADATA", "WORKER_VERSION_METADATA", "WORKER_VERSION_METADATA"],
+			observability: Array.from({ length: 3 }, () => ({
+				enabled: true,
+				logs: { enabled: true, head_sampling_rate: 1, invocation_logs: false, persist: true },
+				traces: { enabled: false },
+			})),
+			generatedHasVersionMetadata: true,
 		});
 	});
 

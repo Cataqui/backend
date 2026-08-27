@@ -1,11 +1,18 @@
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { errors as UpstashRedisErrors } from "@upstash/redis";
 import { createHash, randomUUID } from "node:crypto";
+import {
+	getDevelopmentErrorLogFields,
+	getSafeErrorTelemetryFields,
+} from "../../../../core/observability/safe-error-telemetry";
 import { RedisService } from "../../../../core/redis/redis.service";
 import { NotpChannel } from "../enums/notp-channel.enum";
+import { NotpExchangeWaitOutcome } from "../enums/notp-exchange-wait-outcome.enum";
 import { NotpIntentStatus } from "../enums/notp-intent-status.enum";
+import { NotpRecoveryOutcome } from "../enums/notp-recovery-outcome.enum";
 import { NotpProcessingInProgressError } from "../errors/notp-processing-in-progress.error";
 import { NotpConstants } from "../notp.constants";
+import { NotpObservabilityConstants } from "../notp-observability.constants";
 
 type NotpIntent =
 	| {
@@ -142,8 +149,12 @@ export class NotpRepository implements OnModuleInit {
 				.scriptLoad(this._getIntentOrNullAndMarkAsProcessingScript.script)
 				.scriptLoad(this._markProcessingIntentAsVerifiedScript.script)
 				.exec();
-		} catch {
-			this._logger.warn("NOTP scripts could not be preloaded; first use will load them");
+		} catch (error: unknown) {
+			this._logger.warn({
+				event: NotpObservabilityConstants.REDIS_SCRIPTS_PRELOAD_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_FIRST_USE,
+				...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+			});
 		}
 	}
 
@@ -197,7 +208,7 @@ export class NotpRepository implements OnModuleInit {
 			);
 		} catch (error) {
 			if (!(error instanceof UpstashRedisErrors.UpstashError)) throw error;
-			throw new Error("NOTP intent lookup was rejected by Redis");
+			throw new Error("NOTP intent lookup was rejected by Redis", { cause: error });
 		}
 
 		const candidateSessionId = storedIntentValues[0];
@@ -235,7 +246,13 @@ export class NotpRepository implements OnModuleInit {
 			return initialIntent;
 		}
 		const isExchangeAborted = () => params.abortSignal?.aborted === true;
-		if (isExchangeAborted()) return initialIntent;
+		if (isExchangeAborted()) {
+			this._logger.log({
+				event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+				outcome: NotpExchangeWaitOutcome.ABORTED,
+			});
+			return initialIntent;
+		}
 
 		const verificationChannel = this._buildIntentVerificationChannel({
 			intentTokenHash: params.intentTokenHash,
@@ -273,15 +290,30 @@ export class NotpRepository implements OnModuleInit {
 
 			if (leaseAcquisitionResult === undefined || Date.now() >= verificationWaitLeaseDeadlineAt) {
 				stopVerificationWaitLeaseGuard();
+				this._logger.log({
+					event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+					outcome: isExchangeAborted()
+						? NotpExchangeWaitOutcome.ABORTED
+						: NotpExchangeWaitOutcome.LEASE_DEADLINE_EXCEEDED,
+				});
 				return initialIntent;
 			}
 
 			if (leaseAcquisitionResult !== "OK") {
 				stopVerificationWaitLeaseGuard();
+				this._logger.log({
+					event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+					outcome: NotpExchangeWaitOutcome.LEASE_HELD_BY_ANOTHER_REQUEST,
+				});
 				return this.findIntentByTokenHash({ intentTokenHash: params.intentTokenHash });
 			}
-		} catch {
+		} catch (error: unknown) {
 			stopVerificationWaitLeaseGuard();
+			this._logger.warn({
+				event: NotpObservabilityConstants.EXCHANGE_LEASE_ACQUISITION_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+				...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+			});
 			if (isExchangeAborted()) return initialIntent;
 			return this.findIntentByTokenHash({ intentTokenHash: params.intentTokenHash });
 		}
@@ -297,16 +329,31 @@ export class NotpRepository implements OnModuleInit {
 
 		try {
 			if (this._activeExchangeLongPollCount >= NotpConstants.MAX_CONCURRENT_EXCHANGE_LONG_POLLS_PER_CONTAINER) {
+				this._logger.warn({
+					event: NotpObservabilityConstants.EXCHANGE_CAPACITY_EXHAUSTED_EVENT,
+					outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+				});
 				return this.findIntentByTokenHash({ intentTokenHash: params.intentTokenHash });
 			}
 			this._activeExchangeLongPollCount += 1;
 			isHoldingExchangeLongPollCapacity = true;
 
-			if (isExchangeAborted()) return initialIntent;
+			if (isExchangeAborted()) {
+				this._logger.log({
+					event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+					outcome: NotpExchangeWaitOutcome.ABORTED,
+				});
+				return initialIntent;
+			}
 
 			try {
 				subscription = this._redis.subscribe<string>(verificationChannel);
-			} catch {
+			} catch (error: unknown) {
+				this._logger.warn({
+					event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_CREATE_FAILED_EVENT,
+					outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+					...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+				});
 				const intentAfterSubscriptionFailure = await findIntentBeforeVerificationWaitLeaseDeadline();
 				return intentAfterSubscriptionFailure === undefined ? initialIntent : intentAfterSubscriptionFailure;
 			}
@@ -334,14 +381,30 @@ export class NotpRepository implements OnModuleInit {
 			const verificationWaitAbortResult = verificationWaitAbort.then(() => NotpVerificationNotificationResult.ABORTED);
 
 			const subscriptionReadinessTimeout = setTimeout(() => {
+				if (subscriptionReadinessSettled) return;
+				this._logger.warn({
+					event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_READINESS_TIMED_OUT_EVENT,
+					outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+				});
 				settleSubscriptionReadiness(NotpVerificationSubscriptionReadiness.UNAVAILABLE);
 			}, NotpConstants.EXCHANGE_SUBSCRIPTION_READY_TIMEOUT_MILLISECONDS);
 
 			const verificationNotificationTimeout = setTimeout(() => {
+				if (verificationNotificationSettled) return;
+				this._logger.log({
+					event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+					outcome: NotpExchangeWaitOutcome.TIMED_OUT,
+				});
 				settleVerificationNotification(NotpVerificationNotificationResult.TIMED_OUT);
 			}, NotpConstants.EXCHANGE_LONG_POLL_TIMEOUT_MILLISECONDS);
 
 			const abortWait = () => {
+				if (!verificationNotificationSettled) {
+					this._logger.log({
+						event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+						outcome: NotpExchangeWaitOutcome.ABORTED,
+					});
+				}
 				settleSubscriptionReadiness(NotpVerificationSubscriptionReadiness.UNAVAILABLE);
 				settleVerificationNotification(NotpVerificationNotificationResult.ABORTED);
 			};
@@ -353,7 +416,12 @@ export class NotpRepository implements OnModuleInit {
 				if (channel !== verificationChannel || message !== NotpIntentStatus.VERIFIED) return;
 				settleVerificationNotification(NotpVerificationNotificationResult.VERIFIED);
 			});
-			subscription.on("error", () => {
+			subscription.on("error", (error: unknown) => {
+				this._logger.warn({
+					event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_FAILED_EVENT,
+					outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+					...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+				});
 				settleSubscriptionReadiness(NotpVerificationSubscriptionReadiness.UNAVAILABLE);
 				settleVerificationNotification(NotpVerificationNotificationResult.UNAVAILABLE);
 			});
@@ -435,8 +503,12 @@ export class NotpRepository implements OnModuleInit {
 				subscription.removeAllListeners();
 				try {
 					await subscription.unsubscribe();
-				} catch {
-					this._logger.warn("NOTP verification subscription could not be closed cleanly");
+				} catch (error: unknown) {
+					this._logger.warn({
+						event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_CLEANUP_FAILED_EVENT,
+						outcome: NotpRecoveryOutcome.DETACHED_CLEANUP_FAILED,
+						...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+					});
 				}
 			}
 			if (isHoldingExchangeLongPollCapacity) this._activeExchangeLongPollCount -= 1;
@@ -452,8 +524,12 @@ export class NotpRepository implements OnModuleInit {
 						[verificationWaitLeaseOwnerToken],
 					),
 				)
-				.catch(() => {
-					this._logger.warn("NOTP verification wait lease could not be released cleanly");
+				.catch((error: unknown) => {
+					this._logger.warn({
+						event: NotpObservabilityConstants.EXCHANGE_LEASE_CLEANUP_FAILED_EVENT,
+						outcome: NotpRecoveryOutcome.DETACHED_CLEANUP_FAILED,
+						...this._getSafeAndDevelopmentErrorLogFields({ error: error }),
+					});
 				});
 		}
 	}
@@ -568,6 +644,20 @@ export class NotpRepository implements OnModuleInit {
 
 	private _buildIntentByTokenHashRedisKey(params: { intentTokenHash: string }): string {
 		return `auth:notp:intent-by-token-hash:${params.intentTokenHash}`;
+	}
+
+	private _getSafeAndDevelopmentErrorLogFields(params: { error: unknown }): {
+		errorCause?: string;
+		errorDetails?: string;
+		errorMessage?: string;
+		errorName: string;
+		errorStack?: string;
+		errorStackFrames?: string;
+	} {
+		return {
+			...getSafeErrorTelemetryFields({ error: params.error }),
+			...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: params.error }) : {}),
+		};
 	}
 
 	private _buildNotpCodeRedisKey(params: { notpCodeHash: string; channel: NotpChannel }): string {

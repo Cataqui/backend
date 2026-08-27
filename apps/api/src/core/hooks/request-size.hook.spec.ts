@@ -14,12 +14,22 @@ function createMockRequest(overrides: Partial<FastifyRequest> = {}): FastifyRequ
 	} as FastifyRequest;
 }
 
+function _registerRequestSizeHooks(params: { app: FastifyInstance; config: ReturnType<typeof requestSizeConfig> }) {
+	const observabilityService = { recordApiError: vi.fn() };
+	registerRequestSizeHooks({
+		config: params.config,
+		fastifyInstance: params.app,
+		observabilityService: observabilityService as never,
+	});
+	return observabilityService;
+}
+
 describe("registerRequestSizeHooks", () => {
 	it("should register an onRequest hook", () => {
 		const addHook = vi.fn();
 		const app = { addHook } as unknown as FastifyInstance;
 
-		registerRequestSizeHooks(app, config);
+		_registerRequestSizeHooks({ app: app, config: config });
 
 		expect(addHook).toHaveBeenCalledWith("onRequest", expect.any(Function));
 	});
@@ -28,7 +38,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should allow request when Content-Length is within limit", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -49,7 +59,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should reject when Content-Length exceeds limit", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -70,7 +80,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should return envelope with PAYLOAD_TOO_LARGE errorCode for oversized body", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -96,7 +106,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should allow request when Content-Length is missing", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -115,7 +125,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should allow request when Content-Length is non-numeric", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -138,7 +148,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should allow request when URL is within limit", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -157,7 +167,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should reject when URL exceeds limit", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -177,7 +187,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should return envelope with URI_TOO_LONG errorCode for long URL", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -204,7 +214,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should check Content-Length before URL length", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();
@@ -226,7 +236,7 @@ describe("registerRequestSizeHooks", () => {
 		it("should expose camelCase keys directly from the Zod output schema", async () => {
 			const addHook = vi.fn();
 			const app = { addHook } as unknown as FastifyInstance;
-			registerRequestSizeHooks(app, config);
+			_registerRequestSizeHooks({ app: app, config: config });
 
 			const hook = addHook.mock.calls[0]![1] as (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 			const send = vi.fn();

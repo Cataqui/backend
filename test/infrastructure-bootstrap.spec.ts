@@ -75,95 +75,141 @@ describe("infrastructure bootstrap reconciliation", () => {
 	});
 
 	it("accepts the committed stable bootstrap contract", () => {
-		expect(validatePlatforms(platformCoordinates)).toBe(platformCoordinates);
-		expect(validateManifest(manifest)).toBe(manifest);
-		expect(manifest.cloudflare.r2.buckets).toEqual({ opentofu_state: "cataqui-backend-opentofu-state" });
-		expect(manifest.cloudflare.ai_gateways).toEqual({
-			derive_job_data_staging: "cataqui-derive-job-data-staging",
-			derive_job_data_production: "cataqui-derive-job-data-production",
-		});
-		expect(manifest.cloudflare.queues).toEqual({
-			derive_job_data_staging: {
-				name: "cataqui-api-derive-job-data-staging",
-				dead_letter_name: "cataqui-api-derive-job-data-staging-dlq",
+		expect({
+			validatedPlatforms: validatePlatforms(platformCoordinates),
+			validatedManifest: validateManifest(manifest),
+			cloudflareR2Buckets: manifest.cloudflare.r2.buckets,
+			cloudflareAiGateways: manifest.cloudflare.ai_gateways,
+			cloudflareQueues: manifest.cloudflare.queues,
+			datadog: platformCoordinates.datadog,
+			stagingR2TokenName: getR2TokenName(manifest, "staging"),
+			productionR2TokenName: getR2TokenName(manifest, "production"),
+			googleCloudProjects: manifest.google_cloud.projects,
+			googleCloudGithubAuthServiceAccounts: manifest.google_cloud.github_auth.service_accounts,
+			infisicalOpentofuIdentities: manifest.infisical.opentofu_identities,
+			infisicalOrganizationId: platformCoordinates.infisical.organization_id,
+			infisicalProject: manifest.infisical.project,
+			githubEnvironments: manifest.github.environments,
+			upstash: platformCoordinates.upstash,
+			upstashRedisDatabases: manifest.upstash.redis.databases,
+			neonProjects: manifest.neon.projects,
+			neonApiKeys: manifest.neon.api_keys,
+			neonDatabases: manifest.neon.databases,
+		}).toEqual({
+			validatedPlatforms: platformCoordinates,
+			validatedManifest: manifest,
+			cloudflareR2Buckets: { opentofu_state: "cataqui-backend-opentofu-state" },
+			cloudflareAiGateways: {
+				derive_job_data_staging: "cataqui-derive-job-data-staging",
+				derive_job_data_production: "cataqui-derive-job-data-production",
 			},
-			derive_job_data_production: {
-				name: "cataqui-api-derive-job-data-production",
-				dead_letter_name: "cataqui-api-derive-job-data-production-dlq",
+			cloudflareQueues: {
+				derive_job_data_staging: {
+					name: "cataqui-api-derive-job-data-staging",
+					dead_letter_name: "cataqui-api-derive-job-data-staging-dlq",
+				},
+				derive_job_data_production: {
+					name: "cataqui-api-derive-job-data-production",
+					dead_letter_name: "cataqui-api-derive-job-data-production-dlq",
+				},
 			},
-		});
-		expect(getR2TokenName(manifest, "staging")).toBe("cataqui-backend-opentofu-state-staging");
-		expect(getR2TokenName(manifest, "production")).toBe("cataqui-backend-opentofu-state-production");
-		expect(manifest.google_cloud.projects).toEqual({
-			cataqui_staging: { name: "cataqui-staging", id: "cataqui-staging-mre5wge" },
-			cataqui_production: { name: "cataqui-production", id: "cataqui-production-jd7bfto" },
-		});
-		expect(manifest.google_cloud.github_auth.service_accounts).toEqual({
-			cataqui_backend_staging: "cataqui-backend-opentofu-stg",
-			cataqui_backend_production: "cataqui-backend-opentofu-prod",
-		});
-		expect(manifest.infisical.opentofu_identities).toEqual({
-			cataqui_backend_staging: "cataqui-backend-opentofu-staging",
-			cataqui_backend_production: "cataqui-backend-opentofu-production",
-		});
-		expect(platformCoordinates.infisical.organization_id).toBe("33687647-d8e9-44a7-9cb9-721bd5b28a45");
-		expect(manifest.infisical.project).toEqual({
-			name: "Cataquí Backend",
-			slug: "cataqui-backend-6xt3g",
-		});
-		expect(manifest.github.environments).toEqual({
-			staging: { branches: ["staging"] },
-			production: { branches: ["main"] },
-		});
-		expect(platformCoordinates.upstash).toEqual({ account_email: "ryan@ventairy.com" });
-		expect(manifest.upstash.redis.databases).toEqual({
-			cataqui_api_staging: { name: "cataqui-api-staging" },
-			cataqui_api_production: { name: "cataqui-api-production" },
-		});
-		expect(manifest.neon.projects).toEqual({
-			cataqui_staging: { name: "cataqui-staging" },
-			cataqui_production: { name: "cataqui-production" },
-		});
-		expect(manifest.neon.api_keys).toEqual({
-			account_bootstrap: { name: "cataqui-backend-opentofu-bootstrap" },
-			project_access: {
-				cataqui_staging: { name: "cataqui-backend-project-access-staging" },
-				cataqui_production: { name: "cataqui-backend-project-access-production" },
+			datadog: { api_url: "https://api.datadoghq.com", site: "datadoghq.com" },
+			stagingR2TokenName: "cataqui-backend-opentofu-state-staging",
+			productionR2TokenName: "cataqui-backend-opentofu-state-production",
+			googleCloudProjects: {
+				cataqui_staging: { name: "cataqui-staging", id: "cataqui-staging-mre5wge" },
+				cataqui_production: { name: "cataqui-production", id: "cataqui-production-jd7bfto" },
 			},
-		});
-		expect(manifest.neon.databases).toEqual({
-			cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
+			googleCloudGithubAuthServiceAccounts: {
+				cataqui_backend_staging: "cataqui-backend-opentofu-stg",
+				cataqui_backend_production: "cataqui-backend-opentofu-prod",
+			},
+			infisicalOpentofuIdentities: {
+				cataqui_backend_staging: "cataqui-backend-opentofu-staging",
+				cataqui_backend_production: "cataqui-backend-opentofu-production",
+			},
+			infisicalOrganizationId: "33687647-d8e9-44a7-9cb9-721bd5b28a45",
+			infisicalProject: {
+				name: "Cataquí Backend",
+				slug: "cataqui-backend-6xt3g",
+			},
+			githubEnvironments: {
+				staging: { branches: ["staging"] },
+				production: { branches: ["main"] },
+			},
+			upstash: { account_email: "ryan@ventairy.com" },
+			upstashRedisDatabases: {
+				cataqui_api_staging: { name: "cataqui-api-staging" },
+				cataqui_api_production: { name: "cataqui-api-production" },
+			},
+			neonProjects: {
+				cataqui_staging: { name: "cataqui-staging" },
+				cataqui_production: { name: "cataqui-production" },
+			},
+			neonApiKeys: {
+				account_bootstrap: { name: "cataqui-backend-opentofu-bootstrap" },
+				project_access: {
+					cataqui_staging: { name: "cataqui-backend-project-access-staging" },
+					cataqui_production: { name: "cataqui-backend-project-access-production" },
+				},
+			},
+			neonDatabases: { cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" } },
 		});
 	});
 
 	it("rejects invalid and unexpected external platform values", () => {
-		expect(() =>
-			validatePlatforms({
-				...platformCoordinates,
-				cloudflare: { ...platformCoordinates.cloudflare, account_id: "secret" },
+		const invalidPlatformConfigurations = [
+			{
+				configuration: {
+					...platformCoordinates,
+					cloudflare: { ...platformCoordinates.cloudflare, account_id: "secret" },
+				},
+				expectedErrorMessage: "cloudflare.account_id",
+			},
+			{
+				configuration: {
+					...platformCoordinates,
+					infisical: { ...platformCoordinates.infisical, api_url: "https://example.com" },
+				},
+				expectedErrorMessage: "Unexpected keys in infrastructure configuration object: platforms.infisical",
+			},
+			{
+				configuration: {
+					...platformCoordinates,
+					google_cloud: { ...platformCoordinates.google_cloud, project_id: "forbidden" },
+				},
+				expectedErrorMessage: "Unexpected keys in infrastructure configuration object: platforms.google_cloud",
+			},
+			{
+				configuration: {
+					...platformCoordinates,
+					datadog: { ...platformCoordinates.datadog, api_url: "https://example.com" },
+				},
+				expectedErrorMessage: "datadog.api_url",
+			},
+			{
+				configuration: { ...platformCoordinates, upstash: { account_email: "not-an-email" } },
+				expectedErrorMessage: "upstash.account_email",
+			},
+			{
+				configuration: {
+					...platformCoordinates,
+					upstash: { ...platformCoordinates.upstash, api_key: "forbidden" },
+				},
+				expectedErrorMessage: "Unexpected keys in infrastructure configuration object: platforms.upstash",
+			},
+		];
+
+		expect(
+			invalidPlatformConfigurations.map((invalidPlatformConfiguration) => {
+				try {
+					validatePlatforms(invalidPlatformConfiguration.configuration);
+					return false;
+				} catch (error: unknown) {
+					return error instanceof Error && error.message.includes(invalidPlatformConfiguration.expectedErrorMessage);
+				}
 			}),
-		).toThrow("cloudflare.account_id");
-		expect(() =>
-			validatePlatforms({
-				...platformCoordinates,
-				infisical: { ...platformCoordinates.infisical, api_url: "https://example.com" },
-			}),
-		).toThrow("Unexpected keys in infrastructure configuration object: platforms.infisical");
-		expect(() =>
-			validatePlatforms({
-				...platformCoordinates,
-				google_cloud: { ...platformCoordinates.google_cloud, project_id: "forbidden" },
-			}),
-		).toThrow("Unexpected keys in infrastructure configuration object: platforms.google_cloud");
-		expect(() => validatePlatforms({ ...platformCoordinates, upstash: { account_email: "not-an-email" } })).toThrow(
-			"upstash.account_email",
-		);
-		expect(() =>
-			validatePlatforms({
-				...platformCoordinates,
-				upstash: { ...platformCoordinates.upstash, api_key: "forbidden" },
-			}),
-		).toThrow("Unexpected keys in infrastructure configuration object: platforms.upstash");
+		).toEqual([true, true, true, true, true, true]);
 	});
 
 	it("rejects invalid and unexpected desired infrastructure values", () => {

@@ -1,8 +1,13 @@
 import { Controller, Get, Header, HttpCode, HttpStatus, Logger, Res, SerializeOptions, Version } from "@nestjs/common";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { HealthCheckService, PrismaHealthIndicator } from "@nestjs/terminus";
 import type { FastifyReply } from "fastify";
 import type { z } from "zod";
+import {
+	getDevelopmentErrorLogFields,
+	getSafeErrorTelemetryFields,
+} from "../../core/observability/safe-error-telemetry";
 import { PrismaService } from "../../core/prisma/prisma.service";
 import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
@@ -79,7 +84,11 @@ export class HealthController {
 				};
 			}
 		} catch (error) {
-			this._logger.error("Health check failed", error);
+			this._logger.error({
+				event: ObservabilityEventConstants.API_HEALTH_DEPENDENCIES_FAILED_EVENT,
+				...getSafeErrorTelemetryFields({ error: error }),
+				...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: error }) : {}),
+			});
 
 			healthStatus = HealthCheckStatus.ERROR;
 			details = {

@@ -1,6 +1,8 @@
 import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { JobStatus } from "../../../generated/prisma/client.js";
+import { ObservabilityOperationName } from "../../core/observability/observability-operation-name.enum";
+import { ObservabilityService } from "../../core/observability/observability.service";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
 import { LocationService } from "../location/location.service";
@@ -46,6 +48,7 @@ describe("JobService job data derivation", () => {
 		findById: ReturnType<typeof vi.fn>;
 		updateDerivedJobDataIfDescriptionUnchanged: ReturnType<typeof vi.fn>;
 	};
+	let observeOperation: ReturnType<typeof vi.fn>;
 
 	beforeEach(async () => {
 		vi.restoreAllMocks();
@@ -56,6 +59,7 @@ describe("JobService job data derivation", () => {
 			findById: vi.fn(),
 			updateDerivedJobDataIfDescriptionUnchanged: vi.fn().mockResolvedValue(undefined),
 		};
+		observeOperation = vi.fn(async (params: { operation: () => Promise<unknown> }) => params.operation());
 
 		const module = await Test.createTestingModule({
 			providers: [
@@ -67,6 +71,7 @@ describe("JobService job data derivation", () => {
 					useValue: { getOrAddContact: vi.fn() },
 				},
 				{ provide: LocationService, useValue: { fuzzCoordinate: vi.fn() } },
+				{ provide: ObservabilityService, useValue: { observeOperation: observeOperation } },
 			],
 		}).compile();
 
@@ -109,6 +114,20 @@ describe("JobService job data derivation", () => {
 		});
 	});
 
+	it("should observe Queue publication as a typed backend operation", async () => {
+		jobRepository.createDraft.mockResolvedValue(persistedDraft);
+
+		await service.createDraft({
+			posterUserId: posterUserId,
+			dto: Object.assign({}, { description: persistedDraft.description }),
+		});
+
+		expect(observeOperation).toHaveBeenCalledWith({
+			operation: expect.any(Function),
+			operationName: ObservabilityOperationName.JOB_DATA_DERIVATION_QUEUE_PUBLICATION,
+		});
+	});
+
 	it("should not fail draft creation when the Queue operation is unavailable", async () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 		outboundCallMock.mockResolvedValue(new Response(null, { status: 503 }));
@@ -132,11 +151,14 @@ describe("JobService job data derivation", () => {
 			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
-		expect(loggerError).toHaveBeenCalledWith({
-			event: "job_data_derivation.queue_publish_failed",
-			jobId: persistedDraft.id,
-			status: 503,
-		});
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("job.service.ts"),
+				event: "api.job.data.derivation.queue.publication.failed",
+				status: 503,
+			}),
+		);
 	});
 
 	it("should not fail draft creation when the outbound host cannot be reached", async () => {
@@ -152,7 +174,7 @@ describe("JobService job data derivation", () => {
 		).resolves.toBeDefined();
 	});
 
-	it("should log outbound transport failures without their error details", async () => {
+	it("should log outbound transport failure locations without exporting their arbitrary messages", async () => {
 		jobRepository.createDraft.mockResolvedValue(persistedDraft);
 		outboundCallMock.mockRejectedValue(new Error("private transport details"));
 		const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
@@ -162,10 +184,17 @@ describe("JobService job data derivation", () => {
 			dto: Object.assign({}, { description: persistedDraft.description }),
 		});
 
-		expect(loggerError).toHaveBeenCalledWith({
-			event: "job_data_derivation.queue_publish_failed",
-			jobId: persistedDraft.id,
-			status: null,
+		expect({
+			fields: loggerError.mock.calls[0]?.[0],
+			leaksMessage: JSON.stringify(loggerError.mock.calls).includes("private transport details"),
+		}).toEqual({
+			fields: expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("job.service.data-derivation.spec.ts"),
+				event: "api.job.data.derivation.queue.publication.failed",
+				status: null,
+			}),
+			leaksMessage: false,
 		});
 	});
 
@@ -400,6 +429,17 @@ describe("JobService job data derivation", () => {
 		await expect(
 			service.getDerivedJobDataFromDescription({ description: "Descrição válida durante uma falha do gateway." }),
 		).rejects.toBeInstanceOf(JobDataDerivationUnavailableError);
+	});
+
+	it("should preserve the gateway failure as the unavailable error cause", async () => {
+		const gatewayError = new Error("gateway unavailable");
+		aiService.generateObject.mockRejectedValue(gatewayError);
+
+		const error = await service
+			.getDerivedJobDataFromDescription({ description: "Descrição válida durante uma falha do gateway." })
+			.catch((derivationError: unknown) => derivationError);
+
+		expect((error as Error).cause).toBe(gatewayError);
 	});
 
 	it("should configure job data derivation as one bounded schema-constrained request", async () => {

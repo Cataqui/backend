@@ -1,3 +1,4 @@
+import { getWorkerVersion } from "@cataqui/observability-contracts";
 import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 import { geosearchAuthMiddleware } from "../auth/geosearch-auth.middleware";
@@ -44,6 +45,11 @@ export function createAddressesRoutes(params?: { service?: AddressesService }): 
 					languageCode: languageCode,
 					rateLimitKey: `${context.env.ENVIRONMENT}:${context.get("authenticatedUserId")}`,
 					rateLimiter: context.env.ADDRESS_SEARCH_RATE_LIMITER,
+					telemetryContext: {
+						environment: context.env.ENVIRONMENT,
+						requestId: context.get("requestId"),
+						version: getWorkerVersion({ metadata: context.env.WORKER_VERSION_METADATA }),
+					},
 				}),
 				200,
 			);
@@ -70,6 +76,11 @@ export function createAddressesRoutes(params?: { service?: AddressesService }): 
 					input: input,
 					rateLimitKey: `${context.env.ENVIRONMENT}:${context.get("authenticatedUserId")}`,
 					rateLimiter: context.env.ADDRESS_DETAILS_RATE_LIMITER,
+					telemetryContext: {
+						environment: context.env.ENVIRONMENT,
+						requestId: context.get("requestId"),
+						version: getWorkerVersion({ metadata: context.env.WORKER_VERSION_METADATA }),
+					},
 				}),
 				200,
 			);

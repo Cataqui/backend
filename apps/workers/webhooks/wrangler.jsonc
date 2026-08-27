@@ -4,9 +4,11 @@
 	"name": "cataqui-webhooks-development",
 	"main": "./src/app.ts",
 	"tsconfig": "./tsconfig.json",
-	"compatibility_date": "2026-08-08",
+	"compatibility_date": "2026-08-27",
 	"compatibility_flags": ["nodejs_compat"],
+	"upload_source_maps": true,
 	"workers_dev": true,
+	"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 	"services": [
 		{
 			"binding": "API_WORKER",
@@ -15,6 +17,7 @@
 		}
 	],
 	"vars": {
+		"NODE_ENV": "development",
 		"WHATSAPP_NOTP_PHONE_NUMBER_ID": "1211194405413752"
 	},
 	"secrets": {
@@ -22,12 +25,14 @@
 	},
 	"observability": {
 		"enabled": true,
-		"logs": { "enabled": true, "head_sampling_rate": 1 }
+		"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+		"traces": { "enabled": false }
 	},
 	"env": {
 		"staging": {
 			"name": "cataqui-webhooks-staging",
 			"workers_dev": false,
+			"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 			"services": [
 				{
 					"binding": "API_WORKER",
@@ -42,6 +47,7 @@
 				}
 			],
 			"vars": {
+				"NODE_ENV": "staging",
 				"WHATSAPP_NOTP_PHONE_NUMBER_ID": "1211194405413752"
 			},
 			"secrets": {
@@ -49,12 +55,14 @@
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1 }
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+				"traces": { "enabled": false }
 			}
 		},
 		"production": {
 			"name": "cataqui-webhooks-production",
 			"workers_dev": false,
+			"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 			"services": [
 				{
 					"binding": "API_WORKER",
@@ -69,6 +77,7 @@
 				}
 			],
 			"vars": {
+				"NODE_ENV": "production",
 				"WHATSAPP_NOTP_PHONE_NUMBER_ID": "1203689159488121"
 			},
 			"secrets": {
@@ -76,7 +85,8 @@
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false }
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+				"traces": { "enabled": false }
 			}
 		}
 	}

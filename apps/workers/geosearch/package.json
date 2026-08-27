@@ -6,7 +6,7 @@
 	"license": "BUSL-1.1",
 	"type": "module",
 	"scripts": {
-		"build": "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
+		"build": "wrangler deploy --dry-run --config wrangler.jsonc --env=\"\" --outdir dist",
 		"cf:deploy:production": "wrangler deploy --config wrangler.jsonc --env production",
 		"cf:deploy:staging": "wrangler deploy --config wrangler.jsonc --env staging",
 		"cf:dev": "wrangler dev --config wrangler.jsonc --env-file \"$PWD/../../../.env\"",
@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@cataqui/microservices-auth-contracts": "workspace:*",
+		"@cataqui/observability-contracts": "workspace:*",
 		"@hono/standard-validator": "^0.4.0",
 		"hono": "catalog:",
 		"jose": "^6.2.9",

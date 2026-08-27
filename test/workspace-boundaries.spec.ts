@@ -3,7 +3,11 @@ import { dirname, extname, relative, resolve } from "node:path";
 
 const repositoryRoot = process.cwd();
 const applicationDirectories = ["apps/api", "apps/workers/webhooks", "apps/workers/geosearch"] as const;
-const sharedPackageDirectories = ["packages/api-internal-ingress", "packages/microservices-auth-contracts"] as const;
+const sharedPackageDirectories = [
+	"packages/api-internal-ingress",
+	"packages/microservices-auth-contracts",
+	"packages/observability-contracts",
+] as const;
 const workspaceDirectories = [...applicationDirectories, ...sharedPackageDirectories] as const;
 
 function _readPackageJson(workspaceDirectory: (typeof workspaceDirectories)[number]): Record<string, unknown> {
@@ -75,12 +79,18 @@ describe("backend workspace boundaries", () => {
 	});
 
 	it("should keep shared package runtime dependencies neutral", () => {
-		for (const packageDirectory of sharedPackageDirectories) {
-			const packageJson = _readPackageJson(packageDirectory);
-			expect(Object.keys((packageJson.dependencies ?? {}) as Record<string, string>), packageDirectory).toEqual([
-				"zod",
-			]);
-		}
+		expect(
+			Object.fromEntries(
+				sharedPackageDirectories.map((packageDirectory) => {
+					const packageJson = _readPackageJson(packageDirectory);
+					return [packageDirectory, Object.keys((packageJson.dependencies ?? {}) as Record<string, string>)];
+				}),
+			),
+		).toEqual({
+			"packages/api-internal-ingress": ["zod"],
+			"packages/microservices-auth-contracts": ["zod"],
+			"packages/observability-contracts": [],
+		});
 	});
 
 	it("should keep the intended shared-package consumer graph", () => {
@@ -101,9 +111,16 @@ describe("backend workspace boundaries", () => {
 			"@cataqui/api": [
 				["@cataqui/api-internal-ingress", "workspace:*"],
 				["@cataqui/microservices-auth-contracts", "workspace:*"],
+				["@cataqui/observability-contracts", "workspace:*"],
 			],
-			"@cataqui/geosearch-worker": [["@cataqui/microservices-auth-contracts", "workspace:*"]],
-			"@cataqui/webhooks-worker": [["@cataqui/api-internal-ingress", "workspace:*"]],
+			"@cataqui/geosearch-worker": [
+				["@cataqui/microservices-auth-contracts", "workspace:*"],
+				["@cataqui/observability-contracts", "workspace:*"],
+			],
+			"@cataqui/webhooks-worker": [
+				["@cataqui/api-internal-ingress", "workspace:*"],
+				["@cataqui/observability-contracts", "workspace:*"],
+			],
 		});
 	});
 
@@ -141,7 +158,9 @@ describe("backend workspace boundaries", () => {
 			_getTypeScriptFiles(resolve(repositoryRoot, applicationDirectory)).flatMap((filePath) =>
 				_getImportSpecifiers(readFileSync(filePath, "utf8"))
 					.filter((importSpecifier) =>
-						/^@cataqui\/(?:api-internal-ingress|microservices-auth-contracts)\/.+/.test(importSpecifier),
+						/^@cataqui\/(?:api-internal-ingress|microservices-auth-contracts|observability-contracts)\/.+/.test(
+							importSpecifier,
+						),
 					)
 					.filter(
 						(importSpecifier) =>

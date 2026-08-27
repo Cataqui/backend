@@ -4,8 +4,9 @@
 	"name": "cataqui-api-development",
 	"main": "./src/platform/cloudflare/workers/api/worker.ts",
 	"tsconfig": "./src/platform/cloudflare/tsconfig.json",
-	"compatibility_date": "2025-12-18",
+	"compatibility_date": "2026-08-27",
 	"compatibility_flags": ["nodejs_compat"],
+	"upload_source_maps": true,
 	"workers_dev": true,
 	"cache": {
 		"enabled": false,
@@ -62,6 +63,7 @@
 			"new_sqlite_classes": ["ApiContainer"]
 		}
 	],
+	"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 
 	"vars": {
 		"NODE_ENV": "development",
@@ -69,7 +71,11 @@
 		"CORS_ORIGINS": "http://localhost:3000",
 		"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-development",
 		"API_CONTAINER_POOL_SIZE": "1",
-		"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+		"WHATSAPP_NOTP_RECEIVER": "+15556625497",
+		"OBSERVABILITY_TRACE_SAMPLE_RATIO": "1",
+		"OTEL_EXPORTER_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.datadoghq.com",
+		"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
+		"OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf"
 	},
 	"secrets": {
 		"required": [
@@ -79,13 +85,15 @@
 			"UPSTASH_REDIS_REST_URL",
 			"UPSTASH_REDIS_REST_TOKEN",
 			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+			"OTEL_EXPORTER_OTLP_HEADERS"
 		]
 	},
 
 	"observability": {
 		"enabled": true,
-		"logs": { "enabled": true, "head_sampling_rate": 1 }
+		"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+		"traces": { "enabled": false }
 	},
 
 	"env": {
@@ -132,13 +140,18 @@
 				]
 			},
 			"routes": [{ "pattern": "staging.api.cataqui.com", "custom_domain": true }],
+			"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 			"vars": {
 				"NODE_ENV": "staging",
 				"SLEEP_AFTER": "5m",
 				"CORS_ORIGINS": "https://staging.cataqui.com",
 				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-staging",
 				"API_CONTAINER_POOL_SIZE": "3",
-				"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+				"WHATSAPP_NOTP_RECEIVER": "+15556625497",
+				"OBSERVABILITY_TRACE_SAMPLE_RATIO": "1",
+				"OTEL_EXPORTER_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.datadoghq.com",
+				"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
+				"OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf"
 			},
 			"secrets": {
 				"required": [
@@ -148,12 +161,14 @@
 					"UPSTASH_REDIS_REST_URL",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+					"OTEL_EXPORTER_OTLP_HEADERS"
 				]
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1 }
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+				"traces": { "enabled": false }
 			}
 		},
 		"production": {
@@ -199,13 +214,18 @@
 				]
 			},
 			"routes": [{ "pattern": "api.cataqui.com", "custom_domain": true }],
+			"version_metadata": { "binding": "WORKER_VERSION_METADATA" },
 			"vars": {
 				"NODE_ENV": "production",
 				"SLEEP_AFTER": "1h",
 				"CORS_ORIGINS": "https://cataqui.com",
 				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-production",
 				"API_CONTAINER_POOL_SIZE": "10",
-				"WHATSAPP_NOTP_RECEIVER": "+5511963270517"
+				"WHATSAPP_NOTP_RECEIVER": "+5511963270517",
+				"OBSERVABILITY_TRACE_SAMPLE_RATIO": "0.1",
+				"OTEL_EXPORTER_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.datadoghq.com",
+				"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
+				"OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf"
 			},
 			"secrets": {
 				"required": [
@@ -215,12 +235,14 @@
 					"UPSTASH_REDIS_REST_URL",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+					"OTEL_EXPORTER_OTLP_HEADERS"
 				]
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false }
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false, "persist": true },
+				"traces": { "enabled": false }
 			}
 		}
 	}

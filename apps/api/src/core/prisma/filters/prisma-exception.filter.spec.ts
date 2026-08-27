@@ -1,6 +1,8 @@
 import { HttpStatus, Logger } from "@nestjs/common";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { ErrorCode } from "../../errors/error-code.enum.js";
+import { ApiErrorOrigin } from "../../observability/api-error-origin.enum.js";
+import type { ObservabilityService } from "../../observability/observability.service.js";
 import { PrismaExceptionFilter } from "./prisma-exception.filter.js";
 
 function createMockHost(exception: Prisma.PrismaClientKnownRequestError, requestId?: string) {
@@ -19,20 +21,28 @@ function createMockHost(exception: Prisma.PrismaClientKnownRequestError, request
 			getRequest: () => request,
 		}),
 	};
+	const recordApiError = vi.fn();
 
-	const filter = new PrismaExceptionFilter();
+	const filter = new PrismaExceptionFilter({
+		observabilityService: { recordApiError: recordApiError } satisfies Pick<ObservabilityService, "recordApiError">,
+	});
 	filter.catch(exception, host as never);
 
-	return { statusMock, sendMock, response, request };
+	return {
+		statusMock: statusMock,
+		sendMock: sendMock,
+		response: response,
+		request: request,
+		recordApiError: recordApiError,
+	};
 }
 
 function createMockPrismaError(code: string): Prisma.PrismaClientKnownRequestError {
-	return {
-		code,
+	return new Prisma.PrismaClientKnownRequestError(`Prisma error ${code}`, {
+		clientVersion: "test",
+		code: code,
 		meta: {},
-		message: `Prisma error ${code}`,
-		stack: "Error stack",
-	} as unknown as Prisma.PrismaClientKnownRequestError;
+	});
 }
 
 describe("PrismaExceptionFilter", () => {
@@ -78,16 +88,49 @@ describe("PrismaExceptionFilter", () => {
 
 	describe("unknown Prisma error", () => {
 		it("should return 500 with INTERNAL_ERROR", () => {
-			const { sendMock, statusMock } = createMockHost(createMockPrismaError("P9999"));
+			const error = createMockPrismaError("P9999");
+			const { sendMock, statusMock, recordApiError } = createMockHost(error);
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: statusMock.mock.calls[0]?.[0],
+				body: sendMock.mock.calls[0]?.[0],
+				recordedApiError: recordApiError.mock.calls[0]?.[0],
+			}).toMatchObject({
 				httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 				body: {
 					errorCode: ErrorCode.INTERNAL_ERROR,
 					message: "An unexpected database error occurred.",
 					status: HttpStatus.INTERNAL_SERVER_ERROR,
 				},
+				recordedApiError: {
+					errorCode: ErrorCode.INTERNAL_ERROR,
+					exception: error,
+					method: "GET",
+					origin: ApiErrorOrigin.SERVER,
+					route: "UNMATCHED",
+					statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+				},
 			});
+		});
+
+		it("should log the complete database exception for local development", () => {
+			vi.stubEnv("NODE_ENV", "development");
+			const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+			const error = createMockPrismaError("P9999");
+
+			createMockHost(error, "local-database-request-id");
+
+			expect(loggerError).toHaveBeenCalledWith(
+				expect.objectContaining({
+					errorMessage: "Prisma error P9999",
+					errorStack: expect.stringContaining("Prisma error P9999"),
+					event: "api.database.request.failed",
+					requestId: "local-database-request-id",
+				}),
+			);
+
+			loggerError.mockRestore();
+			vi.unstubAllEnvs();
 		});
 	});
 
@@ -140,7 +183,7 @@ describe("PrismaExceptionFilter", () => {
 			const loggerWarnSpy = vi.spyOn(Logger.prototype, "warn");
 			createMockHost(error);
 
-			expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining('"target":["email"]'));
+			expect(loggerWarnSpy).toHaveBeenCalledWith(expect.objectContaining({ metadata: { target: ["email"] } }));
 			loggerWarnSpy.mockRestore();
 		});
 
@@ -158,7 +201,7 @@ describe("PrismaExceptionFilter", () => {
 			const loggerWarnSpy = vi.spyOn(Logger.prototype, "warn");
 			createMockHost(error);
 
-			expect(loggerWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining("extremely_secret_password_123"));
+			expect(JSON.stringify(loggerWarnSpy.mock.calls)).not.toContain("extremely_secret_password_123");
 			loggerWarnSpy.mockRestore();
 		});
 	});

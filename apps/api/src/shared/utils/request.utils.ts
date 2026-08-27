@@ -4,14 +4,23 @@ import { InvalidLocaleException } from "../../core/errors/invalid-locale.excepti
 import { LocaleConstants } from "../locale/locale.constants";
 import { LocaleUtils } from "../locale/locale.utils";
 
-function resolveRequestId(request: FastifyRequest): string {
+function getOrCreateRequestId(request: FastifyRequest): string {
 	const headerRequestId = request.headers["x-request-id"];
-	if (typeof headerRequestId === "string" && headerRequestId.length > 0) return headerRequestId;
-	return randomUUID();
+	if (typeof headerRequestId === "string" && /^[A-Za-z0-9._:-]{1,128}$/.test(headerRequestId)) {
+		return headerRequestId;
+	}
+
+	const generatedRequestId = randomUUID();
+	request.headers["x-request-id"] = generatedRequestId;
+	return generatedRequestId;
 }
 
-function resolveEndpoint(request: FastifyRequest): string {
+function getPathWithoutQuery(request: FastifyRequest): string {
 	return request.url.split("?", 1)[0] ?? request.url;
+}
+
+function getNormalizedRouteTemplate(request: FastifyRequest): string {
+	return request.routeOptions?.url ?? "UNMATCHED";
 }
 
 function resolveRequestLocale(acceptLanguage: string | undefined): string {
@@ -26,7 +35,8 @@ function resolveRequestLocale(acceptLanguage: string | undefined): string {
 }
 
 export const RequestUtils = {
-	resolveRequestId,
-	resolveEndpoint,
-	resolveRequestLocale,
+	getNormalizedRouteTemplate: getNormalizedRouteTemplate,
+	getOrCreateRequestId: getOrCreateRequestId,
+	getPathWithoutQuery: getPathWithoutQuery,
+	resolveRequestLocale: resolveRequestLocale,
 } as const;

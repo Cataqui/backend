@@ -8,18 +8,23 @@ import {
 import { Reflector } from "@nestjs/core";
 import { type NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import { AppSwagger } from "./app.swagger";
 import { requestSizeConfig } from "./config/request-size.config";
 import { CorsBlockedError } from "./errors/cors-blocked.error";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
 import { RequestValidationError } from "./errors/request-validation.error";
 import { registerRequestSizeHooks } from "./hooks/request-size.hook";
-import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
+import { registerHttpObservabilityHooks } from "./observability/http-observability.hook";
+import { ObservabilityService } from "./observability/observability.service";
+import { ProductAnalyticsInterceptor } from "./observability/product-analytics.interceptor";
 import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
 
 export async function configureApp(app: NestFastifyApplication): Promise<void> {
 	const corsLogger = new Logger("CORS");
+	const observabilityService = app.get(ObservabilityService);
+	const reflector = app.get(Reflector);
 
 	const sizeConfig = requestSizeConfig();
 
@@ -49,17 +54,25 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
 	// Nest evaluates global filters in reverse registration order. Keep the catch-all first so
 	// Prisma errors reach their specific filter before the generic HTTP fallback.
-	app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
+	app.useGlobalFilters(
+		new HttpExceptionFilter({ observabilityService: observabilityService }),
+		new PrismaExceptionFilter({ observabilityService: observabilityService }),
+	);
 
 	// Nest runs response interceptors in reverse order. ResponseInterceptor creates the wire envelope,
 	// then Standard Schema validates and serializes that complete response contract.
 	app.useGlobalInterceptors(
-		new LoggingInterceptor(),
-		new StandardSchemaSerializerInterceptor(app.get(Reflector)),
+		new ProductAnalyticsInterceptor({ observabilityService: observabilityService, reflector: reflector }),
+		new StandardSchemaSerializerInterceptor(reflector),
 		new ResponseInterceptor(),
 	);
 
 	const isDevelopment = process.env["NODE_ENV"] === "development" || process.env["NODE_ENV"] === "test";
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+	registerHttpObservabilityHooks({
+		fastifyInstance: fastifyInstance,
+		observabilityService: observabilityService,
+	});
 
 	app.enableCors({
 		origin: isDevelopment
@@ -69,7 +82,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
 					if (allowedOrigins.includes(origin)) callback(null, true);
 					else {
-						corsLogger.warn(`CORS Violation Blocked: Unauthorized access attempt from origin [${origin}]`);
+						corsLogger.warn({ event: ObservabilityEventConstants.API_CORS_REQUEST_BLOCKED_EVENT });
 						callback(new CorsBlockedError(), false);
 					}
 				},
@@ -78,7 +91,6 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 		allowedHeaders: ["Content-Type", "Authorization", "Accept-Language", "x-request-id"],
 	});
 
-	const fastifyInstance = app.getHttpAdapter().getInstance();
 	fastifyInstance.removeContentTypeParser("text/plain");
 	await fastifyInstance.register(helmet, {
 		contentSecurityPolicy: true,
@@ -88,7 +100,11 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 			preload: true,
 		},
 	});
-	registerRequestSizeHooks(fastifyInstance, sizeConfig);
+	registerRequestSizeHooks({
+		config: sizeConfig,
+		fastifyInstance: fastifyInstance,
+		observabilityService: observabilityService,
+	});
 
 	AppSwagger.setup(app);
 }

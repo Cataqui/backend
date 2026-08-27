@@ -7,37 +7,74 @@ function createMockRequest(headers: Record<string, string | undefined>, url = "/
 }
 
 describe("RequestUtils", () => {
-	describe("resolveRequestId", () => {
+	describe("getOrCreateRequestId", () => {
 		it("should return X-Request-ID header value when present", () => {
 			const request = createMockRequest({ "x-request-id": "custom-request-id" });
-			const result = RequestUtils.resolveRequestId(request);
+			const result = RequestUtils.getOrCreateRequestId(request);
 			expect(result).toBe("custom-request-id");
 		});
 
 		it("should generate a UUID when no X-Request-ID header is present", () => {
 			const request = createMockRequest({});
-			const result = RequestUtils.resolveRequestId(request);
+			const result = RequestUtils.getOrCreateRequestId(request);
 			expect(result).toMatch(/^[0-9a-f-]{36}$/);
 		});
 
 		it("should generate a UUID when X-Request-ID is an empty string", () => {
 			const request = createMockRequest({ "x-request-id": "" });
-			const result = RequestUtils.resolveRequestId(request);
+			const result = RequestUtils.getOrCreateRequestId(request);
+			expect(result).toMatch(/^[0-9a-f-]{36}$/);
+		});
+
+		it("should preserve one generated request ID across every consumer", () => {
+			const request = createMockRequest({});
+
+			const firstRequestId = RequestUtils.getOrCreateRequestId(request);
+			const secondRequestId = RequestUtils.getOrCreateRequestId(request);
+
+			expect(secondRequestId).toBe(firstRequestId);
+		});
+
+		it("should replace an oversized caller request ID", () => {
+			const request = createMockRequest({ "x-request-id": "x".repeat(129) });
+
+			const result = RequestUtils.getOrCreateRequestId(request);
+
 			expect(result).toMatch(/^[0-9a-f-]{36}$/);
 		});
 	});
 
-	describe("resolveEndpoint", () => {
+	describe("getPathWithoutQuery", () => {
 		it("should return request.url", () => {
 			const request = createMockRequest({}, "/v1/posts/abc123");
-			const result = RequestUtils.resolveEndpoint(request);
+			const result = RequestUtils.getPathWithoutQuery(request);
 			expect(result).toBe("/v1/posts/abc123");
 		});
 
 		it("should remove query values from the resolved endpoint", () => {
 			const request = createMockRequest({}, "/v1/feed?cursor=secret-token");
-			const result = RequestUtils.resolveEndpoint(request);
+			const result = RequestUtils.getPathWithoutQuery(request);
 			expect(result).toBe("/v1/feed");
+		});
+	});
+
+	describe("getNormalizedRouteTemplate", () => {
+		it("should return the framework route template instead of a concrete resource ID", () => {
+			const request = {
+				headers: {},
+				routeOptions: { url: "/v1/jobs/:jobId" },
+				url: "/v1/jobs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+			} as FastifyRequest;
+
+			const result = RequestUtils.getNormalizedRouteTemplate(request);
+
+			expect(result).toBe("/v1/jobs/:jobId");
+		});
+
+		it("should return a bounded label for unmatched paths", () => {
+			const result = RequestUtils.getNormalizedRouteTemplate(createMockRequest({}, "/attacker-controlled-path"));
+
+			expect(result).toBe("UNMATCHED");
 		});
 	});
 

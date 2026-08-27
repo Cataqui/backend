@@ -9,6 +9,13 @@ export default defineConfig({
 		include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
 		env: {
 			NODE_ENV: "test",
+			SERVICE_VERSION: "test",
+			SERVICE_INSTANCE_ID: "test-instance",
+			OBSERVABILITY_TRACE_SAMPLE_RATIO: "0",
+			OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost",
+			OTEL_EXPORTER_OTLP_HEADERS: "disabled",
+			OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",
+			OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "delta",
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
 			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: generateKeyPairSync("ec", {
 				namedCurve: "prime256v1",

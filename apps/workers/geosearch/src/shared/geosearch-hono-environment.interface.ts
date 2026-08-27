@@ -1,4 +1,10 @@
+import type { SourceSafeErrorTelemetryFields } from "@cataqui/observability-contracts";
+
 export interface IGeosearchHonoEnvironment {
 	Bindings: GeosearchWorkerEnv;
-	Variables: { authenticatedUserId: string; requestId: string };
+	Variables: {
+		authenticatedUserId: string;
+		requestErrorTelemetry: SourceSafeErrorTelemetryFields | undefined;
+		requestId: string;
+	};
 }

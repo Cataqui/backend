@@ -10,8 +10,9 @@ import { ErrorCode } from "../src/core/errors/error-code.enum";
 import { ErrorOutputSchema } from "../src/core/errors/error-output";
 import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
 import { registerRequestSizeHooks } from "../src/core/hooks/request-size.hook";
-import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
 import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
+import { ApiErrorOrigin } from "../src/core/observability/api-error-origin.enum";
+import { ObservabilityService } from "../src/core/observability/observability.service";
 import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
 import { PrismaService } from "../src/core/prisma/prisma.service";
 import { NotpRepository } from "../src/modules/auth/notp/repositories/notp.repository";
@@ -102,16 +103,20 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 
 	app.useGlobalPipes(new StandardSchemaValidationPipe());
 
-	app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
-	app.useGlobalInterceptors(
-		new LoggingInterceptor(),
-		new StandardSchemaSerializerInterceptor(app.get(Reflector)),
-		new ResponseInterceptor(),
+	const observabilityService = app.get(ObservabilityService);
+	app.useGlobalFilters(
+		new HttpExceptionFilter({ observabilityService: observabilityService }),
+		new PrismaExceptionFilter({ observabilityService: observabilityService }),
 	);
+	app.useGlobalInterceptors(new StandardSchemaSerializerInterceptor(app.get(Reflector)), new ResponseInterceptor());
 
 	await app.init();
 
-	registerRequestSizeHooks(app.getHttpAdapter().getInstance(), effectiveConfig);
+	registerRequestSizeHooks({
+		config: effectiveConfig,
+		fastifyInstance: app.getHttpAdapter().getInstance(),
+		observabilityService: app.get(ObservabilityService),
+	});
 
 	return app;
 }
@@ -130,6 +135,7 @@ describe("Request Size Limits (e2e)", () => {
 
 		it("should reject requests with Content-Length exceeding body limit", async () => {
 			const app = await buildApp(TEST_CONFIG);
+			const recordApiError = vi.spyOn(app.get(ObservabilityService), "recordApiError");
 
 			const response = await app.inject({
 				method: "GET",
@@ -137,15 +143,29 @@ describe("Request Size Limits (e2e)", () => {
 				headers: { "content-length": String(TEST_CONFIG.bodyLimitBytes + 1) },
 			});
 
-			assertErrorResponse(
-				response,
-				ErrorCode.PAYLOAD_TOO_LARGE,
-				"Request body exceeds the maximum allowed size.",
-				413,
-				"/v1/health",
-			);
-
+			const responseBody = JSON.parse(response.body) as Record<string, unknown>;
 			await app.close();
+
+			expect({
+				recordedApiError: recordApiError.mock.calls[0]?.[0],
+				responseBody: responseBody,
+				responseStatus: response.statusCode,
+			}).toEqual({
+				recordedApiError: {
+					errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
+					method: "GET",
+					origin: ApiErrorOrigin.CLIENT,
+					route: "/v1/health",
+					statusCode: 413,
+				},
+				responseBody: expect.objectContaining({
+					endpoint: "/v1/health",
+					errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
+					message: "Request body exceeds the maximum allowed size.",
+					status: 413,
+				}),
+				responseStatus: 413,
+			});
 		});
 
 		it("should reject requests with body content exceeding body limit", async () => {

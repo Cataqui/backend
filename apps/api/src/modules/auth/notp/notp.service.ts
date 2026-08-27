@@ -1,21 +1,30 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
+import {
+	getDevelopmentErrorLogFields,
+	getSafeErrorTelemetryFields,
+} from "../../../core/observability/safe-error-telemetry";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
 import { NotpChannel } from "./enums/notp-channel.enum";
 import { NotpIntentStatus } from "./enums/notp-intent-status.enum";
+import { NotpRecoveryOutcome } from "./enums/notp-recovery-outcome.enum";
+import { NotpVerificationOutcome } from "./enums/notp-verification-outcome.enum";
 import { NotpIntentCreationCollisionError } from "./errors/notp-intent-creation-collision.error";
 import { NotpIntentNotFoundError } from "./errors/notp-intent-not-found.error";
 import { type INotpConfig, notpConfig } from "./notp.config";
 import { NotpConstants } from "./notp.constants";
+import { NotpObservabilityConstants } from "./notp-observability.constants";
 import { NotpRepository } from "./repositories/notp.repository";
 import { NotpIntentExchangeOutputSchema } from "./schemas/notp-intent-exchange-output.schema";
 import { NotpIntentOutputSchema } from "./schemas/notp-intent-output.schema";
 
 @Injectable()
 export class NotpService {
+	private readonly _logger = new Logger(NotpService.name);
+
 	constructor(
 		private readonly _notpRepository: NotpRepository,
 		private readonly _authIdentityRepository: AuthIdentityRepository,
@@ -99,7 +108,13 @@ export class NotpService {
 			channel: params.channel,
 		});
 
-		if (processingIntent === null) return;
+		if (processingIntent === null) {
+			this._logger.log({
+				event: NotpObservabilityConstants.VERIFICATION_COMPLETED_EVENT,
+				outcome: NotpVerificationOutcome.NO_MATCH,
+			});
+			return;
+		}
 
 		try {
 			const userId = await this._authIdentityRepository.saveVerifiedIdentityAndContact({
@@ -118,11 +133,25 @@ export class NotpService {
 				channel: params.channel,
 				userId: userId,
 			});
-		} catch (error) {
-			await this._notpRepository.markProcessingIntentAsPending({
-				intentTokenHash: processingIntent.intentTokenHash,
-				providerMessageId: params.providerMessageId,
+			this._logger.log({
+				event: NotpObservabilityConstants.VERIFICATION_COMPLETED_EVENT,
+				outcome: NotpVerificationOutcome.VERIFIED,
 			});
+		} catch (error: unknown) {
+			try {
+				await this._notpRepository.markProcessingIntentAsPending({
+					intentTokenHash: processingIntent.intentTokenHash,
+					providerMessageId: params.providerMessageId,
+				});
+			} catch (recoveryError: unknown) {
+				this._logger.error({
+					event: NotpObservabilityConstants.VERIFICATION_RECOVERY_FAILED_EVENT,
+					outcome: NotpRecoveryOutcome.PROCESSING_STATE_UNCERTAIN,
+					reason: getSafeErrorTelemetryFields({ error: error }).errorName,
+					...getSafeErrorTelemetryFields({ error: recoveryError }),
+					...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: recoveryError }) : {}),
+				});
+			}
 
 			throw error;
 		}

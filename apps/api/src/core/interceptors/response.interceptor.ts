@@ -17,9 +17,9 @@ export class ResponseInterceptor implements NestInterceptor {
 		}
 
 		const request = context.switchToHttp().getRequest<FastifyRequest>();
-		const requestId = RequestUtils.resolveRequestId(request);
+		const requestId = RequestUtils.getOrCreateRequestId(request);
 		const timestamp = new Date().toISOString();
-		const endpoint = RequestUtils.resolveEndpoint(request);
+		const endpoint = RequestUtils.getPathWithoutQuery(request);
 
 		return next.handle().pipe(
 			map((data: unknown) => {

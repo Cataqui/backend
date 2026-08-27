@@ -1,5 +1,12 @@
 import { AddressesRepository } from "./addresses.repository";
 import { AddressesService } from "./addresses.service";
+import { GeosearchProviderFailureReason, type GeosearchTelemetryContext } from "../shared/geosearch-telemetry";
+
+const telemetryContext = {
+	environment: "development",
+	requestId: "service-spec-request",
+	version: "service-spec-version",
+} satisfies GeosearchTelemetryContext;
 import { AddressDetailsRateLimitedError } from "./errors/address-details-rate-limited.error";
 import { AddressNotFoundError } from "./errors/address-not-found.error";
 import { AddressProviderTimeoutError } from "./errors/address-provider-timeout.error";
@@ -29,6 +36,7 @@ describe("AddressesService", () => {
 				languageCode: "pt-BR",
 				rateLimitKey: "development:user-id",
 				rateLimiter: searchRateLimiter,
+				telemetryContext: telemetryContext,
 			}),
 		).resolves.toEqual({ suggestions: [], attribution: { text: "Google Maps" } });
 		expect(searchRateLimiter.limit).not.toHaveBeenCalled();
@@ -45,6 +53,7 @@ describe("AddressesService", () => {
 				languageCode: "pt-BR",
 				rateLimitKey: "development:user-id",
 				rateLimiter: searchRateLimiter,
+				telemetryContext: telemetryContext,
 			}),
 		).rejects.toBeInstanceOf(AddressSearchRateLimitedError);
 		expect(repository.searchAddresses).not.toHaveBeenCalled();
@@ -61,6 +70,7 @@ describe("AddressesService", () => {
 				languageCode: "pt-BR",
 				rateLimitKey: "development:user-id",
 				rateLimiter: searchRateLimiter,
+				telemetryContext: telemetryContext,
 			}),
 		).resolves.toBe(output);
 		expect(repository.searchAddresses).toHaveBeenCalledWith({
@@ -68,6 +78,7 @@ describe("AddressesService", () => {
 			languageCode: "pt-BR",
 			query: "Address",
 			sessionToken: "session",
+			telemetryContext: telemetryContext,
 		});
 	});
 
@@ -80,6 +91,7 @@ describe("AddressesService", () => {
 				input: { addressId: "address-id", sessionToken: "session" },
 				rateLimitKey: "development:user-id",
 				rateLimiter: detailsRateLimiter,
+				telemetryContext: telemetryContext,
 			}),
 		).rejects.toBeInstanceOf(AddressDetailsRateLimitedError);
 		expect(repository.getAddressDetails).not.toHaveBeenCalled();
@@ -87,16 +99,19 @@ describe("AddressesService", () => {
 
 	it.each([
 		{
-			repositoryKind: "ADDRESS_NOT_FOUND" as const,
+			repositoryResult: { kind: "ADDRESS_NOT_FOUND" as const },
 			errorClass: AddressNotFoundError,
 		},
-		{ repositoryKind: "TIMEOUT" as const, errorClass: AddressProviderTimeoutError },
+		{ repositoryResult: { kind: "TIMEOUT" as const }, errorClass: AddressProviderTimeoutError },
 		{
-			repositoryKind: "UNAVAILABLE" as const,
+			repositoryResult: {
+				kind: "UNAVAILABLE" as const,
+				failureReason: GeosearchProviderFailureReason.TRANSPORT_UNAVAILABLE as const,
+			},
 			errorClass: AddressProviderUnavailableError,
 		},
-	])("should translate $repositoryKind repository failures", async ({ errorClass, repositoryKind }) => {
-		vi.mocked(repository.getAddressDetails).mockResolvedValue({ kind: repositoryKind });
+	])("should translate $repositoryResult.kind repository failures", async ({ errorClass, repositoryResult }) => {
+		vi.mocked(repository.getAddressDetails).mockResolvedValue(repositoryResult);
 
 		await expect(
 			service.getAddressDetails({
@@ -104,6 +119,7 @@ describe("AddressesService", () => {
 				input: { addressId: "address-id", sessionToken: "session" },
 				rateLimitKey: "development:user-id",
 				rateLimiter: detailsRateLimiter,
+				telemetryContext: telemetryContext,
 			}),
 		).rejects.toBeInstanceOf(errorClass);
 	});

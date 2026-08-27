@@ -163,6 +163,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"cloudflare-queues",
 			"cloudflare-zone-configuration",
 			"cloudflare-zone-dns",
+			"datadog-observability",
 			"google-cloud-github-auth",
 			"google-cloud-maps-platform",
 			"google-cloud-projects",

@@ -1,18 +1,27 @@
 import { HttpStatus, VERSION_NEUTRAL } from "@nestjs/common";
 import { HTTP_CODE_METADATA, PATH_METADATA, VERSION_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
+import { ObservabilityService } from "../../core/observability/observability.service";
+import { ObservabilityOperationName } from "../../core/observability/observability-operation-name.enum";
 import { JobInboundController } from "./job.inbound.controller";
 import { JobService } from "./job.service";
 
 describe("JobInboundController", () => {
 	let controller: JobInboundController;
 	let jobService: { deriveDataForJob: ReturnType<typeof vi.fn> };
+	let observabilityService: { observeOperation: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		jobService = { deriveDataForJob: vi.fn().mockResolvedValue(undefined) };
+		observabilityService = {
+			observeOperation: vi.fn(async (params: { operation: () => Promise<unknown> }) => params.operation()),
+		};
 		const module = await Test.createTestingModule({
 			controllers: [JobInboundController],
-			providers: [{ provide: JobService, useValue: jobService }],
+			providers: [
+				{ provide: JobService, useValue: jobService },
+				{ provide: ObservabilityService, useValue: observabilityService },
+			],
 		}).compile();
 
 		controller = module.get(JobInboundController);
@@ -42,5 +51,14 @@ describe("JobInboundController", () => {
 		await controller.deriveData(message);
 
 		expect(jobService.deriveDataForJob).toHaveBeenCalledWith({ jobId: message.jobId });
+	});
+
+	it("should observe queued job derivation through the typed operation registry", async () => {
+		await controller.deriveData({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
+
+		expect(observabilityService.observeOperation).toHaveBeenCalledWith({
+			operation: expect.any(Function),
+			operationName: ObservabilityOperationName.JOB_DATA_DERIVATION,
+		});
 	});
 });

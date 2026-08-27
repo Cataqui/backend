@@ -1,6 +1,6 @@
 import { Logger } from "@nestjs/common";
+import { RateLimitEnforcementUnavailableError } from "../errors/rate-limit-enforcement-unavailable.error";
 import { RedisService } from "../redis/redis.service";
-import { RateLimitedError } from "../errors/rate-limited.error";
 import { RedisThrottlerStorage } from "./redis-throttler.storage";
 
 describe("RedisThrottlerStorage", () => {
@@ -13,6 +13,11 @@ describe("RedisThrottlerStorage", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		storage = new RedisThrottlerStorage(redis as unknown as RedisService);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should return the atomic Redis sliding-window result", async () => {
@@ -60,11 +65,13 @@ describe("RedisThrottlerStorage", () => {
 		);
 	});
 
-	it("should fail closed with the common rate-limit error when Redis cannot enforce the limit", async () => {
+	it("should fail closed with a server error when Redis cannot enforce the limit", async () => {
 		redis.eval.mockRejectedValue(new Error("Redis unavailable"));
 		vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
 
-		await expect(storage.increment("request-key", 60_000, 5, 60_000, "default")).rejects.toThrow(RateLimitedError);
+		await expect(storage.increment("request-key", 60_000, 5, 60_000, "default")).rejects.toThrow(
+			RateLimitEnforcementUnavailableError,
+		);
 	});
 
 	it("should log the Redis failure without allowing the protected operation", async () => {
@@ -74,7 +81,27 @@ describe("RedisThrottlerStorage", () => {
 		await storage.increment("request-key", 60_000, 5, 60_000, "default").catch(() => undefined);
 
 		expect(logError).toHaveBeenCalledWith(
-			"The Redis-backed rate limit is unavailable; the protected request was rejected.",
+			expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("redis-throttler.storage.spec.ts"),
+				event: "api.rate_limit.enforcement.failed",
+				outcome: "REJECTED",
+			}),
+		);
+	});
+
+	it("should include the complete Redis enforcement failure in local development", async () => {
+		vi.stubEnv("NODE_ENV", "development");
+		redis.eval.mockRejectedValue(new Error("Redis enforcement connection was refused"));
+		const logError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		await storage.increment("request-key", 60_000, 5, 60_000, "default").catch(() => undefined);
+
+		expect(logError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorMessage: "Redis enforcement connection was refused",
+				errorStack: expect.stringContaining("redis-throttler.storage.spec.ts"),
+			}),
 		);
 	});
 });

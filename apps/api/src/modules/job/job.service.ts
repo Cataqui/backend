@@ -1,6 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
 import { z } from "zod";
 import { JobPaymentAmountPeriod, JobStatus, JobType, type Prisma } from "../../../generated/prisma/client.js";
+import { ObservabilityOperationName } from "../../core/observability/observability-operation-name.enum";
+import { ObservabilityService } from "../../core/observability/observability.service";
+import {
+	getDevelopmentErrorLogFields,
+	getSafeErrorTelemetryFields,
+} from "../../core/observability/safe-error-telemetry";
 import { outboundCall } from "../../platform/cloudflare/containers/api/outbound/api-container-outbound";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
@@ -33,6 +40,7 @@ export class JobService {
 		private readonly _userService: UserService,
 		private readonly _aiService: AiService,
 		private readonly _locationService: LocationService,
+		private readonly _observabilityService: ObservabilityService,
 	) {}
 
 	async createDraft(params: {
@@ -84,12 +92,12 @@ export class JobService {
 				maxTokens: 10_000,
 				abortSignal: AbortSignal.timeout(30_000),
 			});
-		} catch {
-			throw new JobDataDerivationUnavailableError();
+		} catch (error: unknown) {
+			throw new JobDataDerivationUnavailableError({ cause: error });
 		}
 
 		const parsedJobData = JobDerivedDataSchema.safeParse(generatedJobData);
-		if (!parsedJobData.success) throw new JobDataDerivationUnavailableError();
+		if (!parsedJobData.success) throw new JobDataDerivationUnavailableError({ cause: parsedJobData.error });
 
 		return {
 			title: parsedJobData.data.title,
@@ -289,8 +297,7 @@ export class JobService {
 
 	private async _enqueueJobDataDerivation(params: { jobId: string }): Promise<void> {
 		let status: number | null = null;
-
-		try {
+		const publishJobDataDerivation = async (): Promise<void> => {
 			const response = await outboundCall({
 				host: "derive-job-data.queue",
 				body: { jobId: params.jobId },
@@ -299,15 +306,22 @@ export class JobService {
 			if (response.ok) return;
 
 			status = response.status;
-		} catch {
-			// Transport failures do not have an HTTP response status.
-		}
+			throw new Error("The derive-job-data Queue rejected publication");
+		};
 
-		this._logger.error({
-			event: "job_data_derivation.queue_publish_failed",
-			jobId: params.jobId,
-			status: status,
-		});
+		try {
+			await this._observabilityService.observeOperation({
+				operation: publishJobDataDerivation,
+				operationName: ObservabilityOperationName.JOB_DATA_DERIVATION_QUEUE_PUBLICATION,
+			});
+		} catch (error: unknown) {
+			this._logger.error({
+				event: ObservabilityEventConstants.API_JOB_DATA_DERIVATION_QUEUE_PUBLICATION_FAILED_EVENT,
+				status: status,
+				...getSafeErrorTelemetryFields({ error: error }),
+				...(process.env["NODE_ENV"] === "development" ? getDevelopmentErrorLogFields({ error: error }) : {}),
+			});
+		}
 	}
 
 	private _buildJobUpdateData(params: {

@@ -8,6 +8,8 @@ import {
 	Output,
 } from "ai";
 import { createUnified } from "ai-gateway-provider/providers/unified";
+import { ObservabilityOperationName } from "../../core/observability/observability-operation-name.enum";
+import { ObservabilityService } from "../../core/observability/observability.service";
 import { AiTask } from "./ai-task.enum";
 import { aiConfig, type IAiConfig } from "./ai.config";
 
@@ -36,6 +38,7 @@ export class AiService {
 	constructor(
 		@Inject(aiConfig.KEY)
 		config: ConfigType<typeof aiConfig>,
+		private readonly _observabilityService: ObservabilityService,
 	) {
 		this._unifiedProvider = createUnified({
 			baseURL: `https://gateway.ai.cloudflare.com/v1/${config.cloudflareAccountId}/${config.deriveJobDataAiGatewayId}/compat`,
@@ -73,12 +76,26 @@ export class AiService {
 			return output as InferSchema<SCHEMA>;
 		};
 
-		try {
-			return await generateObjectOnce();
-		} catch (error) {
-			if (!NoObjectGeneratedError.isInstance(error)) throw error;
+		const generateObjectWithStructuredOutputRetry = async (): Promise<InferSchema<SCHEMA>> => {
+			try {
+				return await generateObjectOnce();
+			} catch (error) {
+				if (!NoObjectGeneratedError.isInstance(error)) throw error;
 
-			return generateObjectOnce();
+				return generateObjectOnce();
+			}
+		};
+
+		return this._observabilityService.observeOperation({
+			operation: generateObjectWithStructuredOutputRetry,
+			operationName: this._getObservabilityOperationNameForTask({ task: params.task }),
+		});
+	}
+
+	private _getObservabilityOperationNameForTask(params: { task: AiTask }): ObservabilityOperationName {
+		switch (params.task) {
+			case AiTask.DERIVE_JOB_DATA:
+				return ObservabilityOperationName.AI_DERIVE_JOB_DATA;
 		}
 	}
 

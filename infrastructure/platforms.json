@@ -7,6 +7,10 @@
 			}
 		}
 	},
+	"datadog": {
+		"api_url": "https://api.datadoghq.com",
+		"site": "datadoghq.com"
+	},
 	"google_cloud": {
 		"organization_id": "945579294313",
 		"billing_account_id": "01A827-CA7CE9-646496"

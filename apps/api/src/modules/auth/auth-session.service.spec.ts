@@ -1,6 +1,9 @@
+import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
 import { AuthSessionService } from "./auth-session.service";
+import { AuthSessionCompensationReason } from "./auth-session-compensation-reason.enum";
+import { AuthSessionObservabilityConstants } from "./auth-session-observability.constants";
 import { AuthTokenService } from "./auth-token.service";
 import { type IAuthConfig, authConfig as authConfigFactory } from "./auth.config";
 import { AuthSessionUnavailableError } from "./errors/auth-session-unavailable.error";
@@ -70,6 +73,8 @@ describe("AuthSessionService", () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should create a signed rolling refresh token and a short-lived access token", async () => {
@@ -148,6 +153,32 @@ describe("AuthSessionService", () => {
 			error: expect.any(AuthSessionUnavailableError),
 			accessDeletion: { sessionId: SESSION_ID },
 			sessionDeletion: { sessionId: SESSION_ID, userId: "user-id" },
+		});
+	});
+
+	it("should preserve access-token creation failure when session compensation also fails", async () => {
+		const accessTokenCreationError = new AuthSessionUnavailableError();
+		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
+		accessTokenRepository.create.mockRejectedValue(accessTokenCreationError);
+		accessTokenRepository.deleteForSession.mockRejectedValue(new Error("private compensation details"));
+		const log = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+		const error = await service.create({ sessionId: SESSION_ID, userId: "user-id" }).catch((caught: unknown) => caught);
+
+		expect({
+			error: error,
+			leaksCompensationMessage: JSON.stringify(log.mock.calls).includes("private compensation details"),
+			logFields: log.mock.calls[0]?.[0],
+		}).toEqual({
+			error: accessTokenCreationError,
+			leaksCompensationMessage: false,
+			logFields: expect.objectContaining({
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("auth-session.service.spec.ts"),
+				event: AuthSessionObservabilityConstants.PERSISTENCE_COMPENSATION_FAILED_EVENT,
+				outcome: "STATE_UNCERTAIN",
+				reason: AuthSessionCompensationReason.ACCESS_TOKEN_CREATE_FAILED_AFTER_SESSION_CREATE,
+			}),
 		});
 	});
 

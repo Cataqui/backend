@@ -1,22 +1,35 @@
-void import("./bootstrap.js")
-	.then(({ bootstrap }) => bootstrap())
-	.catch((error: unknown) => {
-		const errorName = error instanceof Error ? error.name : "UnknownError";
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		const errorStack = error instanceof Error ? error.stack : undefined;
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { ObservabilityEventConstants } from "@cataqui/observability-contracts";
+import {
+	reportApplicationLifecycleFailure,
+	shutdownTelemetry,
+	startTelemetry,
+} from "./core/observability/telemetry.js";
 
-		process.stderr.write(
-			`${JSON.stringify({
-				event: "api.application.start.failed",
-				level: "fatal",
-				timestamp: new Date().toISOString(),
+export const applicationStartupCompletion = Promise.resolve()
+	.then(async () => {
+		const localEnvironmentFilePath = path.resolve(process.cwd(), "../../.env");
+		if (existsSync(localEnvironmentFilePath)) process.loadEnvFile(localEnvironmentFilePath);
+		startTelemetry({ environment: process.env });
+		const { bootstrap } = await import("./bootstrap.js");
+		await bootstrap();
+	})
+	.catch(async (error: unknown) => {
+		reportApplicationLifecycleFailure({
+			environment: process.env["NODE_ENV"] ?? "unknown",
+			error: error,
+			event: ObservabilityEventConstants.API_APPLICATION_START_FAILED_EVENT,
+		});
+		try {
+			await shutdownTelemetry();
+		} catch (shutdownError: unknown) {
+			reportApplicationLifecycleFailure({
 				environment: process.env["NODE_ENV"] ?? "unknown",
-				errorName: errorName,
-				errorMessage: errorMessage,
-				...(errorStack === undefined ? {} : { errorStack: errorStack }),
-			})}\n`,
-		);
-		process.exitCode = 1;
+				error: shutdownError,
+				event: ObservabilityEventConstants.API_TELEMETRY_SHUTDOWN_FAILED_EVENT,
+			});
+		} finally {
+			process.exitCode = 1;
+		}
 	});
-
-export {};

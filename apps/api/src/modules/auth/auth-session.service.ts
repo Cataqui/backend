@@ -1,7 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { z } from "zod";
 import { AuthTokenService } from "./auth-token.service";
+import { AuthSessionCompensationReason } from "./auth-session-compensation-reason.enum";
+import { AuthSessionObservabilityConstants } from "./auth-session-observability.constants";
+import {
+	getDevelopmentErrorLogFields,
+	getSafeErrorTelemetryFields,
+} from "../../core/observability/safe-error-telemetry";
 import { InvalidRefreshTokenError } from "./errors/invalid-refresh-token.error";
 import { NotpRepository } from "./notp/repositories/notp.repository";
 import type { IAuthenticatedSession } from "./interfaces/authenticated-session.interface";
@@ -11,6 +17,8 @@ import { AuthSessionOutputSchema } from "./schemas/auth-session-output.schema";
 
 @Injectable()
 export class AuthSessionService {
+	private readonly _logger = new Logger(AuthSessionService.name);
+
 	constructor(
 		private readonly _authAccessTokenRepository: AuthAccessTokenRepository,
 		private readonly _notpRepository: NotpRepository,
@@ -40,13 +48,13 @@ export class AuthSessionService {
 				accessTokenHash: tokens.accessTokenHash,
 				session: { ...session, expiresAt: tokens.accessExpiresAt },
 			});
-		} catch (error) {
-			await this.deleteAccessTokenAndSession({
+		} catch (error: unknown) {
+			await this._deleteAccessTokenAndSessionThenRethrowFailure({
+				failure: error,
+				reason: AuthSessionCompensationReason.ACCESS_TOKEN_CREATE_FAILED_AFTER_SESSION_CREATE,
 				sessionId: session.sessionId,
 				userId: session.userId,
 			});
-
-			throw error;
 		}
 
 		return {
@@ -122,13 +130,13 @@ export class AuthSessionService {
 				accessTokenHash: tokens.accessTokenHash,
 				session: { ...refreshResult.session, expiresAt: tokens.accessExpiresAt },
 			});
-		} catch (error) {
-			await this.deleteAccessTokenAndSession({
+		} catch (error: unknown) {
+			await this._deleteAccessTokenAndSessionThenRethrowFailure({
+				failure: error,
+				reason: AuthSessionCompensationReason.ACCESS_TOKEN_CREATE_FAILED_AFTER_REFRESH_ROTATION,
 				sessionId: refreshResult.session.sessionId,
 				userId: refreshResult.session.userId,
 			});
-
-			throw error;
 		}
 
 		return {
@@ -165,6 +173,32 @@ export class AuthSessionService {
 		// Redis authorizes access, so invalidate it before deleting durable session state from Neon.
 		await this._authAccessTokenRepository.deleteForSession({ sessionId: params.sessionId });
 		await this._authSessionRepository.deleteSession({ sessionId: params.sessionId, userId: params.userId });
+	}
+
+	private async _deleteAccessTokenAndSessionThenRethrowFailure(params: {
+		failure: unknown;
+		reason: AuthSessionCompensationReason;
+		sessionId: string;
+		userId: string;
+	}): Promise<never> {
+		try {
+			await this.deleteAccessTokenAndSession({
+				sessionId: params.sessionId,
+				userId: params.userId,
+			});
+		} catch (compensationError: unknown) {
+			this._logger.error({
+				event: AuthSessionObservabilityConstants.PERSISTENCE_COMPENSATION_FAILED_EVENT,
+				outcome: "STATE_UNCERTAIN",
+				reason: params.reason,
+				...getSafeErrorTelemetryFields({ error: compensationError }),
+				...(process.env["NODE_ENV"] === "development"
+					? getDevelopmentErrorLogFields({ error: compensationError })
+					: {}),
+			});
+		}
+
+		throw params.failure;
 	}
 
 	async revokeAll(params: { session: IAuthenticatedSession }): Promise<void> {

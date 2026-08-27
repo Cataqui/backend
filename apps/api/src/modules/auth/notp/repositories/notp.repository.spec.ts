@@ -4,9 +4,12 @@ import { errors as UpstashRedisErrors } from "@upstash/redis";
 import { createHash } from "node:crypto";
 import { RedisService } from "../../../../core/redis/redis.service";
 import { NotpChannel } from "../enums/notp-channel.enum";
+import { NotpExchangeWaitOutcome } from "../enums/notp-exchange-wait-outcome.enum";
+import { NotpRecoveryOutcome } from "../enums/notp-recovery-outcome.enum";
 import { NotpIntentStatus } from "../enums/notp-intent-status.enum";
 import { NotpProcessingInProgressError } from "../errors/notp-processing-in-progress.error";
 import { NotpConstants } from "../notp.constants";
+import { NotpObservabilityConstants } from "../notp-observability.constants";
 import { NotpRepository } from "./notp.repository";
 
 function _createVerificationSubscriberTestDouble() {
@@ -99,6 +102,7 @@ describe("NotpRepository", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 	});
 
 	it("should preload the critical NOTP scripts with one Redis request before serving traffic", async () => {
@@ -116,10 +120,21 @@ describe("NotpRepository", () => {
 
 	it("should preserve startup availability when first-use script loading can recover from a preload failure", async () => {
 		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		vi.stubEnv("NODE_ENV", "development");
 		preloadScripts.mockRejectedValueOnce(new Error("redis unavailable"));
 
-		await expect(repository.onModuleInit()).resolves.toBeUndefined();
-		expect(warn).toHaveBeenCalledWith("NOTP scripts could not be preloaded; first use will load them");
+		const result = await repository.onModuleInit();
+
+		expect({ result: result, warning: warn.mock.calls[0]?.[0] }).toEqual({
+			result: undefined,
+			warning: expect.objectContaining({
+				errorMessage: "redis unavailable",
+				errorName: "Error",
+				errorStackFrames: expect.stringContaining("notp.repository.spec.ts"),
+				event: NotpObservabilityConstants.REDIS_SCRIPTS_PRELOAD_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_FIRST_USE,
+			}),
+		});
 
 		warn.mockRestore();
 	});
@@ -253,11 +268,19 @@ describe("NotpRepository", () => {
 			})
 			.catch((intentLookupError: unknown) => intentLookupError);
 
-		expect(error).toBeInstanceOf(Error);
-		expect((error as Error).message).toBe("NOTP intent lookup was rejected by Redis");
-		expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
-		expect(String(error)).not.toContain(intentTokenHash);
-		expect(String(error)).not.toContain("command was");
+		expect({
+			cause: (error as Error & { cause?: unknown }).cause,
+			isError: error instanceof Error,
+			leaksCommand: String(error).includes("command was"),
+			leaksTokenHash: String(error).includes(intentTokenHash),
+			message: (error as Error).message,
+		}).toEqual({
+			cause: expect.any(UpstashRedisErrors.UpstashError),
+			isError: true,
+			leaksCommand: false,
+			leaksTokenHash: false,
+			message: "NOTP intent lookup was rejected by Redis",
+		});
 	});
 
 	it("should return a missing intent with one authoritative read and no lease or subscription", async () => {
@@ -841,6 +864,222 @@ describe("NotpRepository", () => {
 		expect(leaseOwnersByKey.get(leaseKey)).toBe("successor-owner");
 		expect(redis.eval.mock.calls[0]?.[0]).toMatch(
 			/redis.call\("GET", KEYS\[1\]\) ~= ARGV\[1\][\s\S]*redis.call\("DEL", KEYS\[1\]\)/,
+		);
+	});
+
+	it("should record when an already-aborted exchange skips the verification wait", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await repository.findIntentByTokenHashAfterWaitingForVerification({
+			abortSignal: abortController.signal,
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+			outcome: NotpExchangeWaitOutcome.ABORTED,
+		});
+	});
+
+	it("should record when another request owns the verification wait lease", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		redis.set.mockResolvedValue(null);
+
+		await repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+			outcome: NotpExchangeWaitOutcome.LEASE_HELD_BY_ANOTHER_REQUEST,
+		});
+	});
+
+	it("should report lease acquisition recovery without exposing the Redis failure", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		redis.set.mockRejectedValue(new Error("private Redis command"));
+
+		await repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect({
+			leaksFailure: JSON.stringify(warn.mock.calls).includes("private Redis command"),
+			warning: warn.mock.calls[0]?.[0],
+		}).toEqual({
+			leaksFailure: false,
+			warning: expect.objectContaining({
+				errorName: "Error",
+				event: NotpObservabilityConstants.EXCHANGE_LEASE_ACQUISITION_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+			}),
+		});
+	});
+
+	it("should record when lease acquisition exceeds the maximum hold duration", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		redis.set.mockImplementation(() => new Promise(() => undefined));
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await vi.advanceTimersByTimeAsync(NotpConstants.EXCHANGE_LONG_POLL_MAX_LEASE_HOLD_MILLISECONDS);
+		await exchange;
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+			outcome: NotpExchangeWaitOutcome.LEASE_DEADLINE_EXCEEDED,
+		});
+	});
+
+	it("should report exhausted per-container verification wait capacity", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		Object.assign(repository, {
+			_activeExchangeLongPollCount: NotpConstants.MAX_CONCURRENT_EXCHANGE_LONG_POLLS_PER_CONTAINER,
+		});
+
+		await repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect(warn).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_CAPACITY_EXHAUSTED_EVENT,
+			outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+		});
+	});
+
+	it("should report subscription creation recovery without exposing the provider failure", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+		redis.subscribe.mockImplementation(() => {
+			throw new Error("private subscription provider failure");
+		});
+
+		await repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+
+		expect({
+			leaksFailure: JSON.stringify(warn.mock.calls).includes("private subscription provider failure"),
+			warning: warn.mock.calls[0]?.[0],
+		}).toEqual({
+			leaksFailure: false,
+			warning: expect.objectContaining({
+				errorName: "Error",
+				event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_CREATE_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+			}),
+		});
+	});
+
+	it("should report when subscription readiness exceeds its bounded wait", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await _flushSettledPromiseCallbacks();
+		await vi.advanceTimersByTimeAsync(NotpConstants.EXCHANGE_SUBSCRIPTION_READY_TIMEOUT_MILLISECONDS);
+		await exchange;
+
+		expect(warn).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_READINESS_TIMED_OUT_EVENT,
+			outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+		});
+	});
+
+	it("should report a failed active subscription before the authoritative reread", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await _flushSettledPromiseCallbacks();
+		verificationSubscriber.emit("subscribe", 1);
+		await _flushSettledPromiseCallbacks();
+		verificationSubscriber.emit("error", new Error("private subscriber failure"));
+		await exchange;
+
+		expect(warn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorName: "Error",
+				event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.FALLBACK_TO_AUTHORITATIVE_READ,
+			}),
+		);
+	});
+
+	it("should record when the bounded verification notification wait expires", async () => {
+		const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+		findIntentByTokenHashScriptExec.mockResolvedValue(_createPendingIntentScriptResult());
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await _flushSettledPromiseCallbacks();
+		verificationSubscriber.emit("subscribe", 1);
+		await vi.advanceTimersByTimeAsync(NotpConstants.EXCHANGE_LONG_POLL_TIMEOUT_MILLISECONDS);
+		await exchange;
+
+		expect(log).toHaveBeenCalledWith({
+			event: NotpObservabilityConstants.EXCHANGE_WAIT_COMPLETED_EVENT,
+			outcome: NotpExchangeWaitOutcome.TIMED_OUT,
+		});
+	});
+
+	it("should report a failed subscriber cleanup without failing the completed exchange", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		verificationSubscriber.unsubscribe.mockRejectedValue(new Error("private unsubscribe failure"));
+		findIntentByTokenHashScriptExec
+			.mockResolvedValueOnce(_createPendingIntentScriptResult())
+			.mockResolvedValueOnce(_createVerifiedIntentScriptResult());
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await _flushSettledPromiseCallbacks();
+		verificationSubscriber.emit("subscribe", 1);
+		await exchange;
+
+		expect(warn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorName: "Error",
+				event: NotpObservabilityConstants.EXCHANGE_SUBSCRIPTION_CLEANUP_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.DETACHED_CLEANUP_FAILED,
+			}),
+		);
+	});
+
+	it("should report a failed detached lease cleanup without failing the completed exchange", async () => {
+		const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+		redis.eval.mockRejectedValue(new Error("private lease cleanup failure"));
+		findIntentByTokenHashScriptExec
+			.mockResolvedValueOnce(_createPendingIntentScriptResult())
+			.mockResolvedValueOnce(_createVerifiedIntentScriptResult());
+
+		const exchange = repository.findIntentByTokenHashAfterWaitingForVerification({
+			intentTokenHash: "b".repeat(64),
+		});
+		await _flushSettledPromiseCallbacks();
+		verificationSubscriber.emit("subscribe", 1);
+		await exchange;
+		await _flushSettledPromiseCallbacks();
+
+		expect(warn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorName: "Error",
+				event: NotpObservabilityConstants.EXCHANGE_LEASE_CLEANUP_FAILED_EVENT,
+				outcome: NotpRecoveryOutcome.DETACHED_CLEANUP_FAILED,
+			}),
 		);
 	});
 

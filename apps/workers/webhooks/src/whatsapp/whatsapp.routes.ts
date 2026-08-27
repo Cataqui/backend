@@ -1,8 +1,9 @@
+import { getWorkerVersion } from "@cataqui/observability-contracts";
 import { Hono } from "hono";
 import { WhatsappService } from "./whatsapp.service";
 
-export function createWhatsappRoutes(params?: { service?: WhatsappService }): Hono<{ Bindings: WebhooksWorkerEnv }> {
-	const whatsappRoutes = new Hono<{ Bindings: WebhooksWorkerEnv }>();
+export function createWhatsappRoutes(params?: { service?: WhatsappService }): Hono<WebhooksWorkerHonoEnvironment> {
+	const whatsappRoutes = new Hono<WebhooksWorkerHonoEnvironment>();
 	const service = params?.service ?? new WhatsappService();
 
 	whatsappRoutes.use("/", async (context, next) => {
@@ -34,6 +35,11 @@ export function createWhatsappRoutes(params?: { service?: WhatsappService }): Ho
 			appSecret: context.env.META_APP_SECRET,
 			notpPhoneNumberId: context.env.WHATSAPP_NOTP_PHONE_NUMBER_ID,
 			rawBody: new Uint8Array(await context.req.raw.arrayBuffer()),
+			telemetry: {
+				environment: context.env.NODE_ENV,
+				requestId: context.get("requestId") ?? crypto.randomUUID(),
+				serviceVersion: getWorkerVersion({ metadata: context.env.WORKER_VERSION_METADATA }),
+			},
 			webhookSignature: context.req.header("x-hub-signature-256") ?? null,
 		});
 

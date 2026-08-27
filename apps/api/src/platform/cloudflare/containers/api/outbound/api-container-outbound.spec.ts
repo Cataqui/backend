@@ -16,10 +16,17 @@ describe("outboundCall", () => {
 			body: { jobId: jobId },
 		});
 
-		expect(fetchMock).toHaveBeenCalledWith("http://derive-job-data.queue", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
+		const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit;
+		expect({
+			body: requestOptions.body,
+			contentType: new Headers(requestOptions.headers).get("content-type"),
+			method: requestOptions.method,
+			url: fetchMock.mock.calls[0]?.[0],
+		}).toEqual({
 			body: JSON.stringify({ jobId: jobId }),
+			contentType: "application/json",
+			method: "POST",
+			url: "http://derive-job-data.queue",
 		});
 	});
 

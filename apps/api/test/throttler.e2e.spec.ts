@@ -14,7 +14,8 @@ import { getStorageToken, type ThrottlerStorage, ThrottlerStorageService } from 
 import { AuthSessionService } from "../src/modules/auth/auth-session.service";
 import { AccessTokenGuard } from "../src/modules/auth/guards/access-token.guard";
 import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
-import { RateLimitedError } from "../src/core/errors/rate-limited.error";
+import { RateLimitEnforcementUnavailableError } from "../src/core/errors/rate-limit-enforcement-unavailable.error";
+import type { ObservabilityService } from "../src/core/observability/observability.service";
 import { RateLimit } from "../src/core/throttle/rate-limit.decorator";
 import { ThrottleModule } from "../src/core/throttle/throttle.module";
 
@@ -65,7 +66,11 @@ async function _buildApp(
 	const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 	app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 	app.useGlobalPipes(new StandardSchemaValidationPipe());
-	app.useGlobalFilters(new HttpExceptionFilter());
+	app.useGlobalFilters(
+		new HttpExceptionFilter({
+			observabilityService: { recordApiError: vi.fn() } satisfies Pick<ObservabilityService, "recordApiError">,
+		}),
+	);
 	app.useGlobalInterceptors(new StandardSchemaSerializerInterceptor(app.get(Reflector)));
 	await app.init();
 
@@ -164,17 +169,19 @@ describe("User rate limiter (e2e)", () => {
 		expect(response.headers["x-ratelimit-remaining"]).toBe("2");
 	});
 
-	it("should return the common rate-limit response when the user limit cannot be enforced", async () => {
+	it("should return a server-availability response when the user limit cannot be enforced", async () => {
 		const unavailableStorage: ThrottlerStorage = {
-			increment: vi.fn().mockRejectedValue(new RateLimitedError()),
+			increment: vi
+				.fn()
+				.mockRejectedValue(new RateLimitEnforcementUnavailableError({ cause: new Error("Redis unavailable") })),
 		};
 		const app = await _buildApp({ storage: unavailableStorage });
 		const response = await app.inject({ method: "GET", url: "/rate-limit-test", headers: authorization });
 		await app.close();
 
 		expect({ statusCode: response.statusCode, errorCode: response.json().errorCode }).toEqual({
-			statusCode: 429,
-			errorCode: "RATE_LIMITED",
+			statusCode: 503,
+			errorCode: "RATE_LIMIT_ENFORCEMENT_UNAVAILABLE",
 		});
 	});
 });

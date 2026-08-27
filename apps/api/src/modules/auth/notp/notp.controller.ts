@@ -2,6 +2,8 @@ import { Body, Controller, Header, HttpCode, HttpStatus, Post, Res, Version } fr
 import { ApiTags } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
 import type { z } from "zod";
+import { ProductAnalyticsEventName } from "../../../core/observability/product-analytics-event-name.enum";
+import { ProductAnalyticsEvent } from "../../../core/observability/product-analytics-event.decorator";
 import { ApiCreateNotpIntentDocs } from "./decorators/api-create-notp-intent-docs.decorator";
 import { ApiExchangeNotpIntentDocs } from "./decorators/api-exchange-notp-intent-docs.decorator";
 import { NotpService } from "./notp.service";
@@ -19,6 +21,7 @@ export class NotpController {
 	@Version("1")
 	@Header("Cache-Control", "no-store")
 	@HttpCode(HttpStatus.CREATED)
+	@ProductAnalyticsEvent({ eventName: ProductAnalyticsEventName.AUTH_INTENT_CREATE_REQUEST_SUCCEEDED })
 	@ApiCreateNotpIntentDocs()
 	async createIntent(
 		@Body({ schema: CreateNotpIntentInputSchema })
@@ -33,6 +36,10 @@ export class NotpController {
 	@Version("1")
 	@Header("Cache-Control", "no-store")
 	@HttpCode(HttpStatus.ACCEPTED)
+	@ProductAnalyticsEvent({
+		eventName: ProductAnalyticsEventName.AUTH_SESSION_CREATE_REQUEST_SUCCEEDED,
+		responseStatusCodes: [HttpStatus.CREATED],
+	})
 	@ApiExchangeNotpIntentDocs()
 	async exchangeIntentForSession(
 		@Body({ schema: ExchangeNotpIntentInputSchema })

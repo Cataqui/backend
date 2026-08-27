@@ -2,6 +2,8 @@ import { type INestApplication, RequestMethod, StandardSchemaValidationPipe, Ver
 import { HEADERS_METADATA, METHOD_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
+import { ProductAnalyticsEventName } from "../../core/observability/product-analytics-event-name.enum";
+import { ProductAnalyticsConstants } from "../../core/observability/product-analytics.constants";
 import { AuthSessionController } from "./auth-session.controller";
 import { AuthSessionService } from "./auth-session.service";
 
@@ -57,6 +59,12 @@ describe("AuthSessionController", () => {
 			sessionId: "session-id",
 			userId: "user-id",
 			expiresAt: "2026-09-04T15:00:00.000Z",
+		});
+	});
+
+	it("should count successful current-session reads as a typed product event", () => {
+		expect(Reflect.getMetadata(ProductAnalyticsConstants.EVENT_METADATA_KEY, controller.getCurrentSession)).toEqual({
+			eventName: ProductAnalyticsEventName.AUTH_SESSION_READ_REQUEST_SUCCEEDED,
 		});
 	});
 
