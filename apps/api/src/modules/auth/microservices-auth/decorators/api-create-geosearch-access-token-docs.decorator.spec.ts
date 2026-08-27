@@ -28,7 +28,7 @@ describe("ApiCreateGeosearchAccessTokenDocs", () => {
 		await app.close();
 	});
 
-	it("should document authenticated token issuance and rate-limit recovery", () => {
+	it("should document authenticated token issuance without a rate-limit response", () => {
 		const operation = document.paths["/auth/microservices/geosearch"]?.post;
 
 		expect({
@@ -49,16 +49,6 @@ describe("ApiCreateGeosearchAccessTokenDocs", () => {
 				},
 				401: {
 					description: "A valid bearer access token is required.",
-					content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } } },
-				},
-				429: {
-					description: "The authenticated user's geosearch token budget has been exhausted.",
-					headers: {
-						"Retry-After": {
-							description: "Seconds until another geosearch access token may be requested.",
-							schema: { type: "integer", example: 3_600 },
-						},
-					},
 					content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorOutput" } } },
 				},
 			},

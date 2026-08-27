@@ -8,8 +8,6 @@ import {
 	VERSION_METADATA,
 } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
-import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler.constants";
-import { UserRateLimitGuard } from "../../../core/guards/user-rate-limit.guard";
 import { SKIP_ENVELOPE_KEY } from "../../../shared/decorators/skip-envelope.decorator";
 import { AccessTokenGuard } from "../guards/access-token.guard";
 import { MicroservicesAuthController } from "./microservices-auth.controller";
@@ -34,8 +32,6 @@ describe("MicroservicesAuthController", () => {
 			providers: [{ provide: MicroservicesAuthService, useValue: microservicesAuthService }],
 		})
 			.overrideGuard(AccessTokenGuard)
-			.useValue({ canActivate: vi.fn() })
-			.overrideGuard(UserRateLimitGuard)
 			.useValue({ canActivate: vi.fn() })
 			.compile();
 
@@ -112,18 +108,8 @@ describe("MicroservicesAuthController", () => {
 		});
 	});
 
-	it("should authenticate before enforcing the per-user rate limit", () => {
-		expect(Reflect.getMetadata(GUARDS_METADATA, controller.createGeosearchAccessToken)).toEqual([
-			AccessTokenGuard,
-			UserRateLimitGuard,
-		]);
-	});
-
-	it("should limit each user to twenty tokens per rolling day", () => {
-		expect({
-			requests: Reflect.getMetadata(`${THROTTLER_LIMIT}default`, controller.createGeosearchAccessToken),
-			ttl: Reflect.getMetadata(`${THROTTLER_TTL}default`, controller.createGeosearchAccessToken),
-		}).toEqual({ requests: 20, ttl: 86_400_000 });
+	it("should require an access token without an application-level request budget", () => {
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.createGeosearchAccessToken)).toEqual([AccessTokenGuard]);
 	});
 
 	it("should issue the geosearch token for the authenticated user", async () => {

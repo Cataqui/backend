@@ -2,8 +2,8 @@ import { Controller, Get, Header, HttpCode, HttpStatus, Post, Version } from "@n
 import { ApiTags } from "@nestjs/swagger";
 import { MicroservicesAuthJwksOutputSchema } from "@cataqui/microservices-auth-contracts";
 import type { z } from "zod";
-import { RateLimit } from "../../../core/throttle/rate-limit.decorator";
 import { SkipEnvelope } from "../../../shared/decorators/skip-envelope.decorator";
+import { AccessTokenRequired } from "../decorators/access-token-required.decorator";
 import { CurrentAuthSession } from "../decorators/current-auth-session.decorator";
 import type { IAuthenticatedSession } from "../interfaces/authenticated-session.interface";
 import { ApiCreateGeosearchAccessTokenDocs } from "./decorators/api-create-geosearch-access-token-docs.decorator";
@@ -29,7 +29,7 @@ export class MicroservicesAuthController {
 	@Post("geosearch")
 	@Version("1")
 	@Header("Cache-Control", "no-store")
-	@RateLimit({ requests: 20, per: "day" })
+	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
 	@ApiCreateGeosearchAccessTokenDocs()
 	async createGeosearchAccessToken(

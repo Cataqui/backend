@@ -30,7 +30,6 @@ function _getPolicy(
 
 describe("endpoint rate-limit policy contract", () => {
 	it.each([
-		["geosearch access-token issuance", MicroservicesAuthController, "createGeosearchAccessToken", 20, 86_400_000],
 		["job draft creation", JobController, "createDraft", 20, 3_600_000],
 		["job draft editing", JobController, "updateDraft", 60, 3_600_000],
 		["public job editing", JobController, "updatePublicJob", 60, 3_600_000],
@@ -54,6 +53,7 @@ describe("endpoint rate-limit policy contract", () => {
 		["all-session revocation", AuthSessionController, "revokeAllSessions"],
 		["NOTP intent creation", NotpController, "createIntent"],
 		["NOTP intent exchange", NotpController, "exchangeIntentForSession"],
+		["geosearch access-token issuance", MicroservicesAuthController, "createGeosearchAccessToken"],
 		["inbound job derivation", JobInboundController, "deriveData"],
 		["direct WhatsApp auth verification", NotpInboundController, "verifyWhatsappNotp"],
 	] as const)("should leave %s without an application-level request budget", (_name, controller, method) => {
