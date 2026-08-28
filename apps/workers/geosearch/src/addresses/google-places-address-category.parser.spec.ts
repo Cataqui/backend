@@ -2,6 +2,13 @@ import { AddressCategory } from "./address-category.enum";
 import { parseGooglePlacesAddressCategory } from "./google-places-address-category.parser";
 
 describe("parseGooglePlacesAddressCategory", () => {
+	it.each(["race_course", "go_karting_venue"])(
+		"should normalize %s as the provider-neutral racing venue category",
+		(placeType) => {
+			expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(AddressCategory.RACING_VENUE);
+		},
+	);
+
 	it.each([
 		{ category: AddressCategory.NIGHT_CLUB, placeType: "night_club" },
 		{ category: AddressCategory.CAFE, placeType: "cafe" },
@@ -19,6 +26,7 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ category: AddressCategory.HOSPITAL, placeType: "hospital" },
 		{ category: AddressCategory.GYM, placeType: "gym" },
 		{ category: AddressCategory.STADIUM, placeType: "stadium" },
+		{ category: AddressCategory.RACING_VENUE, placeType: "race_course" },
 		{ category: AddressCategory.SPORTS_VENUE, placeType: "sports_complex" },
 		{ category: AddressCategory.MUSEUM, placeType: "museum" },
 		{ category: AddressCategory.MOVIE_THEATER, placeType: "movie_theater" },
@@ -60,6 +68,14 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ placeTypes: ["heliport", "airport"], expectedCategory: AddressCategory.HELIPORT },
 		{ placeTypes: ["sports_complex", "stadium"], expectedCategory: AddressCategory.STADIUM },
 		{ placeTypes: ["stadium", "sports_complex"], expectedCategory: AddressCategory.STADIUM },
+		{
+			placeTypes: ["sports_complex", "race_course"],
+			expectedCategory: AddressCategory.RACING_VENUE,
+		},
+		{
+			placeTypes: ["race_course", "sports_complex"],
+			expectedCategory: AddressCategory.RACING_VENUE,
+		},
 		{
 			placeTypes: ["gas_station", "electric_vehicle_charging_station"],
 			expectedCategory: AddressCategory.CHARGING_STATION,

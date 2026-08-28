@@ -5,11 +5,16 @@ import ts from "typescript";
 type GeosearchWorkerEnvironment = {
 	name: string;
 	workers_dev?: boolean;
+	placement?: { mode: "off" | "smart" };
 	routes?: Array<{ custom_domain: boolean; pattern: string }>;
 	vars: { ENVIRONMENT: string; MICROSERVICES_AUTH_JWKS_URL: string };
 	ratelimits: Array<{ name: string; namespace_id: string; simple: { limit: number; period: number } }>;
 	secrets: { required: string[] };
-	observability: { logs: { enabled: boolean; head_sampling_rate: number; invocation_logs?: boolean } };
+	observability: {
+		enabled: boolean;
+		logs: { enabled: boolean; head_sampling_rate: number; invocation_logs?: boolean };
+		traces?: { enabled: boolean; head_sampling_rate: number };
+	};
 };
 
 type GeosearchWorkerConfig = GeosearchWorkerEnvironment & {
@@ -88,6 +93,35 @@ describe("Geosearch Worker configuration", () => {
 			geosearchWorkerConfig.env.staging.ratelimits,
 			geosearchWorkerConfig.env.production.ratelimits,
 		]).toEqual([expectedRateLimits, expectedRateLimits, expectedRateLimits]);
+	});
+
+	it("should smart-place hosted environments and trace them at environment-specific sampling rates", () => {
+		expect({
+			development: {
+				placement: geosearchWorkerConfig.placement,
+				traces: geosearchWorkerConfig.observability.traces,
+			},
+			staging: {
+				placement: geosearchWorkerConfig.env.staging.placement,
+				traces: geosearchWorkerConfig.env.staging.observability.traces,
+			},
+			production: {
+				placement: geosearchWorkerConfig.env.production.placement,
+				traces: geosearchWorkerConfig.env.production.observability.traces,
+				invocationLogs: geosearchWorkerConfig.env.production.observability.logs.invocation_logs,
+			},
+		}).toEqual({
+			development: { placement: undefined, traces: undefined },
+			staging: {
+				placement: { mode: "smart" },
+				traces: { enabled: true, head_sampling_rate: 1 },
+			},
+			production: {
+				placement: { mode: "smart" },
+				traces: { enabled: true, head_sampling_rate: 0.1 },
+				invocationLogs: false,
+			},
+		});
 	});
 
 	it("should resolve public JWT verification keys from each environment's API and expose only the Google secret", () => {

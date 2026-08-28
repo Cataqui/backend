@@ -34,6 +34,7 @@
 		"staging": {
 			"name": "cataqui-geosearch-staging",
 			"workers_dev": false,
+			"placement": { "mode": "smart" },
 			"routes": [
 				{
 					"pattern": "staging.geosearch.cataqui.com",
@@ -61,12 +62,14 @@
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1 }
+				"logs": { "enabled": true, "head_sampling_rate": 1 },
+				"traces": { "enabled": true, "head_sampling_rate": 1 }
 			}
 		},
 		"production": {
 			"name": "cataqui-geosearch-production",
 			"workers_dev": false,
+			"placement": { "mode": "smart" },
 			"routes": [
 				{
 					"pattern": "geosearch.cataqui.com",
@@ -94,7 +97,8 @@
 			},
 			"observability": {
 				"enabled": true,
-				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false }
+				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false },
+				"traces": { "enabled": true, "head_sampling_rate": 0.1 }
 			}
 		}
 	}

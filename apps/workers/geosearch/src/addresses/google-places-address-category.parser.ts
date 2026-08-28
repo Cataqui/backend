@@ -33,6 +33,10 @@ const _categoryMappings: ReadonlyArray<{
 	{ category: AddressCategory.GYM, placeTypes: ["gym"] },
 	{ category: AddressCategory.STADIUM, placeTypes: ["stadium"] },
 	{
+		category: AddressCategory.RACING_VENUE,
+		placeTypes: ["race_course", "go_karting_venue"],
+	},
+	{
 		category: AddressCategory.SPORTS_VENUE,
 		placeTypes: ["sports_activity_location", "sports_club", "sports_complex"],
 	},
