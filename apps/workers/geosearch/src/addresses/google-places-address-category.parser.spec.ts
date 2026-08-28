@@ -2,6 +2,41 @@ import { AddressCategory } from "./address-category.enum";
 import { parseGooglePlacesAddressCategory } from "./google-places-address-category.parser";
 
 describe("parseGooglePlacesAddressCategory", () => {
+	it.each([
+		{ category: AddressCategory.VEHICLE_REPAIR, placeType: "car_repair" },
+		{ category: AddressCategory.AUTOMOTIVE_SHOP, placeType: "tire_shop" },
+		{ category: AddressCategory.AUTOMOTIVE_SHOP, placeType: "auto_parts_store" },
+		{ category: AddressCategory.VEHICLE_WASH, placeType: "car_wash" },
+		{ category: AddressCategory.VEHICLE_DEALER, placeType: "car_dealer" },
+		{ category: AddressCategory.VEHICLE_DEALER, placeType: "truck_dealer" },
+		{ category: AddressCategory.BICYCLE_SHOP, placeType: "bicycle_store" },
+	])("should normalize $placeType as $category", ({ category, placeType }) => {
+		expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(category);
+	});
+
+	it.each([
+		"lodging",
+		"hotel",
+		"hostel",
+		"motel",
+		"inn",
+		"guest_house",
+		"bed_and_breakfast",
+		"extended_stay_hotel",
+		"resort_hotel",
+		"private_guest_room",
+		"cottage",
+		"farmstay",
+		"camping_cabin",
+		"campground",
+		"rv_park",
+		"mobile_home_park",
+		"japanese_inn",
+		"budget_japanese_inn",
+	])("should normalize %s as the provider-neutral lodging category", (placeType) => {
+		expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(AddressCategory.LODGING);
+	});
+
 	it.each(["race_course", "go_karting_venue"])(
 		"should normalize %s as the provider-neutral racing venue category",
 		(placeType) => {
@@ -43,7 +78,7 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ category: AddressCategory.FIRE_STATION, placeType: "fire_station" },
 		{ category: AddressCategory.PLACE_OF_WORSHIP, placeType: "place_of_worship" },
 		{ category: AddressCategory.GOVERNMENT_OFFICE, placeType: "government_office" },
-		{ category: AddressCategory.HOTEL, placeType: "hotel" },
+		{ category: AddressCategory.LODGING, placeType: "hotel" },
 		{ category: AddressCategory.STREET, placeType: "route" },
 		{ category: AddressCategory.STREET, placeType: "street_address" },
 		{ category: AddressCategory.STREET, placeType: "premise" },
@@ -68,6 +103,46 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ placeTypes: ["heliport", "airport"], expectedCategory: AddressCategory.HELIPORT },
 		{ placeTypes: ["sports_complex", "stadium"], expectedCategory: AddressCategory.STADIUM },
 		{ placeTypes: ["stadium", "sports_complex"], expectedCategory: AddressCategory.STADIUM },
+		{
+			placeTypes: ["car_repair", "car_dealer"],
+			expectedCategory: AddressCategory.VEHICLE_DEALER,
+		},
+		{
+			placeTypes: ["car_dealer", "car_repair"],
+			expectedCategory: AddressCategory.VEHICLE_DEALER,
+		},
+		{
+			placeTypes: ["car_repair", "car_wash"],
+			expectedCategory: AddressCategory.VEHICLE_WASH,
+		},
+		{
+			placeTypes: ["car_wash", "car_repair"],
+			expectedCategory: AddressCategory.VEHICLE_WASH,
+		},
+		{
+			placeTypes: ["car_repair", "tire_shop"],
+			expectedCategory: AddressCategory.AUTOMOTIVE_SHOP,
+		},
+		{
+			placeTypes: ["tire_shop", "car_repair"],
+			expectedCategory: AddressCategory.AUTOMOTIVE_SHOP,
+		},
+		{
+			placeTypes: ["store", "auto_parts_store"],
+			expectedCategory: AddressCategory.AUTOMOTIVE_SHOP,
+		},
+		{
+			placeTypes: ["auto_parts_store", "store"],
+			expectedCategory: AddressCategory.AUTOMOTIVE_SHOP,
+		},
+		{
+			placeTypes: ["store", "bicycle_store"],
+			expectedCategory: AddressCategory.BICYCLE_SHOP,
+		},
+		{
+			placeTypes: ["bicycle_store", "store"],
+			expectedCategory: AddressCategory.BICYCLE_SHOP,
+		},
 		{
 			placeTypes: ["sports_complex", "race_course"],
 			expectedCategory: AddressCategory.RACING_VENUE,
