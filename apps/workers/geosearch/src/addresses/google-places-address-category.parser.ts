@@ -27,6 +27,7 @@ const _categoryMappings: ReadonlyArray<{
 	{ category: AddressCategory.AUTOMOTIVE_SHOP, placeTypes: ["auto_parts_store", "tire_shop"] },
 	{ category: AddressCategory.BICYCLE_SHOP, placeTypes: ["bicycle_store"] },
 	{ category: AddressCategory.VEHICLE_REPAIR, placeTypes: ["car_repair"] },
+	{ category: AddressCategory.HAIR_CARE, placeTypes: ["barber_shop", "hair_salon", "hair_care"] },
 	{ category: AddressCategory.STORE, placeTypes: ["store", "convenience_store", "department_store"] },
 	{ category: AddressCategory.UNIVERSITY, placeTypes: ["university"] },
 	{

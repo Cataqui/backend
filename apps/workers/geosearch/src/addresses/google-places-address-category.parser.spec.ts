@@ -14,6 +14,13 @@ describe("parseGooglePlacesAddressCategory", () => {
 		expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(category);
 	});
 
+	it.each(["barber_shop", "hair_salon", "hair_care"])(
+		"should normalize %s as the provider-neutral hair care category",
+		(placeType) => {
+			expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(AddressCategory.HAIR_CARE);
+		},
+	);
+
 	it.each([
 		"lodging",
 		"hotel",
@@ -144,6 +151,14 @@ describe("parseGooglePlacesAddressCategory", () => {
 			expectedCategory: AddressCategory.BICYCLE_SHOP,
 		},
 		{
+			placeTypes: ["store", "barber_shop"],
+			expectedCategory: AddressCategory.HAIR_CARE,
+		},
+		{
+			placeTypes: ["barber_shop", "store"],
+			expectedCategory: AddressCategory.HAIR_CARE,
+		},
+		{
 			placeTypes: ["sports_complex", "race_course"],
 			expectedCategory: AddressCategory.RACING_VENUE,
 		},
@@ -169,6 +184,8 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ placeTypes: ["establishment", "unsupported_future_type"] },
 		{ placeTypes: ["transit_station", "transit_stop", "transit_depot"] },
 		{ placeTypes: ["ferry_terminal", "taxi_stand"] },
+		{ placeTypes: ["beauty_salon"] },
+		{ placeTypes: ["beautician"] },
 	])("should normalize unmapped place types as OTHER", ({ placeTypes }) => {
 		expect(parseGooglePlacesAddressCategory({ placeTypes: placeTypes })).toBe(AddressCategory.OTHER);
 	});
