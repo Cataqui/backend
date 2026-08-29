@@ -5,7 +5,11 @@ import ts from "typescript";
 type WorkerEnvironment = {
 	name: string;
 	workers_dev?: boolean;
-	containers?: Array<{ constraints?: { regions?: string[] } }>;
+	containers?: Array<{
+		constraints?: { regions?: string[] };
+		max_instances?: number;
+		rollout_step_percentage?: number | number[];
+	}>;
 	observability?: { logs?: { head_sampling_rate?: number; invocation_logs?: boolean } };
 	vars: {
 		API_CONTAINER_POOL_SIZE?: string;
@@ -133,7 +137,7 @@ describe("API and Webhooks Worker configuration integration", () => {
 		});
 	});
 
-	it("should keep API container placement and pool size at the API boundary", () => {
+	it("should keep API container placement and capacity at the API boundary", () => {
 		const apiContainerSource = readFileSync(
 			resolve(repositoryRoot, "apps/api/src/platform/cloudflare/containers/api/api-container.ts"),
 			"utf8",
@@ -141,13 +145,21 @@ describe("API and Webhooks Worker configuration integration", () => {
 		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];
 
 		expect({
+			containerCapacity: apiEnvironments.map((environment) => ({
+				maxInstances: environment.containers?.[0]?.max_instances,
+				poolSize: environment.vars.API_CONTAINER_POOL_SIZE,
+				rolloutStepPercentage: environment.containers?.[0]?.rollout_step_percentage,
+			})),
 			containerRegions: apiEnvironments.map((environment) => environment.containers?.[0]?.constraints?.regions),
 			forwardedToNest: apiContainerSource.includes("API_CONTAINER_POOL_SIZE"),
-			poolSizes: apiEnvironments.map((environment) => environment.vars.API_CONTAINER_POOL_SIZE),
 		}).toEqual({
+			containerCapacity: [
+				{ maxInstances: 10, poolSize: "1", rolloutStepPercentage: undefined },
+				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
+				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
+			],
 			containerRegions: [["SAM"], ["SAM"], ["SAM"]],
 			forwardedToNest: false,
-			poolSizes: ["1", "3", "10"],
 		});
 	});
 

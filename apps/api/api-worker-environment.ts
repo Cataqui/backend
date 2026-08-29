@@ -10,7 +10,7 @@ export interface ApiWorkerEnvironment {
 		| "cataqui-derive-job-data-staging"
 		| "cataqui-derive-job-data-production"
 		| "cataqui-derive-job-data-development";
-	API_CONTAINER_POOL_SIZE: "3" | "10" | "1";
+	API_CONTAINER_POOL_SIZE: "1";
 	WHATSAPP_NOTP_RECEIVER: "+15556625497" | "+5511963270517";
 	CLOUDFLARE_ACCOUNT_ID: string;
 	DATABASE_APP_POOLER_URL: string;
