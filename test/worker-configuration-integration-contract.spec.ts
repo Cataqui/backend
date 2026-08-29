@@ -157,8 +157,9 @@ describe("API and Webhooks Worker configuration integration", () => {
 				{ maxInstances: 10, poolSize: "1", rolloutStepPercentage: undefined },
 				// Restore [10, 50, 100] when staging has at least 3 instances.
 				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
+				// Temporary replacement headroom; return the production cap to 1 after the stale instance drains.
 				// Restore [10, 25, 50, 100] when production has at least 4 instances.
-				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
+				{ maxInstances: 2, poolSize: "1", rolloutStepPercentage: 100 },
 			],
 			containerRegions: [["SAM"], ["SAM"], ["SAM"]],
 			forwardedToNest: false,
