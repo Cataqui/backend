@@ -155,7 +155,9 @@ describe("API and Webhooks Worker configuration integration", () => {
 		}).toEqual({
 			containerCapacity: [
 				{ maxInstances: 10, poolSize: "1", rolloutStepPercentage: undefined },
+				// Restore [10, 50, 100] when staging has at least 3 instances.
 				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
+				// Restore [10, 25, 50, 100] when production has at least 4 instances.
 				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
 			],
 			containerRegions: [["SAM"], ["SAM"], ["SAM"]],

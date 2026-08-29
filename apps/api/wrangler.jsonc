@@ -101,7 +101,6 @@
 					"instance_type": "basic",
 					"constraints": { "regions": ["SAM"] },
 					"rollout_active_grace_period": 60,
-					// Restore [10, 50, 100] when staging has at least 3 instances.
 					"rollout_step_percentage": 100
 				}
 			],
@@ -169,7 +168,6 @@
 					"instance_type": "standard-1",
 					"constraints": { "regions": ["SAM"] },
 					"rollout_active_grace_period": 300,
-					// Restore [10, 25, 50, 100] when production has at least 4 instances.
 					"rollout_step_percentage": 100
 				}
 			],
