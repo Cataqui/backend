@@ -22,6 +22,23 @@ describe("parseGooglePlacesAddressCategory", () => {
 	);
 
 	it.each([
+		{ category: AddressCategory.BAR, placeType: "bar" },
+		{ category: AddressCategory.BAR, placeType: "pub" },
+		{ category: AddressCategory.BAR, placeType: "irish_pub" },
+		{ category: AddressCategory.BAR, placeType: "sports_bar" },
+		{ category: AddressCategory.BAR, placeType: "beer_garden" },
+		{ category: AddressCategory.BAR, placeType: "brewpub" },
+		{ category: AddressCategory.COCKTAIL_BAR, placeType: "cocktail_bar" },
+		{ category: AddressCategory.COCKTAIL_BAR, placeType: "lounge_bar" },
+		{ category: AddressCategory.WINE_BAR, placeType: "wine_bar" },
+		{ category: AddressCategory.HOOKAH_BAR, placeType: "hookah_bar" },
+		{ category: AddressCategory.RESTAURANT, placeType: "gastropub" },
+		{ category: AddressCategory.RESTAURANT, placeType: "bar_and_grill" },
+	])("should normalize $placeType as $category", ({ category, placeType }) => {
+		expect(parseGooglePlacesAddressCategory({ placeTypes: [placeType] })).toBe(category);
+	});
+
+	it.each([
 		"lodging",
 		"hotel",
 		"hostel",
@@ -54,7 +71,7 @@ describe("parseGooglePlacesAddressCategory", () => {
 	it.each([
 		{ category: AddressCategory.NIGHT_CLUB, placeType: "night_club" },
 		{ category: AddressCategory.CAFE, placeType: "cafe" },
-		{ category: AddressCategory.BAR, placeType: "cocktail_bar" },
+		{ category: AddressCategory.COCKTAIL_BAR, placeType: "cocktail_bar" },
 		{ category: AddressCategory.RESTAURANT, placeType: "restaurant" },
 		{ category: AddressCategory.AMUSEMENT_PARK, placeType: "amusement_park" },
 		{ category: AddressCategory.PARK, placeType: "city_park" },
@@ -110,6 +127,56 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ placeTypes: ["heliport", "airport"], expectedCategory: AddressCategory.HELIPORT },
 		{ placeTypes: ["sports_complex", "stadium"], expectedCategory: AddressCategory.STADIUM },
 		{ placeTypes: ["stadium", "sports_complex"], expectedCategory: AddressCategory.STADIUM },
+		{
+			placeTypes: ["bar", "cocktail_bar"],
+			expectedCategory: AddressCategory.COCKTAIL_BAR,
+		},
+		{
+			placeTypes: ["cocktail_bar", "bar"],
+			expectedCategory: AddressCategory.COCKTAIL_BAR,
+		},
+		{
+			placeTypes: ["bar", "lounge_bar"],
+			expectedCategory: AddressCategory.COCKTAIL_BAR,
+		},
+		{
+			placeTypes: ["lounge_bar", "bar"],
+			expectedCategory: AddressCategory.COCKTAIL_BAR,
+		},
+		{
+			placeTypes: ["bar", "wine_bar"],
+			expectedCategory: AddressCategory.WINE_BAR,
+		},
+		{
+			placeTypes: ["wine_bar", "bar"],
+			expectedCategory: AddressCategory.WINE_BAR,
+		},
+		{
+			placeTypes: ["bar", "hookah_bar"],
+			expectedCategory: AddressCategory.HOOKAH_BAR,
+		},
+		{
+			placeTypes: ["hookah_bar", "bar"],
+			expectedCategory: AddressCategory.HOOKAH_BAR,
+		},
+		{
+			placeTypes: ["bar", "gastropub"],
+			expectedCategory: AddressCategory.RESTAURANT,
+		},
+		{
+			placeTypes: ["gastropub", "bar"],
+			expectedCategory: AddressCategory.RESTAURANT,
+		},
+		{
+			placeTypes: ["bar", "bar_and_grill"],
+			expectedCategory: AddressCategory.RESTAURANT,
+		},
+		{
+			placeTypes: ["bar_and_grill", "bar"],
+			expectedCategory: AddressCategory.RESTAURANT,
+		},
+		{ placeTypes: ["restaurant", "bar"], expectedCategory: AddressCategory.BAR },
+		{ placeTypes: ["bar", "restaurant"], expectedCategory: AddressCategory.BAR },
 		{
 			placeTypes: ["car_repair", "car_dealer"],
 			expectedCategory: AddressCategory.VEHICLE_DEALER,
@@ -186,6 +253,8 @@ describe("parseGooglePlacesAddressCategory", () => {
 		{ placeTypes: ["ferry_terminal", "taxi_stand"] },
 		{ placeTypes: ["beauty_salon"] },
 		{ placeTypes: ["beautician"] },
+		{ placeTypes: ["brewery"] },
+		{ placeTypes: ["winery"] },
 	])("should normalize unmapped place types as OTHER", ({ placeTypes }) => {
 		expect(parseGooglePlacesAddressCategory({ placeTypes: placeTypes })).toBe(AddressCategory.OTHER);
 	});

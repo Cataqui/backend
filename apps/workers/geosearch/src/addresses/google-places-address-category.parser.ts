@@ -6,9 +6,13 @@ const _categoryMappings: ReadonlyArray<{
 }> = [
 	{ category: AddressCategory.NIGHT_CLUB, placeTypes: ["night_club"] },
 	{ category: AddressCategory.CAFE, placeTypes: ["cafe", "cafeteria"] },
+	{ category: AddressCategory.COCKTAIL_BAR, placeTypes: ["cocktail_bar", "lounge_bar"] },
+	{ category: AddressCategory.WINE_BAR, placeTypes: ["wine_bar"] },
+	{ category: AddressCategory.HOOKAH_BAR, placeTypes: ["hookah_bar"] },
+	{ category: AddressCategory.RESTAURANT, placeTypes: ["gastropub", "bar_and_grill"] },
 	{
 		category: AddressCategory.BAR,
-		placeTypes: ["bar", "cocktail_bar", "hookah_bar", "lounge_bar", "sports_bar", "wine_bar"],
+		placeTypes: ["bar", "pub", "irish_pub", "sports_bar", "beer_garden", "brewpub"],
 	},
 	{ category: AddressCategory.RESTAURANT, placeTypes: ["restaurant"] },
 	{ category: AddressCategory.AMUSEMENT_PARK, placeTypes: ["amusement_park", "water_park"] },
