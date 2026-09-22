@@ -219,6 +219,39 @@ jobs:
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/neon-migrations
         with: { environment: "${{ needs.prepare.outputs.environment }}" }
+      - name: Load Queues credentials for consumer retirement
+        if: needs.prepare.outputs.deploy-api == 'true'
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Detach retired job derivation Queue consumer
+        if: needs.prepare.outputs.deploy-api == 'true'
+        shell: bash
+        working-directory: apps/api
+        env:
+          INPUT_ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+        run: |
+          set -euo pipefail
+          queue_name="cataqui-api-derive-job-data-$INPUT_ENVIRONMENT"
+          worker_name="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].name' wrangler.jsonc)"
+          consumer_attached="$(QUEUE_NAME="$queue_name" WORKER_NAME="$worker_name" node --input-type=module <<'NODE'
+          const { CLOUDFLARE_ACCOUNT_ID: accountId, CLOUDFLARE_API_TOKEN: token, QUEUE_NAME: queueName, WORKER_NAME: workerName } = process.env;
+          const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/queues?name=${encodeURIComponent(queueName)}`;
+          const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+          if (!response.ok) throw new Error(`Queue lookup failed with HTTP ${response.status}`);
+          const body = await response.json();
+          if (body.success !== true || !Array.isArray(body.result)) throw new Error("Invalid Queue lookup response");
+          const queues = body.result.filter((queue) => queue.queue_name === queueName);
+          if (queues.length > 1) throw new Error("Duplicate named Queues found");
+          const consumers = queues[0]?.consumers ?? [];
+          if (!Array.isArray(consumers)) throw new Error("Invalid Queue consumer list");
+          const attached = consumers.some((consumer) => consumer.type === "worker" &&
+            (consumer.script === workerName || consumer.service === workerName || consumer.script_name === workerName));
+          process.stdout.write(attached ? "true" : "false");
+          NODE
+          )"
+          if [[ "$consumer_attached" == true ]]; then
+            pnpm exec wrangler queues consumer remove "$queue_name" "$worker_name" --config wrangler.jsonc --env "$INPUT_ENVIRONMENT"
+          fi
       - name: Load API deployment credential
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/load-infisical-secrets
