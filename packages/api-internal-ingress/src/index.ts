@@ -8,5 +8,4 @@ export type {
 	ApiContainerInboundReceiver,
 } from "./inbound/api-container-inbound.manifest.js";
 export { inboundCall } from "./inbound/api-container-inbound.js";
-export { DeriveJobDataInputSchema } from "./inbound/schemas/derive-job-data-input.schema.js";
 export { VerifyNotpInputSchema } from "./inbound/schemas/verify-notp-input.schema.js";

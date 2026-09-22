@@ -176,12 +176,6 @@ jobs:
       - name: Apply AI Gateway
         uses: ./.github/actions/cloudflare-ai-gateways
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load Queues credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Queues
-        uses: ./.github/actions/cloudflare-queues
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
       - name: Authenticate Google Cloud
         uses: ./.github/actions/authenticate-google-cloud
         with: { environment: "${{ needs.prepare.outputs.environment }}", workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
@@ -233,6 +227,12 @@ jobs:
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/deploy-api
         with: { environment: "${{ needs.prepare.outputs.environment }}" }
+      - name: Load Queues credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Apply Queues
+        uses: ./.github/actions/cloudflare-queues
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
       - name: Clear API deployment credential
         if: needs.prepare.outputs.deploy-api == 'true'
         shell: bash

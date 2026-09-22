@@ -1,29 +1,6 @@
 enum JobStatus {
-  DRAFT
   ACTIVE
   CLOSED
-}
-
-enum JobType {
-  INDIVIDUAL
-  EMPLOYMENT
-  CONTRACTOR
-}
-
-enum JobPaymentAmountPeriod {
-  SINGLE
-  HOURLY
-  DAILY
-  WEEKLY
-  MONTHLY
-  YEARLY
-}
-
-enum JobPaymentType {
-  FIXED
-  RANGE
-  FLEXIBLE
-  OTHER
 }
 
 enum JobContactMethod {

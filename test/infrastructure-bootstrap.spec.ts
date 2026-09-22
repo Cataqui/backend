@@ -82,16 +82,6 @@ describe("infrastructure bootstrap reconciliation", () => {
 			derive_job_data_staging: "cataqui-derive-job-data-staging",
 			derive_job_data_production: "cataqui-derive-job-data-production",
 		});
-		expect(manifest.cloudflare.queues).toEqual({
-			derive_job_data_staging: {
-				name: "cataqui-api-derive-job-data-staging",
-				dead_letter_name: "cataqui-api-derive-job-data-staging-dlq",
-			},
-			derive_job_data_production: {
-				name: "cataqui-api-derive-job-data-production",
-				dead_letter_name: "cataqui-api-derive-job-data-production-dlq",
-			},
-		});
 		expect(getR2TokenName(manifest, "staging")).toBe("cataqui-backend-opentofu-state-staging");
 		expect(getR2TokenName(manifest, "production")).toBe("cataqui-backend-opentofu-state-production");
 		expect(manifest.google_cloud.projects).toEqual({

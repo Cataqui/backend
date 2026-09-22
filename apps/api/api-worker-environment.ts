@@ -1,8 +1,7 @@
 // Generated from api-worker-env.d.ts by pnpm cf:types. Do not edit manually.
-import type { DurableObjectNamespace, Queue } from "@cloudflare/workers-types/index";
+import type { DurableObjectNamespace } from "@cloudflare/workers-types/index";
 
 export interface ApiWorkerEnvironment {
-	DERIVE_JOB_DATA_QUEUE: Queue;
 	NODE_ENV: "staging" | "production" | "development";
 	SLEEP_AFTER: "5m" | "1h";
 	CORS_ORIGINS: "https://staging.cataqui.com" | "https://cataqui.com" | "http://localhost:3000";

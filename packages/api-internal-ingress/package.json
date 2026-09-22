@@ -14,10 +14,6 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
-		"./queue": {
-			"types": "./dist/queue.d.ts",
-			"import": "./dist/queue.js"
-		},
 		"./router": {
 			"types": "./dist/router.d.ts",
 			"import": "./dist/router.js"

@@ -4,16 +4,6 @@
 			"derive_job_data_staging": "cataqui-derive-job-data-staging",
 			"derive_job_data_production": "cataqui-derive-job-data-production"
 		},
-		"queues": {
-			"derive_job_data_staging": {
-				"name": "cataqui-api-derive-job-data-staging",
-				"dead_letter_name": "cataqui-api-derive-job-data-staging-dlq"
-			},
-			"derive_job_data_production": {
-				"name": "cataqui-api-derive-job-data-production",
-				"dead_letter_name": "cataqui-api-derive-job-data-production-dlq"
-			}
-		},
 		"r2": {
 			"buckets": {
 				"opentofu_state": "cataqui-backend-opentofu-state"

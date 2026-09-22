@@ -45,7 +45,7 @@ describe("toErrorOutput", () => {
 				status: 400,
 				requestId: "req-123",
 				timestamp: "2026-05-28T10:00:00.000Z",
-				endpoint: "/v1/jobs/drafts",
+				endpoint: "/v1/jobs",
 				violations: [{ path: ["payment", "minAmount"], message: "must be greater than 0" }],
 			}),
 		).toMatchObject({

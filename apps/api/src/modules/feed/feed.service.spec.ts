@@ -12,12 +12,7 @@ function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; 
 		title: overrides.title ?? "Help unload truck",
 		createdAt: overrides.createdAt,
 		descriptionSummary: overrides.descriptionSummary ?? "",
-		paymentType: overrides.paymentType ?? ("FIXED" as const),
-		paymentMinAmount: overrides.paymentMinAmount ?? new Prisma.Decimal("150.00"),
-		paymentMaxAmount: overrides.paymentMaxAmount ?? null,
-		paymentNote: overrides.paymentNote ?? null,
-		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
-		paymentCurrency: overrides.paymentCurrency ?? "BRL",
+		payment: overrides.payment ?? "R$ 150",
 		fuzzyLatitude: overrides.fuzzyLatitude ?? new Prisma.Decimal("-23.550000"),
 		fuzzyLongitude: overrides.fuzzyLongitude ?? new Prisma.Decimal("-46.630000"),
 	};
@@ -144,7 +139,7 @@ describe("FeedService", () => {
 			expect(result.data[0]).toMatchObject({
 				jobId: "job-1",
 				title: "Help unload truck",
-				payment: { type: "FIXED", minAmount: 150 },
+				payment: "R$ 150",
 				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
 			});
 		});

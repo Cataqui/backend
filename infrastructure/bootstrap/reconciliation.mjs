@@ -62,24 +62,12 @@ export function validatePlatforms(platforms) {
 
 export function validateManifest(manifest) {
 	_requireExactKeys(manifest, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "manifest");
-	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "queues", "r2"], "manifest.cloudflare");
+	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "r2"], "manifest.cloudflare");
 	_requireExactKeys(
 		manifest.cloudflare.ai_gateways,
 		["derive_job_data_staging", "derive_job_data_production"],
 		"manifest.cloudflare.ai_gateways",
 	);
-	_requireExactKeys(
-		manifest.cloudflare.queues,
-		["derive_job_data_staging", "derive_job_data_production"],
-		"manifest.cloudflare.queues",
-	);
-	for (const environment of ENVIRONMENTS) {
-		_requireExactKeys(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`],
-			["name", "dead_letter_name"],
-			`manifest.cloudflare.queues.derive_job_data_${environment}`,
-		);
-	}
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
 	_requireExactKeys(manifest.cloudflare.r2.buckets, ["opentofu_state"], "manifest.cloudflare.r2.buckets");
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
@@ -195,16 +183,6 @@ export function validateManifest(manifest) {
 		_requireString(
 			manifest.cloudflare.ai_gateways[`derive_job_data_${environment}`],
 			`cloudflare.ai_gateways.derive_job_data_${environment}`,
-			LOWERCASE_NAME_PATTERN,
-		);
-		_requireString(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`].name,
-			`cloudflare.queues.derive_job_data_${environment}.name`,
-			LOWERCASE_NAME_PATTERN,
-		);
-		_requireString(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`].dead_letter_name,
-			`cloudflare.queues.derive_job_data_${environment}.dead_letter_name`,
 			LOWERCASE_NAME_PATTERN,
 		);
 		_requireString(

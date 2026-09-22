@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { JobPaymentOutputSchema } from "../../../shared/schemas/job/job-payment-output.schema";
 import { FeedLocationOutputSchema } from "./feed-location-output.schema";
 
 export const FeedItemOutputSchema = z
@@ -10,7 +9,7 @@ export const FeedItemOutputSchema = z
 		descriptionSummary: z
 			.string()
 			.describe("Short worker-focused pitch with the most decision-useful grounded details from the post"),
-		payment: JobPaymentOutputSchema.describe("Payment details"),
+		payment: z.string().describe("Payment text supplied by the poster"),
 		location: FeedLocationOutputSchema.describe("Job location"),
 	})
 	.strict()
