@@ -9,7 +9,7 @@ export const UserJobOutputSchema = z
 		descriptionSummary: z.string(),
 		payment: z.string().nullable(),
 		location: JobLocationOutputSchema.describe("Fuzzy public job location"),
-		status: z.enum([JobStatus.ACTIVE, JobStatus.CLOSED]),
+		status: z.enum([JobStatus.ACTIVE, JobStatus.ARCHIVED]),
 		createdAt: z.iso.datetime(),
 		updatedAt: z.iso.datetime(),
 	})

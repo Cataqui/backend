@@ -18,6 +18,10 @@ describe("PublicJobOutputSchema", () => {
 	it("accepts a job with null payment", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, payment: null }).success).toBe(true);
 	});
+	it("accepts an archived public job", () => {
+		expect(PublicJobOutputSchema.safeParse({ ...job, status: "ARCHIVED" }).success).toBe(true);
+		expect(PublicJobOutputSchema.safeParse({ ...job, status: "CLOSED" }).success).toBe(false);
+	});
 	it("rejects structured payment and obsolete job type", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, payment: { type: "FIXED" } }).success).toBe(false);
 		expect(PublicJobOutputSchema.safeParse({ ...job, type: "INDIVIDUAL" }).success).toBe(false);

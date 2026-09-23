@@ -12,7 +12,7 @@ export const PublicJobOutputSchema = z
 		contactReference: JobContactReferenceOutputSchema.describe("Reference used to identify the job contact"),
 		location: JobLocationOutputSchema.describe("Where the job will be executed"),
 		payment: z.string().nullable().describe("Payment text derived from the job description, or null when unavailable"),
-		status: z.enum([JobStatus.ACTIVE, JobStatus.CLOSED]).describe("Public job lifecycle status"),
+		status: z.enum([JobStatus.ACTIVE, JobStatus.ARCHIVED]).describe("Public job lifecycle status"),
 		createdAt: z.iso.datetime().describe("ISO 8601 timestamp of job creation"),
 		updatedAt: z.iso.datetime().describe("ISO 8601 timestamp of the last job update"),
 	})

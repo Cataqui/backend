@@ -6,13 +6,6 @@ import { PrismaService } from "../../../core/prisma/prisma.service";
 export class ContactRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findById(params: { contactId: string }): Promise<{ contactMethod: ContactMethod; identifier: string } | null> {
-		return this._prisma.contact.findUnique({
-			where: { id: params.contactId },
-			select: { contactMethod: true, identifier: true },
-		});
-	}
-
 	async upsertContact(params: {
 		userId: string;
 		contactMethod: ContactMethod;

@@ -13,6 +13,7 @@ import { JobIdempotencyConflictError } from "./errors/job-idempotency-conflict.e
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobDataDerivationPrompts } from "./prompts/job-data-derivation-prompts";
 import { JobRepository } from "./repositories/job.repository";
+import type { ContactOutputSchema } from "../contact/schemas/contact-output.schema";
 import { CreateJobInputSchema } from "./schemas/create-job-input.schema";
 import { JobDerivedDataSchema } from "./schemas/job-derived-data.schema.js";
 import { UserJobOutputSchema } from "./schemas/user-job-output.schema";
@@ -153,5 +154,17 @@ export class JobService {
 		const job = await this._jobRepository.findPublicById({ jobId: params.jobId });
 		if (!job) throw new JobNotFoundError();
 		return toPublicJobOutput(job);
+	}
+
+	async archiveJob(params: { jobId: string; posterUserId: string }): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		const job = await this._jobRepository.archiveOwnedJob(params);
+		if (job === null) throw new JobNotFoundError();
+		return toPublicJobOutput(job);
+	}
+
+	async getJobContact(params: { jobId: string; contactId: string }): Promise<z.infer<typeof ContactOutputSchema>> {
+		const contact = await this._jobRepository.findActiveJobContact(params);
+		if (contact === null) throw new JobNotFoundError();
+		return { contactMethod: contact.contactMethod, identifier: contact.identifier };
 	}
 }

@@ -11,7 +11,7 @@ export function ApiGetCurrentUserJobsDocs(): MethodDecorator & ClassDecorator {
 		ApiBearerAuth(),
 		ApiOperation({
 			summary: "Get the authenticated user's posted jobs",
-			description: "Returns active and closed jobs in newest-first order.",
+			description: "Returns active and archived jobs in newest-first order.",
 		}),
 		ApiResponse({ status: HttpStatus.OK, description: "Posted jobs returned.", standardSchema: responseSchema }),
 		ApiResponse({

@@ -22,7 +22,8 @@ describe("JobRepository", () => {
 	const prisma = {
 		$queryRaw: vi.fn(),
 		$transaction: vi.fn(),
-		job: { findMany: vi.fn() },
+		job: { findMany: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() },
+		contact: { findFirst: vi.fn() },
 		jobPostRequest: { findUnique: vi.fn() },
 	};
 	let repository: JobRepository;
@@ -34,13 +35,13 @@ describe("JobRepository", () => {
 		repository = module.get(JobRepository);
 	});
 
-	it("lists only the authenticated poster's active and closed jobs newest first", async () => {
+	it("lists only the authenticated poster's active and archived jobs newest first", async () => {
 		prisma.job.findMany.mockResolvedValue([
 			{ ...row, status: JobStatus.ACTIVE },
-			{ ...row, status: JobStatus.CLOSED },
+			{ ...row, status: JobStatus.ARCHIVED },
 		]);
 		const results = await repository.findUserJobs({ posterUserId: "poster", limit: 21 });
-		expect(results.map((job) => job.status)).toEqual([JobStatus.ACTIVE, JobStatus.CLOSED]);
+		expect(results.map((job) => job.status)).toEqual([JobStatus.ACTIVE, JobStatus.ARCHIVED]);
 		expect(prisma.job.findMany).toHaveBeenCalledWith({
 			where: { posterUserId: "poster" },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -86,6 +87,44 @@ describe("JobRepository", () => {
 	it("reads a public post with null payment", async () => {
 		prisma.$queryRaw.mockResolvedValue([{ ...row, payment: null }]);
 		expect((await repository.findPublicById({ jobId: row.id }))?.payment).toBeNull();
+	});
+
+	it("archives only an active job belonging to the poster and reads its new state", async () => {
+		prisma.job.findFirst.mockResolvedValue({ ...row, status: JobStatus.ARCHIVED });
+		const result = await repository.archiveOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(result?.status).toBe(JobStatus.ARCHIVED);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster", status: JobStatus.ACTIVE },
+			data: { status: JobStatus.ARCHIVED },
+		});
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: expect.objectContaining({ status: true, contact: { select: { id: true, contactMethod: true } } }),
+		});
+	});
+
+	it("does not update the timestamp when an archived job is archived again", async () => {
+		const archived = { ...row, status: JobStatus.ARCHIVED };
+		prisma.job.updateMany.mockResolvedValue({ count: 0 });
+		prisma.job.findFirst.mockResolvedValue(archived);
+		await expect(repository.archiveOwnedJob({ jobId: row.id, posterUserId: "poster" })).resolves.toBe(archived);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ status: JobStatus.ACTIVE }) }),
+		);
+	});
+
+	it("returns no job when its poster does not own it", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await expect(repository.archiveOwnedJob({ jobId: row.id, posterUserId: "other" })).resolves.toBeNull();
+	});
+
+	it("reveals a shared contact only through the requested active job", async () => {
+		prisma.contact.findFirst.mockResolvedValue({ contactMethod: "WHATSAPP", identifier: "+5511999999999" });
+		await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId });
+		expect(prisma.contact.findFirst).toHaveBeenCalledWith({
+			where: { id: row.contactId, jobs: { some: { id: row.id, status: JobStatus.ACTIVE } } },
+			select: { contactMethod: true, identifier: true },
+		});
 	});
 
 	it("finds an existing post by poster and idempotency key", async () => {

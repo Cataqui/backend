@@ -59,6 +59,26 @@ describe("FeedRepository", () => {
 		expect(sql.values).toContain(20);
 	});
 
+	it("excludes archived jobs from both the first and subsequent feed pages", async () => {
+		prisma.job.findMany.mockResolvedValue([]);
+		await repository.getFeedItems({ limit: 20 });
+		expect(prisma.job.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: "ACTIVE" } }));
+
+		prisma.$queryRaw.mockResolvedValue([]);
+		await repository.getFeedItems({
+			cursor: decodeFeedPaginationCursor({
+				cursor: encodeFeedPaginationCursor({
+					createdAt: "2026-09-22T13:00:00Z",
+					jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				}),
+			}),
+			limit: 20,
+		});
+		const sql: Prisma.Sql = prisma.$queryRaw.mock.calls[0]![0];
+		expect(sql.text).toContain('"status" = ');
+		expect(sql.values).toContain("ACTIVE");
+	});
+
 	it("returns null payment from both feed query paths", async () => {
 		const unpaidJob = { ...job, payment: null };
 		prisma.job.findMany.mockResolvedValue([unpaidJob]);

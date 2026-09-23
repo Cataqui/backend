@@ -1,6 +1,6 @@
 enum JobStatus {
   ACTIVE
-  CLOSED
+  ARCHIVED
 }
 
 enum ContactMethod {

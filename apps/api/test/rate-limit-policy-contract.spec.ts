@@ -2,7 +2,6 @@ import type { Type } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler.constants";
 import { AppController } from "../src/app.controller";
-import { ContactController } from "../src/modules/contact/contact.controller";
 import { RateLimitConstants } from "../src/core/throttle/rate-limit.constants";
 import { AuthSessionController } from "../src/modules/auth/auth-session.controller";
 import { NotpController } from "../src/modules/auth/notp/notp.controller";
@@ -41,7 +40,7 @@ describe("endpoint rate-limit policy contract", () => {
 		["dependency health", HealthController, "check"],
 		["feed pagination", FeedController, "getFeed"],
 		["job detail", JobController, "getJob"],
-		["contact reveal", ContactController, "getContact"],
+		["contact reveal", JobController, "getJobContact"],
 		["session refresh", AuthSessionController, "refreshSession"],
 		["session inspection", AuthSessionController, "getCurrentSession"],
 		["current-session logout", AuthSessionController, "logoutCurrentSession"],

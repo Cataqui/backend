@@ -124,6 +124,30 @@ export class JobRepository {
 		});
 	}
 
+	async archiveOwnedJob(params: { jobId: string; posterUserId: string }): Promise<PublicJobRaw | null> {
+		await this._prisma.job.updateMany({
+			where: { id: params.jobId, posterUserId: params.posterUserId, status: JobStatus.ACTIVE },
+			data: { status: JobStatus.ARCHIVED },
+		});
+		return this._prisma.job.findFirst({
+			where: { id: params.jobId, posterUserId: params.posterUserId },
+			select: _publicJobOutputSelection,
+		});
+	}
+
+	async findActiveJobContact(params: {
+		jobId: string;
+		contactId: string;
+	}): Promise<{ contactMethod: ContactMethod; identifier: string } | null> {
+		return this._prisma.contact.findFirst({
+			where: {
+				id: params.contactId,
+				jobs: { some: { id: params.jobId, status: JobStatus.ACTIVE } },
+			},
+			select: { contactMethod: true, identifier: true },
+		});
+	}
+
 	async findPublicById(params: { jobId: string }): Promise<PublicJobRaw | null> {
 		const [databaseJob] = await this._prisma.$queryRaw<PublicJobDatabaseRow[]>(Prisma.sql`
 			SELECT

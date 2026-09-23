@@ -5,6 +5,7 @@ import { ContactService } from "../contact/contact.service";
 import { LocationService } from "../location/location.service";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobIdempotencyConflictError } from "./errors/job-idempotency-conflict.error";
+import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
@@ -40,6 +41,8 @@ describe("JobService direct posting", () => {
 		findByIdempotencyKey: vi.fn(),
 		createJob: vi.fn(),
 		findPublicById: vi.fn(),
+		archiveOwnedJob: vi.fn(),
+		findActiveJobContact: vi.fn(),
 	};
 	const ai = { generateObject: vi.fn() };
 	const users = { getOrAddContact: vi.fn() };
@@ -79,13 +82,13 @@ describe("JobService direct posting", () => {
 		});
 	});
 
-	it("returns active and closed posts with their list fields", async () => {
+	it("returns active and archived posts with their list fields", async () => {
 		repository.findUserJobs.mockResolvedValue([
 			job,
 			{
 				...job,
 				id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-				status: JobStatus.CLOSED,
+				status: JobStatus.ARCHIVED,
 			},
 		]);
 		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
@@ -101,10 +104,38 @@ describe("JobService direct posting", () => {
 				updatedAt: "2026-09-22T12:00:00.000Z",
 			},
 			expect.objectContaining({
-				status: JobStatus.CLOSED,
+				status: JobStatus.ARCHIVED,
 				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
 			}),
 		]);
+	});
+
+	it("returns an archived job for its poster and keeps its public detail available", async () => {
+		repository.archiveOwnedJob.mockResolvedValue({ ...job, status: JobStatus.ARCHIVED });
+		repository.findPublicById.mockResolvedValue({ ...job, status: JobStatus.ARCHIVED });
+		await expect(service.archiveJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
+			status: "ARCHIVED",
+		});
+		await expect(service.getPublicJob({ jobId: job.id })).resolves.toMatchObject({ status: "ARCHIVED" });
+	});
+
+	it("returns 404 when a different poster archives a job", async () => {
+		repository.archiveOwnedJob.mockResolvedValue(null);
+		await expect(service.archiveJob({ jobId: job.id, posterUserId: "other" })).rejects.toThrow(JobNotFoundError);
+	});
+
+	it("refuses contact lookup for an archived job even when another active job shares its contact", async () => {
+		repository.findActiveJobContact.mockResolvedValue(null);
+		await expect(service.getJobContact({ jobId: job.id, contactId: job.contact.id })).rejects.toThrow(JobNotFoundError);
+		expect(repository.findActiveJobContact).toHaveBeenCalledWith({ jobId: job.id, contactId: job.contact.id });
+	});
+
+	it("returns contact details for an active job's matching contact", async () => {
+		repository.findActiveJobContact.mockResolvedValue({ contactMethod: "WHATSAPP", identifier: "+5511999999999" });
+		await expect(service.getJobContact({ jobId: job.id, contactId: job.contact.id })).resolves.toEqual({
+			contactMethod: "WHATSAPP",
+			identifier: "+5511999999999",
+		});
 	});
 
 	it("returns 20 jobs and a cursor after the last visible job when another page exists", async () => {

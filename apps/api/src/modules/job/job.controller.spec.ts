@@ -1,10 +1,11 @@
 import { BadRequestException } from "@nestjs/common";
-import { PATH_METADATA } from "@nestjs/common/constants";
+import { GUARDS_METADATA, HEADERS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
+import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 import { JobController } from "./job.controller";
 import type { JobService } from "./job.service";
 
 describe("JobController", () => {
-	const service = { createJob: vi.fn(), getPublicJob: vi.fn() };
+	const service = { createJob: vi.fn(), getPublicJob: vi.fn(), archiveJob: vi.fn(), getJobContact: vi.fn() };
 	const controller = new JobController(service as unknown as JobService);
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",
@@ -29,5 +30,24 @@ describe("JobController", () => {
 	it("rejects a missing or invalid idempotency key", async () => {
 		await expect(controller.createJob(dto, undefined, session as never)).rejects.toBeInstanceOf(BadRequestException);
 		await expect(controller.createJob(dto, "bad", session as never)).rejects.toBeInstanceOf(BadRequestException);
+	});
+
+	it("requires an access token and passes the poster to job archiving", async () => {
+		const jobId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+		await controller.archiveJob({ jobId: jobId }, session as never);
+		expect(Reflect.getMetadata(PATH_METADATA, controller.archiveJob)).toBe(":jobId/archive");
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.archiveJob)).toEqual([AccessTokenGuard]);
+		expect(service.archiveJob).toHaveBeenCalledWith({ jobId: jobId, posterUserId: session.userId });
+	});
+
+	it("looks up contact details for a specific job without caching", async () => {
+		const params = { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" };
+		await controller.getJobContact(params);
+		expect(Reflect.getMetadata(PATH_METADATA, controller.getJobContact)).toBe(":jobId/contact/:contactId");
+		expect(Reflect.getMetadata(HEADERS_METADATA, controller.getJobContact)).toContainEqual({
+			name: "Cache-Control",
+			value: "no-store",
+		});
+		expect(service.getJobContact).toHaveBeenCalledWith(params);
 	});
 });
