@@ -16,8 +16,8 @@ export function getTextMessagesFromWhatsappWebhook(params: { requestBody: unknow
 			return (parsedChange.data.messages ?? []).flatMap((message) => {
 				if (message.type !== "text" || message.text === undefined) return [];
 
-				const providerSenderId = message.from_user_id ?? message.from;
-				if (providerSenderId === undefined) throw new Error("Authenticated WhatsApp webhook payload is invalid");
+				const senderId = message.from_user_id ?? message.from;
+				if (senderId === undefined) throw new Error("Authenticated WhatsApp webhook payload is invalid");
 
 				const senderContact = parsedChange.data.contacts?.find(
 					(contact) =>
@@ -25,7 +25,7 @@ export function getTextMessagesFromWhatsappWebhook(params: { requestBody: unknow
 						(Boolean(contact.wa_id) && contact.wa_id === message.from),
 				);
 				const phoneNumber = (message.from || undefined) ?? (senderContact?.wa_id || undefined);
-				const providerContactIdentifier =
+				const contactIdentifier =
 					phoneNumber === undefined
 						? senderContact?.profile.username
 						: phoneNumber.startsWith("+")
@@ -34,9 +34,10 @@ export function getTextMessagesFromWhatsappWebhook(params: { requestBody: unknow
 
 				return [
 					{
-						providerMessageId: message.id,
-						providerSenderId: providerSenderId,
-						providerContactIdentifier: providerContactIdentifier,
+						messageId: message.id,
+						senderId: senderId,
+						contactIdentifier: contactIdentifier,
+						profileName: senderContact?.profile.name,
 						recipientPhoneNumberId: parsedChange.data.metadata.phone_number_id,
 						text: message.text.body,
 					},

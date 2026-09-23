@@ -24,13 +24,18 @@ export class AuthSessionService {
 		});
 	}
 
-	async create(params: { sessionId?: string; userId: string }): Promise<z.infer<typeof AuthSessionOutputSchema>> {
+	async create(params: {
+		sessionId?: string;
+		userId: string;
+		authIdentityId: string;
+	}): Promise<z.infer<typeof AuthSessionOutputSchema>> {
 		const sessionId = params.sessionId ?? randomUUID();
 		const tokens = this._authTokenService.createAccessAndRefreshTokens({ sessionId: sessionId });
 
 		const session = await this._authSessionRepository.createOrReplaceForUser({
 			sessionId: sessionId,
 			userId: params.userId,
+			authIdentityId: params.authIdentityId,
 			refreshTokenHash: tokens.refreshTokenHash,
 			refreshExpiresAt: tokens.refreshExpiresAt,
 		});

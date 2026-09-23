@@ -15,6 +15,7 @@ function _createMessage(params?: { text?: string; providerContactIdentifier?: st
 			params !== undefined && "providerContactIdentifier" in params
 				? params.providerContactIdentifier
 				: "+5511999999999",
+		providerProfileName: undefined,
 		text: params?.text ?? "NOTP-K7F9Q2M8VD",
 	};
 }

@@ -226,6 +226,7 @@ describe("WhatsApp routes", () => {
 				providerMessageId: "wamid.message",
 				providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 				providerContactIdentifier: "cataqui.user",
+				providerProfileName: "Cataqui User",
 				notpCodeHash: "a".repeat(64),
 			},
 		});

@@ -48,12 +48,14 @@ describe("AuthSessionRepository", () => {
 			refreshTokenHash: "b".repeat(64),
 			sessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 
 		expect(prisma.authSession.create).toHaveBeenCalledWith({
 			data: {
 				id: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 				userId: "user-id",
+				authIdentityId: "identity-id",
 				lastUsedAt: new Date("2026-08-05T15:00:00.000Z"),
 				previousRefreshTokenHash: null,
 				previousRefreshTokenValidUntil: null,
@@ -72,6 +74,7 @@ describe("AuthSessionRepository", () => {
 			refreshTokenHash: "b".repeat(64),
 			sessionId: "session-id",
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 
 		expect(result).toEqual({ sessionId: "session-id", userId: "user-id" });
@@ -92,6 +95,7 @@ describe("AuthSessionRepository", () => {
 				refreshTokenHash: "b".repeat(64),
 				sessionId: "session-id",
 				userId: "user-id",
+				authIdentityId: "identity-id",
 			}),
 		).rejects.toThrow(AuthSessionUnavailableError);
 	});
@@ -103,7 +107,11 @@ describe("AuthSessionRepository", () => {
 				clientVersion: "test",
 			}),
 		);
-		prisma.authSession.findUnique.mockResolvedValue({ id: "session-id", userId: "user-id" });
+		prisma.authSession.findUnique.mockResolvedValue({
+			id: "session-id",
+			userId: "user-id",
+			authIdentityId: "identity-id",
+		});
 		prisma.authSession.updateMany.mockResolvedValue({ count: 1 });
 
 		const result = await repository.createOrReplaceForUser({
@@ -111,6 +119,7 @@ describe("AuthSessionRepository", () => {
 			refreshTokenHash: "c".repeat(64),
 			sessionId: "session-id",
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 
 		expect(result).toEqual({ sessionId: "session-id", userId: "user-id" });
@@ -124,6 +133,27 @@ describe("AuthSessionRepository", () => {
 				refreshTokenHash: "c".repeat(64),
 			},
 		});
+	});
+
+	it("should not reassign a session to another login identity for the same user", async () => {
+		prisma.authSession.create.mockRejectedValue(
+			new Prisma.PrismaClientKnownRequestError("unique constraint", { code: "P2002", clientVersion: "test" }),
+		);
+		prisma.authSession.findUnique.mockResolvedValue({
+			id: "session-id",
+			userId: "user-id",
+			authIdentityId: "whatsapp-identity-id",
+		});
+
+		await expect(
+			repository.createOrReplaceForUser({
+				refreshExpiresAt: new Date("2026-09-04T15:00:00.000Z"),
+				refreshTokenHash: "b".repeat(64),
+				sessionId: "session-id",
+				userId: "user-id",
+				authIdentityId: "google-identity-id",
+			}),
+		).rejects.toThrow(AuthSessionUnavailableError);
 	});
 
 	it("should return null for an unknown authenticated session family", async () => {

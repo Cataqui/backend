@@ -7,10 +7,14 @@ import { UserService } from "./user.service";
 
 describe("UserController", () => {
 	let controller: UserController;
-	let userService: { getOrAddContact: ReturnType<typeof vi.fn>; getContacts: ReturnType<typeof vi.fn> };
+	let userService: {
+		getOrAddContact: ReturnType<typeof vi.fn>;
+		getContacts: ReturnType<typeof vi.fn>;
+		getCurrentUser: ReturnType<typeof vi.fn>;
+	};
 
 	beforeEach(async () => {
-		userService = { getOrAddContact: vi.fn(), getContacts: vi.fn() };
+		userService = { getOrAddContact: vi.fn(), getContacts: vi.fn(), getCurrentUser: vi.fn() };
 		const module = await Test.createTestingModule({
 			controllers: [UserController],
 			providers: [{ provide: UserService, useValue: userService }],
@@ -31,6 +35,28 @@ describe("UserController", () => {
 
 	it("should require an access token before reading saved contacts", () => {
 		expect(Reflect.getMetadata(GUARDS_METADATA, controller.getContacts)).toEqual([AccessTokenGuard]);
+	});
+
+	it("should require an access token and avoid caching the current user", () => {
+		expect({
+			guards: Reflect.getMetadata(GUARDS_METADATA, controller.getCurrentUser),
+			headers: Reflect.getMetadata(HEADERS_METADATA, controller.getCurrentUser),
+		}).toEqual({
+			guards: [AccessTokenGuard],
+			headers: [{ name: "Cache-Control", value: "no-store" }],
+		});
+	});
+
+	it("should request the current user using the authenticated session", async () => {
+		const authSession = { sessionId: "session-id", userId: "user-id", expiresAt: new Date() };
+		userService.getCurrentUser.mockResolvedValue({ userId: "user-id", displayIdentifier: "Ana Silva" });
+
+		const result = await controller.getCurrentUser(authSession);
+
+		expect({ result: result, params: userService.getCurrentUser.mock.calls[0]?.[0] }).toEqual({
+			result: { userId: "user-id", displayIdentifier: "Ana Silva" },
+			params: { sessionId: "session-id", userId: "user-id" },
+		});
 	});
 
 	it("should prevent saved contact identifiers from being cached", () => {

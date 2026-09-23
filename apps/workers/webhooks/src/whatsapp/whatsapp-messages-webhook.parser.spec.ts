@@ -44,13 +44,14 @@ function _buildPayload(params?: {
 }
 
 describe("getTextMessagesFromWhatsappWebhook", () => {
-	it("should return normalized provider and recipient identifiers independently of message purpose", () => {
+	it("should return WhatsApp message and recipient identifiers independently of message purpose", () => {
 		const messages = getTextMessagesFromWhatsappWebhook({ requestBody: _buildPayload() });
 
 		expect(messages[0]).toEqual({
-			providerMessageId: "wamid.message",
-			providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
-			providerContactIdentifier: "cataqui.user",
+			messageId: "wamid.message",
+			senderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+			contactIdentifier: "cataqui.user",
+			profileName: "Cataqui User",
 			recipientPhoneNumberId: "1234567890",
 			text: "Olá",
 		});
@@ -72,7 +73,7 @@ describe("getTextMessagesFromWhatsappWebhook", () => {
 			}),
 		});
 
-		expect({ sender: messages[0]?.providerSenderId, contact: messages[0]?.providerContactIdentifier }).toEqual({
+		expect({ sender: messages[0]?.senderId, contact: messages[0]?.contactIdentifier }).toEqual({
 			sender: "5511999999999",
 			contact: "+5511999999999",
 		});
@@ -94,13 +95,16 @@ describe("getTextMessagesFromWhatsappWebhook", () => {
 			}),
 		});
 
-		expect(messages[0]?.providerSenderId).toBe("user.preferred");
+		expect({ sender: messages[0]?.senderId, contact: messages[0]?.contactIdentifier }).toEqual({
+			sender: "user.preferred",
+			contact: "+5511999999999",
+		});
 	});
 
 	it("should preserve a missing optional contact identifier for non-authentication consumers", () => {
 		const messages = getTextMessagesFromWhatsappWebhook({ requestBody: _buildPayload({ contacts: [] }) });
 
-		expect(messages[0]?.providerContactIdentifier).toBeUndefined();
+		expect(messages[0]?.contactIdentifier).toBeUndefined();
 	});
 
 	it("should expose the receiving WhatsApp phone-number ID for use-case routing", () => {

@@ -10,14 +10,16 @@ export class AuthIdentityRepository {
 	async saveVerifiedIdentityAndContact(params: {
 		provider: AuthIdentityProvider;
 		providerSubject: string;
+		displayIdentifier: string;
 		lastVerifiedAt: Date;
 		contactMethod: JobContactMethod;
 		contactIdentifier: string;
-	}): Promise<string> {
-		const [verifiedIdentity] = await this._prisma.$queryRaw<{ userId: string }[]>(Prisma.sql`
-			SELECT "public"."save_verified_identity_and_contact"(
+	}): Promise<{ userId: string; authIdentityId: string }> {
+		const [verifiedIdentity] = await this._prisma.$queryRaw<{ userId: string; authIdentityId: string }[]>(Prisma.sql`
+			SELECT "userId", "authIdentityId" FROM "public"."save_verified_identity_and_contact"(
 				${params.provider}::"public"."AuthIdentityProvider",
 				${params.providerSubject}::text,
+				${params.displayIdentifier}::text,
 				${params.lastVerifiedAt}::timestamp(3),
 				${params.contactMethod}::"public"."JobContactMethod",
 				${params.contactIdentifier}::text,
@@ -31,6 +33,6 @@ export class AuthIdentityRepository {
 			throw new Error("Verified identity and contact persistence returned no user");
 		}
 
-		return verifiedIdentity.userId;
+		return verifiedIdentity;
 	}
 }

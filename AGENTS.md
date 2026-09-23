@@ -37,6 +37,8 @@ Before changing a file, check its directory and parent directories for nested `A
 - Prefix private class members and module-private functions with `_`.
 - Keep single-use values and short single-use logic inline. Extract only for real reuse or an independently meaningful contract.
 - Use Zod or an authoritative domain library before custom validation. Derive supported values from one source of truth instead of repeating literals.
+- Name, document, and shape general resource endpoints for the resource they represent, not just the first field or use case they serve. Include only information the endpoint can provide today; add more resource fields as they become supported without redefining the endpoint's purpose.
+- Never use a hardcoded single-language fallback, including English, for content a user can see. Prefer a meaningful language-neutral value; otherwise use locale-aware translations or let the client localize an explicit absence.
 - Never expose secrets, provider internals, database errors, stack traces, or private identifiers through public responses or logs.
 
 ## Validation and Delivery

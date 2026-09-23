@@ -80,6 +80,7 @@ export class NotpService {
 		return this._authSessionService.create({
 			sessionId: intent.candidateSessionId,
 			userId: intent.userId,
+			authIdentityId: intent.authIdentityId,
 		});
 	}
 
@@ -88,6 +89,7 @@ export class NotpService {
 		providerMessageId: string;
 		providerSubject: string;
 		contactIdentifier: string;
+		providerProfileName: string | undefined;
 		notpCodeHash: string;
 	}): Promise<void> {
 		const verificationStartedAt = new Date();
@@ -102,9 +104,11 @@ export class NotpService {
 		if (processingIntent === null) return;
 
 		try {
-			const userId = await this._authIdentityRepository.saveVerifiedIdentityAndContact({
+			const displayIdentifier = params.providerProfileName?.trim() || params.contactIdentifier;
+			const identity = await this._authIdentityRepository.saveVerifiedIdentityAndContact({
 				provider: _authIdentityProviderByChannel[params.channel],
 				providerSubject: params.providerSubject,
+				displayIdentifier: displayIdentifier,
 				lastVerifiedAt: verificationStartedAt,
 				contactMethod: _contactMethodByChannel[params.channel],
 				contactIdentifier: params.contactIdentifier,
@@ -116,7 +120,8 @@ export class NotpService {
 				intentTokenHash: processingIntent.intentTokenHash,
 				providerMessageId: params.providerMessageId,
 				channel: params.channel,
-				userId: userId,
+				userId: identity.userId,
+				authIdentityId: identity.authIdentityId,
 			});
 		} catch (error) {
 			await this._notpRepository.markProcessingIntentAsPending({

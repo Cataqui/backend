@@ -63,9 +63,10 @@ export class WhatsappService {
 				.filter((message) => message.recipientPhoneNumberId === params.notpPhoneNumberId)
 				.map((message) =>
 					this._notpService.getInputOrNull({
-						providerMessageId: message.providerMessageId,
-						providerSenderId: message.providerSenderId,
-						providerContactIdentifier: message.providerContactIdentifier,
+						providerMessageId: message.messageId,
+						providerSenderId: message.senderId,
+						providerContactIdentifier: message.contactIdentifier,
+						providerProfileName: message.profileName,
 						text: message.text,
 					}),
 				),

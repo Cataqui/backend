@@ -77,7 +77,7 @@ describe("AuthSessionService", () => {
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
 		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
-		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
+		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id", authIdentityId: "identity-id" });
 
 		expect(result).toEqual({
 			accessToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
@@ -96,9 +96,10 @@ describe("AuthSessionService", () => {
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
 		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
-		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
+		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id", authIdentityId: "identity-id" });
 
 		expect(repository.createOrReplaceForUser).toHaveBeenCalledWith({
+			authIdentityId: "identity-id",
 			sessionId: SESSION_ID,
 			userId: "user-id",
 			refreshTokenHash: createHash("sha256").update(result.refreshToken).digest("hex"),
@@ -111,7 +112,7 @@ describe("AuthSessionService", () => {
 			async (params: { sessionId: string; userId: string }) => params,
 		);
 
-		await service.create({ userId: "user-id" });
+		await service.create({ userId: "user-id", authIdentityId: "identity-id" });
 
 		expect(repository.createOrReplaceForUser).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -126,7 +127,7 @@ describe("AuthSessionService", () => {
 		vi.setSystemTime(new Date("2026-08-05T15:00:00.000Z"));
 		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 
-		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id" });
+		const result = await service.create({ sessionId: SESSION_ID, userId: "user-id", authIdentityId: "identity-id" });
 
 		expect(accessTokenRepository.create).toHaveBeenCalledWith({
 			accessTokenHash: createHash("sha256").update(result.accessToken).digest("hex"),
@@ -138,7 +139,9 @@ describe("AuthSessionService", () => {
 		repository.createOrReplaceForUser.mockResolvedValue({ sessionId: SESSION_ID, userId: "user-id" });
 		accessTokenRepository.create.mockRejectedValue(new AuthSessionUnavailableError());
 
-		const error = await service.create({ sessionId: SESSION_ID, userId: "user-id" }).catch((caught: unknown) => caught);
+		const error = await service
+			.create({ sessionId: SESSION_ID, userId: "user-id", authIdentityId: "identity-id" })
+			.catch((caught: unknown) => caught);
 
 		expect({
 			error: error,
