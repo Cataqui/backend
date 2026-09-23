@@ -3,14 +3,14 @@ model Job {
   posterUserId       String?     @map("poster_user_id") @db.Uuid
   poster             User?       @relation(fields: [posterUserId], references: [id], onDelete: SetNull)
   contactId          String?     @map("contact_id") @db.Uuid
-  contact            JobContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contact            Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   title              String      @db.Text
   description        String      @db.Text
   descriptionSummary String      @map("description_summary") @db.Text
 
   locationPoint       Unsupported("geometry(Point,4326)")? @map("location_point")
-  fuzzyLatitude       Decimal?                             @map("fuzzy_latitude") @db.Decimal(9, 6)
-  fuzzyLongitude      Decimal?                             @map("fuzzy_longitude") @db.Decimal(9, 6)
+  fuzzyLatitude       Decimal                              @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude      Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
   status              JobStatus                            @default(ACTIVE)
   payment             String?                              @db.Text
   postRequest         JobPostRequest?
@@ -19,6 +19,7 @@ model Job {
 
   @@index([contactId])
   @@index([posterUserId])
+  @@index([posterUserId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("jobs")
 }

@@ -11,8 +11,8 @@ export function toPublicJobOutput(job: PublicJobRaw): z.infer<typeof PublicJobOu
 		descriptionSummary: job.descriptionSummary,
 		contactReference: { contactId: job.contact!.id, contactMethod: job.contact!.contactMethod },
 		location: {
-			latitude: job.fuzzyLatitude!.toNumber(),
-			longitude: job.fuzzyLongitude!.toNumber(),
+			latitude: job.fuzzyLatitude.toNumber(),
+			longitude: job.fuzzyLongitude.toNumber(),
 			areaRadius: JobLocationConstants.AREA_RADIUS_METERS,
 		},
 		payment: job.payment,

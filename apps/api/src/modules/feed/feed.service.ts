@@ -4,7 +4,7 @@ import { PaginatedResult, type PaginatedResult as PaginatedResultType } from "..
 import { FeedRepository } from "./repositories/feed.repository";
 import { toFeedItemOutput } from "./schemas/feed-item-output.mapper";
 import { FeedItemOutputSchema } from "./schemas/feed-item-output.schema";
-import { CursorUtils } from "./utils/cursor.utils";
+import { decodeFeedPaginationCursor, encodeFeedPaginationCursor } from "./utils/cursor.utils";
 
 @Injectable()
 export class FeedService {
@@ -14,7 +14,7 @@ export class FeedService {
 		cursor?: string | undefined;
 	}): Promise<PaginatedResultType<z.infer<typeof FeedItemOutputSchema>>> {
 		const limit = 20;
-		const cursorPosition = params.cursor ? CursorUtils.decodeCursor({ cursor: params.cursor }) : undefined;
+		const cursorPosition = params.cursor ? decodeFeedPaginationCursor({ cursor: params.cursor }) : undefined;
 
 		const rawFeedResults = await this._feedRepository.getFeedItems({ cursor: cursorPosition, limit: limit + 1 });
 
@@ -27,7 +27,7 @@ export class FeedService {
 			const lastItem = rawItems.at(-1);
 			if (lastItem === undefined) throw new Error("Paginated feed results unexpectedly contain no items");
 
-			nextCursor = CursorUtils.encodeCursor({
+			nextCursor = encodeFeedPaginationCursor({
 				createdAt: lastItem.createdAt.toISOString(),
 				jobId: lastItem.id,
 			});

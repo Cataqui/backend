@@ -1,6 +1,6 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { z } from "zod";
-import { JobContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client.js";
 
 function _createContactIdentifierSchema() {
 	return z
@@ -14,7 +14,7 @@ export const ContactInputSchema = z
 	.discriminatedUnion("contactMethod", [
 		z
 			.object({
-				contactMethod: z.literal(JobContactMethod.WHATSAPP).describe("WhatsApp contact method"),
+				contactMethod: z.literal(ContactMethod.WHATSAPP).describe("WhatsApp contact method"),
 				identifier: _createContactIdentifierSchema().refine(
 					(identifier) => {
 						if (isValidPhoneNumber(identifier)) return true;
@@ -37,7 +37,7 @@ export const ContactInputSchema = z
 			.strict(),
 		z
 			.object({
-				contactMethod: z.literal(JobContactMethod.PHONE_CALL).describe("Phone-call contact method"),
+				contactMethod: z.literal(ContactMethod.PHONE_CALL).describe("Phone-call contact method"),
 				identifier: _createContactIdentifierSchema().refine((identifier) => isValidPhoneNumber(identifier), {
 					error:
 						"identifier for PHONE_CALL must be a phone number with country code, starting with + followed by the country and local number. Example: +5511999999999",

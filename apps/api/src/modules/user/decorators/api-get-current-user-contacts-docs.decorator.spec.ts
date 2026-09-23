@@ -3,16 +3,16 @@ import { FastifyAdapter } from "@nestjs/platform-fastify";
 import type { OpenAPIObject } from "@nestjs/swagger";
 import { Test } from "@nestjs/testing";
 import { AppSwagger } from "../../../core/app.swagger";
-import { ApiGetContactsDocs } from "./api-get-contacts-docs.decorator";
+import { ApiGetCurrentUserContactsDocs } from "./api-get-current-user-contacts-docs.decorator";
 
 @Controller("users/me/contacts")
 class GetContactsDocsTestController {
 	@Get()
-	@ApiGetContactsDocs()
+	@ApiGetCurrentUserContactsDocs()
 	getContacts(): void {}
 }
 
-describe("ApiGetContactsDocs", () => {
+describe("ApiGetCurrentUserContactsDocs", () => {
 	let app: INestApplication;
 	let document: OpenAPIObject;
 

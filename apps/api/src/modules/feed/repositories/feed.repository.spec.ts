@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import { CursorUtils } from "../utils/cursor.utils";
+import { decodeFeedPaginationCursor, encodeFeedPaginationCursor } from "../utils/cursor.utils";
 import { FeedRepository } from "./feed.repository";
 
 const job = {
@@ -29,7 +29,7 @@ describe("FeedRepository", () => {
 		prisma.job.findMany.mockResolvedValue([job]);
 		expect(await repository.getFeedItems({ limit: 20 })).toEqual([job]);
 		expect(prisma.job.findMany).toHaveBeenCalledWith({
-			where: { status: "ACTIVE", fuzzyLatitude: { not: null }, fuzzyLongitude: { not: null } },
+			where: { status: "ACTIVE" },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: 20,
 			select: {
@@ -46,8 +46,8 @@ describe("FeedRepository", () => {
 
 	it("uses a parameterized cursor query and returns payment text", async () => {
 		prisma.$queryRaw.mockResolvedValue([job]);
-		const cursor = CursorUtils.decodeCursor({
-			cursor: CursorUtils.encodeCursor({
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
 				createdAt: "2026-09-22T13:00:00Z",
 				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 			}),
@@ -64,17 +64,12 @@ describe("FeedRepository", () => {
 		prisma.job.findMany.mockResolvedValue([unpaidJob]);
 		expect(await repository.getFeedItems({ limit: 20 })).toEqual([unpaidJob]);
 		prisma.$queryRaw.mockResolvedValue([unpaidJob]);
-		const cursor = CursorUtils.decodeCursor({
-			cursor: CursorUtils.encodeCursor({
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
 				createdAt: "2026-09-22T13:00:00Z",
 				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 			}),
 		});
 		expect(await repository.getFeedItems({ cursor: cursor, limit: 20 })).toEqual([unpaidJob]);
-	});
-
-	it("rejects an active row without a public location", async () => {
-		prisma.job.findMany.mockResolvedValue([{ ...job, fuzzyLatitude: null }]);
-		await expect(repository.getFeedItems({ limit: 20 })).rejects.toThrow("missing fields required by the feed");
 	});
 });

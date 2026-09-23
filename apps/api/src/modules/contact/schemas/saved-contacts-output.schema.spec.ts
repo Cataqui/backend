@@ -1,4 +1,4 @@
-import { JobContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client.js";
 import { SavedContactsOutputSchema } from "./saved-contacts-output.schema";
 
 describe("SavedContactsOutputSchema", () => {
@@ -7,14 +7,14 @@ describe("SavedContactsOutputSchema", () => {
 			SavedContactsOutputSchema.parse([
 				{
 					contactId: "550e8400-e29b-41d4-a716-446655440000",
-					contactMethod: JobContactMethod.WHATSAPP,
+					contactMethod: ContactMethod.WHATSAPP,
 					identifier: "@cataqui.poster",
 				},
 			]),
 		).toEqual([
 			{
 				contactId: "550e8400-e29b-41d4-a716-446655440000",
-				contactMethod: JobContactMethod.WHATSAPP,
+				contactMethod: ContactMethod.WHATSAPP,
 				identifier: "@cataqui.poster",
 			},
 		]);

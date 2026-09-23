@@ -22,8 +22,8 @@ describe("JobRepository", () => {
 	const prisma = {
 		$queryRaw: vi.fn(),
 		$transaction: vi.fn(),
+		job: { findMany: vi.fn() },
 		jobPostRequest: { findUnique: vi.fn() },
-		jobContact: { findFirst: vi.fn() },
 	};
 	let repository: JobRepository;
 	beforeEach(async () => {
@@ -32,6 +32,49 @@ describe("JobRepository", () => {
 			providers: [JobRepository, { provide: PrismaService, useValue: prisma }],
 		}).compile();
 		repository = module.get(JobRepository);
+	});
+
+	it("lists only the authenticated poster's active and closed jobs newest first", async () => {
+		prisma.job.findMany.mockResolvedValue([
+			{ ...row, status: JobStatus.ACTIVE },
+			{ ...row, status: JobStatus.CLOSED },
+		]);
+		const results = await repository.findUserJobs({ posterUserId: "poster", limit: 21 });
+		expect(results.map((job) => job.status)).toEqual([JobStatus.ACTIVE, JobStatus.CLOSED]);
+		expect(prisma.job.findMany).toHaveBeenCalledWith({
+			where: { posterUserId: "poster" },
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			take: 21,
+			select: {
+				id: true,
+				title: true,
+				descriptionSummary: true,
+				payment: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
+				status: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
+	});
+
+	it("continues after equal timestamps using the job ID tie breaker", async () => {
+		prisma.job.findMany.mockResolvedValue([]);
+		const createdAt = "2026-09-23T12:00:00.000Z";
+		await repository.findUserJobs({
+			posterUserId: "poster",
+			cursor: { version: 1, createdAt: createdAt, jobId: row.id },
+			limit: 21,
+		});
+		expect(prisma.job.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					posterUserId: "poster",
+					OR: [{ createdAt: { lt: new Date(createdAt) } }, { createdAt: new Date(createdAt), id: { lt: row.id } }],
+				},
+			}),
+		);
 	});
 
 	it("reads a public post with string payment", async () => {

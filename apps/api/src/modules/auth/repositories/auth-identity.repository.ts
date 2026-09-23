@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { type AuthIdentityProvider, type JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
+import { type AuthIdentityProvider, type ContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 
 @Injectable()
@@ -12,7 +12,7 @@ export class AuthIdentityRepository {
 		providerSubject: string;
 		displayIdentifier: string;
 		lastVerifiedAt: Date;
-		contactMethod: JobContactMethod;
+		contactMethod: ContactMethod;
 		contactIdentifier: string;
 	}): Promise<{ userId: string; authIdentityId: string }> {
 		const [verifiedIdentity] = await this._prisma.$queryRaw<{ userId: string; authIdentityId: string }[]>(Prisma.sql`
@@ -21,7 +21,7 @@ export class AuthIdentityRepository {
 				${params.providerSubject}::text,
 				${params.displayIdentifier}::text,
 				${params.lastVerifiedAt}::timestamp(3),
-				${params.contactMethod}::"public"."JobContactMethod",
+				${params.contactMethod}::"public"."ContactMethod",
 				${params.contactIdentifier}::text,
 				${randomUUID()}::uuid,
 				${randomUUID()}::uuid,

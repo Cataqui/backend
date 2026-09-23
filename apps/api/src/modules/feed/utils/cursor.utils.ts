@@ -1,9 +1,9 @@
-import { InvalidCursorError } from "../errors/invalid-cursor.error";
+import { InvalidCursorError } from "../../../core/errors/invalid-cursor.error";
 import { type FeedPaginationCursor, FeedPaginationCursorSchema } from "../schemas/feed-pagination-cursor.schema";
 
 const CURSOR_VERSION = 1;
 
-function encodeCursor(params: Omit<FeedPaginationCursor, "version">): string {
+export function encodeFeedPaginationCursor(params: Omit<FeedPaginationCursor, "version">): string {
 	const payload: FeedPaginationCursor = {
 		version: CURSOR_VERSION,
 		createdAt: params.createdAt,
@@ -13,7 +13,7 @@ function encodeCursor(params: Omit<FeedPaginationCursor, "version">): string {
 	return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
-function decodeCursor(params: { cursor: string }): FeedPaginationCursor {
+export function decodeFeedPaginationCursor(params: { cursor: string }): FeedPaginationCursor {
 	const decoded: string = Buffer.from(params.cursor, "base64url").toString("utf-8");
 	let payload: unknown;
 	try {
@@ -36,8 +36,3 @@ function decodeCursor(params: { cursor: string }): FeedPaginationCursor {
 
 	return parsedCursor.data;
 }
-
-export const CursorUtils = {
-	encodeCursor,
-	decodeCursor,
-} as const;

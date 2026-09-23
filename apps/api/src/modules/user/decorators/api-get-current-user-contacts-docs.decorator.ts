@@ -2,9 +2,9 @@ import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { ErrorOutputSchema } from "../../../core/errors/error-output";
 import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
-import { SavedContactsOutputSchema } from "../schemas/saved-contacts-output.schema";
+import { SavedContactsOutputSchema } from "../../contact/schemas/saved-contacts-output.schema";
 
-export function ApiGetContactsDocs(): MethodDecorator & ClassDecorator {
+export function ApiGetCurrentUserContactsDocs(): MethodDecorator & ClassDecorator {
 	const responseSchema = createSuccessResponseSchema({ dataSchema: SavedContactsOutputSchema });
 
 	return applyDecorators(

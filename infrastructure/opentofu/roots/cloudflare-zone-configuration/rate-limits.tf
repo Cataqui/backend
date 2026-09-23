@@ -22,7 +22,7 @@ resource "cloudflare_ruleset" "rate_limits" {
       }
       description = "Limit public contact detail scraping per environment and NAT-aware visitor"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method eq \"GET\" and ((starts_with(http.request.uri.path, \"/v1/jobs/\") and http.request.uri.path contains \"/contact/\") or (starts_with(http.request.uri.path, \"/v1/job/\") and http.request.uri.path contains \"/contact\"))"
+      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method eq \"GET\" and starts_with(http.request.uri.path, \"/v1/contacts/\")"
       ratelimit = {
         characteristics     = ["cf.colo.id", "cf.unique_visitor_id"]
         mitigation_timeout  = 60

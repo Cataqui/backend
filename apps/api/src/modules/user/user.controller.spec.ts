@@ -1,23 +1,28 @@
 import { GUARDS_METADATA, HEADERS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { Test } from "@nestjs/testing";
-import { JobContactMethod } from "../../../generated/prisma/client.js";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
+import { ContactService } from "../contact/contact.service";
+import { JobService } from "../job/job.service";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
 
 describe("UserController", () => {
 	let controller: UserController;
-	let userService: {
-		getOrAddContact: ReturnType<typeof vi.fn>;
-		getContacts: ReturnType<typeof vi.fn>;
-		getCurrentUser: ReturnType<typeof vi.fn>;
-	};
+	let userService: { getCurrentUser: ReturnType<typeof vi.fn> };
+	let contactService: { getContacts: ReturnType<typeof vi.fn> };
+	let jobService: { getUserJobs: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
-		userService = { getOrAddContact: vi.fn(), getContacts: vi.fn(), getCurrentUser: vi.fn() };
+		userService = { getCurrentUser: vi.fn() };
+		contactService = { getContacts: vi.fn() };
+		jobService = { getUserJobs: vi.fn() };
 		const module = await Test.createTestingModule({
 			controllers: [UserController],
-			providers: [{ provide: UserService, useValue: userService }],
+			providers: [
+				{ provide: UserService, useValue: userService },
+				{ provide: ContactService, useValue: contactService },
+				{ provide: JobService, useValue: jobService },
+			],
 		})
 			.overrideGuard(AccessTokenGuard)
 			.useValue({ canActivate: vi.fn() })
@@ -27,10 +32,6 @@ describe("UserController", () => {
 
 	it("should expose user-owned contacts below the users resource", () => {
 		expect(Reflect.getMetadata(PATH_METADATA, UserController)).toBe("users");
-	});
-
-	it("should require an access token before adding a saved contact", () => {
-		expect(Reflect.getMetadata(GUARDS_METADATA, controller.addContact)).toEqual([AccessTokenGuard]);
 	});
 
 	it("should require an access token before reading saved contacts", () => {
@@ -59,13 +60,6 @@ describe("UserController", () => {
 		});
 	});
 
-	it("should prevent saved contact identifiers from being cached", () => {
-		expect(Reflect.getMetadata(HEADERS_METADATA, controller.addContact)).toContainEqual({
-			name: "Cache-Control",
-			value: "no-store",
-		});
-	});
-
 	it("should prevent the saved contact collection from being cached", () => {
 		expect(Reflect.getMetadata(HEADERS_METADATA, controller.getContacts)).toContainEqual({
 			name: "Cache-Control",
@@ -79,27 +73,21 @@ describe("UserController", () => {
 			sessionId: "3e73bbc6-09c8-4c78-87f4-a584a19bca21",
 			userId: "f3f3f078-9332-4879-9904-6565abc5d88d",
 		};
-		userService.getContacts.mockResolvedValue([]);
+		contactService.getContacts.mockResolvedValue([]);
 
 		await controller.getContacts(authSession);
 
-		expect(userService.getContacts).toHaveBeenCalledWith({ userId: authSession.userId });
+		expect(contactService.getContacts).toHaveBeenCalledWith({ userId: authSession.userId });
 	});
 
-	it("should add the contact to the authenticated user", async () => {
-		const contact = { contactMethod: JobContactMethod.WHATSAPP, identifier: "@cataqui.poster" };
-		const authSession = {
-			expiresAt: new Date("2026-08-09T12:15:00.000Z"),
-			sessionId: "3e73bbc6-09c8-4c78-87f4-a584a19bca21",
-			userId: "f3f3f078-9332-4879-9904-6565abc5d88d",
-		};
-		userService.getOrAddContact.mockResolvedValue({
-			contactId: "550e8400-e29b-41d4-a716-446655440000",
-			...contact,
-		});
-
-		await controller.addContact(contact, authSession);
-
-		expect(userService.getOrAddContact).toHaveBeenCalledWith({ userId: authSession.userId, contact: contact });
+	it("does not expose a separate saved-contact creation action", () => {
+		expect(controller).not.toHaveProperty("addContact");
+	});
+	it("requires an access token and isolates posted jobs by session user", async () => {
+		const session = { sessionId: "session", userId: "poster", expiresAt: new Date() };
+		jobService.getUserJobs.mockResolvedValue({ data: [], pagination: { hasMore: false, nextCursor: null } });
+		await controller.getUserJobs({}, session);
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.getUserJobs)).toEqual([AccessTokenGuard]);
+		expect(jobService.getUserJobs).toHaveBeenCalledWith({ posterUserId: "poster", cursor: undefined });
 	});
 });

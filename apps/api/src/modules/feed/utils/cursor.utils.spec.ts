@@ -1,11 +1,11 @@
-import { InvalidCursorError } from "../errors/invalid-cursor.error";
+import { InvalidCursorError } from "../../../core/errors/invalid-cursor.error";
 import type { FeedPaginationCursor } from "../schemas/feed-pagination-cursor.schema";
-import { CursorUtils } from "./cursor.utils";
+import { decodeFeedPaginationCursor, encodeFeedPaginationCursor } from "./cursor.utils";
 
-describe("CursorUtils", () => {
-	describe("encodeCursor", () => {
+describe("feed pagination cursor", () => {
+	describe("encodeFeedPaginationCursor", () => {
 		it("should return a base64url-encoded string", () => {
-			const result = CursorUtils.encodeCursor({
+			const result = encodeFeedPaginationCursor({
 				createdAt: "2026-05-28T10:00:00.000Z",
 				jobId: "12345678-1234-4234-8234-1234567890ab",
 			});
@@ -14,14 +14,14 @@ describe("CursorUtils", () => {
 		});
 	});
 
-	describe("decodeCursor", () => {
+	describe("decodeFeedPaginationCursor", () => {
 		it("should decode a valid cursor", () => {
-			const encoded = CursorUtils.encodeCursor({
+			const encoded = encodeFeedPaginationCursor({
 				createdAt: "2026-05-28T10:00:00.000Z",
 				jobId: "12345678-1234-4234-8234-1234567890ab",
 			});
 
-			const decoded = CursorUtils.decodeCursor({ cursor: encoded });
+			const decoded = decodeFeedPaginationCursor({ cursor: encoded });
 
 			expect(decoded).toMatchObject({
 				createdAt: "2026-05-28T10:00:00.000Z",
@@ -31,7 +31,7 @@ describe("CursorUtils", () => {
 
 		it("should throw on malformed JSON", () => {
 			const notJson = Buffer.from("this is not json").toString("base64url");
-			expect(() => CursorUtils.decodeCursor({ cursor: notJson })).toThrow(InvalidCursorError);
+			expect(() => decodeFeedPaginationCursor({ cursor: notJson })).toThrow(InvalidCursorError);
 		});
 
 		it("should throw on unsupported version", () => {
@@ -42,14 +42,14 @@ describe("CursorUtils", () => {
 					jobId: "12345678-1234-4234-8234-1234567890ab",
 				}),
 			).toString("base64url");
-			expect(() => CursorUtils.decodeCursor({ cursor: payload })).toThrow(
+			expect(() => decodeFeedPaginationCursor({ cursor: payload })).toThrow(
 				"Cursor version '99' is not supported. Please use 1",
 			);
 		});
 
 		it("should throw on missing fields", () => {
 			const payload = Buffer.from(JSON.stringify({ version: 1 })).toString("base64url");
-			expect(() => CursorUtils.decodeCursor({ cursor: payload })).toThrow(
+			expect(() => decodeFeedPaginationCursor({ cursor: payload })).toThrow(
 				"Cursor is missing required fields or has invalid types.",
 			);
 		});
@@ -60,8 +60,8 @@ describe("CursorUtils", () => {
 				jobId: "12345678-1234-4234-8234-1234567890ab",
 			};
 
-			const encoded = CursorUtils.encodeCursor(original);
-			const decoded = CursorUtils.decodeCursor({ cursor: encoded });
+			const encoded = encodeFeedPaginationCursor(original);
+			const decoded = decodeFeedPaginationCursor({ cursor: encoded });
 
 			expect(decoded).toEqual({ ...original, version: 1 });
 		});

@@ -1,10 +1,10 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import { type Mock, vi } from "vitest";
 import { Prisma } from "../../../generated/prisma/client.js";
-import { InvalidCursorError } from "./errors/invalid-cursor.error";
+import { InvalidCursorError } from "../../core/errors/invalid-cursor.error";
 import { FeedService } from "./feed.service";
 import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
-import { CursorUtils } from "./utils/cursor.utils";
+import { encodeFeedPaginationCursor } from "./utils/cursor.utils";
 
 function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
 	return {
@@ -62,7 +62,7 @@ describe("FeedService", () => {
 			);
 			mockRepository.getFeedItems.mockResolvedValue(items);
 
-			const encodedCursor = CursorUtils.encodeCursor({
+			const encodedCursor = encodeFeedPaginationCursor({
 				createdAt: "2026-05-28T10:00:00.000Z",
 				jobId: "12345678-1234-4234-8234-1234567890ab",
 			});

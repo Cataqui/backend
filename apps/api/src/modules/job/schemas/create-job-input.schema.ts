@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ContactInputSchema } from "../../user/schemas/contact-input.schema";
+import { ContactInputSchema } from "../../contact/schemas/contact-input.schema";
 import { JobLocationInputSchema } from "./job-location-input.schema";
 
 export const CreateJobInputSchema = z

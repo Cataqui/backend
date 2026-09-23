@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { type JobContactMethod, JobStatus, Prisma } from "../../../../generated/prisma/client.js";
+import { type ContactMethod, JobStatus, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import type { UserJobsCursor } from "../schemas/user-jobs-cursor.schema";
 
 const _publicJobOutputSelection = {
 	id: true,
@@ -18,14 +19,51 @@ const _publicJobOutputSelection = {
 
 export type PublicJobRaw = Prisma.JobGetPayload<{ select: typeof _publicJobOutputSelection }>;
 
+const _userJobOutputSelection = {
+	id: true,
+	title: true,
+	descriptionSummary: true,
+	payment: true,
+	fuzzyLatitude: true,
+	fuzzyLongitude: true,
+	status: true,
+	createdAt: true,
+	updatedAt: true,
+} satisfies Prisma.JobSelect;
+
+export type UserJobRaw = Prisma.JobGetPayload<{ select: typeof _userJobOutputSelection }>;
+
 type PublicJobDatabaseRow = Omit<PublicJobRaw, "contact"> & {
 	contactId: string | null;
-	contactMethod: JobContactMethod | null;
+	contactMethod: ContactMethod | null;
 };
 
 @Injectable()
 export class JobRepository {
 	constructor(private readonly _prisma: PrismaService) {}
+
+	async findUserJobs(params: {
+		posterUserId: string;
+		cursor?: UserJobsCursor | undefined;
+		limit: number;
+	}): Promise<UserJobRaw[]> {
+		return this._prisma.job.findMany({
+			where: {
+				posterUserId: params.posterUserId,
+				...(params.cursor === undefined
+					? {}
+					: {
+							OR: [
+								{ createdAt: { lt: new Date(params.cursor.createdAt) } },
+								{ createdAt: new Date(params.cursor.createdAt), id: { lt: params.cursor.jobId } },
+							],
+						}),
+			},
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			take: params.limit,
+			select: _userJobOutputSelection,
+		});
+	}
 
 	async findByIdempotencyKey(params: {
 		posterUserId: string;
@@ -90,11 +128,11 @@ export class JobRepository {
 		const [databaseJob] = await this._prisma.$queryRaw<PublicJobDatabaseRow[]>(Prisma.sql`
 			SELECT
 				job."id", job."title", job."description", job."description_summary" AS "descriptionSummary",
-				job_contact."id" AS "contactId", job_contact."contact_method" AS "contactMethod",
+				contact."id" AS "contactId", contact."contact_method" AS "contactMethod",
 				job."fuzzy_latitude" AS "fuzzyLatitude", job."fuzzy_longitude" AS "fuzzyLongitude",
 				job."payment", job."status", job."created_at" AS "createdAt", job."updated_at" AS "updatedAt"
 			FROM "public"."jobs" AS job
-			LEFT JOIN "public"."job_contact_methods" AS job_contact ON job_contact."id" = job."contact_id"
+			LEFT JOIN "public"."contacts" AS contact ON contact."id" = job."contact_id"
 			WHERE job."id" = ${params.jobId}::uuid
 		`);
 		if (databaseJob === undefined) return null;
@@ -103,15 +141,5 @@ export class JobRepository {
 			...publicJobFields,
 			contact: contactId === null || contactMethod === null ? null : { id: contactId, contactMethod: contactMethod },
 		};
-	}
-
-	async findActiveJobContact(params: {
-		contactId: string;
-		jobId: string;
-	}): Promise<{ contactMethod: JobContactMethod; identifier: string } | null> {
-		return this._prisma.jobContact.findFirst({
-			where: { id: params.contactId, jobs: { some: { id: params.jobId, status: JobStatus.ACTIVE } } },
-			select: { contactMethod: true, identifier: true },
-		});
 	}
 }

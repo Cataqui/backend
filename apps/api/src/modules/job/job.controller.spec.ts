@@ -4,7 +4,7 @@ import { JobController } from "./job.controller";
 import type { JobService } from "./job.service";
 
 describe("JobController", () => {
-	const service = { createJob: vi.fn(), getPublicJob: vi.fn(), getActiveJobContact: vi.fn() };
+	const service = { createJob: vi.fn(), getPublicJob: vi.fn() };
 	const controller = new JobController(service as unknown as JobService);
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",

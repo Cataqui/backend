@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import { ErrorCode } from "../../../core/errors/error-code.enum";
+import { ErrorCode } from "./error-code.enum";
 import { InvalidCursorError } from "./invalid-cursor.error";
 
 describe("InvalidCursorError", () => {

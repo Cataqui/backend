@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
-import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, ContactMethod } from "../../../../generated/prisma/client.js";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.error";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
@@ -415,7 +415,7 @@ describe("NotpService", () => {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 			displayIdentifier: "+5511999999999",
 		});
@@ -442,7 +442,7 @@ describe("NotpService", () => {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 			displayIdentifier: "+5511999999999",
 		});

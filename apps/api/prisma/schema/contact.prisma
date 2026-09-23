@@ -1,7 +1,7 @@
-model JobContact {
+model Contact {
   id            String           @id @default(uuid()) @db.Uuid
   userId        String?          @map("user_id") @db.Uuid
-  contactMethod JobContactMethod @map("contact_method")
+  contactMethod ContactMethod @map("contact_method")
   identifier    String           @db.VarChar(320)
   createdAt     DateTime         @default(now()) @map("created_at")
   user          User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -9,5 +9,5 @@ model JobContact {
 
   @@unique([userId, contactMethod, identifier])
   @@index([userId])
-  @@map("job_contact_methods")
+  @@map("contacts")
 }

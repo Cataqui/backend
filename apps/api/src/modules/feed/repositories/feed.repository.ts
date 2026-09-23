@@ -24,17 +24,12 @@ export class FeedRepository {
 					"payment", "fuzzy_latitude" AS "fuzzyLatitude", "fuzzy_longitude" AS "fuzzyLongitude"
 				FROM "public"."jobs"
 				WHERE "status" = ${JobStatus.ACTIVE}::"public"."JobStatus"
-					AND "fuzzy_latitude" IS NOT NULL AND "fuzzy_longitude" IS NOT NULL
 					AND ("created_at", "id") < (${new Date(params.cursor.createdAt)}, ${params.cursor.jobId}::uuid)
 				ORDER BY "created_at" DESC, "id" DESC
 				LIMIT ${params.limit}
 			`)
 			: await this._prisma.job.findMany({
-					where: {
-						status: JobStatus.ACTIVE,
-						fuzzyLatitude: { not: null },
-						fuzzyLongitude: { not: null },
-					},
+					where: { status: JobStatus.ACTIVE },
 					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 					take: params.limit,
 					select: {
@@ -47,19 +42,6 @@ export class FeedRepository {
 						fuzzyLongitude: true,
 					},
 				});
-		return results.map((item) => {
-			if (item.fuzzyLatitude === null || item.fuzzyLongitude === null) {
-				throw new Error(`Active job ${item.id} is missing fields required by the feed.`);
-			}
-			return {
-				id: item.id,
-				title: item.title,
-				createdAt: item.createdAt,
-				descriptionSummary: item.descriptionSummary,
-				payment: item.payment,
-				fuzzyLatitude: item.fuzzyLatitude,
-				fuzzyLongitude: item.fuzzyLongitude,
-			};
-		});
+		return results;
 	}
 }

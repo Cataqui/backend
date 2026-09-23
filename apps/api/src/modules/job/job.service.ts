@@ -2,31 +2,71 @@ import { Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma } from "../../../generated/prisma/client.js";
+import { PaginatedResult, type PaginatedResult as PaginatedResultType } from "../../shared/results/paginated-result";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
+import { ContactService } from "../contact/contact.service";
 import { LocationService } from "../location/location.service";
-import { UserService } from "../user/user.service";
 import { JobLocationConstants } from "./constants/job-location.constants";
-import { JobContactNotFoundError } from "./errors/job-contact-not-found.error";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobIdempotencyConflictError } from "./errors/job-idempotency-conflict.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobDataDerivationPrompts } from "./prompts/job-data-derivation-prompts";
 import { JobRepository } from "./repositories/job.repository";
 import { CreateJobInputSchema } from "./schemas/create-job-input.schema";
-import { JobContactOutputSchema } from "./schemas/job-contact-output.schema";
 import { JobDerivedDataSchema } from "./schemas/job-derived-data.schema.js";
+import { UserJobOutputSchema } from "./schemas/user-job-output.schema";
 import { toPublicJobOutput } from "./schemas/public-job-output.mapper";
 import { PublicJobOutputSchema } from "./schemas/public-job-output.schema";
+import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
 
 @Injectable()
 export class JobService {
 	constructor(
 		private readonly _jobRepository: JobRepository,
-		private readonly _userService: UserService,
+		private readonly _contactService: ContactService,
 		private readonly _aiService: AiService,
 		private readonly _locationService: LocationService,
 	) {}
+
+	async getUserJobs(params: {
+		posterUserId: string;
+		cursor?: string | undefined;
+	}): Promise<PaginatedResultType<z.infer<typeof UserJobOutputSchema>>> {
+		const limit = 20;
+		const cursor = params.cursor === undefined ? undefined : decodeUserJobsCursor({ cursor: params.cursor });
+		const results = await this._jobRepository.findUserJobs({
+			posterUserId: params.posterUserId,
+			cursor: cursor,
+			limit: limit + 1,
+		});
+		const hasMore = results.length > limit;
+		const page = hasMore ? results.slice(0, limit) : results;
+		const lastItem = page.at(-1);
+		const nextCursor =
+			hasMore && lastItem !== undefined
+				? encodeUserJobsCursor({ createdAt: lastItem.createdAt.toISOString(), jobId: lastItem.id })
+				: null;
+		return PaginatedResult.create({
+			data: page.map((job) => {
+				return {
+					jobId: job.id,
+					title: job.title,
+					descriptionSummary: job.descriptionSummary,
+					payment: job.payment,
+					location: {
+						latitude: job.fuzzyLatitude.toNumber(),
+						longitude: job.fuzzyLongitude.toNumber(),
+						areaRadius: JobLocationConstants.AREA_RADIUS_METERS,
+					},
+					status: job.status,
+					createdAt: job.createdAt.toISOString(),
+					updatedAt: job.updatedAt.toISOString(),
+				};
+			}),
+			pagination: { hasMore: hasMore, nextCursor: nextCursor },
+		});
+	}
 
 	async createJob(params: {
 		dto: z.infer<typeof CreateJobInputSchema>;
@@ -46,7 +86,7 @@ export class JobService {
 		}
 
 		const derived = await this.getDerivedJobDataFromDescription({ description: params.dto.description });
-		const contact = await this._userService.getOrAddContact({
+		const contact = await this._contactService.getOrAddContact({
 			userId: params.posterUserId,
 			contact: params.dto.contact,
 		});
@@ -113,17 +153,5 @@ export class JobService {
 		const job = await this._jobRepository.findPublicById({ jobId: params.jobId });
 		if (!job) throw new JobNotFoundError();
 		return toPublicJobOutput(job);
-	}
-
-	async getActiveJobContact(params: {
-		contactId: string;
-		jobId: string;
-	}): Promise<z.infer<typeof JobContactOutputSchema>> {
-		const contact = await this._jobRepository.findActiveJobContact({
-			contactId: params.contactId,
-			jobId: params.jobId,
-		});
-		if (!contact) throw new JobContactNotFoundError();
-		return { contactMethod: contact.contactMethod, identifier: contact.identifier };
 	}
 }

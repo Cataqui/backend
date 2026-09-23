@@ -1,12 +1,13 @@
 import { Test } from "@nestjs/testing";
-import { Prisma, JobStatus } from "../../../generated/prisma/client.js";
+import { JobStatus, Prisma } from "../../../generated/prisma/client.js";
 import { AiService } from "../ai/ai.service";
+import { ContactService } from "../contact/contact.service";
 import { LocationService } from "../location/location.service";
-import { UserService } from "../user/user.service";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
 import { JobIdempotencyConflictError } from "./errors/job-idempotency-conflict.error";
 import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
+import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
 
 const dto = {
 	description: "Preciso de ajuda para descarregar caixas amanhã. Pago R$ 150 por dia.",
@@ -35,10 +36,10 @@ const params = {
 describe("JobService direct posting", () => {
 	let service: JobService;
 	const repository = {
+		findUserJobs: vi.fn(),
 		findByIdempotencyKey: vi.fn(),
 		createJob: vi.fn(),
 		findPublicById: vi.fn(),
-		findActiveJobContact: vi.fn(),
 	};
 	const ai = { generateObject: vi.fn() };
 	const users = { getOrAddContact: vi.fn() };
@@ -60,11 +61,78 @@ describe("JobService direct posting", () => {
 				JobService,
 				{ provide: JobRepository, useValue: repository },
 				{ provide: AiService, useValue: ai },
-				{ provide: UserService, useValue: users },
+				{ provide: ContactService, useValue: users },
 				{ provide: LocationService, useValue: location },
 			],
 		}).compile();
 		service = module.get(JobService);
+	});
+
+	it("returns an empty page when the poster has no jobs", async () => {
+		repository.findUserJobs.mockResolvedValue([]);
+		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		expect(result).toMatchObject({ data: [], pagination: { hasMore: false, nextCursor: null } });
+		expect(repository.findUserJobs).toHaveBeenCalledWith({
+			posterUserId: params.posterUserId,
+			cursor: undefined,
+			limit: 21,
+		});
+	});
+
+	it("returns active and closed posts with their list fields", async () => {
+		repository.findUserJobs.mockResolvedValue([
+			job,
+			{
+				...job,
+				id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				status: JobStatus.CLOSED,
+			},
+		]);
+		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		expect(result.data).toEqual([
+			{
+				jobId: job.id,
+				title: job.title,
+				descriptionSummary: job.descriptionSummary,
+				payment: job.payment,
+				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				status: JobStatus.ACTIVE,
+				createdAt: "2026-09-22T12:00:00.000Z",
+				updatedAt: "2026-09-22T12:00:00.000Z",
+			},
+			expect.objectContaining({
+				status: JobStatus.CLOSED,
+				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+			}),
+		]);
+	});
+
+	it("returns 20 jobs and a cursor after the last visible job when another page exists", async () => {
+		const jobs = Array.from({ length: 21 }, (_, index) => ({
+			...job,
+			id: `bbbbbbbb-bbbb-4bbb-8bbb-${index.toString(16).padStart(12, "0")}`,
+		}));
+		repository.findUserJobs.mockResolvedValue(jobs);
+		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		expect(result.data).toHaveLength(20);
+		expect(result.pagination.hasMore).toBe(true);
+		expect(decodeUserJobsCursor({ cursor: result.pagination.nextCursor! })).toEqual({
+			version: 1,
+			createdAt: "2026-09-22T12:00:00.000Z",
+			jobId: jobs[19]?.id,
+		});
+	});
+
+	it("decodes a cursor before querying and rejects malformed cursors", async () => {
+		repository.findUserJobs.mockResolvedValue([]);
+		const cursor = encodeUserJobsCursor({ createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id });
+		await service.getUserJobs({ posterUserId: params.posterUserId, cursor: cursor });
+		expect(repository.findUserJobs).toHaveBeenCalledWith({
+			posterUserId: params.posterUserId,
+			cursor: { version: 1, createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id },
+			limit: 21,
+		});
+		await expect(service.getUserJobs({ posterUserId: params.posterUserId, cursor: "invalid" })).rejects.toThrow();
 	});
 
 	it("creates one active post after deriving title, summary, and payment", async () => {

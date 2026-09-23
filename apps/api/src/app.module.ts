@@ -5,6 +5,7 @@ import { PrismaModule } from "./core/prisma/prisma.module";
 import { RedisModule } from "./core/redis/redis.module";
 import { ThrottleModule } from "./core/throttle/throttle.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { ContactModule } from "./modules/contact/contact.module";
 import { FeedModule } from "./modules/feed/feed.module";
 import { HealthModule } from "./modules/health/health.module";
 import { JobModule } from "./modules/job/job.module";
@@ -19,6 +20,7 @@ import { UserModule } from "./modules/user/user.module";
 		JobModule,
 		FeedModule,
 		AuthModule,
+		ContactModule,
 		UserModule,
 		ThrottleModule,
 	],

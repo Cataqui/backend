@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { AuthIdentityProvider, JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, ContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { AuthIdentityRepository } from "./auth-identity.repository";
 
@@ -15,7 +15,7 @@ describe("AuthIdentityRepository", () => {
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 
@@ -37,7 +37,7 @@ describe("AuthIdentityRepository", () => {
 			"user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			"Ana",
 			new Date("2026-08-05T15:00:00.000Z"),
-			JobContactMethod.WHATSAPP,
+			ContactMethod.WHATSAPP,
 			"+5511999999999",
 			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
@@ -57,7 +57,7 @@ describe("AuthIdentityRepository", () => {
 			providerSubject: "+5511999999999",
 			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		};
 		await Promise.all([
@@ -90,7 +90,7 @@ describe("AuthIdentityRepository", () => {
 			providerSubject: "+5511999999999",
 			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 
@@ -111,7 +111,7 @@ describe("AuthIdentityRepository", () => {
 			providerSubject: "+5511999999999",
 			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 

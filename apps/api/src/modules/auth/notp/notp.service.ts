@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { z } from "zod";
-import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, ContactMethod } from "../../../../generated/prisma/client.js";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
 import { NotpChannel } from "./enums/notp-channel.enum";
@@ -139,5 +139,5 @@ const _authIdentityProviderByChannel = {
 } satisfies Record<NotpChannel, AuthIdentityProvider>;
 
 const _contactMethodByChannel = {
-	[NotpChannel.WHATSAPP]: JobContactMethod.WHATSAPP,
-} satisfies Record<NotpChannel, JobContactMethod>;
+	[NotpChannel.WHATSAPP]: ContactMethod.WHATSAPP,
+} satisfies Record<NotpChannel, ContactMethod>;

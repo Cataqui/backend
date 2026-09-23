@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-describe("job-contact storage", () => {
+describe("contact storage", () => {
 	it("should let one user own multiple immutable contacts shared by jobs", () => {
-		const schema = readFileSync(resolve(process.cwd(), "prisma/schema/job-contact.prisma"), "utf8");
+		const schema = readFileSync(resolve(process.cwd(), "prisma/schema/contact.prisma"), "utf8");
 
 		expect({
 			hasUserRelation: schema.includes(
@@ -39,5 +39,16 @@ describe("job-contact storage", () => {
 			addsJobReference: true,
 			hasDuplicateContactTable: false,
 		});
+	});
+
+	it("should rename the existing table and enum without recreating contacts", () => {
+		const migration = readFileSync(
+			resolve(process.cwd(), "prisma/schema/migrations/20260923140000_rename_contacts/migration.sql"),
+			"utf8",
+		);
+		expect(migration).toContain('ALTER TABLE "public"."job_contact_methods" RENAME TO "contacts"');
+		expect(migration).toContain('ALTER TYPE "public"."JobContactMethod" RENAME TO "ContactMethod"');
+		expect(migration).toContain('INSERT INTO "public"."contacts"');
+		expect(migration).not.toContain('CREATE TABLE "contacts"');
 	});
 });

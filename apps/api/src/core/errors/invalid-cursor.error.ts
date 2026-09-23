@@ -1,6 +1,6 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "../../../core/errors/domain-error";
-import { ErrorCode } from "../../../core/errors/error-code.enum";
+import { DomainError } from "./domain-error";
+import { ErrorCode } from "./error-code.enum";
 
 export class InvalidCursorError extends DomainError {
 	constructor(message?: string) {

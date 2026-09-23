@@ -3,7 +3,7 @@ enum JobStatus {
   CLOSED
 }
 
-enum JobContactMethod {
+enum ContactMethod {
   WHATSAPP
   PHONE_CALL
 }
