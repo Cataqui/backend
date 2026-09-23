@@ -9,7 +9,7 @@ export const FeedItemOutputSchema = z
 		descriptionSummary: z
 			.string()
 			.describe("Short worker-focused pitch with the most decision-useful grounded details from the post"),
-		payment: z.string().describe("Payment text supplied by the poster"),
+		payment: z.string().nullable().describe("Payment text derived from the job description, or null when unavailable"),
 		location: FeedLocationOutputSchema.describe("Job location"),
 	})
 	.strict()

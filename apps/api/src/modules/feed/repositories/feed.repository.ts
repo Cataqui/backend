@@ -8,7 +8,7 @@ export interface FeedItemRaw {
 	title: string;
 	createdAt: Date;
 	descriptionSummary: string;
-	payment: string;
+	payment: string | null;
 	fuzzyLatitude: Prisma.Decimal;
 	fuzzyLongitude: Prisma.Decimal;
 }

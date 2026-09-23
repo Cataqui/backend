@@ -9,8 +9,7 @@ import { JobService } from "./job.service";
 import { JobRepository } from "./repositories/job.repository";
 
 const dto = {
-	description: "Preciso de ajuda para descarregar caixas amanhã.",
-	payment: "R$ 150 por dia",
+	description: "Preciso de ajuda para descarregar caixas amanhã. Pago R$ 150 por dia.",
 	location: { latitude: -23.55, longitude: -46.63 },
 	contact: { contactMethod: "WHATSAPP" as const, identifier: "+5511999999999" },
 };
@@ -19,7 +18,7 @@ const job = {
 	title: "Descarregar caixas",
 	description: dto.description,
 	descriptionSummary: "Trabalho de um dia",
-	payment: dto.payment,
+	payment: "R$ 150 por dia",
 	contact: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", contactMethod: "WHATSAPP" as const },
 	fuzzyLatitude: new Prisma.Decimal(-23.55),
 	fuzzyLongitude: new Prisma.Decimal(-46.63),
@@ -49,7 +48,11 @@ describe("JobService direct posting", () => {
 		vi.resetAllMocks();
 		repository.findByIdempotencyKey.mockResolvedValue(null);
 		repository.createJob.mockResolvedValue(job);
-		ai.generateObject.mockResolvedValue({ title: job.title, description_summary: job.descriptionSummary });
+		ai.generateObject.mockResolvedValue({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+			payment: job.payment,
+		});
 		users.getOrAddContact.mockResolvedValue({ contactId: job.contact.id });
 		location.fuzzCoordinate.mockReturnValue(dto.location);
 		const module = await Test.createTestingModule({
@@ -64,19 +67,50 @@ describe("JobService direct posting", () => {
 		service = module.get(JobService);
 	});
 
-	it("creates one active post after deriving title and summary", async () => {
+	it("creates one active post after deriving title, summary, and payment", async () => {
 		const result = await service.createJob(params);
-		expect(result).toMatchObject({ jobId: job.id, payment: dto.payment, status: "ACTIVE" });
+		expect(result).toMatchObject({ jobId: job.id, payment: job.payment, status: "ACTIVE" });
 		expect(ai.generateObject).toHaveBeenCalledOnce();
 		expect(repository.createJob).toHaveBeenCalledWith(
 			expect.objectContaining({
-				payment: dto.payment,
+				payment: job.payment,
 				description: dto.description,
 				location: dto.location,
 				fuzzyLocation: dto.location,
 				requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			}),
 		);
+	});
+
+	it("persists null when the description does not state compensation", async () => {
+		ai.generateObject.mockResolvedValue({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+			payment: null,
+		});
+		repository.createJob.mockResolvedValue({ ...job, payment: null });
+		const result = await service.createJob({
+			...params,
+			dto: { ...dto, description: "Preciso de ajuda para descarregar caixas amanhã." },
+		});
+		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ payment: null }));
+		expect(result.payment).toBeNull();
+	});
+
+	it("normalizes whitespace-only derived payment to null before writing the job", async () => {
+		ai.generateObject.mockResolvedValue({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+			payment: "   ",
+		});
+		await service.createJob(params);
+		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ payment: null }));
+	});
+
+	it("rejects a missing payment field before writing the job", async () => {
+		ai.generateObject.mockResolvedValue({ title: job.title, description_summary: job.descriptionSummary });
+		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobDataDerivationUnavailableError);
+		expect(repository.createJob).not.toHaveBeenCalled();
 	});
 
 	it("returns the original post on an identical retry without deriving again", async () => {
@@ -95,6 +129,14 @@ describe("JobService direct posting", () => {
 	it("leaves no job when derivation fails", async () => {
 		ai.generateObject.mockRejectedValue(new Error("gateway unavailable"));
 		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobDataDerivationUnavailableError);
+		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+
+	it("returns the original null-payment post on an identical retry", async () => {
+		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		repository.findByIdempotencyKey.mockResolvedValue({ job: { ...job, payment: null }, requestHash: requestHash });
+		expect((await service.createJob(params)).payment).toBeNull();
+		expect(ai.generateObject).not.toHaveBeenCalled();
 		expect(repository.createJob).not.toHaveBeenCalled();
 	});
 

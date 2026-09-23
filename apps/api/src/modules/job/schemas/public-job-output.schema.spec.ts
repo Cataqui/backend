@@ -15,6 +15,9 @@ describe("PublicJobOutputSchema", () => {
 	it("accepts a job with payment text and no job type", () => {
 		expect(PublicJobOutputSchema.safeParse(job).success).toBe(true);
 	});
+	it("accepts a job with null payment", () => {
+		expect(PublicJobOutputSchema.safeParse({ ...job, payment: null }).success).toBe(true);
+	});
 	it("rejects structured payment and obsolete job type", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, payment: { type: "FIXED" } }).success).toBe(false);
 		expect(PublicJobOutputSchema.safeParse({ ...job, type: "INDIVIDUAL" }).success).toBe(false);

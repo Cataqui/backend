@@ -12,7 +12,7 @@ model Job {
   fuzzyLatitude       Decimal?                             @map("fuzzy_latitude") @db.Decimal(9, 6)
   fuzzyLongitude      Decimal?                             @map("fuzzy_longitude") @db.Decimal(9, 6)
   status              JobStatus                            @default(ACTIVE)
-  payment             String                               @db.Text
+  payment             String?                              @db.Text
   postRequest         JobPostRequest?
   createdAt           DateTime                             @default(now()) @map("created_at")
   updatedAt           DateTime                             @updatedAt @map("updated_at")

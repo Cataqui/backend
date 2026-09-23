@@ -48,7 +48,7 @@ export class JobRepository {
 		requestHash: string;
 		contactId: string;
 		description: string;
-		payment: string;
+		payment: string | null;
 		title: string;
 		descriptionSummary: string;
 		location: { latitude: number; longitude: number };

@@ -40,6 +40,11 @@ describe("JobRepository", () => {
 		expect(result).toMatchObject({ id: row.id, payment: "R$ 100", contact: { id: row.contactId } });
 	});
 
+	it("reads a public post with null payment", async () => {
+		prisma.$queryRaw.mockResolvedValue([{ ...row, payment: null }]);
+		expect((await repository.findPublicById({ jobId: row.id }))?.payment).toBeNull();
+	});
+
 	it("finds an existing post by poster and idempotency key", async () => {
 		await repository.findByIdempotencyKey({ posterUserId: "poster", idempotencyKey: "key" });
 		expect(prisma.jobPostRequest.findUnique).toHaveBeenCalledWith({
@@ -81,5 +86,29 @@ describe("JobRepository", () => {
 				jobId: row.id,
 			},
 		});
+	});
+
+	it("persists null payment in the job transaction", async () => {
+		const create = vi.fn().mockResolvedValue({ ...row, payment: null });
+		prisma.$transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
+			callback({
+				job: { create: create },
+				jobPostRequest: { create: vi.fn() },
+				$executeRaw: vi.fn(),
+			}),
+		);
+		await repository.createJob({
+			posterUserId: "poster",
+			idempotencyKey: "key",
+			requestHash: "a".repeat(64),
+			contactId: row.contactId,
+			description: row.description,
+			payment: null,
+			title: row.title,
+			descriptionSummary: row.descriptionSummary,
+			location: { latitude: -23, longitude: -46 },
+			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
+		});
+		expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payment: null }) }));
 	});
 });

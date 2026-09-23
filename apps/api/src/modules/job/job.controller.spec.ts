@@ -8,7 +8,6 @@ describe("JobController", () => {
 	const controller = new JobController(service as unknown as JobService);
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",
-		payment: "R$ 100",
 		location: { latitude: -23, longitude: -46 },
 		contact: { contactMethod: "WHATSAPP" as const, identifier: "+5511999999999" },
 	};

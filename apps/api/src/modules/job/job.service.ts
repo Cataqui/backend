@@ -63,7 +63,7 @@ export class JobService {
 				requestHash: requestHash,
 				contactId: contact.contactId,
 				description: params.dto.description,
-				payment: params.dto.payment,
+				payment: derived.payment,
 				title: derived.title,
 				descriptionSummary: derived.descriptionSummary,
 				location: params.dto.location,
@@ -84,7 +84,7 @@ export class JobService {
 
 	async getDerivedJobDataFromDescription(params: {
 		description: string;
-	}): Promise<{ title: string; descriptionSummary: string }> {
+	}): Promise<{ title: string; descriptionSummary: string; payment: string | null }> {
 		let generatedJobData: unknown;
 		try {
 			generatedJobData = await this._aiService.generateObject({
@@ -93,7 +93,7 @@ export class JobService {
 				prompt: JobDataDerivationPrompts.buildUserPrompt({ description: params.description }),
 				schema: JobDerivedDataSchema,
 				schemaDescription:
-					"A concise title and complementary feed summary grounded exclusively in the supplied job description.",
+					"A concise title, complementary feed summary, and nullable payment grounded exclusively in the supplied job description.",
 				maxTokens: 10_000,
 				abortSignal: AbortSignal.timeout(30_000),
 			});
@@ -102,7 +102,11 @@ export class JobService {
 		}
 		const parsed = JobDerivedDataSchema.safeParse(generatedJobData);
 		if (!parsed.success) throw new JobDataDerivationUnavailableError();
-		return { title: parsed.data.title, descriptionSummary: parsed.data.description_summary };
+		return {
+			title: parsed.data.title,
+			descriptionSummary: parsed.data.description_summary,
+			payment: parsed.data.payment === "" ? null : parsed.data.payment,
+		};
 	}
 
 	async getPublicJob(params: { jobId: string }): Promise<z.infer<typeof PublicJobOutputSchema>> {

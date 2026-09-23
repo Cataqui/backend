@@ -12,7 +12,7 @@ export function toFeedItemOutput(params: {
 		title: string;
 		createdAt: Date;
 		descriptionSummary: string;
-		payment: string;
+		payment: string | null;
 		fuzzyLatitude: { toNumber(): number } | number;
 		fuzzyLongitude: { toNumber(): number } | number;
 	};

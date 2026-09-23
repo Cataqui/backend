@@ -59,6 +59,20 @@ describe("FeedRepository", () => {
 		expect(sql.values).toContain(20);
 	});
 
+	it("returns null payment from both feed query paths", async () => {
+		const unpaidJob = { ...job, payment: null };
+		prisma.job.findMany.mockResolvedValue([unpaidJob]);
+		expect(await repository.getFeedItems({ limit: 20 })).toEqual([unpaidJob]);
+		prisma.$queryRaw.mockResolvedValue([unpaidJob]);
+		const cursor = CursorUtils.decodeCursor({
+			cursor: CursorUtils.encodeCursor({
+				createdAt: "2026-09-22T13:00:00Z",
+				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			}),
+		});
+		expect(await repository.getFeedItems({ cursor: cursor, limit: 20 })).toEqual([unpaidJob]);
+	});
+
 	it("rejects an active row without a public location", async () => {
 		prisma.job.findMany.mockResolvedValue([{ ...job, fuzzyLatitude: null }]);
 		await expect(repository.getFeedItems({ limit: 20 })).rejects.toThrow("missing fields required by the feed");
