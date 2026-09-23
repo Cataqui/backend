@@ -34,6 +34,7 @@ Before changing a file, check its directory and parent directories for nested `A
 - Keep code explicit, unsurprising, strictly typed, and locally extensible. Do not use `any`, dead code, speculative abstractions, or broad catch-and-rethrow blocks.
 - Prefer guard clauses and exhaustive closed variants. Never add a `default` branch that hides an unhandled enum member.
 - Use named object parameters unless every positional value is self-evident at the call site. Spell object keys and values explicitly instead of shorthand.
+- Name fields relative to their containing object. Avoid repeating the object's name when the context already makes it clear: e.g use `contact.method` instead of `contact.contactMethod`. Keep a qualifier when it distinguishes otherwise ambiguous fields or is required by an externally owned contract.
 - Prefix private class members and module-private functions with `_`.
 - Keep single-use values and short single-use logic inline. Extract only for real reuse or an independently meaningful contract.
 - Use Zod or an authoritative domain library before custom validation. Derive supported values from one source of truth instead of repeating literals.

@@ -4,7 +4,7 @@ const job = {
 	title: "Ajudante",
 	description: "Ajudar a carregar caixas",
 	descriptionSummary: "Hoje à tarde",
-	contactReference: { contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", contactMethod: "WHATSAPP" },
+	contactReference: { contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", method: "WHATSAPP" },
 	location: { latitude: -23, longitude: -46, areaRadius: 2000 },
 	payment: "R$ 100",
 	status: "ACTIVE",

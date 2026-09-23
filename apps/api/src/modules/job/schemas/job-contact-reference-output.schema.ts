@@ -4,7 +4,7 @@ import { ContactMethod } from "../../../../generated/prisma/client.js";
 export const JobContactReferenceOutputSchema = z
 	.object({
 		contactId: z.uuid().describe("Id of the contact to fetch full details from"),
-		contactMethod: z.enum(ContactMethod).describe("Preferred contact method"),
+		method: z.enum(ContactMethod).describe("Preferred contact method"),
 	})
 	.strict()
 	.meta({ id: "JobContactReferenceOutput" });

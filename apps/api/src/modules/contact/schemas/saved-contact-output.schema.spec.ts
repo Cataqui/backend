@@ -6,12 +6,12 @@ describe("SavedContactOutputSchema", () => {
 		expect(
 			SavedContactOutputSchema.parse({
 				contactId: "550e8400-e29b-41d4-a716-446655440000",
-				contactMethod: ContactMethod.WHATSAPP,
+				method: ContactMethod.WHATSAPP,
 				identifier: "@cataqui.poster",
 			}),
 		).toEqual({
 			contactId: "550e8400-e29b-41d4-a716-446655440000",
-			contactMethod: ContactMethod.WHATSAPP,
+			method: ContactMethod.WHATSAPP,
 			identifier: "@cataqui.poster",
 		});
 	});

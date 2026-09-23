@@ -11,10 +11,10 @@ function _createContactIdentifierSchema() {
 }
 
 export const ContactInputSchema = z
-	.discriminatedUnion("contactMethod", [
+	.discriminatedUnion("method", [
 		z
 			.object({
-				contactMethod: z.literal(ContactMethod.WHATSAPP).describe("WhatsApp contact method"),
+				method: z.literal(ContactMethod.WHATSAPP).describe("WhatsApp contact method"),
 				identifier: _createContactIdentifierSchema().refine(
 					(identifier) => {
 						if (isValidPhoneNumber(identifier)) return true;
@@ -37,7 +37,7 @@ export const ContactInputSchema = z
 			.strict(),
 		z
 			.object({
-				contactMethod: z.literal(ContactMethod.PHONE_CALL).describe("Phone-call contact method"),
+				method: z.literal(ContactMethod.PHONE_CALL).describe("Phone-call contact method"),
 				identifier: _createContactIdentifierSchema().refine((identifier) => isValidPhoneNumber(identifier), {
 					error:
 						"identifier for PHONE_CALL must be a phone number with country code, starting with + followed by the country and local number. Example: +5511999999999",

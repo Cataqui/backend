@@ -165,6 +165,6 @@ export class JobService {
 	async getJobContact(params: { jobId: string; contactId: string }): Promise<z.infer<typeof ContactOutputSchema>> {
 		const contact = await this._jobRepository.findActiveJobContact(params);
 		if (contact === null) throw new JobNotFoundError();
-		return { contactMethod: contact.contactMethod, identifier: contact.identifier };
+		return { method: contact.contactMethod, identifier: contact.identifier };
 	}
 }

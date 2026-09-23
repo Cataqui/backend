@@ -15,17 +15,17 @@ export class ContactService {
 	}): Promise<z.infer<typeof SavedContactOutputSchema>> {
 		const contact = await this._contactRepository.upsertContact({
 			userId: params.userId,
-			contactMethod: params.contact.contactMethod,
+			contactMethod: params.contact.method,
 			identifier: params.contact.identifier,
 		});
-		return { contactId: contact.id, contactMethod: contact.contactMethod, identifier: contact.identifier };
+		return { contactId: contact.id, method: contact.contactMethod, identifier: contact.identifier };
 	}
 
 	async getContacts(params: { userId: string }): Promise<z.infer<typeof SavedContactsOutputSchema>> {
 		const contacts = await this._contactRepository.findContactsByUserId({ userId: params.userId });
 		return contacts.map((contact) => ({
 			contactId: contact.id,
-			contactMethod: contact.contactMethod,
+			method: contact.contactMethod,
 			identifier: contact.identifier,
 		}));
 	}

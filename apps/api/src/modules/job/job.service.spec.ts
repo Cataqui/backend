@@ -13,7 +13,7 @@ import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cu
 const dto = {
 	description: "Preciso de ajuda para descarregar caixas amanhã. Pago R$ 150 por dia.",
 	location: { latitude: -23.55, longitude: -46.63 },
-	contact: { contactMethod: "WHATSAPP" as const, identifier: "+5511999999999" },
+	contact: { method: "WHATSAPP" as const, identifier: "+5511999999999" },
 };
 const job = {
 	id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -133,7 +133,7 @@ describe("JobService direct posting", () => {
 	it("returns contact details for an active job's matching contact", async () => {
 		repository.findActiveJobContact.mockResolvedValue({ contactMethod: "WHATSAPP", identifier: "+5511999999999" });
 		await expect(service.getJobContact({ jobId: job.id, contactId: job.contact.id })).resolves.toEqual({
-			contactMethod: "WHATSAPP",
+			method: "WHATSAPP",
 			identifier: "+5511999999999",
 		});
 	});

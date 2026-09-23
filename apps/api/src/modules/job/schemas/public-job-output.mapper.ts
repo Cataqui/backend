@@ -9,7 +9,7 @@ export function toPublicJobOutput(job: PublicJobRaw): z.infer<typeof PublicJobOu
 		title: job.title,
 		description: job.description,
 		descriptionSummary: job.descriptionSummary,
-		contactReference: { contactId: job.contact!.id, contactMethod: job.contact!.contactMethod },
+		contactReference: { contactId: job.contact!.id, method: job.contact!.contactMethod },
 		location: {
 			latitude: job.fuzzyLatitude.toNumber(),
 			longitude: job.fuzzyLongitude.toNumber(),

@@ -17,9 +17,9 @@ describe("ContactService", () => {
 		await expect(
 			service.getOrAddContact({
 				userId: userId,
-				contact: { contactMethod: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" },
+				contact: { method: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" },
 			}),
-		).resolves.toEqual({ contactId: contactId, contactMethod: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" });
+		).resolves.toEqual({ contactId: contactId, method: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" });
 		expect(repository.upsertContact).toHaveBeenCalledWith({
 			userId: userId,
 			contactMethod: ContactMethod.WHATSAPP,
@@ -30,7 +30,7 @@ describe("ContactService", () => {
 	it("lists only the authenticated user's saved contacts", async () => {
 		repository.findContactsByUserId.mockResolvedValue([contact]);
 		await expect(service.getContacts({ userId: userId })).resolves.toEqual([
-			{ contactId: contactId, contactMethod: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" },
+			{ contactId: contactId, method: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" },
 		]);
 		expect(repository.findContactsByUserId).toHaveBeenCalledWith({ userId: userId });
 	});

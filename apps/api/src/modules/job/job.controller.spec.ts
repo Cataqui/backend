@@ -10,7 +10,7 @@ describe("JobController", () => {
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",
 		location: { latitude: -23, longitude: -46 },
-		contact: { contactMethod: "WHATSAPP" as const, identifier: "+5511999999999" },
+		contact: { method: "WHATSAPP" as const, identifier: "+5511999999999" },
 	};
 	const session = { userId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" };
 

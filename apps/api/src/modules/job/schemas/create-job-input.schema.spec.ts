@@ -3,7 +3,7 @@ import { CreateJobInputSchema } from "./create-job-input.schema";
 const valid = {
 	description: "Preciso de ajuda para descarregar caixas.",
 	location: { latitude: -23, longitude: -46 },
-	contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
+	contact: { method: "WHATSAPP", identifier: "+5511999999999" },
 };
 
 describe("CreateJobInputSchema", () => {
