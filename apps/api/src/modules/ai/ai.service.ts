@@ -38,9 +38,10 @@ export class AiService {
 		config: ConfigType<typeof aiConfig>,
 	) {
 		this._unifiedProvider = createUnified({
-			baseURL: `https://gateway.ai.cloudflare.com/v1/${config.cloudflareAccountId}/${config.deriveJobDataAiGatewayId}/compat`,
+			baseURL: `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/v1`,
 			headers: {
-				"cf-aig-authorization": `Bearer ${config.aiGatewayApiToken}`,
+				Authorization: `Bearer ${config.aiGatewayApiToken}`,
+				"cf-aig-gateway-id": config.deriveJobDataAiGatewayId,
 				"cf-aig-skip-cache": "true",
 				..._getGatewayLoggingHeaders({ environment: config.environment }),
 			},
