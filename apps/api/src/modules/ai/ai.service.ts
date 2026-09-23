@@ -85,7 +85,7 @@ export class AiService {
 	private _getGatewayModelForTask(params: { task: AiTask }): string {
 		switch (params.task) {
 			case AiTask.DERIVE_JOB_DATA:
-				return "google-vertex-ai/google/gemini-3.5-flash-lite";
+				return "google/gemini-3.5-flash-lite";
 		}
 	}
 }

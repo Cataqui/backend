@@ -198,7 +198,7 @@ describe("AiService", () => {
 		expect(mockGenerateText).toHaveBeenCalledOnce();
 	});
 
-	it("should route job data derivation to Gemini 3.5 Flash Lite through Cloudflare", async () => {
+	it("should route job data derivation to Gemini 3.5 Flash Lite through Unified Billing", async () => {
 		mockGenerateText.mockResolvedValue({ output: {} });
 
 		const module = await Test.createTestingModule({
@@ -216,7 +216,7 @@ describe("AiService", () => {
 			abortSignal: AbortSignal.timeout(30_000),
 		});
 
-		expect(mockUnifiedFn).toHaveBeenCalledWith("google-vertex-ai/google/gemini-3.5-flash-lite");
+		expect(mockUnifiedFn).toHaveBeenCalledWith("google/gemini-3.5-flash-lite");
 	});
 
 	it("should pass structured output limits to the AI SDK", async () => {
