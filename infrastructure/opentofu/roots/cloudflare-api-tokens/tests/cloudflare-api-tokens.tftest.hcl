@@ -177,10 +177,21 @@ run "least_privilege_permissions" {
     condition = (
       data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].name == "AI Gateway Run" &&
       data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].scope == "com.cloudflare.api.account" &&
+      data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].name == "Workers AI Read" &&
+      data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].scope == "com.cloudflare.api.account" &&
       data.cloudflare_api_token_permission_groups_list.required["zone_waf_write"].name == "Zone WAF Write" &&
       data.cloudflare_api_token_permission_groups_list.required["zone_waf_write"].scope == "com.cloudflare.api.account.zone"
     )
     error_message = "Permission groups must be resolved by their plain provider names and exact scopes."
+  }
+
+  assert {
+    condition = (
+      length(cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups) == 2 &&
+      cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups[0].id == one(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result).id &&
+      cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups[1].id == one(data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].result).id
+    )
+    error_message = "The API runtime token must permit both gateway routing and Workers AI REST inference."
   }
 }
 

@@ -48,9 +48,14 @@ resource "cloudflare_api_token" "ai_gateway_runtime" {
 
   policies = [{
     effect = "allow"
-    permission_groups = [{
-      id = one(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result).id
-    }]
+    permission_groups = [
+      {
+        id = one(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result).id
+      },
+      {
+        id = one(data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].result).id
+      },
+    ]
     resources = jsonencode({
       "com.cloudflare.api.account.${local.cloudflare_account_id}" = "*"
     })
@@ -60,8 +65,11 @@ resource "cloudflare_api_token" "ai_gateway_runtime" {
     prevent_destroy = true
 
     precondition {
-      condition     = length(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result) == 1
-      error_message = "Cloudflare must return exactly one account-scoped AI Gateway Run permission group."
+      condition = (
+        length(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result) == 1 &&
+        length(data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].result) == 1
+      )
+      error_message = "Cloudflare must return exactly one account-scoped AI Gateway Run and Workers AI Read permission group."
     }
   }
 }

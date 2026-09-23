@@ -19,6 +19,10 @@ locals {
       name  = "AI Gateway Run"
       scope = "com.cloudflare.api.account"
     }
+    workers_ai_read = {
+      name  = "Workers AI Read"
+      scope = "com.cloudflare.api.account"
+    }
     queues_read = {
       name  = "Queues Read"
       scope = "com.cloudflare.api.account"
