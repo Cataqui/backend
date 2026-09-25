@@ -73,7 +73,7 @@ describe("JobService direct posting", () => {
 	});
 
 	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])(
-		"returns the poster's %s job with title, fuzzy location and real contact",
+		"returns the poster's %s job with fuzzy location and real contact",
 		async (status) => {
 			repository.findUserJobById.mockResolvedValue({
 				...job,
@@ -84,12 +84,9 @@ describe("JobService direct posting", () => {
 			const result = await service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId });
 			expect(result).toEqual({
 				jobId: job.id,
-				title: job.title,
 				description: job.description,
-				descriptionSummary: job.descriptionSummary,
 				contact: { method: "WHATSAPP", identifier: "+5511999999999" },
 				location: { title: "Rua Pardal Branco, 32", latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
-				payment: job.payment,
 				status: status,
 				createdAt: "2026-09-22T12:00:00.000Z",
 				updatedAt: "2026-09-22T12:00:00.000Z",

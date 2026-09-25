@@ -19,11 +19,25 @@ const _publicJobOutputSelection = {
 
 export type PublicJobRaw = Prisma.JobGetPayload<{ select: typeof _publicJobOutputSelection }>;
 
-const _userJobOutputSelection = {
+const _userJobSummaryOutputSelection = {
 	id: true,
 	title: true,
 	descriptionSummary: true,
 	payment: true,
+	fuzzyLatitude: true,
+	fuzzyLongitude: true,
+	status: true,
+	createdAt: true,
+	updatedAt: true,
+} satisfies Prisma.JobSelect;
+
+export type UserJobSummaryRaw = Prisma.JobGetPayload<{ select: typeof _userJobSummaryOutputSelection }>;
+
+const _userJobOutputSelection = {
+	id: true,
+	description: true,
+	contact: { select: { contactMethod: true, identifier: true } },
+	locationTitle: true,
 	fuzzyLatitude: true,
 	fuzzyLongitude: true,
 	status: true,
@@ -32,23 +46,6 @@ const _userJobOutputSelection = {
 } satisfies Prisma.JobSelect;
 
 export type UserJobRaw = Prisma.JobGetPayload<{ select: typeof _userJobOutputSelection }>;
-
-const _userJobDetailOutputSelection = {
-	id: true,
-	title: true,
-	description: true,
-	descriptionSummary: true,
-	contact: { select: { contactMethod: true, identifier: true } },
-	locationTitle: true,
-	fuzzyLatitude: true,
-	fuzzyLongitude: true,
-	payment: true,
-	status: true,
-	createdAt: true,
-	updatedAt: true,
-} satisfies Prisma.JobSelect;
-
-export type UserJobDetailRaw = Prisma.JobGetPayload<{ select: typeof _userJobDetailOutputSelection }>;
 
 type PublicJobDatabaseRow = Omit<PublicJobRaw, "contact"> & {
 	contactId: string | null;
@@ -63,7 +60,7 @@ export class JobRepository {
 		posterUserId: string;
 		cursor?: UserJobsCursor | undefined;
 		limit: number;
-	}): Promise<UserJobRaw[]> {
+	}): Promise<UserJobSummaryRaw[]> {
 		return this._prisma.job.findMany({
 			where: {
 				posterUserId: params.posterUserId,
@@ -78,14 +75,14 @@ export class JobRepository {
 			},
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: params.limit,
-			select: _userJobOutputSelection,
+			select: _userJobSummaryOutputSelection,
 		});
 	}
 
-	async findUserJobById(params: { jobId: string; posterUserId: string }): Promise<UserJobDetailRaw | null> {
+	async findUserJobById(params: { jobId: string; posterUserId: string }): Promise<UserJobRaw | null> {
 		return this._prisma.job.findFirst({
 			where: { id: params.jobId, posterUserId: params.posterUserId },
-			select: _userJobDetailOutputSelection,
+			select: _userJobOutputSelection,
 		});
 	}
 

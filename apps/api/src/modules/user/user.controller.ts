@@ -9,8 +9,8 @@ import { ContactService } from "../contact/contact.service";
 import { SavedContactsOutputSchema } from "../contact/schemas/saved-contacts-output.schema";
 import { JobService } from "../job/job.service";
 import { GetJobInputSchema } from "../job/schemas/get-job-input.schema";
-import { UserJobDetailOutputSchema } from "../job/schemas/user-job-detail-output.schema";
 import { UserJobOutputSchema } from "../job/schemas/user-job-output.schema";
+import { UserJobSummaryOutputSchema } from "../job/schemas/user-job-summary-output.schema";
 import { UserJobsInputSchema } from "../job/schemas/user-jobs-input.schema";
 import { ApiGetCurrentUserContactsDocs } from "./decorators/api-get-current-user-contacts-docs.decorator";
 import { ApiGetCurrentUserDocs } from "./decorators/api-get-current-user-docs.decorator";
@@ -37,7 +37,7 @@ export class UserController {
 	async getUserJobs(
 		@Query({ schema: UserJobsInputSchema }) query: z.infer<typeof UserJobsInputSchema>,
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
-	): Promise<PaginatedResult<z.infer<typeof UserJobOutputSchema>>> {
+	): Promise<PaginatedResult<z.infer<typeof UserJobSummaryOutputSchema>>> {
 		return this._jobService.getUserJobs({ posterUserId: authSession.userId, cursor: query.cursor });
 	}
 
@@ -50,7 +50,7 @@ export class UserController {
 	async getUserJob(
 		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
-	): Promise<z.infer<typeof UserJobDetailOutputSchema>> {
+	): Promise<z.infer<typeof UserJobOutputSchema>> {
 		return this._jobService.getUserJob({ jobId: params.jobId, posterUserId: authSession.userId });
 	}
 

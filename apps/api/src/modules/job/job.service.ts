@@ -16,9 +16,9 @@ import { JobRepository } from "./repositories/job.repository";
 import type { ContactOutputSchema } from "../contact/schemas/contact-output.schema";
 import { CreateJobInputSchema } from "./schemas/create-job-input.schema";
 import { JobDerivedDataSchema } from "./schemas/job-derived-data.schema.js";
+import { UserJobSummaryOutputSchema } from "./schemas/user-job-summary-output.schema";
+import { toUserJobOutput } from "./schemas/user-job-output.mapper";
 import { UserJobOutputSchema } from "./schemas/user-job-output.schema";
-import { toUserJobDetailOutput } from "./schemas/user-job-detail-output.mapper";
-import { UserJobDetailOutputSchema } from "./schemas/user-job-detail-output.schema";
 import { toPublicJobOutput } from "./schemas/public-job-output.mapper";
 import { PublicJobOutputSchema } from "./schemas/public-job-output.schema";
 import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
@@ -32,19 +32,16 @@ export class JobService {
 		private readonly _locationService: LocationService,
 	) {}
 
-	async getUserJob(params: {
-		jobId: string;
-		posterUserId: string;
-	}): Promise<z.infer<typeof UserJobDetailOutputSchema>> {
+	async getUserJob(params: { jobId: string; posterUserId: string }): Promise<z.infer<typeof UserJobOutputSchema>> {
 		const job = await this._jobRepository.findUserJobById(params);
 		if (job === null) throw new JobNotFoundError();
-		return toUserJobDetailOutput(job);
+		return toUserJobOutput(job);
 	}
 
 	async getUserJobs(params: {
 		posterUserId: string;
 		cursor?: string | undefined;
-	}): Promise<PaginatedResultType<z.infer<typeof UserJobOutputSchema>>> {
+	}): Promise<PaginatedResultType<z.infer<typeof UserJobSummaryOutputSchema>>> {
 		const limit = 20;
 		const cursor = params.cursor === undefined ? undefined : decodeUserJobsCursor({ cursor: params.cursor });
 		const results = await this._jobRepository.findUserJobs({

@@ -65,12 +65,17 @@ describe("JobRepository", () => {
 		await repository.findUserJobById({ jobId: row.id, posterUserId: "poster" });
 		expect(prisma.job.findFirst).toHaveBeenCalledWith({
 			where: { id: row.id, posterUserId: "poster" },
-			select: expect.objectContaining({
+			select: {
+				id: true,
+				description: true,
+				status: true,
+				createdAt: true,
+				updatedAt: true,
 				locationTitle: true,
 				contact: { select: { contactMethod: true, identifier: true } },
 				fuzzyLatitude: true,
 				fuzzyLongitude: true,
-			}),
+			},
 		});
 	});
 

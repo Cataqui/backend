@@ -33,7 +33,7 @@ describe("ApiGetCurrentUserJobDocs", () => {
 		expect(operation?.security).toEqual([{ bearer: [] }]);
 		expect(operation?.responses?.["200"]).toMatchObject({
 			content: {
-				"application/json": { schema: { $ref: "#/components/schemas/UserJobDetailOutputSuccessResponse" } },
+				"application/json": { schema: { $ref: "#/components/schemas/UserJobOutputSuccessResponse" } },
 			},
 		});
 		expect(operation?.responses?.["400"]).toBeDefined();

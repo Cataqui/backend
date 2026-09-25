@@ -1,17 +1,17 @@
 import { z } from "zod";
 import { JobStatus } from "../../../../generated/prisma/client.js";
-import { JobLocationOutputSchema } from "./job-location-output.schema";
+import { ContactOutputSchema } from "../../contact/schemas/contact-output.schema";
+import { UserJobLocationOutputSchema } from "./user-job-location-output.schema";
 
 export const UserJobOutputSchema = z
 	.object({
-		jobId: z.uuid(),
-		title: z.string(),
-		descriptionSummary: z.string(),
-		payment: z.string().nullable(),
-		location: JobLocationOutputSchema.describe("Fuzzy public job location"),
-		status: z.enum([JobStatus.ACTIVE, JobStatus.ARCHIVED]),
-		createdAt: z.iso.datetime(),
-		updatedAt: z.iso.datetime(),
+		jobId: z.uuid().describe("Job unique identifier"),
+		description: z.string().describe("Detailed description about the job"),
+		contact: ContactOutputSchema.nullable().describe("The job contact, or null if its saved contact was removed"),
+		location: UserJobLocationOutputSchema.describe("Selected title and fuzzy public location"),
+		status: z.enum([JobStatus.ACTIVE, JobStatus.ARCHIVED]).describe("Job lifecycle status"),
+		createdAt: z.iso.datetime().describe("ISO 8601 timestamp of job creation"),
+		updatedAt: z.iso.datetime().describe("ISO 8601 timestamp of the last job update"),
 	})
 	.strict()
 	.meta({ id: "UserJobOutput" });

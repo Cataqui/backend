@@ -1,14 +1,12 @@
 import type { z } from "zod";
 import { JobLocationConstants } from "../constants/job-location.constants";
-import type { UserJobDetailRaw } from "../repositories/job.repository";
-import type { UserJobDetailOutputSchema } from "./user-job-detail-output.schema";
+import type { UserJobRaw } from "../repositories/job.repository";
+import type { UserJobOutputSchema } from "./user-job-output.schema";
 
-export function toUserJobDetailOutput(job: UserJobDetailRaw): z.infer<typeof UserJobDetailOutputSchema> {
+export function toUserJobOutput(job: UserJobRaw): z.infer<typeof UserJobOutputSchema> {
 	return {
 		jobId: job.id,
-		title: job.title,
 		description: job.description,
-		descriptionSummary: job.descriptionSummary,
 		contact: job.contact === null ? null : { method: job.contact.contactMethod, identifier: job.contact.identifier },
 		location: {
 			title: job.locationTitle,
@@ -16,7 +14,6 @@ export function toUserJobDetailOutput(job: UserJobDetailRaw): z.infer<typeof Use
 			longitude: job.fuzzyLongitude.toNumber(),
 			areaRadius: JobLocationConstants.AREA_RADIUS_METERS,
 		},
-		payment: job.payment,
 		status: job.status,
 		createdAt: job.createdAt.toISOString(),
 		updatedAt: job.updatedAt.toISOString(),

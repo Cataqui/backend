@@ -2,10 +2,10 @@ import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { ErrorOutputSchema } from "../../../core/errors/error-output";
 import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
-import { UserJobDetailOutputSchema } from "../../job/schemas/user-job-detail-output.schema";
+import { UserJobOutputSchema } from "../../job/schemas/user-job-output.schema";
 
 export function ApiGetCurrentUserJobDocs(): MethodDecorator & ClassDecorator {
-	const responseSchema = createSuccessResponseSchema({ dataSchema: UserJobDetailOutputSchema });
+	const responseSchema = createSuccessResponseSchema({ dataSchema: UserJobOutputSchema });
 	return applyDecorators(
 		SerializeOptions({ schema: responseSchema }),
 		ApiBearerAuth(),
