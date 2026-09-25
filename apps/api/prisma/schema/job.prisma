@@ -9,6 +9,7 @@ model Job {
   descriptionSummary String      @map("description_summary") @db.Text
 
   locationPoint       Unsupported("geometry(Point,4326)")? @map("location_point")
+  locationTitle       String                               @map("location_title") @db.Text
   fuzzyLatitude       Decimal                              @map("fuzzy_latitude") @db.Decimal(9, 6)
   fuzzyLongitude      Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
   status              JobStatus                            @default(ACTIVE)

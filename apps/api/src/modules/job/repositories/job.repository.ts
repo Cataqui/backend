@@ -89,7 +89,7 @@ export class JobRepository {
 		payment: string | null;
 		title: string;
 		descriptionSummary: string;
-		location: { latitude: number; longitude: number };
+		location: { title: string; latitude: number; longitude: number };
 		fuzzyLocation: { latitude: number; longitude: number };
 	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
 		return this._prisma.$transaction(async (tx) => {
@@ -101,6 +101,7 @@ export class JobRepository {
 					payment: params.payment,
 					title: params.title,
 					descriptionSummary: params.descriptionSummary,
+					locationTitle: params.location.title,
 					fuzzyLatitude: params.fuzzyLocation.latitude,
 					fuzzyLongitude: params.fuzzyLocation.longitude,
 					status: JobStatus.ACTIVE,

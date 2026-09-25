@@ -9,7 +9,7 @@ describe("JobController", () => {
 	const controller = new JobController(service as unknown as JobService);
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",
-		location: { latitude: -23, longitude: -46 },
+		location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
 		contact: { method: "WHATSAPP" as const, identifier: "+5511999999999" },
 	};
 	const session = { userId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" };

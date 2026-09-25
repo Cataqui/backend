@@ -151,12 +151,17 @@ describe("JobRepository", () => {
 			payment: row.payment,
 			title: row.title,
 			descriptionSummary: row.descriptionSummary,
-			location: { latitude: -23, longitude: -46 },
+			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
 			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
 		});
 		expect(result.id).toBe(row.id);
 		expect(create).toHaveBeenCalledWith({
-			data: expect.objectContaining({ payment: "R$ 100", status: JobStatus.ACTIVE, fuzzyLatitude: -23.1 }),
+			data: expect.objectContaining({
+				payment: "R$ 100",
+				locationTitle: "Rua Pardal Branco, 32",
+				status: JobStatus.ACTIVE,
+				fuzzyLatitude: -23.1,
+			}),
 			include: { contact: true },
 		});
 		expect(execute).toHaveBeenCalledOnce();
@@ -188,7 +193,7 @@ describe("JobRepository", () => {
 			payment: null,
 			title: row.title,
 			descriptionSummary: row.descriptionSummary,
-			location: { latitude: -23, longitude: -46 },
+			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
 			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
 		});
 		expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payment: null }) }));

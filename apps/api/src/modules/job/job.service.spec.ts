@@ -12,7 +12,7 @@ import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cu
 
 const dto = {
 	description: "Preciso de ajuda para descarregar caixas amanhã. Pago R$ 150 por dia.",
-	location: { latitude: -23.55, longitude: -46.63 },
+	location: { title: "Rua Pardal Branco, 32", latitude: -23.55, longitude: -46.63 },
 	contact: { method: "WHATSAPP" as const, identifier: "+5511999999999" },
 };
 const job = {
@@ -179,6 +179,17 @@ describe("JobService direct posting", () => {
 				requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			}),
 		);
+	});
+
+	it("rejects an idempotent retry whose selected location title changed", async () => {
+		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		repository.findByIdempotencyKey.mockResolvedValue({ job: job, requestHash: requestHash });
+		await expect(
+			service.createJob({
+				...params,
+				dto: { ...dto, location: { ...dto.location, title: "Outra rua" } },
+			}),
+		).rejects.toBeInstanceOf(JobIdempotencyConflictError);
 	});
 
 	it("persists null when the description does not state compensation", async () => {
