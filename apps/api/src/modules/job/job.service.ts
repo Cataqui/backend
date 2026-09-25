@@ -17,6 +17,8 @@ import type { ContactOutputSchema } from "../contact/schemas/contact-output.sche
 import { CreateJobInputSchema } from "./schemas/create-job-input.schema";
 import { JobDerivedDataSchema } from "./schemas/job-derived-data.schema.js";
 import { UserJobOutputSchema } from "./schemas/user-job-output.schema";
+import { toUserJobDetailOutput } from "./schemas/user-job-detail-output.mapper";
+import { UserJobDetailOutputSchema } from "./schemas/user-job-detail-output.schema";
 import { toPublicJobOutput } from "./schemas/public-job-output.mapper";
 import { PublicJobOutputSchema } from "./schemas/public-job-output.schema";
 import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
@@ -29,6 +31,15 @@ export class JobService {
 		private readonly _aiService: AiService,
 		private readonly _locationService: LocationService,
 	) {}
+
+	async getUserJob(params: {
+		jobId: string;
+		posterUserId: string;
+	}): Promise<z.infer<typeof UserJobDetailOutputSchema>> {
+		const job = await this._jobRepository.findUserJobById(params);
+		if (job === null) throw new JobNotFoundError();
+		return toUserJobDetailOutput(job);
+	}
 
 	async getUserJobs(params: {
 		posterUserId: string;

@@ -10,12 +10,12 @@ describe("UserController", () => {
 	let controller: UserController;
 	let userService: { getCurrentUser: ReturnType<typeof vi.fn> };
 	let contactService: { getContacts: ReturnType<typeof vi.fn> };
-	let jobService: { getUserJobs: ReturnType<typeof vi.fn> };
+	let jobService: { getUserJobs: ReturnType<typeof vi.fn>; getUserJob: ReturnType<typeof vi.fn> };
 
 	beforeEach(async () => {
 		userService = { getCurrentUser: vi.fn() };
 		contactService = { getContacts: vi.fn() };
-		jobService = { getUserJobs: vi.fn() };
+		jobService = { getUserJobs: vi.fn(), getUserJob: vi.fn() };
 		const module = await Test.createTestingModule({
 			controllers: [UserController],
 			providers: [
@@ -89,5 +89,18 @@ describe("UserController", () => {
 		await controller.getUserJobs({}, session);
 		expect(Reflect.getMetadata(GUARDS_METADATA, controller.getUserJobs)).toEqual([AccessTokenGuard]);
 		expect(jobService.getUserJobs).toHaveBeenCalledWith({ posterUserId: "poster", cursor: undefined });
+	});
+
+	it("requires an access token and reads one posted job using the session owner without caching", async () => {
+		const session = { sessionId: "session", userId: "poster", expiresAt: new Date() };
+		const params = { jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
+		await controller.getUserJob(params, session);
+		expect(Reflect.getMetadata(PATH_METADATA, controller.getUserJob)).toBe("me/jobs/:jobId");
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.getUserJob)).toEqual([AccessTokenGuard]);
+		expect(Reflect.getMetadata(HEADERS_METADATA, controller.getUserJob)).toContainEqual({
+			name: "Cache-Control",
+			value: "no-store",
+		});
+		expect(jobService.getUserJob).toHaveBeenCalledWith({ jobId: params.jobId, posterUserId: session.userId });
 	});
 });

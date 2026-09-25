@@ -38,6 +38,7 @@ describe("JobService direct posting", () => {
 	let service: JobService;
 	const repository = {
 		findUserJobs: vi.fn(),
+		findUserJobById: vi.fn(),
 		findByIdempotencyKey: vi.fn(),
 		createJob: vi.fn(),
 		findPublicById: vi.fn(),
@@ -69,6 +70,49 @@ describe("JobService direct posting", () => {
 			],
 		}).compile();
 		service = module.get(JobService);
+	});
+
+	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])(
+		"returns the poster's %s job with title, fuzzy location and real contact",
+		async (status) => {
+			repository.findUserJobById.mockResolvedValue({
+				...job,
+				status: status,
+				locationTitle: "Rua Pardal Branco, 32",
+				contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
+			});
+			const result = await service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId });
+			expect(result).toEqual({
+				jobId: job.id,
+				title: job.title,
+				description: job.description,
+				descriptionSummary: job.descriptionSummary,
+				contact: { method: "WHATSAPP", identifier: "+5511999999999" },
+				location: { title: "Rua Pardal Branco, 32", latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				payment: job.payment,
+				status: status,
+				createdAt: "2026-09-22T12:00:00.000Z",
+				updatedAt: "2026-09-22T12:00:00.000Z",
+			});
+			expect(repository.findUserJobById).toHaveBeenCalledWith({ jobId: job.id, posterUserId: params.posterUserId });
+		},
+	);
+
+	it("returns the owned job with null contact after its linked contact was removed", async () => {
+		repository.findUserJobById.mockResolvedValue({ ...job, locationTitle: "legacy-location-" + job.id, contact: null });
+		await expect(service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
+			contact: null,
+			location: { title: "legacy-location-" + job.id },
+		});
+	});
+
+	it.each([
+		{ scenario: "missing", jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", posterUserId: params.posterUserId },
+		{ scenario: "another poster's", jobId: job.id, posterUserId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
+	])("returns the same 404 for a $scenario job", async ({ jobId, posterUserId }) => {
+		repository.findUserJobById.mockResolvedValue(null);
+		await expect(service.getUserJob({ jobId: jobId, posterUserId: posterUserId })).rejects.toThrow(JobNotFoundError);
+		expect(repository.findUserJobById).toHaveBeenCalledWith({ jobId: jobId, posterUserId: posterUserId });
 	});
 
 	it("returns an empty page when the poster has no jobs", async () => {

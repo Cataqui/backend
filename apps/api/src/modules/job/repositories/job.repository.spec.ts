@@ -60,6 +60,20 @@ describe("JobRepository", () => {
 		});
 	});
 
+	it("selects an owned job by both job ID and poster including its location title and real contact", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await repository.findUserJobById({ jobId: row.id, posterUserId: "poster" });
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: expect.objectContaining({
+				locationTitle: true,
+				contact: { select: { contactMethod: true, identifier: true } },
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
+			}),
+		});
+	});
+
 	it("continues after equal timestamps using the job ID tie breaker", async () => {
 		prisma.job.findMany.mockResolvedValue([]);
 		const createdAt = "2026-09-23T12:00:00.000Z";

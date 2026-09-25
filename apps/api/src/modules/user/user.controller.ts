@@ -1,4 +1,4 @@
-import { Controller, Get, Header, HttpCode, HttpStatus, Query, Version } from "@nestjs/common";
+import { Controller, Get, Header, HttpCode, HttpStatus, Param, Query, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
 import type { PaginatedResult } from "../../shared/results/paginated-result";
@@ -8,11 +8,14 @@ import type { IAuthenticatedSession } from "../auth/interfaces/authenticated-ses
 import { ContactService } from "../contact/contact.service";
 import { SavedContactsOutputSchema } from "../contact/schemas/saved-contacts-output.schema";
 import { JobService } from "../job/job.service";
+import { GetJobInputSchema } from "../job/schemas/get-job-input.schema";
+import { UserJobDetailOutputSchema } from "../job/schemas/user-job-detail-output.schema";
 import { UserJobOutputSchema } from "../job/schemas/user-job-output.schema";
 import { UserJobsInputSchema } from "../job/schemas/user-jobs-input.schema";
 import { ApiGetCurrentUserContactsDocs } from "./decorators/api-get-current-user-contacts-docs.decorator";
 import { ApiGetCurrentUserDocs } from "./decorators/api-get-current-user-docs.decorator";
 import { ApiGetCurrentUserJobsDocs } from "./decorators/api-get-current-user-jobs-docs.decorator";
+import { ApiGetCurrentUserJobDocs } from "./decorators/api-get-current-user-job-docs.decorator";
 import { CurrentUserOutputSchema } from "./schemas/current-user-output.schema";
 import { UserService } from "./user.service";
 
@@ -36,6 +39,19 @@ export class UserController {
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
 	): Promise<PaginatedResult<z.infer<typeof UserJobOutputSchema>>> {
 		return this._jobService.getUserJobs({ posterUserId: authSession.userId, cursor: query.cursor });
+	}
+
+	@Get("me/jobs/:jobId")
+	@Version("1")
+	@Header("Cache-Control", "no-store")
+	@AccessTokenRequired()
+	@HttpCode(HttpStatus.OK)
+	@ApiGetCurrentUserJobDocs()
+	async getUserJob(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof UserJobDetailOutputSchema>> {
+		return this._jobService.getUserJob({ jobId: params.jobId, posterUserId: authSession.userId });
 	}
 
 	@Get("me")

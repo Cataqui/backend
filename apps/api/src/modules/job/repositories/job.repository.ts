@@ -33,6 +33,23 @@ const _userJobOutputSelection = {
 
 export type UserJobRaw = Prisma.JobGetPayload<{ select: typeof _userJobOutputSelection }>;
 
+const _userJobDetailOutputSelection = {
+	id: true,
+	title: true,
+	description: true,
+	descriptionSummary: true,
+	contact: { select: { contactMethod: true, identifier: true } },
+	locationTitle: true,
+	fuzzyLatitude: true,
+	fuzzyLongitude: true,
+	payment: true,
+	status: true,
+	createdAt: true,
+	updatedAt: true,
+} satisfies Prisma.JobSelect;
+
+export type UserJobDetailRaw = Prisma.JobGetPayload<{ select: typeof _userJobDetailOutputSelection }>;
+
 type PublicJobDatabaseRow = Omit<PublicJobRaw, "contact"> & {
 	contactId: string | null;
 	contactMethod: ContactMethod | null;
@@ -62,6 +79,13 @@ export class JobRepository {
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: params.limit,
 			select: _userJobOutputSelection,
+		});
+	}
+
+	async findUserJobById(params: { jobId: string; posterUserId: string }): Promise<UserJobDetailRaw | null> {
+		return this._prisma.job.findFirst({
+			where: { id: params.jobId, posterUserId: params.posterUserId },
+			select: _userJobDetailOutputSelection,
 		});
 	}
 
