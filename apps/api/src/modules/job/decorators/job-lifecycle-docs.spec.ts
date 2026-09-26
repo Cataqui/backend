@@ -7,6 +7,7 @@ import { AppSwagger } from "../../../core/app.swagger";
 import { GetJobContactInputSchema } from "../schemas/get-job-contact-input.schema";
 import { GetJobInputSchema } from "../schemas/get-job-input.schema";
 import { ApiArchiveJobDocs } from "./api-archive-job-docs.decorator";
+import { ApiActivateJobDocs } from "./api-activate-job-docs.decorator";
 import { ApiGetJobContactDocs } from "./api-get-job-contact-docs.decorator";
 
 @Controller("jobs")
@@ -15,6 +16,11 @@ class JobLifecycleDocsTestController {
 	@ApiBearerAuth()
 	@ApiArchiveJobDocs()
 	archiveJob(@Param({ schema: GetJobInputSchema }) _params: z.infer<typeof GetJobInputSchema>): void {}
+
+	@Post(":jobId/activate")
+	@ApiBearerAuth()
+	@ApiActivateJobDocs()
+	activateJob(@Param({ schema: GetJobInputSchema }) _params: z.infer<typeof GetJobInputSchema>): void {}
 
 	@Get(":jobId/contact/:contactId")
 	@ApiGetJobContactDocs()
@@ -39,6 +45,15 @@ describe("job lifecycle Swagger docs", () => {
 
 	it("documents authenticated archive with the updated job response", () => {
 		const operation = document.paths["/jobs/{jobId}/archive"]?.post;
+		expect(operation?.security).toEqual([{ bearer: [] }]);
+		expect(Object.keys(operation?.responses ?? {})).toEqual(["200", "400", "401", "404"]);
+		expect(operation?.responses["200"]).toMatchObject({
+			content: { "application/json": { schema: { $ref: "#/components/schemas/PublicJobOutputSuccessResponse" } } },
+		});
+	});
+
+	it("documents authenticated activation with the updated job response", () => {
+		const operation = document.paths["/jobs/{jobId}/activate"]?.post;
 		expect(operation?.security).toEqual([{ bearer: [] }]);
 		expect(Object.keys(operation?.responses ?? {})).toEqual(["200", "400", "401", "404"]);
 		expect(operation?.responses["200"]).toMatchObject({

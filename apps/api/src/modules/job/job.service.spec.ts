@@ -43,6 +43,7 @@ describe("JobService direct posting", () => {
 		createJob: vi.fn(),
 		findPublicById: vi.fn(),
 		archiveOwnedJob: vi.fn(),
+		activateOwnedJob: vi.fn(),
 		findActiveJobContact: vi.fn(),
 	};
 	const ai = { generateObject: vi.fn() };
@@ -163,6 +164,23 @@ describe("JobService direct posting", () => {
 	it("returns 404 when a different poster archives a job", async () => {
 		repository.archiveOwnedJob.mockResolvedValue(null);
 		await expect(service.archiveJob({ jobId: job.id, posterUserId: "other" })).rejects.toThrow(JobNotFoundError);
+	});
+
+	it("returns an active job with its original creation time after activation", async () => {
+		repository.activateOwnedJob.mockResolvedValue({ ...job, status: JobStatus.ACTIVE });
+		await expect(service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
+			status: JobStatus.ACTIVE,
+			createdAt: "2026-09-22T12:00:00.000Z",
+		});
+		expect(repository.activateOwnedJob).toHaveBeenCalledWith({ jobId: job.id, posterUserId: params.posterUserId });
+	});
+
+	it("returns the same 404 for a missing or unowned job during activation", async () => {
+		repository.activateOwnedJob.mockResolvedValue(null);
+		await expect(service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })).rejects.toThrow(
+			JobNotFoundError,
+		);
+		await expect(service.activateJob({ jobId: job.id, posterUserId: "other" })).rejects.toThrow(JobNotFoundError);
 	});
 
 	it("refuses contact lookup for an archived job even when another active job shares its contact", async () => {

@@ -19,6 +19,7 @@ import { AccessTokenRequired } from "../auth/decorators/access-token-required.de
 import type { IAuthenticatedSession } from "../auth/interfaces/authenticated-session.interface";
 import { ContactOutputSchema } from "../contact/schemas/contact-output.schema";
 import { ApiArchiveJobDocs } from "./decorators/api-archive-job-docs.decorator";
+import { ApiActivateJobDocs } from "./decorators/api-activate-job-docs.decorator";
 import { ApiCreateJobDocs } from "./decorators/api-create-job-docs.decorator";
 import { ApiGetJobContactDocs } from "./decorators/api-get-job-contact-docs.decorator";
 import { ApiGetJobDocs } from "./decorators/api-get-job-docs.decorator";
@@ -68,6 +69,18 @@ export class JobController {
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
 	): Promise<z.infer<typeof PublicJobOutputSchema>> {
 		return this._jobService.archiveJob({ jobId: params.jobId, posterUserId: authSession.userId });
+	}
+
+	@Post(":jobId/activate")
+	@Version("1")
+	@AccessTokenRequired()
+	@HttpCode(HttpStatus.OK)
+	@ApiActivateJobDocs()
+	async activateJob(
+		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
+		@CurrentAuthSession() authSession: IAuthenticatedSession,
+	): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		return this._jobService.activateJob({ jobId: params.jobId, posterUserId: authSession.userId });
 	}
 
 	@Get(":jobId/contact/:contactId")

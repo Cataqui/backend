@@ -157,6 +157,17 @@ export class JobRepository {
 		});
 	}
 
+	async activateOwnedJob(params: { jobId: string; posterUserId: string }): Promise<PublicJobRaw | null> {
+		await this._prisma.job.updateMany({
+			where: { id: params.jobId, posterUserId: params.posterUserId, status: JobStatus.ARCHIVED },
+			data: { status: JobStatus.ACTIVE },
+		});
+		return this._prisma.job.findFirst({
+			where: { id: params.jobId, posterUserId: params.posterUserId },
+			select: _publicJobOutputSelection,
+		});
+	}
+
 	async findActiveJobContact(params: {
 		jobId: string;
 		contactId: string;

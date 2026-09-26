@@ -170,6 +170,12 @@ export class JobService {
 		return toPublicJobOutput(job);
 	}
 
+	async activateJob(params: { jobId: string; posterUserId: string }): Promise<z.infer<typeof PublicJobOutputSchema>> {
+		const job = await this._jobRepository.activateOwnedJob(params);
+		if (job === null) throw new JobNotFoundError();
+		return toPublicJobOutput(job);
+	}
+
 	async getJobContact(params: { jobId: string; contactId: string }): Promise<z.infer<typeof ContactOutputSchema>> {
 		const contact = await this._jobRepository.findActiveJobContact(params);
 		if (contact === null) throw new JobNotFoundError();

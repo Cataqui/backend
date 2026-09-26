@@ -5,7 +5,13 @@ import { JobController } from "./job.controller";
 import type { JobService } from "./job.service";
 
 describe("JobController", () => {
-	const service = { createJob: vi.fn(), getPublicJob: vi.fn(), archiveJob: vi.fn(), getJobContact: vi.fn() };
+	const service = {
+		createJob: vi.fn(),
+		getPublicJob: vi.fn(),
+		archiveJob: vi.fn(),
+		activateJob: vi.fn(),
+		getJobContact: vi.fn(),
+	};
 	const controller = new JobController(service as unknown as JobService);
 	const dto = {
 		description: "Preciso de ajuda para descarregar caixas.",
@@ -38,6 +44,14 @@ describe("JobController", () => {
 		expect(Reflect.getMetadata(PATH_METADATA, controller.archiveJob)).toBe(":jobId/archive");
 		expect(Reflect.getMetadata(GUARDS_METADATA, controller.archiveJob)).toEqual([AccessTokenGuard]);
 		expect(service.archiveJob).toHaveBeenCalledWith({ jobId: jobId, posterUserId: session.userId });
+	});
+
+	it("requires an access token and passes the poster to job activation", async () => {
+		const jobId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+		await controller.activateJob({ jobId: jobId }, session as never);
+		expect(Reflect.getMetadata(PATH_METADATA, controller.activateJob)).toBe(":jobId/activate");
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.activateJob)).toEqual([AccessTokenGuard]);
+		expect(service.activateJob).toHaveBeenCalledWith({ jobId: jobId, posterUserId: session.userId });
 	});
 
 	it("looks up contact details for a specific job without caching", async () => {

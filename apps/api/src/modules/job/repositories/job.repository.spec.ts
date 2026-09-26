@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { Prisma, JobStatus } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import { FeedRepository } from "../../feed/repositories/feed.repository";
 import { JobRepository } from "./job.repository";
 
 const row = {
@@ -135,6 +136,72 @@ describe("JobRepository", () => {
 	it("returns no job when its poster does not own it", async () => {
 		prisma.job.findFirst.mockResolvedValue(null);
 		await expect(repository.archiveOwnedJob({ jobId: row.id, posterUserId: "other" })).resolves.toBeNull();
+	});
+
+	it("activates only an archived job belonging to the poster and preserves its creation time", async () => {
+		prisma.job.findFirst.mockResolvedValue(row);
+		const result = await repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(result).toMatchObject({ status: JobStatus.ACTIVE, createdAt: row.createdAt });
+		expect(prisma.job.updateMany).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster", status: JobStatus.ARCHIVED },
+			data: { status: JobStatus.ACTIVE },
+		});
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: expect.objectContaining({
+				status: true,
+				createdAt: true,
+				contact: { select: { id: true, contactMethod: true } },
+			}),
+		});
+	});
+
+	it("does not update the timestamp when an active job is activated again", async () => {
+		prisma.job.updateMany.mockResolvedValue({ count: 0 });
+		prisma.job.findFirst.mockResolvedValue(row);
+		await expect(repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" })).resolves.toBe(row);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ status: JobStatus.ARCHIVED }) }),
+		);
+	});
+
+	it("returns no job when activation is requested by another poster", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await expect(repository.activateOwnedJob({ jobId: row.id, posterUserId: "other" })).resolves.toBeNull();
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ posterUserId: "other" }) }),
+		);
+	});
+
+	it("makes an activated job eligible for the feed and its contact again", async () => {
+		const state: { status: JobStatus } = { status: JobStatus.ARCHIVED };
+		prisma.job.updateMany.mockImplementation(async ({ where }) => {
+			if (where.posterUserId !== "poster" || where.status !== state.status) return { count: 0 };
+			state.status = JobStatus.ACTIVE;
+			return { count: 1 };
+		});
+		prisma.job.findFirst.mockImplementation(async () => ({ ...row, status: state.status }));
+		prisma.job.findMany.mockImplementation(async ({ where }) => (where.status === state.status ? [row] : []));
+		prisma.contact.findFirst.mockImplementation(async () =>
+			state.status === JobStatus.ACTIVE ? { contactMethod: "WHATSAPP", identifier: "+5511999999999" } : null,
+		);
+
+		const feed = new FeedRepository(prisma as unknown as PrismaService);
+		expect(await feed.getFeedItems({ limit: 20 })).toEqual([]);
+		expect(await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId })).toBeNull();
+
+		await repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(await feed.getFeedItems({ limit: 20 })).toEqual([row]);
+		expect(await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId })).toEqual({
+			contactMethod: "WHATSAPP",
+			identifier: "+5511999999999",
+		});
+		expect(prisma.job.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: JobStatus.ACTIVE } }));
+		expect(prisma.contact.findFirst).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: expect.objectContaining({ jobs: { some: { id: row.id, status: JobStatus.ACTIVE } } }),
+			}),
+		);
 	});
 
 	it("reveals a shared contact only through the requested active job", async () => {
