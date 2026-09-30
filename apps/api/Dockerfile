@@ -54,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 	CMD wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health/live || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "--enable-source-maps", "--import", "./register-telemetry-hook.mjs", "dist/src/main.js"]

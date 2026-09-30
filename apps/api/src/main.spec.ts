@@ -1,6 +1,13 @@
 import type { Mock } from "vitest";
 
 const createNestApplication: Mock<(...args: unknown[]) => Promise<never>> = vi.hoisted(() => vi.fn());
+const startTelemetry = vi.hoisted(() => vi.fn());
+const recordFatalError = vi.hoisted(() => vi.fn<() => Promise<void>>());
+
+vi.mock("./core/observability/telemetry", () => ({
+	startTelemetry: startTelemetry,
+	recordFatalError: recordFatalError,
+}));
 
 vi.mock("@nestjs/core", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@nestjs/core")>()),
@@ -12,6 +19,35 @@ describe("application startup logging", () => {
 		vi.resetModules();
 		vi.restoreAllMocks();
 		createNestApplication.mockReset();
+		startTelemetry.mockReset();
+		recordFatalError.mockReset().mockResolvedValue(undefined);
+	});
+
+	it("should start telemetry before Nest is created so HTTP, Nest, and Prisma instrumentation can attach", async () => {
+		const originalExitCode = process.exitCode;
+		vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+		createNestApplication.mockRejectedValueOnce(new Error("Startup dependency failed"));
+
+		await import("./main");
+		await vi.waitFor(() => expect(createNestApplication).toHaveBeenCalled(), { timeout: 5_000 });
+		process.exitCode = originalExitCode;
+
+		expect(startTelemetry.mock.invocationCallOrder[0]).toBeLessThan(
+			createNestApplication.mock.invocationCallOrder[0] ?? 0,
+		);
+	});
+
+	it("should send the startup failure to Datadog before the process exits", async () => {
+		const originalExitCode = process.exitCode;
+		vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+		const startupError = new Error("Startup dependency failed");
+		createNestApplication.mockRejectedValueOnce(startupError);
+
+		await import("./main");
+		await vi.waitFor(() => expect(recordFatalError).toHaveBeenCalled(), { timeout: 5_000 });
+		process.exitCode = originalExitCode;
+
+		expect(recordFatalError).toHaveBeenCalledWith({ event: "api.application.start.failed", error: startupError });
 	});
 
 	it("should write a structured fatal event when the application cannot start", async () => {
