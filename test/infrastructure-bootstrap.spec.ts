@@ -10,6 +10,7 @@ import {
 import {
 	classifyDatadogCredentialResponse,
 	DATADOG_OPENTOFU_SCOPES,
+	decideDatadogApplicationKeyScopes,
 	decideDatadogCredentials,
 	isSupportedPupVersion,
 	reconcileDatadogEnvironmentCredentials,
@@ -686,7 +687,10 @@ describe("infrastructure bootstrap reconciliation", () => {
 				production: { name: "cataqui-backend-opentofu-production" },
 			},
 		});
-		expect(DATADOG_OPENTOFU_SCOPES).toEqual(["api_keys_read", "api_keys_write"]);
+		expect(DATADOG_OPENTOFU_SCOPES).toContain("api_keys_write");
+		expect(DATADOG_OPENTOFU_SCOPES).toContain("monitors_write");
+		expect(DATADOG_OPENTOFU_SCOPES).toContain("dashboards_write");
+		expect(DATADOG_OPENTOFU_SCOPES).toContain("synthetics_write");
 	});
 
 	it("reuses only the enabled Datadog service account with the owned email", () => {
@@ -719,6 +723,34 @@ describe("infrastructure bootstrap reconciliation", () => {
 				"cataqui-backend-opentofu-staging",
 			),
 		).toThrow("Duplicate");
+	});
+
+	it("updates the scopes of the owned application key only when they drift", () => {
+		const applicationKeys = [
+			{ id: "current", last4: "abcd", scopes: [...DATADOG_OPENTOFU_SCOPES].reverse() },
+			{ id: "other", last4: "wxyz", scopes: ["api_keys_read"] },
+		];
+		expect(
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-abcd",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toEqual({ id: "current", needsUpdate: false });
+		expect(
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-wxyz",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toEqual({ id: "other", needsUpdate: true });
+		expect(() =>
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-0000",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toThrow("not exactly one owned key");
 	});
 
 	it("reuses accepted Datadog credentials and issues new ones when missing, partial, or rejected", () => {

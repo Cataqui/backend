@@ -1,7 +1,19 @@
 import { resolveUniqueNamedResource } from "./reconciliation.mjs";
 
-// The OpenTofu application key may only manage API keys. Add scopes here when a root needs more.
-export const DATADOG_OPENTOFU_SCOPES = Object.freeze(["api_keys_read", "api_keys_write"]);
+// Everything the Datadog OpenTofu roots manage. Add a scope here when a root needs more; the bootstrap updates
+// existing keys on its next run.
+export const DATADOG_OPENTOFU_SCOPES = Object.freeze([
+	"api_keys_read",
+	"api_keys_write",
+	"dashboards_read",
+	"dashboards_write",
+	"logs_read_data",
+	"logs_read_index_data",
+	"monitors_read",
+	"monitors_write",
+	"synthetics_read",
+	"synthetics_write",
+]);
 
 // `pup auth token`, which the bootstrap uses to call the Datadog API, first shipped in pup 1.18.0.
 const MINIMUM_PUP_VERSION = [1, 18, 0];
@@ -41,6 +53,23 @@ export function resolveDatadogRole(roles, roleName) {
 
 export function resolveDatadogApiKey(apiKeys, keyName) {
 	return resolveUniqueNamedResource(apiKeys, keyName);
+}
+
+/**
+ * Finds the owned application key behind the stored credential by its last four characters and reports whether its
+ * scopes differ from the required set. Fails closed when the stored key is not an owned key of the service account.
+ */
+export function decideDatadogApplicationKeyScopes({ applicationKeys, storedAppKey, requiredScopes }) {
+	const matches = applicationKeys.filter((applicationKey) => storedAppKey.endsWith(applicationKey.last4));
+	if (matches.length !== 1) {
+		throw new Error("The stored Datadog application key is not exactly one owned key of the OpenTofu service account.");
+	}
+	const currentScopes = [...(matches[0].scopes ?? [])].sort();
+	const expectedScopes = [...requiredScopes].sort();
+	return {
+		id: matches[0].id,
+		needsUpdate: JSON.stringify(currentScopes) !== JSON.stringify(expectedScopes),
+	};
 }
 
 export function decideDatadogCredentials({ stored, credentialStatus }) {

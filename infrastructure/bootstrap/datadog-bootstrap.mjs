@@ -2,6 +2,7 @@ import { knownSecrets, log, requestJson, runAsync } from "./bootstrap-runtime.mj
 import {
 	classifyDatadogCredentialResponse,
 	DATADOG_OPENTOFU_SCOPES,
+	decideDatadogApplicationKeyScopes,
 	isSupportedPupVersion,
 	reconcileDatadogEnvironmentCredentials,
 	resolveDatadogApiKey,
@@ -180,6 +181,31 @@ export async function reconcileDatadogBootstrapCredentials(
 				await setBootstrapSecret({ ...secretParams, name: "DD_APP_KEY", value: credentials.appKey });
 			},
 		});
-		log(`Datadog ${environment} OpenTofu credentials: ${result.action}.`);
+		const scopeDecision = decideDatadogApplicationKeyScopes({
+			applicationKeys: (await datadog(`${applicationKeysPath}?page%5Bsize%5D=100`)).data
+				.filter((applicationKey) => applicationKey.attributes.name === keyName)
+				.map((applicationKey) => ({
+					id: applicationKey.id,
+					last4: applicationKey.attributes.last4,
+					scopes: applicationKey.attributes.scopes,
+				})),
+			storedAppKey: await getBootstrapSecret({ ...secretParams, name: "DD_APP_KEY" }),
+			requiredScopes: DATADOG_OPENTOFU_SCOPES,
+		});
+		if (scopeDecision.needsUpdate) {
+			await datadog(`${applicationKeysPath}/${scopeDecision.id}`, {
+				method: "PATCH",
+				body: {
+					data: {
+						id: scopeDecision.id,
+						type: "application_keys",
+						attributes: { scopes: [...DATADOG_OPENTOFU_SCOPES] },
+					},
+				},
+			});
+		}
+		log(
+			`Datadog ${environment} OpenTofu credentials: ${result.action}${scopeDecision.needsUpdate ? ", scopes updated" : ""}.`,
+		);
 	}
 }
