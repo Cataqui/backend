@@ -90,4 +90,27 @@ describe("Datadog OpenTofu contract", () => {
 
 		expect(applicationConfiguration.match(/DATADOG_API_KEY/g)?.length).toBeGreaterThanOrEqual(5);
 	});
+
+	it.each(["datadog-api-keys", "datadog-observability"])("should apply the %s root on every deploy", (rootName) => {
+		const deployWorkflow = _readRepositoryFile(".github/workflows/deploy.yml");
+
+		expect(deployWorkflow).toContain(`uses: ./.github/actions/${rootName}`);
+	});
+
+	it.each([
+		["staging", 'key = "staging/datadog-observability/terraform.tfstate"'],
+		["production", 'key = "production/datadog-observability/terraform.tfstate"'],
+	] as const)("should isolate the %s observability state", (environment, expectedBackend) => {
+		const backend = _readRepositoryFile(
+			`infrastructure/opentofu/environments/${environment}/datadog-observability.s3.tfbackend`,
+		);
+
+		expect(backend.trim()).toBe(expectedBackend);
+	});
+
+	it("should lock the pinned Datadog provider for the observability root", () => {
+		const lockfile = _readRepositoryFile("infrastructure/opentofu/roots/datadog-observability/.terraform.lock.hcl");
+
+		expect(lockfile).toMatch(/provider "registry\.opentofu\.org\/datadog\/datadog"[\s\S]*version\s*=\s*"4\.23\.0"/);
+	});
 });

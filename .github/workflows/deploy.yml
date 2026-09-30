@@ -172,9 +172,12 @@ jobs:
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
       - name: Load Datadog credentials
         uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: datadog-api-keys, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: datadog-opentofu, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Apply Datadog API keys
         uses: ./.github/actions/datadog-api-keys
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Apply Datadog observability
+        uses: ./.github/actions/datadog-observability
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
       - name: Clear Datadog management credentials
         shell: bash

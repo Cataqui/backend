@@ -75,7 +75,7 @@
 		},
 		"authenticate_infisical_provider": true
 	},
-	"datadog-api-keys": {
+	"datadog-opentofu": {
 		"secret_path": "/opentofu/bootstrap",
 		"required_secrets": ["R2_STATE_ACCESS_KEY_ID", "R2_STATE_SECRET_ACCESS_KEY", "DD_API_KEY", "DD_APP_KEY"],
 		"environment_aliases": {
