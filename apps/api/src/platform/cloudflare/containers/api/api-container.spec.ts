@@ -18,6 +18,9 @@ describe("ApiContainer request boundary", () => {
 				AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 				MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 				WHATSAPP_NOTP_RECEIVER: "+5511963270517",
+				DATADOG_API_KEY: "datadog-api-key",
+				DATADOG_OTLP_ENDPOINT: "https://otlp.example.com",
+				WORKER_VERSION: { id: "version-id", tag: "commit-sha", timestamp: "2026-09-30T00:00:00.000Z" },
 				SLEEP_AFTER: "5m",
 				API_CONTAINER_POOL_SIZE: "10",
 				API_CONTAINER: {},
@@ -36,7 +39,22 @@ describe("ApiContainer request boundary", () => {
 			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: "auth-refresh-token-hmac-key-v1-base64url",
 			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: "microservices-auth-private-key",
 			WHATSAPP_NOTP_RECEIVER: "+5511963270517",
+			DATADOG_API_KEY: "datadog-api-key",
+			DATADOG_OTLP_ENDPOINT: "https://otlp.example.com",
+			SERVICE_VERSION: "commit-sha",
 		});
+	});
+
+	it("should report the Worker version ID as the service version when a deploy has no tag", () => {
+		const container = new ApiContainer(
+			{} as never,
+			{
+				SLEEP_AFTER: "5m",
+				WORKER_VERSION: { id: "version-id", tag: "", timestamp: "2026-09-30T00:00:00.000Z" },
+			} as never,
+		);
+
+		expect(container.envVars?.["SERVICE_VERSION"]).toBe("version-id");
 	});
 
 	it("should use process liveness for container startup checks", () => {
@@ -44,6 +62,7 @@ describe("ApiContainer request boundary", () => {
 			{} as never,
 			{
 				SLEEP_AFTER: "5m",
+				WORKER_VERSION: { id: "version-id", tag: "commit-sha", timestamp: "2026-09-30T00:00:00.000Z" },
 			} as ApiWorkerEnv,
 		);
 
