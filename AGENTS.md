@@ -66,6 +66,17 @@ The regression test must:
 
 Only skip a regression test if deterministic testing is impossible. If skipped, document why in the code review/commit notes.
 
+## Infrastructure as Code
+
+- Every infrastructure change goes through OpenTofu and the deployment workflow. This covers all providers (Cloudflare, Datadog, Neon, Upstash, Infisical, Google Cloud, GitHub, and any added later) and every kind of resource: accounts, keys, secrets, DNS, rules, dashboards, monitors, and settings.
+- Never create or change infrastructure by hand in a provider's dashboard or CLI. Manual changes drift from the code and are overwritten by the next deploy.
+- Only credentials OpenTofu needs to authenticate itself come from the infrastructure bootstrap, and the bootstrap must stay scripted and repeatable. If something truly cannot be managed in code, say so explicitly, explain why, and script it in the bootstrap instead of leaving a manual step.
+
+## Observability
+
+- The API sends traces, warning and error logs, and runtime metrics to Datadog through OpenTofu-provisioned keys. Everything configured inside Datadog, including keys, monitors, health checks, and dashboards, is owned by OpenTofu; never create or change it in the Datadog UI, because the next deploy overwrites manual changes.
+- To investigate a live issue, query Datadog read-only with the `pup` CLI (for example `pup logs search`, `pup apm`, `pup monitors list`, each with `--read-only`). Never mutate Datadog from an investigation.
+
 ## Skills
 
 Skills are available at `.agents/skills/`. Always check available skills before performing actions to ensure you are doing the correct stuff. Never think alone about something if a skill to help you is available.

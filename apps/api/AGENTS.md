@@ -862,6 +862,18 @@ Every validation error message must:
 
 A good error message lets the developer fix the problem without reading any docs, looking at the schema, or asking for help.
 
+### Observability
+
+The API exports OpenTelemetry traces, logs, and runtime metrics to Datadog. Keep it working with these rules:
+
+- Telemetry starts before NestJS, Fastify, Prisma, or any HTTP client is imported. Keep the application entry point's order: start telemetry first, then load the application dynamically. A static import of application code in the entry point silently disables instrumentation.
+- Telemetry must never stop the API. Missing or invalid Datadog configuration disables export instead of throwing.
+- Let unexpected failures reach the global exception filter. It records server errors on the request trace with type, message, and stack, which is what Datadog Error Tracking groups by. Catching and swallowing an error hides it from Datadog.
+- Use the Nest `Logger`. `warn`, `error`, and `fatal` are sent to Datadog and linked to the active request trace; `log`, `debug`, and `verbose` stay in the console to keep log volume small. Log a warning or error only when someone may need to act on it.
+- Never put personal data, phone numbers, tokens, request bodies, or query strings in log messages or span attributes. Client IP addresses, user agents, and query strings are stripped from exported spans; keep it that way when adding attributes.
+- HTTP, fetch-based clients, Prisma, and NestJS are instrumented automatically. A new integration that uses another transport needs an explicit span at its owning boundary to appear in traces.
+- Do not add custom metrics for request counts, errors, or latency. Datadog derives them from traces; custom metrics cost money and duplicate them.
+
 ---
 
 ## 7. Security, Trust & Safety
