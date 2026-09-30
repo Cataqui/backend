@@ -11,6 +11,7 @@ import {
 	classifyDatadogCredentialResponse,
 	DATADOG_OPENTOFU_SCOPES,
 	decideDatadogCredentials,
+	isSupportedPupVersion,
 	reconcileDatadogEnvironmentCredentials,
 	resolveDatadogApiKey,
 	resolveDatadogRole,
@@ -664,6 +665,17 @@ describe("infrastructure bootstrap reconciliation", () => {
 		[500, "indeterminate"],
 	] as const)("classifies Datadog credential responses", (status, expected) => {
 		expect(classifyDatadogCredentialResponse(status)).toBe(expected);
+	});
+
+	it.each([
+		["pup 1.18.0", true],
+		["pup 1.23.4", true],
+		["pup 2.0.0", true],
+		["pup 1.17.9", false],
+		["pup 0.99.0", false],
+		["pup", false],
+	] as const)("requires a pup release that can print its OAuth token (%s)", (versionOutput, expected) => {
+		expect(isSupportedPupVersion(versionOutput)).toBe(expected);
 	});
 
 	it("resolves the committed OpenTofu identity from the manifest", () => {

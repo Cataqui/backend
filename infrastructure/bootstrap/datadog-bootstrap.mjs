@@ -2,6 +2,7 @@ import { knownSecrets, log, requestJson, runAsync } from "./bootstrap-runtime.mj
 import {
 	classifyDatadogCredentialResponse,
 	DATADOG_OPENTOFU_SCOPES,
+	isSupportedPupVersion,
 	reconcileDatadogEnvironmentCredentials,
 	resolveDatadogApiKey,
 	resolveDatadogRole,
@@ -19,6 +20,10 @@ function _pupEnvironment(platforms) {
 }
 
 export async function verifyDatadogCliAuthenticationAsync(platforms) {
+	const version = await runAsync("pup", ["--version"], { env: _pupEnvironment(platforms) });
+	if (!isSupportedPupVersion(version.stdout)) {
+		throw new Error(`pup 1.18.0 or newer is required (found ${version.stdout.trim()}); run brew upgrade pup.`);
+	}
 	const status = await runAsync("pup", ["--no-agent", "auth", "status", "--output", "json"], {
 		env: _pupEnvironment(platforms),
 		allowFailure: true,

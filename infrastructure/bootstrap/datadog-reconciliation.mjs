@@ -3,6 +3,19 @@ import { resolveUniqueNamedResource } from "./reconciliation.mjs";
 // The OpenTofu application key may only manage API keys. Add scopes here when a root needs more.
 export const DATADOG_OPENTOFU_SCOPES = Object.freeze(["api_keys_read", "api_keys_write"]);
 
+// `pup auth token`, which the bootstrap uses to call the Datadog API, first shipped in pup 1.18.0.
+const MINIMUM_PUP_VERSION = [1, 18, 0];
+
+export function isSupportedPupVersion(versionOutput) {
+	const match = /\b(\d+)\.(\d+)\.(\d+)\b/.exec(versionOutput);
+	if (!match) return false;
+	const version = match.slice(1, 4).map(Number);
+	for (let index = 0; index < MINIMUM_PUP_VERSION.length; index += 1) {
+		if (version[index] !== MINIMUM_PUP_VERSION[index]) return version[index] > MINIMUM_PUP_VERSION[index];
+	}
+	return true;
+}
+
 export function classifyDatadogCredentialResponse(status) {
 	if (status >= 200 && status < 300) return "accepted";
 	if (status === 401 || status === 403) return "rejected";
