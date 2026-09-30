@@ -7,6 +7,10 @@
 	"type": "module",
 	"scripts": {
 		"build": "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
+		"build:staging": "wrangler deploy --dry-run --config wrangler.jsonc --env staging --outdir dist/staging",
+		"build:production": "wrangler deploy --dry-run --config wrangler.jsonc --env production --outdir dist/production",
+		"cf:deploy:staging": "wrangler deploy --config wrangler.jsonc --env staging",
+		"cf:deploy:production": "wrangler deploy --config wrangler.jsonc --env production",
 		"cf:dev": "wrangler dev --config wrangler.jsonc --env-file \"$PWD/../../../.env\" --local",
 		"cf:types": "wrangler types geovisual-worker-env.d.ts --config wrangler.jsonc --env-interface GeovisualWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
 		"cf:types:check": "wrangler types geovisual-worker-env.d.ts --check --config wrangler.jsonc --env-interface GeovisualWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
