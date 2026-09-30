@@ -80,7 +80,14 @@ export function validateManifest(manifest) {
 	);
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
 	_requireExactKeys(manifest.cloudflare.r2.buckets, ["opentofu_state"], "manifest.cloudflare.r2.buckets");
-	_requireExactKeys(manifest.datadog, ["api_keys"], "manifest.datadog");
+	_requireExactKeys(manifest.datadog, ["opentofu", "api_keys"], "manifest.datadog");
+	_requireExactKeys(manifest.datadog.opentofu, ["service_account", "credentials"], "manifest.datadog.opentofu");
+	_requireExactKeys(
+		manifest.datadog.opentofu.service_account,
+		["name", "email"],
+		"manifest.datadog.opentofu.service_account",
+	);
+	_requireExactKeys(manifest.datadog.opentofu.credentials, ENVIRONMENTS, "manifest.datadog.opentofu.credentials");
 	_requireExactKeys(
 		manifest.datadog.api_keys,
 		["cataqui_api_staging", "cataqui_api_production"],
@@ -190,7 +197,28 @@ export function validateManifest(manifest) {
 		/^[a-z][a-z0-9_]*$/,
 	);
 
+	_requireString(
+		manifest.datadog.opentofu.service_account.name,
+		"datadog.opentofu.service_account.name",
+		LOWERCASE_NAME_PATTERN,
+	);
+	_requireString(
+		manifest.datadog.opentofu.service_account.email,
+		"datadog.opentofu.service_account.email",
+		EMAIL_PATTERN,
+	);
+
 	for (const environment of ENVIRONMENTS) {
+		_requireExactKeys(
+			manifest.datadog.opentofu.credentials[environment],
+			["name"],
+			`manifest.datadog.opentofu.credentials.${environment}`,
+		);
+		_requireString(
+			manifest.datadog.opentofu.credentials[environment].name,
+			`datadog.opentofu.credentials.${environment}.name`,
+			LOWERCASE_NAME_PATTERN,
+		);
 		_requireExactKeys(
 			manifest.datadog.api_keys[`cataqui_api_${environment}`],
 			["name"],

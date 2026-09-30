@@ -9,8 +9,12 @@ import {
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
 import {
 	classifyDatadogCredentialResponse,
+	DATADOG_OPENTOFU_SCOPES,
 	decideDatadogCredentials,
-	reconcileDatadogCredentials,
+	reconcileDatadogEnvironmentCredentials,
+	resolveDatadogApiKey,
+	resolveDatadogRole,
+	resolveDatadogServiceAccount,
 } from "../infrastructure/bootstrap/datadog-reconciliation.mjs";
 import {
 	classifyGoogleProjectDiscovery,
@@ -173,9 +177,24 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(() =>
 			validateManifest({
 				...manifest,
-				datadog: { api_keys: { ...manifest.datadog.api_keys, cataqui_api_development: { name: "cataqui-api-dev" } } },
+				datadog: {
+					...manifest.datadog,
+					api_keys: { ...manifest.datadog.api_keys, cataqui_api_development: { name: "cataqui-api-dev" } },
+				},
 			}),
 		).toThrow("Unexpected keys in infrastructure configuration object: manifest.datadog.api_keys");
+		expect(() =>
+			validateManifest({
+				...manifest,
+				datadog: {
+					...manifest.datadog,
+					opentofu: {
+						...manifest.datadog.opentofu,
+						service_account: { ...manifest.datadog.opentofu.service_account, email: "not-an-email" },
+					},
+				},
+			}),
+		).toThrow("datadog.opentofu.service_account.email");
 	});
 
 	it("rejects invalid and unexpected desired infrastructure values", () => {
@@ -647,106 +666,109 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(classifyDatadogCredentialResponse(status)).toBe(expected);
 	});
 
-	it("reuses a healthy shared Datadog credential pair and repairs missing or half-written environments", () => {
-		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
-		expect(
-			decideDatadogCredentials({
-				storedByEnvironment: { staging: credentials, production: credentials },
-				credentialStatus: "accepted",
-			}),
-		).toEqual({ action: "reuse", writeEnvironments: [] });
-		expect(
-			decideDatadogCredentials({
-				storedByEnvironment: { staging: credentials, production: { apiKey: credentials.apiKey, appKey: undefined } },
-				credentialStatus: "accepted",
-			}),
-		).toEqual({ action: "reuse", writeEnvironments: ["production"] });
+	it("resolves the committed OpenTofu identity from the manifest", () => {
+		expect(manifest.datadog.opentofu).toEqual({
+			service_account: { name: "cataqui-backend-opentofu", email: "cataqui-backend-opentofu@cataqui.com" },
+			credentials: {
+				staging: { name: "cataqui-backend-opentofu-staging" },
+				production: { name: "cataqui-backend-opentofu-production" },
+			},
+		});
+		expect(DATADOG_OPENTOFU_SCOPES).toEqual(["api_keys_read", "api_keys_write"]);
 	});
 
-	it("requests or replaces the Datadog credential pair only when missing or rejected", () => {
-		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
-		expect(
-			decideDatadogCredentials({
-				storedByEnvironment: {
-					staging: { apiKey: undefined, appKey: undefined },
-					production: { apiKey: undefined, appKey: undefined },
-				},
-				credentialStatus: "missing",
-			}),
-		).toEqual({ action: "request", writeEnvironments: ["staging", "production"] });
-		expect(
-			decideDatadogCredentials({
-				storedByEnvironment: { staging: credentials, production: credentials },
-				credentialStatus: "rejected",
-			}),
-		).toEqual({ action: "replace", writeEnvironments: ["staging", "production"] });
+	it("reuses only the enabled Datadog service account with the owned email", () => {
+		const expected = manifest.datadog.opentofu.service_account;
+		const owned = { id: "owned", name: expected.name, email: expected.email, disabled: false };
+		expect(resolveDatadogServiceAccount([owned], expected)).toBe(owned);
+		expect(resolveDatadogServiceAccount([], expected)).toBeUndefined();
+		expect(() => resolveDatadogServiceAccount([{ ...owned, email: "someone@example.com" }], expected)).toThrow(
+			"Foreign resource",
+		);
+		expect(() => resolveDatadogServiceAccount([{ ...owned, disabled: true }], expected)).toThrow("Foreign resource");
+		expect(() => resolveDatadogServiceAccount([owned, { ...owned, id: "copy" }], expected)).toThrow("Duplicate");
 	});
 
-	it("fails closed for conflicting or indeterminate Datadog credentials", () => {
-		const apiKey = randomUUID();
+	it("requires exactly one matching Datadog role and API key name", () => {
+		expect(resolveDatadogRole([{ id: "admin", name: "Datadog Admin Role" }], "Datadog Admin Role").id).toBe("admin");
+		expect(() => resolveDatadogRole([], "Datadog Admin Role")).toThrow("does not exist");
+		expect(
+			resolveDatadogApiKey(
+				[{ id: "key", name: "cataqui-backend-opentofu-staging" }],
+				"cataqui-backend-opentofu-staging",
+			)?.id,
+		).toBe("key");
 		expect(() =>
-			decideDatadogCredentials({
-				storedByEnvironment: {
-					staging: { apiKey: apiKey, appKey: randomUUID() },
-					production: { apiKey: apiKey, appKey: randomUUID() },
-				},
-				credentialStatus: "accepted",
-			}),
-		).toThrow("different Datadog bootstrap credentials");
-		expect(() =>
-			decideDatadogCredentials({
-				storedByEnvironment: { staging: { apiKey: apiKey, appKey: randomUUID() }, production: undefined },
-				credentialStatus: "indeterminate",
-			}),
-		).toThrow("Unable to determine");
+			resolveDatadogApiKey(
+				[
+					{ id: "a", name: "cataqui-backend-opentofu-staging" },
+					{ id: "b", name: "cataqui-backend-opentofu-staging" },
+				],
+				"cataqui-backend-opentofu-staging",
+			),
+		).toThrow("Duplicate");
 	});
 
-	it("prompts once and writes both environments on first Datadog bootstrap", async () => {
-		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
-		const events: string[] = [];
-		await expect(
-			reconcileDatadogCredentials({
-				storedByEnvironment: { staging: undefined, production: undefined },
-				verifyCredentials: async (supplied) => (supplied === credentials ? "accepted" : "rejected"),
-				requestCredentials: async () => {
-					events.push("prompt");
-					return credentials;
-				},
-				writeCredentials: async (environment) => events.push(`write:${environment}`),
-			}),
-		).resolves.toEqual({ action: "request", writtenEnvironments: ["staging", "production"] });
-		expect(events).toEqual(["prompt", "write:staging", "write:production"]);
+	it("reuses accepted Datadog credentials and issues new ones when missing, partial, or rejected", () => {
+		const stored = { apiKey: randomUUID(), appKey: randomUUID() };
+		expect(decideDatadogCredentials({ stored, credentialStatus: "accepted" })).toEqual({ action: "reuse" });
+		expect(decideDatadogCredentials({ stored, credentialStatus: "rejected" })).toEqual({ action: "issue" });
+		expect(decideDatadogCredentials({ stored: { apiKey: stored.apiKey }, credentialStatus: "missing" })).toEqual({
+			action: "issue",
+		});
+		expect(() => decideDatadogCredentials({ stored, credentialStatus: "indeterminate" })).toThrow(
+			"Unable to determine",
+		);
 	});
 
-	it("never stores incomplete, rejected, or unverifiable Datadog credentials", async () => {
+	function _datadogCredentialHarness(options: { stored?: { apiKey?: string; appKey?: string }; verify: string[] }) {
 		const events: string[] = [];
-		const writeCredentials = async (environment: string) => events.push(`write:${environment}`);
-		const storedByEnvironment = { staging: undefined, production: undefined };
-		await expect(
-			reconcileDatadogCredentials({
-				storedByEnvironment,
-				verifyCredentials: async () => "accepted",
-				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: "" }),
-				writeCredentials,
-			}),
-		).rejects.toThrow("incomplete");
-		await expect(
-			reconcileDatadogCredentials({
-				storedByEnvironment,
-				verifyCredentials: async () => "rejected",
-				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: randomUUID() }),
-				writeCredentials,
-			}),
-		).rejects.toThrow("supplied Datadog bootstrap credentials are invalid");
-		await expect(
-			reconcileDatadogCredentials({
-				storedByEnvironment,
-				verifyCredentials: async () => "indeterminate",
-				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: randomUUID() }),
-				writeCredentials,
-			}),
-		).rejects.toThrow("Unable to verify the supplied Datadog bootstrap credentials");
-		expect(events).toEqual([]);
+		const verifyResults = [...options.verify];
+		return {
+			events,
+			params: {
+				stored: options.stored,
+				verifyCredentials: async () => {
+					events.push("verify");
+					return verifyResults.shift() ?? "accepted";
+				},
+				getOrCreateApiKey: async () => {
+					events.push("api-key");
+					return "api-key-value";
+				},
+				createApplicationKey: async () => {
+					events.push("create-app-key");
+					return { id: "new-app-key", key: "app-key-value" };
+				},
+				listApplicationKeys: async () => [{ id: "new-app-key" }, { id: "lost-app-key" }],
+				deleteApplicationKey: async (id: string) => events.push(`delete:${id}`),
+				writeCredentials: async () => events.push("write"),
+			},
+		};
+	}
+
+	it("keeps working stored Datadog credentials without touching Datadog", async () => {
+		const harness = _datadogCredentialHarness({ stored: { apiKey: "a", appKey: "b" }, verify: ["accepted"] });
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).resolves.toEqual({ action: "reuse" });
+		expect(harness.events).toEqual(["verify"]);
+	});
+
+	it("stores newly issued Datadog credentials before removing lost same-named application keys", async () => {
+		const harness = _datadogCredentialHarness({ stored: undefined, verify: ["accepted"] });
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).resolves.toEqual({
+			action: "issue",
+			deletedApplicationKeys: 1,
+		});
+		expect(harness.events).toEqual(["api-key", "create-app-key", "verify", "write", "delete:lost-app-key"]);
+	});
+
+	it("revokes a rejected new application key and never stores it", async () => {
+		const harness = _datadogCredentialHarness({
+			stored: { apiKey: "a", appKey: "b" },
+			verify: ["rejected", "rejected"],
+		});
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).rejects.toThrow("did not accept");
+		expect(harness.events).toEqual(["verify", "api-key", "create-app-key", "verify", "delete:new-app-key"]);
 	});
 
 	it("reuses one healthy owned resource and fails closed on duplicates or foreign ownership", () => {

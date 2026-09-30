@@ -1,23 +1,7 @@
-import { constantTimeEqual, ENVIRONMENTS } from "./reconciliation.mjs";
+import { resolveUniqueNamedResource } from "./reconciliation.mjs";
 
-function _isCompleteCredentialSet(credentials) {
-	return Boolean(credentials?.apiKey && credentials?.appKey);
-}
-
-function _isSameCredentialSet(left, right) {
-	return constantTimeEqual(left.apiKey, right.apiKey) && constantTimeEqual(left.appKey, right.appKey);
-}
-
-// A half-written set (only one of the two keys) is treated as absent for that environment and repaired.
-function _getStoredCredentials(storedByEnvironment) {
-	const completeSets = ENVIRONMENTS.map((environment) => storedByEnvironment[environment]).filter(
-		_isCompleteCredentialSet,
-	);
-	if (completeSets.length === 2 && !_isSameCredentialSet(completeSets[0], completeSets[1])) {
-		throw new Error("Staging and production contain different Datadog bootstrap credentials.");
-	}
-	return completeSets[0];
-}
+// The OpenTofu application key may only manage API keys. Add scopes here when a root needs more.
+export const DATADOG_OPENTOFU_SCOPES = Object.freeze(["api_keys_read", "api_keys_write"]);
 
 export function classifyDatadogCredentialResponse(status) {
 	if (status >= 200 && status < 300) return "accepted";
@@ -25,48 +9,61 @@ export function classifyDatadogCredentialResponse(status) {
 	return "indeterminate";
 }
 
-export function decideDatadogCredentials({ storedByEnvironment, credentialStatus }) {
-	const storedCredentials = _getStoredCredentials(storedByEnvironment);
-	if (!storedCredentials) return { action: "request", writeEnvironments: [...ENVIRONMENTS] };
-	if (credentialStatus === "accepted") {
-		return {
-			action: "reuse",
-			writeEnvironments: ENVIRONMENTS.filter(
-				(environment) => !_isCompleteCredentialSet(storedByEnvironment[environment]),
-			),
-		};
-	}
-	if (credentialStatus === "rejected") {
-		return { action: "replace", writeEnvironments: [...ENVIRONMENTS] };
-	}
+export function resolveDatadogServiceAccount(serviceAccounts, expected) {
+	return resolveUniqueNamedResource(
+		serviceAccounts,
+		expected.name,
+		(serviceAccount) => serviceAccount.email === expected.email && serviceAccount.disabled === false,
+	);
+}
+
+export function resolveDatadogRole(roles, roleName) {
+	const role = resolveUniqueNamedResource(roles, roleName);
+	if (!role) throw new Error(`Datadog role ${roleName} does not exist.`);
+	return role;
+}
+
+export function resolveDatadogApiKey(apiKeys, keyName) {
+	return resolveUniqueNamedResource(apiKeys, keyName);
+}
+
+export function decideDatadogCredentials({ stored, credentialStatus }) {
+	if (!stored?.apiKey || !stored?.appKey) return { action: "issue" };
+	if (credentialStatus === "accepted") return { action: "reuse" };
+	if (credentialStatus === "rejected") return { action: "issue" };
 	throw new Error("Unable to determine whether the stored Datadog bootstrap credentials are valid.");
 }
 
-export async function reconcileDatadogCredentials({
-	storedByEnvironment,
+/**
+ * Reuses one environment's stored OpenTofu credentials when Datadog accepts them. Otherwise it reuses the named API
+ * key, issues a new application key (Datadog only reveals its value once), stores the verified pair, and only then
+ * removes older same-named application keys whose values were lost.
+ */
+export async function reconcileDatadogEnvironmentCredentials({
+	stored,
 	verifyCredentials,
-	requestCredentials,
+	getOrCreateApiKey,
+	createApplicationKey,
+	deleteApplicationKey,
+	listApplicationKeys,
 	writeCredentials,
 }) {
-	const storedCredentials = _getStoredCredentials(storedByEnvironment);
-	const credentialStatus = storedCredentials ? await verifyCredentials(storedCredentials) : "missing";
-	const decision = decideDatadogCredentials({ storedByEnvironment, credentialStatus });
+	const credentialStatus = stored?.apiKey && stored?.appKey ? await verifyCredentials(stored) : "missing";
+	const decision = decideDatadogCredentials({ stored, credentialStatus });
+	if (decision.action === "reuse") return { action: "reuse" };
 
-	let selectedCredentials = storedCredentials;
-	if (decision.action === "request" || decision.action === "replace") {
-		selectedCredentials = await requestCredentials();
-		if (!_isCompleteCredentialSet(selectedCredentials)) {
-			throw new Error("The supplied Datadog bootstrap credentials are incomplete.");
-		}
-		const suppliedStatus = await verifyCredentials(selectedCredentials);
-		if (suppliedStatus === "rejected") throw new Error("The supplied Datadog bootstrap credentials are invalid.");
-		if (suppliedStatus !== "accepted") {
-			throw new Error("Unable to verify the supplied Datadog bootstrap credentials.");
-		}
+	const apiKey = await getOrCreateApiKey();
+	const applicationKey = await createApplicationKey();
+	const issuedStatus = await verifyCredentials({ apiKey: apiKey, appKey: applicationKey.key });
+	if (issuedStatus !== "accepted") {
+		await deleteApplicationKey(applicationKey.id);
+		throw new Error("Datadog did not accept the newly issued OpenTofu credentials.");
 	}
 
-	for (const environment of decision.writeEnvironments) {
-		await writeCredentials(environment, selectedCredentials);
+	await writeCredentials({ apiKey: apiKey, appKey: applicationKey.key });
+	const staleApplicationKeys = (await listApplicationKeys()).filter((key) => key.id !== applicationKey.id);
+	for (const staleApplicationKey of staleApplicationKeys) {
+		await deleteApplicationKey(staleApplicationKey.id);
 	}
-	return { action: decision.action, writtenEnvironments: decision.writeEnvironments };
+	return { action: "issue", deletedApplicationKeys: staleApplicationKeys.length };
 }
