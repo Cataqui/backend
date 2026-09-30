@@ -23,6 +23,14 @@ locals {
       name  = "Workers AI Read"
       scope = "com.cloudflare.api.account"
     }
+    r2_storage_read = {
+      name  = "Workers R2 Storage Read"
+      scope = "com.cloudflare.api.account"
+    }
+    r2_storage_write = {
+      name  = "Workers R2 Storage Write"
+      scope = "com.cloudflare.api.account"
+    }
     queues_read = {
       name  = "Queues Read"
       scope = "com.cloudflare.api.account"
@@ -114,6 +122,10 @@ locals {
   }
 
   common_infrastructure_tokens = {
+    cloudflare-r2 = {
+      permissions = ["r2_storage_read", "r2_storage_write"]
+      scope       = "account"
+    }
     cloudflare-ai-gateways = {
       permissions = ["ai_gateway_read", "ai_gateway_write"]
       scope       = "account"

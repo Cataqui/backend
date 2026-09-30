@@ -70,6 +70,7 @@ run "generated_folder_contract" {
       toset(keys(infisical_secret_folder.cloudflare_opentofu_root)) == toset([
         "cloudflare-ai-gateways",
         "cloudflare-queues",
+        "cloudflare-r2",
       ])
     )
     error_message = "Staging must create one generated credential folder for each account-scoped Cloudflare root."
@@ -102,10 +103,10 @@ run "production_folder_environment" {
   assert {
     condition = (
       infisical_secret_folder.opentofu.environment_slug == "production" &&
-      length(infisical_secret_folder.cloudflare_opentofu_root) == 4 &&
+      length(infisical_secret_folder.cloudflare_opentofu_root) == 5 &&
       alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"])
     )
-    error_message = "Production must create one credential folder for each of its four Cloudflare roots."
+    error_message = "Production must create one credential folder for each of its five Cloudflare roots."
   }
 }
 
@@ -117,4 +118,20 @@ run "reject_unsupported_environment" {
   }
 
   expect_failures = [var.environment]
+}
+
+run "r2_credential_folder" {
+  command = plan
+  variables {
+    environment = "production"
+  }
+  assert {
+    condition = (
+      infisical_secret_folder.cloudflare_opentofu_root["cloudflare-r2"].folder_path == "/generated/opentofu" &&
+      infisical_secret_folder.cloudflare_opentofu_root["cloudflare-r2"].name == "cloudflare-r2" &&
+      infisical_secret_folder.cloudflare_opentofu_root["cloudflare-r2"].environment_slug == "production" &&
+      !infisical_secret_folder.cloudflare_opentofu_root["cloudflare-r2"].force_delete
+    )
+    error_message = "R2 credentials must have a protected environment-scoped generated folder."
+  }
 }

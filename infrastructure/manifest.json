@@ -6,7 +6,9 @@
 		},
 		"r2": {
 			"buckets": {
-				"opentofu_state": "cataqui-backend-opentofu-state"
+				"opentofu_state": "cataqui-backend-opentofu-state",
+				"geovisual_images_staging": "cataqui-geovisual-images-staging",
+				"geovisual_images_production": "cataqui-geovisual-images-production"
 			}
 		}
 	},

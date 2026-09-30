@@ -36,6 +36,7 @@ run "staging_token_inventory" {
     condition = toset(keys(cloudflare_api_token.infrastructure)) == toset([
       "cloudflare-ai-gateways",
       "cloudflare-queues",
+      "cloudflare-r2",
     ])
     error_message = "Staging must create one infrastructure token for each account-scoped Cloudflare root."
   }
@@ -45,8 +46,8 @@ run "staging_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 6
-    error_message = "Staging must deliver two infrastructure, one API runtime, and three application deployment tokens."
+    ) == 7
+    error_message = "Staging must deliver three infrastructure, one API runtime, and three application deployment tokens."
   }
 
   assert {
@@ -84,7 +85,7 @@ run "production_token_inventory" {
   }
 
   assert {
-    condition     = length(cloudflare_api_token.infrastructure) == 4
+    condition     = length(cloudflare_api_token.infrastructure) == 5
     error_message = "Production must create one token for each Cloudflare root."
   }
 
@@ -93,8 +94,8 @@ run "production_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 8
-    error_message = "Production must deliver four infrastructure, one API runtime, and three application deployment tokens."
+    ) == 9
+    error_message = "Production must deliver five infrastructure, one API runtime, and three application deployment tokens."
   }
 
   assert {
@@ -285,4 +286,24 @@ run "reject_unsupported_environment" {
   }
 
   expect_failures = [var.environment]
+}
+
+run "r2_management_credential" {
+  command = plan
+  variables {
+    environment = "staging"
+  }
+  assert {
+    condition = (
+      local.common_infrastructure_tokens["cloudflare-r2"].permissions == ["r2_storage_read", "r2_storage_write"] &&
+      local.common_infrastructure_tokens["cloudflare-r2"].scope == "account" &&
+      local.permission_groups.r2_storage_read.name == "Workers R2 Storage Read" &&
+      local.permission_groups.r2_storage_write.name == "Workers R2 Storage Write" &&
+      local.permission_groups.r2_storage_read.scope == "com.cloudflare.api.account" &&
+      local.permission_groups.r2_storage_write.scope == "com.cloudflare.api.account" &&
+      cloudflare_api_token.infrastructure["cloudflare-r2"].name == "cataqui-opentofu-cloudflare-r2-staging" &&
+      infisical_secret.infrastructure_cloudflare_api_token["cloudflare-r2"].folder_path == "/generated/opentofu/cloudflare-r2"
+    )
+    error_message = "R2 management must use exact account permissions and the dedicated environment-scoped credential path."
+  }
 }

@@ -48,7 +48,20 @@ jobs:
               base="$BEFORE_SHA"; [[ -z "$base" || "$base" =~ ^0+$ ]] && base=HEAD^
               while IFS= read -r path; do
                 case "$path" in
-                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/workflows/deploy.yml|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
+                  .github/actions/load-infisical-secrets/profiles.json)
+                    if ! PROFILE_BASE="$base" node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { readFileSync } from "node:fs";
+          import { isDeepStrictEqual } from "node:util";
+          const path = ".github/actions/load-infisical-secrets/profiles.json";
+          const before = JSON.parse(execFileSync("git", ["show", `${process.env.PROFILE_BASE}:${path}`], { encoding: "utf8" }));
+          const after = JSON.parse(readFileSync(path, "utf8"));
+          delete before["cloudflare-r2"];
+          delete after["cloudflare-r2"];
+          process.exit(isDeepStrictEqual(before, after) ? 0 : 1);
+          NODE
+                    then deploy_api=true; deploy_geosearch=true; deploy_webhooks=true; fi ;;
+                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
                   apps/api/*) deploy_api=true ;;
                   apps/workers/geosearch/*) deploy_geosearch=true ;;
                   apps/workers/webhooks/*) deploy_webhooks=true ;;
@@ -134,6 +147,15 @@ jobs:
       - name: Apply Cloudflare API tokens
         uses: ./.github/actions/cloudflare-api-tokens
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Load R2 infrastructure credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Apply private R2 image storage
+        uses: ./.github/actions/cloudflare-r2
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Clear R2 infrastructure credential
+        shell: bash
+        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
       - name: Apply generated authentication secrets
         uses: ./.github/actions/auth-secrets
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }

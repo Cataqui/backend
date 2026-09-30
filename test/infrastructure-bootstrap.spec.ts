@@ -77,7 +77,11 @@ describe("infrastructure bootstrap reconciliation", () => {
 	it("accepts the committed stable bootstrap contract", () => {
 		expect(validatePlatforms(platformCoordinates)).toBe(platformCoordinates);
 		expect(validateManifest(manifest)).toBe(manifest);
-		expect(manifest.cloudflare.r2.buckets).toEqual({ opentofu_state: "cataqui-backend-opentofu-state" });
+		expect(manifest.cloudflare.r2.buckets).toEqual({
+			opentofu_state: "cataqui-backend-opentofu-state",
+			geovisual_images_staging: "cataqui-geovisual-images-staging",
+			geovisual_images_production: "cataqui-geovisual-images-production",
+		});
 		expect(manifest.cloudflare.ai_gateways).toEqual({
 			derive_job_data_staging: "cataqui-derive-job-data-staging",
 			derive_job_data_production: "cataqui-derive-job-data-production",
@@ -124,6 +128,18 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(manifest.neon.databases).toEqual({
 			cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
 		});
+	});
+
+	it.each(["staging", "production"])("rejects an invalid %s image bucket name", (environment) => {
+		expect(() =>
+			validateManifest({
+				...manifest,
+				cloudflare: {
+					...manifest.cloudflare,
+					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`geovisual_images_${environment}`]: "INVALID BUCKET" } },
+				},
+			}),
+		).toThrow(`manifest.cloudflare.r2.buckets.geovisual_images_${environment}`);
 	});
 
 	it("rejects invalid and unexpected external platform values", () => {

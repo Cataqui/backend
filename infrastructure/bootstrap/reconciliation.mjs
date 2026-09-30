@@ -69,7 +69,11 @@ export function validateManifest(manifest) {
 		"manifest.cloudflare.ai_gateways",
 	);
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
-	_requireExactKeys(manifest.cloudflare.r2.buckets, ["opentofu_state"], "manifest.cloudflare.r2.buckets");
+	_requireExactKeys(
+		manifest.cloudflare.r2.buckets,
+		["opentofu_state", "geovisual_images_staging", "geovisual_images_production"],
+		"manifest.cloudflare.r2.buckets",
+	);
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
 	_requireExactKeys(
 		manifest.google_cloud.projects,
@@ -149,6 +153,13 @@ export function validateManifest(manifest) {
 		"cloudflare.r2.buckets.opentofu_state",
 		LOWERCASE_NAME_PATTERN,
 	);
+	for (const environment of ENVIRONMENTS) {
+		_requireString(
+			manifest.cloudflare.r2.buckets[`geovisual_images_${environment}`],
+			`manifest.cloudflare.r2.buckets.geovisual_images_${environment}`,
+			LOWERCASE_NAME_PATTERN,
+		);
+	}
 	_requireString(manifest.infisical.project.name, "infisical.project.name");
 	_requireString(manifest.infisical.project.slug, "infisical.project.slug", LOWERCASE_NAME_PATTERN);
 	_requireString(
