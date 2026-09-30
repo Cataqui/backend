@@ -16,6 +16,9 @@ export function isSupportedPupVersion(versionOutput) {
 	return true;
 }
 
+// A new application key is rejected for a short time until Datadog propagates it, so the first check can fail.
+const ISSUED_KEY_PROPAGATION_DELAYS_MS = Object.freeze([2_000, 4_000, 8_000, 15_000, 30_000]);
+
 export function classifyDatadogCredentialResponse(status) {
 	if (status >= 200 && status < 300) return "accepted";
 	if (status === 401 || status === 403) return "rejected";
@@ -60,6 +63,7 @@ export async function reconcileDatadogEnvironmentCredentials({
 	deleteApplicationKey,
 	listApplicationKeys,
 	writeCredentials,
+	wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
 }) {
 	const credentialStatus = stored?.apiKey && stored?.appKey ? await verifyCredentials(stored) : "missing";
 	const decision = decideDatadogCredentials({ stored, credentialStatus });
@@ -67,10 +71,16 @@ export async function reconcileDatadogEnvironmentCredentials({
 
 	const apiKey = await getOrCreateApiKey();
 	const applicationKey = await createApplicationKey();
-	const issuedStatus = await verifyCredentials({ apiKey: apiKey, appKey: applicationKey.key });
+	const issuedCredentials = { apiKey: apiKey, appKey: applicationKey.key };
+	let issuedStatus = await verifyCredentials(issuedCredentials);
+	for (const delay of ISSUED_KEY_PROPAGATION_DELAYS_MS) {
+		if (issuedStatus === "accepted") break;
+		await wait(delay);
+		issuedStatus = await verifyCredentials(issuedCredentials);
+	}
 	if (issuedStatus !== "accepted") {
 		await deleteApplicationKey(applicationKey.id);
-		throw new Error("Datadog did not accept the newly issued OpenTofu credentials.");
+		throw new Error(`Datadog did not accept the newly issued OpenTofu credentials (last check: ${issuedStatus}).`);
 	}
 
 	await writeCredentials({ apiKey: apiKey, appKey: applicationKey.key });

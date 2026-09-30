@@ -755,6 +755,9 @@ describe("infrastructure bootstrap reconciliation", () => {
 				listApplicationKeys: async () => [{ id: "new-app-key" }, { id: "lost-app-key" }],
 				deleteApplicationKey: async (id: string) => events.push(`delete:${id}`),
 				writeCredentials: async () => events.push("write"),
+				wait: async () => {
+					events.push("wait");
+				},
 			},
 		};
 	}
@@ -774,13 +777,30 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(harness.events).toEqual(["api-key", "create-app-key", "verify", "write", "delete:lost-app-key"]);
 	});
 
-	it("revokes a rejected new application key and never stores it", async () => {
+	it("waits for a new application key to propagate before storing it", async () => {
+		const harness = _datadogCredentialHarness({ stored: undefined, verify: ["rejected", "rejected", "accepted"] });
+		await reconcileDatadogEnvironmentCredentials(harness.params);
+		expect(harness.events).toEqual([
+			"api-key",
+			"create-app-key",
+			"verify",
+			"wait",
+			"verify",
+			"wait",
+			"verify",
+			"write",
+			"delete:lost-app-key",
+		]);
+	});
+
+	it("revokes a new application key that is still rejected after propagation and never stores it", async () => {
 		const harness = _datadogCredentialHarness({
 			stored: { apiKey: "a", appKey: "b" },
-			verify: ["rejected", "rejected"],
+			verify: ["rejected", "rejected", "rejected", "rejected", "rejected", "rejected", "rejected"],
 		});
 		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).rejects.toThrow("did not accept");
-		expect(harness.events).toEqual(["verify", "api-key", "create-app-key", "verify", "delete:new-app-key"]);
+		expect(harness.events.filter((event) => event === "write")).toEqual([]);
+		expect(harness.events.at(-1)).toBe("delete:new-app-key");
 	});
 
 	it("reuses one healthy owned resource and fails closed on duplicates or foreign ownership", () => {
