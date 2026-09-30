@@ -1,0 +1,32 @@
+{
+	"name": "@cataqui/geovisual-worker",
+	"version": "1.0.0",
+	"description": "Cataquí geographic image Worker",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"scripts": {
+		"build": "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
+		"cf:dev": "wrangler dev --config wrangler.jsonc --env-file \"$PWD/../../../.env\" --local",
+		"cf:types": "wrangler types geovisual-worker-env.d.ts --config wrangler.jsonc --env-interface GeovisualWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
+		"cf:types:check": "wrangler types geovisual-worker-env.d.ts --check --config wrangler.jsonc --env-interface GeovisualWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
+		"clean": "node -e \"for (const target of ['coverage','dist']) require('node:fs').rmSync(target,{recursive:true,force:true})\"",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit && pnpm cf:types:check"
+	},
+	"dependencies": {
+		"@hono/swagger-ui": "^0.6.1",
+		"hono": "catalog:",
+		"hono-openapi": "^1.3.3",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

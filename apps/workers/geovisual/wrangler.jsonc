@@ -1,0 +1,12 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "cataqui-geovisual-development",
+	"main": "./src/app.ts",
+	"tsconfig": "./tsconfig.json",
+	"compatibility_date": "2026-09-30",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"vars": { "ENVIRONMENT": "development" },
+	"secrets": { "required": ["GEOAPIFY_API_KEY"] },
+	"observability": { "enabled": true, "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false } }
+}
