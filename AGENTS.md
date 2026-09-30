@@ -70,7 +70,12 @@ Only skip a regression test if deterministic testing is impossible. If skipped, 
 
 - Every infrastructure change goes through OpenTofu and the deployment workflow. This covers all providers (Cloudflare, Datadog, Neon, Upstash, Infisical, Google Cloud, GitHub, and any added later) and every kind of resource: accounts, keys, secrets, DNS, rules, dashboards, monitors, and settings.
 - Never create or change infrastructure by hand in a provider's dashboard or CLI. Manual changes drift from the code and are overwritten by the next deploy.
-- Only credentials OpenTofu needs to authenticate itself come from the infrastructure bootstrap, and the bootstrap must stay scripted and repeatable. If something truly cannot be managed in code, say so explicitly, explain why, and script it in the bootstrap instead of leaving a manual step.
+- Choose the most declarative option that works, in this order:
+  1. OpenTofu resource.
+  2. Script in the infrastructure bootstrap that uses the provider's CLI.
+  3. Script in the infrastructure bootstrap that calls the provider's API directly.
+  4. Manual step, only when none of the above is possible. Document why and the exact steps.
+- Move to a lower option only when the higher one cannot do the job, and say which option you used and why. Credentials OpenTofu needs to authenticate itself always come from the bootstrap, and bootstrap scripts must stay repeatable.
 
 ## Observability
 
