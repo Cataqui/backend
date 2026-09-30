@@ -19,6 +19,7 @@ import {
 	runBootstrapPhase,
 	startBootstrapUi,
 } from "./bootstrap-runtime.mjs";
+import { reconcileDatadogBootstrapCredentials } from "./datadog-bootstrap.mjs";
 import { getGithubOidcSubjectPrefix, reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
 import {
@@ -97,6 +98,7 @@ async function _main() {
 		await _phase("Reconciling provider credentials", "Provider credentials ready", async () => {
 			await reconcileMetaAppSecret(infisicalProjectId, infisicalToken);
 			await reconcileUpstashApiKey(platforms, infisicalProjectId, infisicalToken);
+			await reconcileDatadogBootstrapCredentials(platforms, infisicalProjectId, infisicalToken);
 			await reconcileNeonAccountApiKey({ platforms, manifest }, infisicalProjectId, infisicalToken);
 		});
 		const googleAuth = await _phase(

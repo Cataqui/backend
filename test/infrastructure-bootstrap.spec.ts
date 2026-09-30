@@ -8,6 +8,11 @@ import {
 	getR2TokenName,
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
 import {
+	classifyDatadogCredentialResponse,
+	decideDatadogCredentials,
+	reconcileDatadogCredentials,
+} from "../infrastructure/bootstrap/datadog-reconciliation.mjs";
+import {
 	classifyGoogleProjectDiscovery,
 	decideGoogleProject,
 } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
@@ -106,6 +111,11 @@ describe("infrastructure bootstrap reconciliation", () => {
 			production: { branches: ["main"] },
 		});
 		expect(platformCoordinates.upstash).toEqual({ account_email: "ryan@ventairy.com" });
+		expect(platformCoordinates.datadog).toEqual({ site: "us5.datadoghq.com" });
+		expect(manifest.datadog.api_keys).toEqual({
+			cataqui_api_staging: { name: "cataqui-api-staging" },
+			cataqui_api_production: { name: "cataqui-api-production" },
+		});
 		expect(manifest.upstash.redis.databases).toEqual({
 			cataqui_api_staging: { name: "cataqui-api-staging" },
 			cataqui_api_production: { name: "cataqui-api-production" },
@@ -154,6 +164,18 @@ describe("infrastructure bootstrap reconciliation", () => {
 				upstash: { ...platformCoordinates.upstash, api_key: "forbidden" },
 			}),
 		).toThrow("Unexpected keys in infrastructure configuration object: platforms.upstash");
+		expect(() => validatePlatforms({ ...platformCoordinates, datadog: { site: "https://us5.datadoghq.com" } })).toThrow(
+			"datadog.site",
+		);
+		expect(() =>
+			validatePlatforms({ ...platformCoordinates, datadog: { ...platformCoordinates.datadog, api_key: "forbidden" } }),
+		).toThrow("Unexpected keys in infrastructure configuration object: platforms.datadog");
+		expect(() =>
+			validateManifest({
+				...manifest,
+				datadog: { api_keys: { ...manifest.datadog.api_keys, cataqui_api_development: { name: "cataqui-api-dev" } } },
+			}),
+		).toThrow("Unexpected keys in infrastructure configuration object: manifest.datadog.api_keys");
 	});
 
 	it("rejects invalid and unexpected desired infrastructure values", () => {
@@ -612,6 +634,118 @@ describe("infrastructure bootstrap reconciliation", () => {
 				writeKey: async (environment) => events.push(`write:${environment}`),
 			}),
 		).rejects.toThrow("supplied Upstash bootstrap API key is invalid");
+		expect(events).toEqual([]);
+	});
+
+	it.each([
+		[200, "accepted"],
+		[401, "rejected"],
+		[403, "rejected"],
+		[429, "indeterminate"],
+		[500, "indeterminate"],
+	] as const)("classifies Datadog credential responses", (status, expected) => {
+		expect(classifyDatadogCredentialResponse(status)).toBe(expected);
+	});
+
+	it("reuses a healthy shared Datadog credential pair and repairs missing or half-written environments", () => {
+		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
+		expect(
+			decideDatadogCredentials({
+				storedByEnvironment: { staging: credentials, production: credentials },
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "reuse", writeEnvironments: [] });
+		expect(
+			decideDatadogCredentials({
+				storedByEnvironment: { staging: credentials, production: { apiKey: credentials.apiKey, appKey: undefined } },
+				credentialStatus: "accepted",
+			}),
+		).toEqual({ action: "reuse", writeEnvironments: ["production"] });
+	});
+
+	it("requests or replaces the Datadog credential pair only when missing or rejected", () => {
+		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
+		expect(
+			decideDatadogCredentials({
+				storedByEnvironment: {
+					staging: { apiKey: undefined, appKey: undefined },
+					production: { apiKey: undefined, appKey: undefined },
+				},
+				credentialStatus: "missing",
+			}),
+		).toEqual({ action: "request", writeEnvironments: ["staging", "production"] });
+		expect(
+			decideDatadogCredentials({
+				storedByEnvironment: { staging: credentials, production: credentials },
+				credentialStatus: "rejected",
+			}),
+		).toEqual({ action: "replace", writeEnvironments: ["staging", "production"] });
+	});
+
+	it("fails closed for conflicting or indeterminate Datadog credentials", () => {
+		const apiKey = randomUUID();
+		expect(() =>
+			decideDatadogCredentials({
+				storedByEnvironment: {
+					staging: { apiKey: apiKey, appKey: randomUUID() },
+					production: { apiKey: apiKey, appKey: randomUUID() },
+				},
+				credentialStatus: "accepted",
+			}),
+		).toThrow("different Datadog bootstrap credentials");
+		expect(() =>
+			decideDatadogCredentials({
+				storedByEnvironment: { staging: { apiKey: apiKey, appKey: randomUUID() }, production: undefined },
+				credentialStatus: "indeterminate",
+			}),
+		).toThrow("Unable to determine");
+	});
+
+	it("prompts once and writes both environments on first Datadog bootstrap", async () => {
+		const credentials = { apiKey: randomUUID(), appKey: randomUUID() };
+		const events: string[] = [];
+		await expect(
+			reconcileDatadogCredentials({
+				storedByEnvironment: { staging: undefined, production: undefined },
+				verifyCredentials: async (supplied) => (supplied === credentials ? "accepted" : "rejected"),
+				requestCredentials: async () => {
+					events.push("prompt");
+					return credentials;
+				},
+				writeCredentials: async (environment) => events.push(`write:${environment}`),
+			}),
+		).resolves.toEqual({ action: "request", writtenEnvironments: ["staging", "production"] });
+		expect(events).toEqual(["prompt", "write:staging", "write:production"]);
+	});
+
+	it("never stores incomplete, rejected, or unverifiable Datadog credentials", async () => {
+		const events: string[] = [];
+		const writeCredentials = async (environment: string) => events.push(`write:${environment}`);
+		const storedByEnvironment = { staging: undefined, production: undefined };
+		await expect(
+			reconcileDatadogCredentials({
+				storedByEnvironment,
+				verifyCredentials: async () => "accepted",
+				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: "" }),
+				writeCredentials,
+			}),
+		).rejects.toThrow("incomplete");
+		await expect(
+			reconcileDatadogCredentials({
+				storedByEnvironment,
+				verifyCredentials: async () => "rejected",
+				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: randomUUID() }),
+				writeCredentials,
+			}),
+		).rejects.toThrow("supplied Datadog bootstrap credentials are invalid");
+		await expect(
+			reconcileDatadogCredentials({
+				storedByEnvironment,
+				verifyCredentials: async () => "indeterminate",
+				requestCredentials: async () => ({ apiKey: randomUUID(), appKey: randomUUID() }),
+				writeCredentials,
+			}),
+		).rejects.toThrow("Unable to verify the supplied Datadog bootstrap credentials");
 		expect(events).toEqual([]);
 	});
 
@@ -1148,6 +1282,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(source).toContain('from "./github-bootstrap.mjs"');
 		expect(source).toContain('from "./neon-bootstrap.mjs"');
 		expect(source).toContain('from "./upstash-bootstrap.mjs"');
+		expect(source).toContain('from "./datadog-bootstrap.mjs"');
 		expect(source).toContain("applyGeneratedFolders(infisicalProjectId, infisicalToken)");
 		expect(infisicalSource).toContain('"infrastructure/opentofu/roots/infisical-generated-folders"');
 		expect(infisicalSource).toContain("INFISICAL_TOKEN: infisicalToken");
