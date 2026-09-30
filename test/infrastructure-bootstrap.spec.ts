@@ -79,8 +79,8 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(validateManifest(manifest)).toBe(manifest);
 		expect(manifest.cloudflare.r2.buckets).toEqual({
 			opentofu_state: "cataqui-backend-opentofu-state",
-			geovisual_images_staging: "cataqui-geovisual-images-staging",
-			geovisual_images_production: "cataqui-geovisual-images-production",
+			geoimage_images_staging: "cataqui-geoimage-staging",
+			geoimage_images_production: "cataqui-geoimage-production",
 		});
 		expect(manifest.cloudflare.ai_gateways).toEqual({
 			derive_job_data_staging: "cataqui-derive-job-data-staging",
@@ -136,10 +136,10 @@ describe("infrastructure bootstrap reconciliation", () => {
 				...manifest,
 				cloudflare: {
 					...manifest.cloudflare,
-					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`geovisual_images_${environment}`]: "INVALID BUCKET" } },
+					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`geoimage_images_${environment}`]: "INVALID BUCKET" } },
 				},
 			}),
-		).toThrow(`manifest.cloudflare.r2.buckets.geovisual_images_${environment}`);
+		).toThrow(`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`);
 	});
 
 	it("rejects invalid and unexpected external platform values", () => {

@@ -71,7 +71,7 @@ export function validateManifest(manifest) {
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
 	_requireExactKeys(
 		manifest.cloudflare.r2.buckets,
-		["opentofu_state", "geovisual_images_staging", "geovisual_images_production"],
+		["opentofu_state", "geoimage_images_staging", "geoimage_images_production"],
 		"manifest.cloudflare.r2.buckets",
 	);
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
@@ -155,8 +155,8 @@ export function validateManifest(manifest) {
 	);
 	for (const environment of ENVIRONMENTS) {
 		_requireString(
-			manifest.cloudflare.r2.buckets[`geovisual_images_${environment}`],
-			`manifest.cloudflare.r2.buckets.geovisual_images_${environment}`,
+			manifest.cloudflare.r2.buckets[`geoimage_images_${environment}`],
+			`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`,
 			LOWERCASE_NAME_PATTERN,
 		);
 	}

@@ -1,0 +1,125 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
+	"name": "cataqui-geoimage-development",
+	"main": "./src/app.ts",
+	"tsconfig": "./tsconfig.json",
+	"compatibility_date": "2026-09-30",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"vars": {
+		"ENVIRONMENT": "development"
+	},
+	"secrets": {
+		"required": ["GEOAPIFY_API_KEY"]
+	},
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": false
+		}
+	},
+	"preview_urls": false,
+	"env": {
+		"staging": {
+			"name": "cataqui-geoimage-staging",
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{
+					"pattern": "staging.geoimage.cataqui.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"ENVIRONMENT": "staging"
+			},
+			"secrets": {
+				"required": ["GEOAPIFY_API_KEY"]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
+			"r2_buckets": [
+				{
+					"binding": "IMAGES",
+					"bucket_name": "cataqui-geoimage-staging"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "GENERATION",
+						"class_name": "GeoImageGeneration"
+					}
+				]
+			}
+		},
+		"production": {
+			"name": "cataqui-geoimage-production",
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{
+					"pattern": "geoimage.cataqui.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"ENVIRONMENT": "production"
+			},
+			"secrets": {
+				"required": ["GEOAPIFY_API_KEY"]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
+			"r2_buckets": [
+				{
+					"binding": "IMAGES",
+					"bucket_name": "cataqui-geoimage-production"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "GENERATION",
+						"class_name": "GeoImageGeneration"
+					}
+				]
+			}
+		}
+	},
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "cataqui-geoimage-development"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "GENERATION",
+				"class_name": "GeoImageGeneration"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["GeoImageGeneration"]
+		}
+	]
+}

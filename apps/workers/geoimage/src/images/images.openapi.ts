@@ -1,0 +1,58 @@
+import { type DescribeRouteOptions, resolver } from "hono-openapi";
+import { GeoimageErrorOutputSchema } from "../geoimage-error-output.schema";
+
+const _errorContent = {
+	"application/json": { schema: resolver(GeoimageErrorOutputSchema) },
+};
+
+export const GetImageDescription = {
+	operationId: "getImage",
+	tags: ["Images"],
+	summary: "Get a geographic image",
+	description:
+		"Returns a JPEG basemap with native provider labels and attribution. Reads edge cache, then durable storage, generating on a miss. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed.",
+	responses: {
+		200: {
+			description: "Stored or generated JPEG image",
+			content: { "image/jpeg": { schema: { type: "string", format: "binary" } } },
+		},
+		400: {
+			description:
+				"VALIDATION_ERROR with all detected query violations, including duplicate and unknown parameters. Violation messages are developer diagnostics.",
+			content: {
+				"application/json": {
+					schema: resolver(GeoimageErrorOutputSchema),
+					examples: {
+						invalidFields: {
+							value: {
+								errorCode: "VALIDATION_ERROR",
+								violations: [{ path: ["density"], message: "Density must be 1 or 2." }],
+							},
+						},
+					},
+				},
+			},
+		},
+		413: {
+			description: "PAYLOAD_TOO_LARGE: body exceeds 4 KiB",
+			content: _errorContent,
+		},
+		405: {
+			description: "METHOD_NOT_ALLOWED: use GET. HEAD does not generate images.",
+			content: _errorContent,
+		},
+		500: {
+			description: "INTERNAL_ERROR",
+			content: _errorContent,
+		},
+		502: {
+			description: "PROVIDER_UNAVAILABLE",
+			content: _errorContent,
+		},
+		503: { description: "STORAGE_UNAVAILABLE: durable storage could not be read; retry later", content: _errorContent },
+		504: {
+			description: "PROVIDER_TIMEOUT",
+			content: _errorContent,
+		},
+	},
+} satisfies DescribeRouteOptions;

@@ -8,11 +8,11 @@ function _readInfrastructureFile(path: string): string {
 	return readFileSync(resolve(infrastructureDirectory, path), "utf8");
 }
 
-describe("Geovisual R2 infrastructure contract", () => {
+describe("Geoimage R2 infrastructure contract", () => {
 	it("protects bucket deletion and keeps storage private without object locks or public domains", () => {
 		const main = _readInfrastructureFile("opentofu/roots/cloudflare-r2/main.tf");
 		expect(main).toMatch(
-			/resource "cloudflare_r2_bucket" "geovisual_images" {[\s\S]*?lifecycle {\s*prevent_destroy = true/,
+			/resource "cloudflare_r2_bucket" "geoimage_images" {[\s\S]*?lifecycle {\s*prevent_destroy = true/,
 		);
 		expect(main).toMatch(/resource "cloudflare_r2_managed_domain"[\s\S]*?enabled\s*=\s*false/);
 		expect(main).not.toMatch(
@@ -25,7 +25,7 @@ describe("Geovisual R2 infrastructure contract", () => {
 		expect(versions).toContain('required_version = "= 1.12.6"');
 		expect(versions).toContain('version = "= 5.23.0"');
 		const locals = _readInfrastructureFile("opentofu/roots/cloudflare-r2/locals.tf");
-		expect(locals).toMatch(/local\.manifest\.cloudflare\.r2\.buckets\["geovisual_images_\$\{var\.environment\}"\]/);
+		expect(locals).toMatch(/local\.manifest\.cloudflare\.r2\.buckets\["geoimage_images_\$\{var\.environment\}"\]/);
 		expect(locals).toContain("local.platforms.cloudflare.account_id");
 	});
 
