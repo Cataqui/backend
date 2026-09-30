@@ -4,6 +4,20 @@ mock_provider "datadog" {
       key = "mock-datadog-api-key"
     }
   }
+
+  mock_resource "datadog_service_account_application_key" {
+    defaults = {
+      key = "mock-datadog-application-key"
+    }
+  }
+
+  mock_data "datadog_service_account" {
+    defaults = {
+      id       = "mock-service-account-id"
+      email    = "cataqui-backend-opentofu@cataqui.com"
+      disabled = false
+    }
+  }
 }
 
 mock_provider "infisical" {
@@ -64,6 +78,61 @@ run "runtime_secret_delivery" {
     )
     error_message = "The Datadog API key must reach the API runtime folder of the matching environment as DATADOG_API_KEY."
   }
+}
+
+run "opentofu_root_keys" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  assert {
+    condition = (
+      datadog_api_key.opentofu_root["datadog-observability"].name == "cataqui-opentofu-datadog-observability-staging" &&
+      datadog_service_account_application_key.opentofu_root["datadog-observability"].service_account_id == "mock-service-account-id" &&
+      contains(datadog_service_account_application_key.opentofu_root["datadog-observability"].scopes, "monitors_write") &&
+      !contains(datadog_service_account_application_key.opentofu_root["datadog-observability"].scopes, "api_keys_write")
+    )
+    error_message = "The observability root must get its own keys on the OpenTofu service account without key-management scopes."
+  }
+
+  assert {
+    condition = alltrue([
+      for secret in [
+        infisical_secret.opentofu_root_api_key["datadog-observability"],
+        infisical_secret.opentofu_root_application_key["datadog-observability"],
+      ] : secret.folder_path == "/generated/opentofu/datadog-observability" && secret.env_slug == "staging" && secret.value_wo_version == 1
+    ])
+    error_message = "Root keys must be stored in that root's generated OpenTofu folder of the same environment."
+  }
+
+  assert {
+    condition = (
+      infisical_secret.opentofu_root_api_key["datadog-observability"].name == "DD_API_KEY" &&
+      infisical_secret.opentofu_root_application_key["datadog-observability"].name == "DD_APP_KEY"
+    )
+    error_message = "Root keys must use the variable names the Datadog provider reads."
+  }
+}
+
+run "reject_disabled_service_account" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  override_data {
+    target = data.datadog_service_account.opentofu
+    values = {
+      id       = "mock-service-account-id"
+      email    = "cataqui-backend-opentofu@cataqui.com"
+      disabled = true
+    }
+  }
+
+  expect_failures = [data.datadog_service_account.opentofu]
 }
 
 run "reject_unsupported_environment" {

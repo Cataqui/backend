@@ -84,6 +84,12 @@
 		},
 		"authenticate_infisical_provider": true
 	},
+	"datadog-observability": {
+		"secret_path": "/generated/opentofu/datadog-observability",
+		"required_secrets": ["DD_API_KEY", "DD_APP_KEY"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
 	"cloudflare-ai-gateways": {
 		"secret_path": "/generated/opentofu/cloudflare-ai-gateways",
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],

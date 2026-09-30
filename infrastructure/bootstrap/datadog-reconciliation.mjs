@@ -1,18 +1,12 @@
 import { resolveUniqueNamedResource } from "./reconciliation.mjs";
 
-// Everything the Datadog OpenTofu roots manage. Add a scope here when a root needs more; the bootstrap updates
-// existing keys on its next run.
+// The bootstrap key only issues keys. OpenTofu gives every other Datadog root its own scoped keys, so new
+// permissions are a code change and a deploy, not another bootstrap run.
 export const DATADOG_OPENTOFU_SCOPES = Object.freeze([
 	"api_keys_read",
 	"api_keys_write",
-	"dashboards_read",
-	"dashboards_write",
-	"logs_read_data",
-	"logs_read_index_data",
-	"monitors_read",
-	"monitors_write",
-	"synthetics_read",
-	"synthetics_write",
+	"service_account_write",
+	"user_access_read",
 ]);
 
 // `pup auth token`, which the bootstrap uses to call the Datadog API, first shipped in pup 1.18.0.

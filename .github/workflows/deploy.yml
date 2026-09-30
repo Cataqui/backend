@@ -176,10 +176,19 @@ jobs:
       - name: Apply Datadog API keys
         uses: ./.github/actions/datadog-api-keys
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Clear Datadog management credentials
+        shell: bash
+        run: |
+          for name in DD_API_KEY DD_APP_KEY; do
+            echo "$name=" >> "$GITHUB_ENV"
+          done
+      - name: Load Datadog observability credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: datadog-observability, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Apply Datadog observability
         uses: ./.github/actions/datadog-observability
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Clear Datadog management credentials
+      - name: Clear Datadog observability credentials
         shell: bash
         run: |
           for name in DD_API_KEY DD_APP_KEY; do

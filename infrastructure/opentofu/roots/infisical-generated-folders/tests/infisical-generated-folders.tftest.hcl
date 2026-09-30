@@ -118,3 +118,20 @@ run "reject_unsupported_environment" {
 
   expect_failures = [var.environment]
 }
+
+run "datadog_root_folders" {
+  command = plan
+
+  variables {
+    environment = "production"
+  }
+
+  assert {
+    condition = (
+      toset(keys(infisical_secret_folder.datadog_opentofu_root)) == toset(["datadog-observability"]) &&
+      infisical_secret_folder.datadog_opentofu_root["datadog-observability"].folder_path == "/generated/opentofu" &&
+      !infisical_secret_folder.datadog_opentofu_root["datadog-observability"].force_delete
+    )
+    error_message = "Every Datadog root that uses generated keys must have a protected credential folder."
+  }
+}

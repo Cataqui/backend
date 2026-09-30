@@ -687,10 +687,12 @@ describe("infrastructure bootstrap reconciliation", () => {
 				production: { name: "cataqui-backend-opentofu-production" },
 			},
 		});
-		expect(DATADOG_OPENTOFU_SCOPES).toContain("api_keys_write");
-		expect(DATADOG_OPENTOFU_SCOPES).toContain("monitors_write");
-		expect(DATADOG_OPENTOFU_SCOPES).toContain("dashboards_write");
-		expect(DATADOG_OPENTOFU_SCOPES).toContain("synthetics_write");
+		expect(DATADOG_OPENTOFU_SCOPES).toEqual([
+			"api_keys_read",
+			"api_keys_write",
+			"service_account_write",
+			"user_access_read",
+		]);
 	});
 
 	it("reuses only the enabled Datadog service account with the owned email", () => {

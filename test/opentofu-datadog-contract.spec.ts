@@ -113,4 +113,22 @@ describe("Datadog OpenTofu contract", () => {
 
 		expect(lockfile).toMatch(/provider "registry\.opentofu\.org\/datadog\/datadog"[\s\S]*version\s*=\s*"4\.23\.0"/);
 	});
+
+	it("should give the observability root its own keys in its generated folder", () => {
+		const profiles = JSON.parse(_readRepositoryFile(".github/actions/load-infisical-secrets/profiles.json"));
+
+		expect(profiles["datadog-observability"]).toEqual({
+			secret_path: "/generated/opentofu/datadog-observability",
+			required_secrets: ["DD_API_KEY", "DD_APP_KEY"],
+			environment_aliases: {},
+			authenticate_infisical_provider: false,
+		});
+	});
+
+	it("should never let the observability root manage keys", () => {
+		const keyRootLocals = _readRepositoryFile("infrastructure/opentofu/roots/datadog-api-keys/locals.tf");
+		const observabilityScopes = keyRootLocals.slice(keyRootLocals.indexOf("datadog-observability"));
+
+		expect(observabilityScopes).not.toMatch(/api_keys_write|service_account_write/);
+	});
 });

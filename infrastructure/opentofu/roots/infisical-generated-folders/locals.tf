@@ -13,4 +13,7 @@ locals {
     "cloudflare-ai-gateways",
     "cloudflare-queues",
   ])
+
+  # Datadog roots that authenticate with scoped keys issued by the datadog-api-keys root.
+  datadog_opentofu_roots = toset(["datadog-observability"])
 }

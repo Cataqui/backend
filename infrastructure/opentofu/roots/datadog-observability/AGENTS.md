@@ -36,4 +36,4 @@ Monitor recipients come from `local.notification_handles`. Add a Datadog handle 
 
 ## Credentials
 
-The deployment workflow authenticates with the environment's `DD_API_KEY` and `DD_APP_KEY` from `/opentofu/bootstrap`. When a resource type needs a new Datadog permission, add its scope to the bootstrap's OpenTofu scope list; the next bootstrap run updates the existing application key.
+This root authenticates with its own `DD_API_KEY` and `DD_APP_KEY`, which the Datadog key root issues on the OpenTofu service account and stores in this root's generated OpenTofu folder in Infisical. When a resource type needs a new Datadog permission, add the scope to this root's entry in the key root's scope list and deploy; the bootstrap does not need to run again.
