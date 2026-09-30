@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { RequestUtils } from "../../../shared/utils/request.utils";
+import { recordRequestException } from "../../observability/http-telemetry.hook";
 import { ValidationViolationSchema } from "../../validation/validation-violation.schema";
 import { ErrorCode } from "../error-code.enum";
 import { ErrorOutputSchema, toErrorOutput } from "../error-output";
@@ -16,6 +17,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		const request = ctx.getRequest<FastifyRequest>();
 
 		const { status, body } = this._resolveError(exception, request);
+		if (status >= HttpStatus.INTERNAL_SERVER_ERROR && exception instanceof Error) {
+			recordRequestException(request, exception);
+		}
 
 		this._logger.warn(`${request.method} ${RequestUtils.resolveEndpoint(request)} → ${status} ${body.errorCode}`);
 

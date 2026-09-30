@@ -14,6 +14,7 @@ import { CorsBlockedError } from "./errors/cors-blocked.error";
 import { HttpExceptionFilter } from "./errors/filters/http-exception.filter";
 import { RequestValidationError } from "./errors/request-validation.error";
 import { registerRequestSizeHooks } from "./hooks/request-size.hook";
+import { registerHttpTelemetryHooks } from "./observability/http-telemetry.hook";
 import { LoggingInterceptor } from "./interceptors/logging.interceptor";
 import { ResponseInterceptor } from "./interceptors/response.interceptor";
 import { PrismaExceptionFilter } from "./prisma/filters/prisma-exception.filter";
@@ -89,6 +90,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 		},
 	});
 	registerRequestSizeHooks(fastifyInstance, sizeConfig);
+	registerHttpTelemetryHooks(fastifyInstance);
 
 	AppSwagger.setup(app);
 }
