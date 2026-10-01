@@ -124,7 +124,7 @@ jobs:
         run: pnpm build:packages
 
       - name: Verify production staging evidence
-        if: needs.prepare.outputs.environment == 'production'
+        if: needs.prepare.outputs.environment == 'production' && (needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-geosearch == 'true' || needs.prepare.outputs.deploy-geoimage == 'true' || needs.prepare.outputs.deploy-webhooks == 'true')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
