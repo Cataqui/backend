@@ -1,5 +1,5 @@
 name: Deploy API container safely
-description: Deploy the API Worker and Container gradually, monitor health, and roll back its Worker version on failure.
+description: Deploy the API Worker and Container, monitor health, and roll back its Worker version on failure.
 
 inputs:
   environment:
@@ -71,11 +71,12 @@ runs:
         container_class="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].containers[0].class_name' wrangler.jsonc)"
         max_instances="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].containers[0].max_instances' wrangler.jsonc)"
         container_rollout=gradual
-        [[ "$max_instances" == 1 ]] && container_rollout=none
+        [[ "$max_instances" == 1 ]] && container_rollout=immediate
         container_app_name="$(printf '%s-%s-%s' "$worker_name" "$container_class" "$INPUT_ENVIRONMENT" | tr '[:upper:] ' '[:lower:]-')"
         probe_api() {
           [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health/live" || true)" == 204 ]] &&
           [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)" == 200 ]] &&
+          [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/feed" || true)" == 200 ]] &&
           [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/auth/microservices/jwks" || true)" == 200 ]]
         }
 

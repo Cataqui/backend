@@ -4,13 +4,14 @@ packages:
   - 'packages/*'
 injectWorkspacePackages: true
 catalog:
-  '@cloudflare/workers-types': ^5.20260822.1
+  '@cloudflare/workers-types': ^5.20260930.2
   '@vitest/coverage-v8': ^4.1.10
   fast-check: ^4.9.0
   hono: ^4.13.1
+  jose: ^6.2.9
   typescript: ^6.0.3
   vitest: ^4.1.10
-  wrangler: ^4.119.0
+  wrangler: ^4.145.0
   zod: ^4.4.3
 allowBuilds:
   "@nestjs/core": false
@@ -21,8 +22,17 @@ allowBuilds:
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
-  - '@cloudflare/workers-types@5.20260822.1'
   - neon@4.4.0
+  - '@cloudflare/workerd-darwin-64@1.20260930.2'
+  - '@cloudflare/workerd-darwin-arm64@1.20260930.2'
+  - '@cloudflare/workerd-linux-64@1.20260930.2'
+  - '@cloudflare/workerd-linux-arm64@1.20260930.2'
+  - '@cloudflare/workerd-windows-64@1.20260930.2'
+  - miniflare@5.20260930.0-alpha
+  - workerd@1.20260930.2
+  - wrangler@4.145.0
+  - '@cloudflare/workers-types@5.20260930.2'
+  - '@cloudflare/vitest-plugin@1.3.4'
 # Nest 12 alpha and AI SDK ranges still resolve vulnerable transitive versions.
 # Keep these centralized pins until their upstream dependency ranges include the patched releases.
 overrides:

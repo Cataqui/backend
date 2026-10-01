@@ -148,5 +148,27 @@
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
+	},
+	"cloudflare-r2": {
+		"secret_path": "/generated/opentofu/cloudflare-r2",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"geoimage-deployment": {
+		"secret_path": "/generated/geoimage/deployment",
+		"required_secrets": [
+			"CLOUDFLARE_API_TOKEN"
+		],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"geoimage-runtime": {
+		"secret_path": "/manual/geoimage/runtime",
+		"required_secrets": [
+			"GEOAPIFY_API_KEY"
+		],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
 	}
 }

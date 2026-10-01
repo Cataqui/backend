@@ -33,7 +33,7 @@ function _createPendingIntentScriptResult(): string[] {
 }
 
 function _createVerifiedIntentScriptResult(): string[] {
-	return ["5c474828-dd9e-4490-a45a-0e82512bc45e", NotpIntentStatus.VERIFIED, "user-id"];
+	return ["5c474828-dd9e-4490-a45a-0e82512bc45e", NotpIntentStatus.VERIFIED, "user-id", "identity-id"];
 }
 
 async function _flushSettledPromiseCallbacks(): Promise<void> {
@@ -238,6 +238,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 	});
 
@@ -290,6 +291,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledOnce();
 		expect(redis.set).not.toHaveBeenCalled();
@@ -358,6 +360,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(2);
 	});
@@ -389,6 +392,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(3);
 	});
@@ -424,6 +428,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(7);
 		expect(verificationSubscriber.unsubscribe).toHaveBeenCalledOnce();
@@ -449,6 +454,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(3);
 		expect(verificationSubscriber.unsubscribe).toHaveBeenCalledOnce();
@@ -475,6 +481,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(12);
 	});
@@ -588,6 +595,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(findIntentByTokenHashScriptExec).toHaveBeenCalledTimes(3);
 		expect(verificationSubscriber.unsubscribe).toHaveBeenCalledOnce();
@@ -775,6 +783,7 @@ describe("NotpRepository", () => {
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			status: NotpIntentStatus.VERIFIED,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 		expect(verificationSubscriber.unsubscribe).toHaveBeenCalledOnce();
 		expect(verificationSubscriber.listenerCount()).toBe(0);
@@ -962,6 +971,7 @@ describe("NotpRepository", () => {
 			intentTokenHash: intentTokenHash,
 			providerMessageId: "wamid.message",
 			userId: "user-id",
+			authIdentityId: "identity-id",
 			channel: NotpChannel.WHATSAPP,
 		});
 
@@ -985,10 +995,11 @@ describe("NotpRepository", () => {
 				"5c474828-dd9e-4490-a45a-0e82512bc45e",
 				verificationChannel,
 				NotpIntentStatus.VERIFIED,
+				"identity-id",
 			],
 		);
 		expect(verificationChannel).not.toContain(intentTokenHash);
-		expect(markProcessingIntentAsVerifiedScriptExec.mock.calls[0]?.[1]?.slice(-2)).toEqual([
+		expect(markProcessingIntentAsVerifiedScriptExec.mock.calls[0]?.[1]?.slice(6, 8)).toEqual([
 			verificationChannel,
 			"VERIFIED",
 		]);
@@ -1004,6 +1015,7 @@ describe("NotpRepository", () => {
 				intentTokenHash: "b".repeat(64),
 				providerMessageId: "wamid.message",
 				userId: "user-id",
+				authIdentityId: "identity-id",
 				channel: NotpChannel.WHATSAPP,
 			}),
 		).resolves.toBeUndefined();
@@ -1019,6 +1031,7 @@ describe("NotpRepository", () => {
 				intentTokenHash: "b".repeat(64),
 				providerMessageId: "wamid.message",
 				userId: "user-id",
+				authIdentityId: "identity-id",
 				channel: NotpChannel.WHATSAPP,
 			}),
 		).rejects.toThrow("NOTP intent processing ownership was lost");

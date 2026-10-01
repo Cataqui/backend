@@ -36,6 +36,6 @@ import { AuthSessionRepository } from "./repositories/auth-session.repository";
 		MicroservicesAuthService,
 		AccessTokenGuard,
 	],
-	exports: [AccessTokenGuard, AuthSessionService],
+	exports: [AccessTokenGuard, AuthSessionService, MicroservicesAuthService],
 })
 export class AuthModule {}

@@ -1,10 +1,9 @@
 import { createRemoteJWKSet, errors, jwtVerify } from "jose";
 import {
-	MicroserviceAccessTokenConstants,
-	MicroserviceAccessTokenHeaderInputSchema,
-	MicroserviceAccessTokenPayloadInputSchema,
-	MicroserviceAudience,
-} from "@cataqui/microservices-auth-contracts";
+	GeosearchAccessTokenConstants,
+	GeosearchAccessTokenHeaderSchema,
+	GeosearchAccessTokenPayloadSchema,
+} from "@cataqui/microservices-auth-schemas/geosearch";
 
 export class AuthService {
 	private readonly _remoteJwksResolversByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
@@ -20,12 +19,12 @@ export class AuthService {
 				params.accessToken,
 				this._getJwksResolver({ microservicesAuthJwksUrl: params.microservicesAuthJwksUrl }),
 				{
-					algorithms: [MicroserviceAccessTokenConstants.ALGORITHM],
-					audience: MicroserviceAudience.GEOSEARCH,
+					algorithms: [GeosearchAccessTokenConstants.ALGORITHM],
+					audience: GeosearchAccessTokenConstants.AUDIENCE,
 					clockTolerance: 5,
-					maxTokenAge: MicroserviceAccessTokenConstants.LIFETIME_SECONDS,
+					maxTokenAge: GeosearchAccessTokenConstants.LIFETIME_SECONDS,
 					requiredClaims: ["aud", "exp", "iat", "sub"],
-					typ: MicroserviceAccessTokenConstants.TOKEN_TYPE,
+					typ: GeosearchAccessTokenConstants.TOKEN_TYPE,
 				},
 			);
 		} catch (error) {
@@ -33,8 +32,8 @@ export class AuthService {
 			throw error;
 		}
 
-		const protectedHeader = MicroserviceAccessTokenHeaderInputSchema.safeParse(verifiedToken.protectedHeader);
-		const payload = MicroserviceAccessTokenPayloadInputSchema.safeParse(verifiedToken.payload);
+		const protectedHeader = GeosearchAccessTokenHeaderSchema.safeParse(verifiedToken.protectedHeader);
+		const payload = GeosearchAccessTokenPayloadSchema.safeParse(verifiedToken.payload);
 		if (!protectedHeader.success || !payload.success) {
 			return null;
 		}

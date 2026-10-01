@@ -61,6 +61,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		for (const rootName of [
 			"cloudflare-ai-gateways",
 			"cloudflare-queues",
+			"cloudflare-r2",
 			"cloudflare-zone-dns",
 			"cloudflare-zone-configuration",
 		]) {
@@ -79,6 +80,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 			"AI Gateway Read",
 			"AI Gateway Write",
 			"AI Gateway Run",
+			"Workers R2 Storage Read",
+			"Workers R2 Storage Write",
 			"Queues Read",
 			"Queues Write",
 			"Workers Scripts Read",
@@ -129,6 +132,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		for (const path of [
 			"/generated/api/deployment",
 			"/generated/geosearch/deployment",
+			"/generated/geoimage/deployment",
 			"/generated/webhooks/deployment",
 		]) {
 			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));

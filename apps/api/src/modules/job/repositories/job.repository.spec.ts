@@ -1,345 +1,287 @@
-import {
-	JobContactMethod,
-	JobPaymentAmountPeriod,
-	JobPaymentType,
-	JobStatus,
-	JobType,
-	Prisma,
-} from "../../../../generated/prisma/client.js";
+import { Test } from "@nestjs/testing";
+import { Prisma, JobStatus } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import { FeedRepository } from "../../feed/repositories/feed.repository";
 import { JobRepository } from "./job.repository";
 
-function _createPublicJobDatabaseRow() {
-	return {
-		id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-		title: "Auxiliar de evento",
-		description: "Ajude na organização de um evento local.",
-		descriptionSummary: "Trabalho rápido em evento no centro.",
-		contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-		contactMethod: JobContactMethod.WHATSAPP,
-		fuzzyLatitude: new Prisma.Decimal("-23.550000"),
-		fuzzyLongitude: new Prisma.Decimal("-46.630000"),
-		paymentType: JobPaymentType.FIXED,
-		paymentMinAmount: new Prisma.Decimal("150.00"),
-		paymentMaxAmount: null,
-		paymentNote: null,
-		paymentAmountPeriod: JobPaymentAmountPeriod.SINGLE,
-		paymentCurrency: "BRL",
-		status: JobStatus.ACTIVE,
-		type: JobType.INDIVIDUAL,
-		createdAt: new Date("2026-08-10T12:00:00.000Z"),
-		updatedAt: new Date("2026-08-10T12:30:00.000Z"),
+const row = {
+	id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+	title: "Ajudante",
+	description: "Ajudar com caixas",
+	descriptionSummary: "Hoje à tarde",
+	contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+	contactMethod: "WHATSAPP",
+	fuzzyLatitude: new Prisma.Decimal(-23),
+	fuzzyLongitude: new Prisma.Decimal(-46),
+	payment: "R$ 100",
+	status: JobStatus.ACTIVE,
+	createdAt: new Date(),
+	updatedAt: new Date(),
+};
+
+describe("JobRepository", () => {
+	const prisma = {
+		$queryRaw: vi.fn(),
+		$transaction: vi.fn(),
+		job: { findMany: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() },
+		contact: { findFirst: vi.fn() },
+		jobPostRequest: { findUnique: vi.fn() },
 	};
-}
-
-describe("JobRepository lifecycle persistence", () => {
 	let repository: JobRepository;
-	let queryRaw: ReturnType<typeof vi.fn>;
-	let jobCreate: ReturnType<typeof vi.fn>;
-	let jobFindUnique: ReturnType<typeof vi.fn>;
-	let jobFindFirst: ReturnType<typeof vi.fn>;
-	let jobContactFindFirst: ReturnType<typeof vi.fn>;
-	let jobUpdate: ReturnType<typeof vi.fn>;
-	let jobUpdateMany: ReturnType<typeof vi.fn>;
-	let executeRaw: ReturnType<typeof vi.fn>;
-	let transaction: ReturnType<typeof vi.fn>;
-
-	beforeEach(() => {
-		queryRaw = vi.fn().mockResolvedValue([]);
-		jobCreate = vi.fn().mockResolvedValue({});
-		jobFindUnique = vi.fn().mockResolvedValue(null);
-		jobFindFirst = vi.fn().mockResolvedValue(null);
-		jobContactFindFirst = vi.fn().mockResolvedValue(null);
-		jobUpdate = vi.fn().mockResolvedValue({});
-		jobUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
-		executeRaw = vi.fn().mockResolvedValue(1);
-		transaction = vi.fn(
-			(callback: (tx: { job: { update: typeof jobUpdate }; $executeRaw: typeof executeRaw }) => Promise<void>) =>
-				callback({ job: { update: jobUpdate }, $executeRaw: executeRaw }),
-		);
-		repository = new JobRepository({
-			$queryRaw: queryRaw,
-			job: {
-				create: jobCreate,
-				findFirst: jobFindFirst,
-				findUnique: jobFindUnique,
-				update: jobUpdate,
-				updateMany: jobUpdateMany,
-			},
-			jobContact: {
-				findFirst: jobContactFindFirst,
-			},
-			$transaction: transaction,
-		} as unknown as PrismaService);
+	beforeEach(async () => {
+		vi.resetAllMocks();
+		const module = await Test.createTestingModule({
+			providers: [JobRepository, { provide: PrismaService, useValue: prisma }],
+		}).compile();
+		repository = module.get(JobRepository);
 	});
 
-	it("should execute one parameterized query that excludes draft jobs from public lookup", async () => {
-		await repository.findPublicById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
-
-		expect(queryRaw).toHaveBeenCalledTimes(1);
-		expect(jobFindFirst).not.toHaveBeenCalled();
-
-		const query: unknown = queryRaw.mock.calls[0]?.[0];
-		expect(query).toBeInstanceOf(Prisma.Sql);
-		if (!(query instanceof Prisma.Sql)) throw new Error("Expected public job lookup to use parameterized Prisma SQL");
-
-		expect(query.text).toContain('LEFT JOIN "public"."job_contact_methods"');
-		expect(query.text).toContain('job."status" <> ');
-		expect(query.text).not.toContain("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-		expect(query.text).not.toContain(JobStatus.DRAFT);
-		expect(query.values).toEqual(["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", JobStatus.DRAFT]);
-	});
-
-	it("should map the one-query database row to the exact public job shape", async () => {
-		const databaseJob = _createPublicJobDatabaseRow();
-		queryRaw.mockResolvedValue([databaseJob]);
-
-		const result = await repository.findPublicById({ jobId: databaseJob.id });
-
-		expect(result).toEqual({
-			id: databaseJob.id,
-			title: databaseJob.title,
-			description: databaseJob.description,
-			descriptionSummary: databaseJob.descriptionSummary,
-			contact: {
-				id: databaseJob.contactId,
-				contactMethod: databaseJob.contactMethod,
-			},
-			fuzzyLatitude: databaseJob.fuzzyLatitude,
-			fuzzyLongitude: databaseJob.fuzzyLongitude,
-			paymentType: databaseJob.paymentType,
-			paymentMinAmount: databaseJob.paymentMinAmount,
-			paymentMaxAmount: databaseJob.paymentMaxAmount,
-			paymentNote: databaseJob.paymentNote,
-			paymentAmountPeriod: databaseJob.paymentAmountPeriod,
-			paymentCurrency: databaseJob.paymentCurrency,
-			status: databaseJob.status,
-			type: databaseJob.type,
-			createdAt: databaseJob.createdAt,
-			updatedAt: databaseJob.updatedAt,
-		});
-	});
-
-	it("should map a database row without a joined contact to null", async () => {
-		const databaseJob = { ..._createPublicJobDatabaseRow(), contactId: null, contactMethod: null };
-		queryRaw.mockResolvedValue([databaseJob]);
-
-		const result = await repository.findPublicById({ jobId: databaseJob.id });
-
-		expect(result?.contact).toBeNull();
-	});
-
-	it("should return null when the public job query finds no row", async () => {
-		queryRaw.mockResolvedValue([]);
-
-		const result = await repository.findPublicById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
-
-		expect(result).toBeNull();
-	});
-
-	it("should find a contact only through the active job that references it", async () => {
-		await repository.findActiveJobContact({
-			contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-		});
-
-		expect(jobContactFindFirst).toHaveBeenCalledWith({
-			where: {
-				id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-				jobs: {
-					some: {
-						id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-						status: JobStatus.ACTIVE,
-					},
-				},
-			},
+	it("lists only the authenticated poster's active and archived jobs newest first", async () => {
+		prisma.job.findMany.mockResolvedValue([
+			{ ...row, status: JobStatus.ACTIVE },
+			{ ...row, status: JobStatus.ARCHIVED },
+		]);
+		const results = await repository.findUserJobs({ posterUserId: "poster", limit: 21 });
+		expect(results.map((job) => job.status)).toEqual([JobStatus.ACTIVE, JobStatus.ARCHIVED]);
+		expect(prisma.job.findMany).toHaveBeenCalledWith({
+			where: { posterUserId: "poster" },
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			take: 21,
 			select: {
-				contactMethod: true,
-				identifier: true,
+				id: true,
+				title: true,
+				descriptionSummary: true,
+				payment: true,
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
+				status: true,
+				createdAt: true,
+				updatedAt: true,
 			},
 		});
 	});
 
-	it("should return the contact selected by an active job", async () => {
-		const selectedContact = {
-			contactMethod: "WHATSAPP",
-			identifier: "@cataqui.poster",
-		};
-		jobContactFindFirst.mockResolvedValue(selectedContact);
-
-		const result = await repository.findActiveJobContact({
-			contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-		});
-
-		expect(result).toBe(selectedContact);
-	});
-
-	it("should scope poster job lookup to the authenticated user", async () => {
-		await repository.findByIdFromPoster({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-		});
-
-		expect(jobFindFirst).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			},
-			include: { contact: true },
-		});
-	});
-
-	it("should find an owned draft only when its status is DRAFT", async () => {
-		await repository.findDraftByIdFromPoster({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-		});
-
-		expect(jobFindFirst).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-				status: JobStatus.DRAFT,
-			},
-			include: { contact: true },
-		});
-	});
-
-	it("should find an owned public job only when its status is not DRAFT", async () => {
-		await repository.findPublicByIdFromPoster({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-		});
-
-		expect(jobFindFirst).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-				status: { not: JobStatus.DRAFT },
-			},
-			include: { contact: true },
-		});
-	});
-
-	it("should return null when a job lookup finds nothing", async () => {
-		const result = await repository.findById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
-
-		expect(result).toBeNull();
-	});
-
-	it("should load a job and its contact by ID", async () => {
-		await repository.findById({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
-
-		expect(jobFindUnique).toHaveBeenCalledWith({
-			where: { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
-			include: { contact: true },
-		});
-	});
-
-	it("should create drafts in the jobs table with DRAFT status", async () => {
-		await repository.createDraft({
-			description: "Descrição original.",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-		});
-
-		expect(jobCreate).toHaveBeenCalledWith({
-			data: {
-				description: "Descrição original.",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-				status: JobStatus.DRAFT,
-				descriptionSummary: null,
-				title: null,
-				type: null,
-				paymentType: null,
-				paymentMinAmount: null,
-				paymentMaxAmount: null,
-				paymentNote: null,
-				paymentAmountPeriod: null,
-				paymentCurrency: null,
-			},
-			include: { contact: true },
-		});
-	});
-
-	it("should update derived job data only for the description used as AI input", async () => {
-		await repository.updateDerivedJobDataIfDescriptionUnchanged({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			description: "Descrição original.",
-			title: "Título gerado",
-			descriptionSummary: "Resumo gerado.",
-		});
-
-		expect(jobUpdateMany).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				description: "Descrição original.",
-			},
-			data: {
-				title: "Título gerado",
-				descriptionSummary: "Resumo gerado.",
+	it("selects an owned job by both job ID and poster including its location title and real contact", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await repository.findUserJobById({ jobId: row.id, posterUserId: "poster" });
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: {
+				id: true,
+				description: true,
+				status: true,
+				createdAt: true,
+				updatedAt: true,
+				locationTitle: true,
+				contact: { select: { contactMethod: true, identifier: true } },
+				fuzzyLatitude: true,
+				fuzzyLongitude: true,
 			},
 		});
 	});
 
-	it("should connect the job to an immutable contact by ID", async () => {
-		await repository.update({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			data: {
-				title: "Novo título",
-				contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-			},
+	it("continues after equal timestamps using the job ID tie breaker", async () => {
+		prisma.job.findMany.mockResolvedValue([]);
+		const createdAt = "2026-09-23T12:00:00.000Z";
+		await repository.findUserJobs({
+			posterUserId: "poster",
+			cursor: { version: 1, createdAt: createdAt, jobId: row.id },
+			limit: 21,
 		});
+		expect(prisma.job.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					posterUserId: "poster",
+					OR: [{ createdAt: { lt: new Date(createdAt) } }, { createdAt: new Date(createdAt), id: { lt: row.id } }],
+				},
+			}),
+		);
+	});
 
-		expect(jobUpdate).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			},
-			data: {
-				title: "Novo título",
-				contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-			},
-			include: { contact: true },
+	it("reads a public post with string payment", async () => {
+		prisma.$queryRaw.mockResolvedValue([row]);
+		const result = await repository.findPublicById({ jobId: row.id });
+		expect(result).toMatchObject({ id: row.id, payment: "R$ 100", contact: { id: row.contactId } });
+	});
+
+	it("reads a public post with null payment", async () => {
+		prisma.$queryRaw.mockResolvedValue([{ ...row, payment: null }]);
+		expect((await repository.findPublicById({ jobId: row.id }))?.payment).toBeNull();
+	});
+
+	it("archives only an active job belonging to the poster and reads its new state", async () => {
+		prisma.job.findFirst.mockResolvedValue({ ...row, status: JobStatus.ARCHIVED });
+		const result = await repository.archiveOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(result?.status).toBe(JobStatus.ARCHIVED);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster", status: JobStatus.ACTIVE },
+			data: { status: JobStatus.ARCHIVED },
+		});
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: expect.objectContaining({ status: true, contact: { select: { id: true, contactMethod: true } } }),
 		});
 	});
 
-	it("should update the real PostGIS point when location changes", async () => {
-		await repository.update({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			data: { fuzzyLatitude: -23.55, fuzzyLongitude: -46.63 },
-			locationPoint: { latitude: -23.55, longitude: -46.63 },
-		});
-
-		expect(executeRaw).toHaveBeenCalledOnce();
+	it("does not update the timestamp when an archived job is archived again", async () => {
+		const archived = { ...row, status: JobStatus.ARCHIVED };
+		prisma.job.updateMany.mockResolvedValue({ count: 0 });
+		prisma.job.findFirst.mockResolvedValue(archived);
+		await expect(repository.archiveOwnedJob({ jobId: row.id, posterUserId: "poster" })).resolves.toBe(archived);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ status: JobStatus.ACTIVE }) }),
+		);
 	});
 
-	it("should avoid a PostGIS update when location is unchanged", async () => {
-		await repository.update({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-			data: { title: "Novo título" },
-		});
-
-		expect(executeRaw).not.toHaveBeenCalled();
+	it("returns no job when its poster does not own it", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await expect(repository.archiveOwnedJob({ jobId: row.id, posterUserId: "other" })).resolves.toBeNull();
 	});
 
-	it("should atomically change only a DRAFT row to ACTIVE", async () => {
-		await repository.publishDraft({
-			jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-			posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-		});
-
-		expect(jobUpdate).toHaveBeenCalledWith({
-			where: {
-				id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-				posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-				status: JobStatus.DRAFT,
-			},
+	it("activates only an archived job belonging to the poster and preserves its creation time", async () => {
+		prisma.job.findFirst.mockResolvedValue(row);
+		const result = await repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(result).toMatchObject({ status: JobStatus.ACTIVE, createdAt: row.createdAt });
+		expect(prisma.job.updateMany).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster", status: JobStatus.ARCHIVED },
 			data: { status: JobStatus.ACTIVE },
+		});
+		expect(prisma.job.findFirst).toHaveBeenCalledWith({
+			where: { id: row.id, posterUserId: "poster" },
+			select: expect.objectContaining({
+				status: true,
+				createdAt: true,
+				contact: { select: { id: true, contactMethod: true } },
+			}),
+		});
+	});
+
+	it("does not update the timestamp when an active job is activated again", async () => {
+		prisma.job.updateMany.mockResolvedValue({ count: 0 });
+		prisma.job.findFirst.mockResolvedValue(row);
+		await expect(repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" })).resolves.toBe(row);
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ status: JobStatus.ARCHIVED }) }),
+		);
+	});
+
+	it("returns no job when activation is requested by another poster", async () => {
+		prisma.job.findFirst.mockResolvedValue(null);
+		await expect(repository.activateOwnedJob({ jobId: row.id, posterUserId: "other" })).resolves.toBeNull();
+		expect(prisma.job.updateMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ posterUserId: "other" }) }),
+		);
+	});
+
+	it("makes an activated job eligible for the feed and its contact again", async () => {
+		const state: { status: JobStatus } = { status: JobStatus.ARCHIVED };
+		prisma.job.updateMany.mockImplementation(async ({ where }) => {
+			if (where.posterUserId !== "poster" || where.status !== state.status) return { count: 0 };
+			state.status = JobStatus.ACTIVE;
+			return { count: 1 };
+		});
+		prisma.job.findFirst.mockImplementation(async () => ({ ...row, status: state.status }));
+		prisma.job.findMany.mockImplementation(async ({ where }) => (where.status === state.status ? [row] : []));
+		prisma.contact.findFirst.mockImplementation(async () =>
+			state.status === JobStatus.ACTIVE ? { contactMethod: "WHATSAPP", identifier: "+5511999999999" } : null,
+		);
+
+		const feed = new FeedRepository(prisma as unknown as PrismaService);
+		expect(await feed.getFeedItems({ limit: 20 })).toEqual([]);
+		expect(await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId })).toBeNull();
+
+		await repository.activateOwnedJob({ jobId: row.id, posterUserId: "poster" });
+		expect(await feed.getFeedItems({ limit: 20 })).toEqual([row]);
+		expect(await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId })).toEqual({
+			contactMethod: "WHATSAPP",
+			identifier: "+5511999999999",
+		});
+		expect(prisma.job.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: JobStatus.ACTIVE } }));
+		expect(prisma.contact.findFirst).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: expect.objectContaining({ jobs: { some: { id: row.id, status: JobStatus.ACTIVE } } }),
+			}),
+		);
+	});
+
+	it("reveals a shared contact only through the requested active job", async () => {
+		prisma.contact.findFirst.mockResolvedValue({ contactMethod: "WHATSAPP", identifier: "+5511999999999" });
+		await repository.findActiveJobContact({ jobId: row.id, contactId: row.contactId });
+		expect(prisma.contact.findFirst).toHaveBeenCalledWith({
+			where: { id: row.contactId, jobs: { some: { id: row.id, status: JobStatus.ACTIVE } } },
+			select: { contactMethod: true, identifier: true },
+		});
+	});
+
+	it("finds an existing post by poster and idempotency key", async () => {
+		await repository.findByIdempotencyKey({ posterUserId: "poster", idempotencyKey: "key" });
+		expect(prisma.jobPostRequest.findUnique).toHaveBeenCalledWith({
+			where: { posterUserId_idempotencyKey: { posterUserId: "poster", idempotencyKey: "key" } },
+			include: { job: { include: { contact: true } } },
+		});
+	});
+
+	it("creates the post, exact location, and idempotency record in one transaction", async () => {
+		const create = vi.fn().mockResolvedValue(row);
+		const createPostRequest = vi.fn().mockResolvedValue({ id: "request" });
+		const execute = vi.fn().mockResolvedValue(1);
+		prisma.$transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
+			callback({ job: { create: create }, jobPostRequest: { create: createPostRequest }, $executeRaw: execute }),
+		);
+		const result = await repository.createJob({
+			posterUserId: "poster",
+			idempotencyKey: "key",
+			requestHash: "a".repeat(64),
+			contactId: row.contactId,
+			description: row.description,
+			payment: row.payment,
+			title: row.title,
+			descriptionSummary: row.descriptionSummary,
+			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
+			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
+		});
+		expect(result.id).toBe(row.id);
+		expect(create).toHaveBeenCalledWith({
+			data: expect.objectContaining({
+				payment: "R$ 100",
+				locationTitle: "Rua Pardal Branco, 32",
+				status: JobStatus.ACTIVE,
+				fuzzyLatitude: -23.1,
+			}),
 			include: { contact: true },
 		});
+		expect(execute).toHaveBeenCalledOnce();
+		expect(createPostRequest).toHaveBeenCalledWith({
+			data: {
+				posterUserId: "poster",
+				idempotencyKey: "key",
+				requestHash: "a".repeat(64),
+				jobId: row.id,
+			},
+		});
+	});
+
+	it("persists null payment in the job transaction", async () => {
+		const create = vi.fn().mockResolvedValue({ ...row, payment: null });
+		prisma.$transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
+			callback({
+				job: { create: create },
+				jobPostRequest: { create: vi.fn() },
+				$executeRaw: vi.fn(),
+			}),
+		);
+		await repository.createJob({
+			posterUserId: "poster",
+			idempotencyKey: "key",
+			requestHash: "a".repeat(64),
+			contactId: row.contactId,
+			description: row.description,
+			payment: null,
+			title: row.title,
+			descriptionSummary: row.descriptionSummary,
+			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
+			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
+		});
+		expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payment: null }) }));
 	});
 });

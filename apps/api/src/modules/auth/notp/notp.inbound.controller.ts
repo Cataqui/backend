@@ -20,6 +20,7 @@ export class NotpInboundController {
 			providerMessageId: message.providerMessageId,
 			providerSubject: message.providerSenderId,
 			contactIdentifier: message.providerContactIdentifier,
+			providerProfileName: message.providerProfileName,
 			notpCodeHash: message.notpCodeHash,
 		});
 	}

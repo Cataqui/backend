@@ -1,11 +1,11 @@
 import { Test } from "@nestjs/testing";
-import { AuthIdentityProvider, JobContactMethod, Prisma } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, ContactMethod, Prisma } from "../../../../generated/prisma/client.js";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { AuthIdentityRepository } from "./auth-identity.repository";
 
 describe("AuthIdentityRepository", () => {
 	it("should save the verified identity and reusable contact with one parameterized database-function call", async () => {
-		const queryRaw = vi.fn().mockResolvedValue([{ userId: "user-id" }]);
+		const queryRaw = vi.fn().mockResolvedValue([{ userId: "user-id", authIdentityId: "identity-id" }]);
 		const module = await Test.createTestingModule({
 			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: { $queryRaw: queryRaw } }],
 		}).compile();
@@ -13,27 +13,31 @@ describe("AuthIdentityRepository", () => {
 		const result = await module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 
-		expect(result).toBe("user-id");
+		expect(result).toEqual({ userId: "user-id", authIdentityId: "identity-id" });
 		expect(queryRaw).toHaveBeenCalledTimes(1);
 
 		const query: unknown = queryRaw.mock.calls[0]?.[0];
 		expect(query).toBeInstanceOf(Prisma.Sql);
 		if (!(query instanceof Prisma.Sql)) throw new Error("Expected verified identity persistence to use Prisma SQL");
 
-		expect(query.text).toContain('SELECT "public"."save_verified_identity_and_contact"(');
+		expect(query.text).toContain(
+			'SELECT "userId", "authIdentityId" FROM "public"."save_verified_identity_and_contact"(',
+		);
 		expect(query.text).not.toContain("user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6");
 		expect(query.text).not.toContain("+5511999999999");
 
 		expect(query.values).toEqual([
 			AuthIdentityProvider.WHATSAPP,
 			"user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
+			"Ana",
 			new Date("2026-08-05T15:00:00.000Z"),
-			JobContactMethod.WHATSAPP,
+			ContactMethod.WHATSAPP,
 			"+5511999999999",
 			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 			expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
@@ -42,7 +46,7 @@ describe("AuthIdentityRepository", () => {
 	});
 
 	it("should give each first-time verification attempt independent candidate identifiers", async () => {
-		const queryRaw = vi.fn().mockResolvedValue([{ userId: "winning-user-id" }]);
+		const queryRaw = vi.fn().mockResolvedValue([{ userId: "winning-user-id", authIdentityId: "identity-id" }]);
 		const module = await Test.createTestingModule({
 			providers: [AuthIdentityRepository, { provide: PrismaService, useValue: { $queryRaw: queryRaw } }],
 		}).compile();
@@ -51,8 +55,9 @@ describe("AuthIdentityRepository", () => {
 		const input = {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "+5511999999999",
+			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		};
 		await Promise.all([
@@ -66,7 +71,7 @@ describe("AuthIdentityRepository", () => {
 				throw new Error("Expected verified identity persistence to use Prisma SQL");
 			}
 
-			return query.values.slice(5);
+			return query.values.slice(6);
 		});
 
 		expect(new Set(candidateIdentifiers).size).toBe(6);
@@ -83,8 +88,9 @@ describe("AuthIdentityRepository", () => {
 		const result = module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "+5511999999999",
+			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 
@@ -103,8 +109,9 @@ describe("AuthIdentityRepository", () => {
 		const result = module.get(AuthIdentityRepository).saveVerifiedIdentityAndContact({
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "+5511999999999",
+			displayIdentifier: "Ana",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
 		});
 

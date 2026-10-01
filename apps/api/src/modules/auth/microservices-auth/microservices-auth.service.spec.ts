@@ -130,4 +130,31 @@ describe("MicroservicesAuthService", () => {
 
 		await expect(createService({ config: wrongCurveConfig })).rejects.toThrow();
 	});
+	it("issues non-expiring coordinate permissions verified by its published JWKS", async () => {
+		const service = await createService();
+		const token = await service.createGeoimageAccessToken({ latitude: -23.55, longitude: -46.63 });
+		const key = await importJWK(service.getPublicJwks().keys[0]!, "ES256");
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2040-01-01"));
+		const verified = await jwtVerify(token, key, {
+			algorithms: ["ES256"],
+			audience: "geoimage",
+			typ: "geoimage-access+jwt",
+		});
+		expect(verified.payload).toEqual({ aud: "geoimage", latitude: -23.55, longitude: -46.63 });
+		expect(verified.protectedHeader).toEqual({ alg: "ES256", kid: "V1", typ: "geoimage-access+jwt" });
+		await expect(jwtVerify(token, key, { audience: "GEOSEARCH", typ: "microservice-access+jwt" })).rejects.toThrow();
+		const geosearch = await service.createGeosearchAccessToken({ userId: userId });
+		await expect(
+			jwtVerify(geosearch.accessToken, key, { audience: "geoimage", typ: "geoimage-access+jwt" }),
+		).rejects.toThrow();
+	});
+	it("refuses to sign image permissions before key initialization", async () => {
+		const service = new MicroservicesAuthService(config);
+		await expect(service.createGeoimageAccessToken({ latitude: 0, longitude: 0 })).rejects.toThrow("unavailable");
+	});
+	it("rejects invalid internal coordinates before signing", async () => {
+		const service = await createService();
+		await expect(service.createGeoimageAccessToken({ latitude: 91, longitude: 0 })).rejects.toThrow();
+	});
 });

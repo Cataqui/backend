@@ -1,7 +1,6 @@
 import { ContainerProxy, getRandom } from "@cloudflare/containers";
 import type { IApiContainerInboundWorker } from "@cataqui/api-internal-ingress";
 import type { ApiContainerInboundCall, ApiContainerInboundReceiver } from "@cataqui/api-internal-ingress";
-import { routeQueueBatch } from "@cataqui/api-internal-ingress/queue";
 import { routeInboundCall } from "@cataqui/api-internal-ingress/router";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { ApiContainer } from "../../containers/api/api-container";
@@ -46,17 +45,6 @@ const worker = {
 
 		const container = await getRandom(env.API_CONTAINER, Number(env.API_CONTAINER_POOL_SIZE));
 		return container.fetch(request);
-	},
-
-	async queue(batch: MessageBatch<unknown>, env: ApiWorkerEnv): Promise<void> {
-		await routeQueueBatch({
-			batch: batch,
-			environment: env.NODE_ENV,
-			deliver: async ({ url, requestOptions }) => {
-				const container = await getRandom(env.API_CONTAINER, Number(env.API_CONTAINER_POOL_SIZE));
-				return container.containerFetch(url, requestOptions);
-			},
-		});
 	},
 } satisfies ExportedHandler<ApiWorkerEnv>;
 

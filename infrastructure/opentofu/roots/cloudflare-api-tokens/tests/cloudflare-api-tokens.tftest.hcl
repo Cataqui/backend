@@ -36,6 +36,7 @@ run "staging_token_inventory" {
     condition = toset(keys(cloudflare_api_token.infrastructure)) == toset([
       "cloudflare-ai-gateways",
       "cloudflare-queues",
+      "cloudflare-r2",
     ])
     error_message = "Staging must create one infrastructure token for each account-scoped Cloudflare root."
   }
@@ -45,8 +46,8 @@ run "staging_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 6
-    error_message = "Staging must deliver two infrastructure, one API runtime, and three application deployment tokens."
+    ) == 8
+    error_message = "Staging must deliver three infrastructure, one API runtime, and four application deployment tokens."
   }
 
   assert {
@@ -70,6 +71,7 @@ run "staging_token_inventory" {
     condition = (
       cloudflare_api_token.worker_deployment["api"].name == "cataqui-api-workers-deployment-staging" &&
       cloudflare_api_token.worker_deployment["geosearch"].name == "cataqui-geosearch-workers-deployment-staging" &&
+      cloudflare_api_token.worker_deployment["geoimage"].name == "cataqui-geoimage-workers-deployment-staging" &&
       cloudflare_api_token.worker_deployment["webhooks"].name == "cataqui-webhooks-workers-deployment-staging"
     )
     error_message = "Staging must create one deterministic Workers deployment token per application."
@@ -84,7 +86,7 @@ run "production_token_inventory" {
   }
 
   assert {
-    condition     = length(cloudflare_api_token.infrastructure) == 4
+    condition     = length(cloudflare_api_token.infrastructure) == 5
     error_message = "Production must create one token for each Cloudflare root."
   }
 
@@ -93,8 +95,8 @@ run "production_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 8
-    error_message = "Production must deliver four infrastructure, one API runtime, and three application deployment tokens."
+    ) == 10
+    error_message = "Production must deliver five infrastructure, one API runtime, and four application deployment tokens."
   }
 
   assert {
@@ -104,6 +106,7 @@ run "production_token_inventory" {
       cloudflare_api_token.ai_gateway_runtime["api"].name == "cataqui-api-ai-gateway-production" &&
       cloudflare_api_token.worker_deployment["api"].name == "cataqui-api-workers-deployment-production" &&
       cloudflare_api_token.worker_deployment["geosearch"].name == "cataqui-geosearch-workers-deployment-production" &&
+      cloudflare_api_token.worker_deployment["geoimage"].name == "cataqui-geoimage-workers-deployment-production" &&
       cloudflare_api_token.worker_deployment["webhooks"].name == "cataqui-webhooks-workers-deployment-production"
     )
     error_message = "Production zone and service-owned runtime tokens must use deterministic names."
@@ -143,6 +146,11 @@ run "least_privilege_permissions" {
         "workers_scripts_write",
         "account_settings_read",
       ]) &&
+      tolist(local.worker_deployment_tokens.geoimage.account_permissions) == tolist([
+        "workers_scripts_read",
+        "workers_scripts_write",
+        "account_settings_read",
+      ]) &&
       tolist(local.worker_deployment_tokens.webhooks.account_permissions) == tolist([
         "workers_scripts_read",
         "workers_scripts_write",
@@ -177,10 +185,21 @@ run "least_privilege_permissions" {
     condition = (
       data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].name == "AI Gateway Run" &&
       data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].scope == "com.cloudflare.api.account" &&
+      data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].name == "Workers AI Read" &&
+      data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].scope == "com.cloudflare.api.account" &&
       data.cloudflare_api_token_permission_groups_list.required["zone_waf_write"].name == "Zone WAF Write" &&
       data.cloudflare_api_token_permission_groups_list.required["zone_waf_write"].scope == "com.cloudflare.api.account.zone"
     )
     error_message = "Permission groups must be resolved by their plain provider names and exact scopes."
+  }
+
+  assert {
+    condition = (
+      length(cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups) == 2 &&
+      cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups[0].id == one(data.cloudflare_api_token_permission_groups_list.required["ai_gateway_run"].result).id &&
+      cloudflare_api_token.ai_gateway_runtime["api"].policies[0].permission_groups[1].id == one(data.cloudflare_api_token_permission_groups_list.required["workers_ai_read"].result).id
+    )
+    error_message = "The API runtime token must permit both gateway routing and Workers AI REST inference."
   }
 }
 
@@ -274,4 +293,24 @@ run "reject_unsupported_environment" {
   }
 
   expect_failures = [var.environment]
+}
+
+run "r2_management_credential" {
+  command = plan
+  variables {
+    environment = "staging"
+  }
+  assert {
+    condition = (
+      local.common_infrastructure_tokens["cloudflare-r2"].permissions == ["r2_storage_read", "r2_storage_write"] &&
+      local.common_infrastructure_tokens["cloudflare-r2"].scope == "account" &&
+      local.permission_groups.r2_storage_read.name == "Workers R2 Storage Read" &&
+      local.permission_groups.r2_storage_write.name == "Workers R2 Storage Write" &&
+      local.permission_groups.r2_storage_read.scope == "com.cloudflare.api.account" &&
+      local.permission_groups.r2_storage_write.scope == "com.cloudflare.api.account" &&
+      cloudflare_api_token.infrastructure["cloudflare-r2"].name == "cataqui-opentofu-cloudflare-r2-staging" &&
+      infisical_secret.infrastructure_cloudflare_api_token["cloudflare-r2"].folder_path == "/generated/opentofu/cloudflare-r2"
+    )
+    error_message = "R2 management must use exact account permissions and the dedicated environment-scoped credential path."
+  }
 }

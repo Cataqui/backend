@@ -13,10 +13,8 @@ describe("ErrorCode", () => {
 			"POST_ALREADY_REPORTED",
 			"INVALID_CURSOR",
 			"JOB_NOT_FOUND",
-			"JOB_CONTACT_NOT_FOUND",
 			"JOB_DATA_DERIVATION_UNAVAILABLE",
-			"JOB_DRAFT_INCOMPLETE",
-			"INVALID_JOB_TYPE_PAYMENT_PERIOD",
+			"JOB_IDEMPOTENCY_CONFLICT",
 			"INVALID_LOCALE",
 			"UNSUPPORTED_MEDIA_TYPE",
 			"PAYLOAD_TOO_LARGE",
@@ -43,6 +41,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(26);
+		expect(Object.keys(ErrorCode)).toHaveLength(23);
 	});
 });

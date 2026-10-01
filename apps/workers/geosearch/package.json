@@ -21,10 +21,10 @@
 		"typecheck": "tsc --noEmit && pnpm cf:types:check"
 	},
 	"dependencies": {
-		"@cataqui/microservices-auth-contracts": "workspace:*",
+		"@cataqui/microservices-auth-schemas": "workspace:*",
 		"@hono/standard-validator": "^0.4.0",
 		"hono": "catalog:",
-		"jose": "^6.2.9",
+		"jose": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

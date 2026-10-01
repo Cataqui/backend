@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { createHash } from "node:crypto";
-import { AuthIdentityProvider, JobContactMethod } from "../../../../generated/prisma/client.js";
+import { AuthIdentityProvider, ContactMethod } from "../../../../generated/prisma/client.js";
 import { AuthSessionService } from "../auth-session.service";
 import { AuthSessionUnavailableError } from "../errors/auth-session-unavailable.error";
 import { AuthIdentityRepository } from "../repositories/auth-identity.repository";
@@ -259,6 +259,7 @@ describe("NotpService", () => {
 			status: NotpIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 		const issuedSession = {
 			accessToken: "access-token",
@@ -282,6 +283,7 @@ describe("NotpService", () => {
 			status: NotpIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 		authSessionService.create.mockResolvedValue({
 			accessToken: "access-token",
@@ -290,6 +292,7 @@ describe("NotpService", () => {
 			refreshToken: "refresh-token",
 			refreshExpiresAt: "2026-09-04T15:00:00.000Z",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 
 		await service.exchangeIntentForSession({
@@ -299,6 +302,7 @@ describe("NotpService", () => {
 		expect(authSessionService.create).toHaveBeenCalledWith({
 			sessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 	});
 
@@ -307,6 +311,7 @@ describe("NotpService", () => {
 			status: NotpIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 		authSessionService.create
 			.mockResolvedValueOnce({
@@ -343,6 +348,7 @@ describe("NotpService", () => {
 			status: NotpIntentStatus.VERIFIED,
 			candidateSessionId: "5c474828-dd9e-4490-a45a-0e82512bc45e",
 			userId: "4963fef0-b62a-4760-9f99-675fdc42a896",
+			authIdentityId: "identity-id",
 		});
 		authSessionService.create.mockRejectedValue(new AuthSessionUnavailableError());
 
@@ -361,6 +367,7 @@ describe("NotpService", () => {
 			providerMessageId: "wamid.message",
 			providerSubject: "+5511999999999",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -380,6 +387,7 @@ describe("NotpService", () => {
 			providerMessageId: "wamid.message",
 			providerSubject: "+5511999999999",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -389,13 +397,17 @@ describe("NotpService", () => {
 	it("should derive the WhatsApp identity provider from the NOTP channel", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue({
+			userId: "user-id",
+			authIdentityId: "identity-id",
+		});
 
 		await service.verifyNotp({
 			channel: NotpChannel.WHATSAPP,
 			providerMessageId: "wamid.message",
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -403,21 +415,26 @@ describe("NotpService", () => {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
+			displayIdentifier: "+5511999999999",
 		});
 	});
 
 	it("should save the observed WhatsApp identifier in the same database operation as the identity", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue({
+			userId: "user-id",
+			authIdentityId: "identity-id",
+		});
 
 		await service.verifyNotp({
 			channel: NotpChannel.WHATSAPP,
 			providerMessageId: "wamid.message",
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -425,16 +442,45 @@ describe("NotpService", () => {
 			provider: AuthIdentityProvider.WHATSAPP,
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			lastVerifiedAt: new Date("2026-08-05T15:00:00.000Z"),
-			contactMethod: JobContactMethod.WHATSAPP,
+			contactMethod: ContactMethod.WHATSAPP,
 			contactIdentifier: "+5511999999999",
+			displayIdentifier: "+5511999999999",
 		});
 	});
+
+	it.each([
+		{ name: "Ana Silva", contactIdentifier: "+5511999999999", expected: "Ana Silva" },
+		{ name: "  ", contactIdentifier: "+5511999999999", expected: "+5511999999999" },
+		{ name: "  ", contactIdentifier: "ana.silva", expected: "ana.silva" },
+	])(
+		"should display $expected for a WhatsApp verification with name $name and contact $contactIdentifier",
+		async ({ name, contactIdentifier, expected }) => {
+			repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
+			identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue({
+				userId: "user-id",
+				authIdentityId: "identity-id",
+			});
+
+			await service.verifyNotp({
+				channel: NotpChannel.WHATSAPP,
+				providerMessageId: "wamid.message",
+				providerSubject: "opaque-meta-user-id",
+				contactIdentifier: contactIdentifier,
+				providerProfileName: name,
+				notpCodeHash: "a".repeat(64),
+			});
+
+			expect(identityRepository.saveVerifiedIdentityAndContact).toHaveBeenCalledWith(
+				expect.objectContaining({ displayIdentifier: expected }),
+			);
+		},
+	);
 
 	it("should wait for atomic identity and contact persistence before making the intent exchangeable", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		let resolveIdentityAndContactPersistence!: (value: string) => void;
-		const identityAndContactPersistence = new Promise<string>((resolve) => {
+		let resolveIdentityAndContactPersistence!: (value: { userId: string; authIdentityId: string }) => void;
+		const identityAndContactPersistence = new Promise<{ userId: string; authIdentityId: string }>((resolve) => {
 			resolveIdentityAndContactPersistence = resolve;
 		});
 		let markIdentityAndContactPersistenceAsStarted!: () => void;
@@ -451,12 +497,13 @@ describe("NotpService", () => {
 			providerMessageId: "wamid.message",
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 		await identityAndContactPersistenceStarted;
 		const verificationStartedBeforeIdentityAndContactPersisted =
 			repository.markProcessingIntentAsVerified.mock.calls.length > 0;
-		resolveIdentityAndContactPersistence("user-id");
+		resolveIdentityAndContactPersistence({ userId: "user-id", authIdentityId: "identity-id" });
 		await verification;
 
 		expect(verificationStartedBeforeIdentityAndContactPersisted).toBe(false);
@@ -465,13 +512,17 @@ describe("NotpService", () => {
 	it("should make the processing intent exchangeable after resolving its identity", async () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsVerified.mockResolvedValue(undefined);
-		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue({
+			userId: "user-id",
+			authIdentityId: "identity-id",
+		});
 
 		await service.verifyNotp({
 			channel: NotpChannel.WHATSAPP,
 			providerMessageId: "wamid.message",
 			providerSubject: "+5511999999999",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: undefined,
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -482,6 +533,7 @@ describe("NotpService", () => {
 			providerMessageId: "wamid.message",
 			channel: NotpChannel.WHATSAPP,
 			userId: "user-id",
+			authIdentityId: "identity-id",
 		});
 	});
 
@@ -494,6 +546,7 @@ describe("NotpService", () => {
 				providerMessageId: "wamid.message",
 				providerSubject: "+5511999999999",
 				contactIdentifier: "+5511999999999",
+				providerProfileName: undefined,
 				notpCodeHash: "a".repeat(64),
 			}),
 		).rejects.toThrow("redis unavailable");
@@ -510,6 +563,7 @@ describe("NotpService", () => {
 				providerMessageId: "wamid.message",
 				providerSubject: "+5511999999999",
 				contactIdentifier: "+5511999999999",
+				providerProfileName: undefined,
 				notpCodeHash: "a".repeat(64),
 			})
 			.catch((caughtError: unknown) => caughtError);
@@ -524,7 +578,10 @@ describe("NotpService", () => {
 		repository.getIntentOrNullAndMarkAsProcessing.mockResolvedValue(_createProcessingIntent());
 		repository.markProcessingIntentAsPending.mockResolvedValue(undefined);
 		repository.markProcessingIntentAsVerified.mockRejectedValue(new Error("NOTP intent processing ownership was lost"));
-		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue("user-id");
+		identityRepository.saveVerifiedIdentityAndContact.mockResolvedValue({
+			userId: "user-id",
+			authIdentityId: "identity-id",
+		});
 
 		await expect(
 			service.verifyNotp({
@@ -532,6 +589,7 @@ describe("NotpService", () => {
 				providerMessageId: "wamid.message",
 				providerSubject: "+5511999999999",
 				contactIdentifier: "+5511999999999",
+				providerProfileName: undefined,
 				notpCodeHash: "a".repeat(64),
 			}),
 		).rejects.toThrow("NOTP intent processing ownership was lost");

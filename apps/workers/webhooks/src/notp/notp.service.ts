@@ -1,5 +1,5 @@
-import type { z } from "zod";
 import type { VerifyNotpInputSchema } from "@cataqui/api-internal-ingress";
+import type { z } from "zod";
 import { NotpRepository } from "./notp.repository";
 
 export class NotpService {
@@ -13,6 +13,7 @@ export class NotpService {
 		providerMessageId: string;
 		providerSenderId: string;
 		providerContactIdentifier: string | undefined;
+		providerProfileName: string | undefined;
 		text: string;
 	}): Promise<z.infer<typeof VerifyNotpInputSchema> | null> {
 		const notpCodeMatches = params.text.match(/(?<![A-Z0-9])NOTP-[A-Z0-9]{10}(?![A-Z0-9])/giu);
@@ -29,6 +30,7 @@ export class NotpService {
 			providerMessageId: params.providerMessageId,
 			providerSenderId: params.providerSenderId,
 			providerContactIdentifier: params.providerContactIdentifier,
+			...(params.providerProfileName === undefined ? {} : { providerProfileName: params.providerProfileName }),
 			notpCodeHash: new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(notpCode))).toHex(),
 		};
 	}

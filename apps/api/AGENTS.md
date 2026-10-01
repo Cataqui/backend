@@ -1066,6 +1066,8 @@ Every public NestJS API endpoint must have Swagger documentation.
 
 Each public controller endpoint must have a dedicated docs decorator or clearly separated docs helper.
 
+Keep an endpoint's docs decorator and its tests in the module of the controller that uses it. Name the decorator for that controller's resource, even when the endpoint uses a service or response schema owned by another module. Keep those schemas in their owning modules.
+
 Container-only inbound controllers must not be exposed in public Swagger. Their contracts are owned by the inbound manifest and its Zod input schemas. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
 
 Swagger docs must explain:

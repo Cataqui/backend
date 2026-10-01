@@ -1,7 +1,7 @@
-import { CursorUtils } from "../utils/cursor.utils";
+import { encodeFeedPaginationCursor } from "../utils/cursor.utils";
 import { FeedInputSchema } from "./feed-input.schema";
 
-const VALID_CURSOR = CursorUtils.encodeCursor({
+const VALID_CURSOR = encodeFeedPaginationCursor({
 	createdAt: "2026-05-28T10:00:00.000Z",
 	jobId: "12345678-1234-4234-8234-1234567890ab",
 });

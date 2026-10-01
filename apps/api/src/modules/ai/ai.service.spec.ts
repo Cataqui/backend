@@ -49,15 +49,16 @@ describe("AiService", () => {
 		expect(service).toBeDefined();
 	});
 
-	it("should disable gateway logging during tests", async () => {
+	it("should use the REST endpoint for Gemini 3.5 Flash Lite and select the task gateway", async () => {
 		await Test.createTestingModule({
 			providers: [AiService, { provide: aiConfig.KEY, useValue: mockConfig }],
 		}).compile();
 
 		expect(mockCreateUnified).toHaveBeenCalledWith({
-			baseURL: "https://gateway.ai.cloudflare.com/v1/test-account/test-gateway/compat",
+			baseURL: "https://api.cloudflare.com/client/v4/accounts/test-account/ai/v1",
 			headers: {
-				"cf-aig-authorization": "Bearer test-token",
+				Authorization: "Bearer test-token",
+				"cf-aig-gateway-id": "test-gateway",
 				"cf-aig-collect-log": "false",
 				"cf-aig-skip-cache": "true",
 			},
@@ -73,7 +74,8 @@ describe("AiService", () => {
 		expect(mockCreateUnified).toHaveBeenCalledWith(
 			expect.objectContaining({
 				headers: {
-					"cf-aig-authorization": "Bearer test-token",
+					Authorization: "Bearer test-token",
+					"cf-aig-gateway-id": "test-gateway",
 					"cf-aig-collect-log": "true",
 					"cf-aig-collect-log-payload": "true",
 					"cf-aig-skip-cache": "true",
@@ -93,7 +95,8 @@ describe("AiService", () => {
 		expect(mockCreateUnified).toHaveBeenCalledWith(
 			expect.objectContaining({
 				headers: {
-					"cf-aig-authorization": "Bearer test-token",
+					Authorization: "Bearer test-token",
+					"cf-aig-gateway-id": "test-gateway",
 					"cf-aig-collect-log": "true",
 					"cf-aig-collect-log-payload": "false",
 					"cf-aig-skip-cache": "true",
@@ -198,7 +201,7 @@ describe("AiService", () => {
 		expect(mockGenerateText).toHaveBeenCalledOnce();
 	});
 
-	it("should route job data derivation to Gemini 3.5 Flash Lite through Cloudflare", async () => {
+	it("should route job data derivation to Gemini 3.5 Flash Lite through Unified Billing", async () => {
 		mockGenerateText.mockResolvedValue({ output: {} });
 
 		const module = await Test.createTestingModule({
@@ -216,7 +219,7 @@ describe("AiService", () => {
 			abortSignal: AbortSignal.timeout(30_000),
 		});
 
-		expect(mockUnifiedFn).toHaveBeenCalledWith("google-vertex-ai/google/gemini-3.5-flash-lite");
+		expect(mockUnifiedFn).toHaveBeenCalledWith("google/gemini-3.5-flash-lite");
 	});
 
 	it("should pass structured output limits to the AI SDK", async () => {

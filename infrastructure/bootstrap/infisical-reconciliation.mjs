@@ -1,4 +1,4 @@
-import { ENVIRONMENTS } from "./reconciliation.mjs";
+import { ENVIRONMENTS, resolveUniqueNamedResource } from "./reconciliation.mjs";
 
 export const INFISICAL_PROJECT_TYPE = "secret-manager";
 
@@ -121,4 +121,58 @@ export async function reconcileInfisicalProjectState({
 		expectedName,
 		expectedSlug,
 	}).id;
+}
+
+export async function reconcileInfisicalFolderState({ name, listFolders, createFolder }) {
+	const folders = await listFolders();
+	if (!Array.isArray(folders)) throw new Error("Infisical returned an invalid folder inventory.");
+	if (resolveUniqueNamedResource(folders, name)) return;
+	await createFolder();
+	const verified = await listFolders();
+	if (!Array.isArray(verified)) throw new Error("Infisical returned an invalid folder inventory.");
+	if (!resolveUniqueNamedResource(verified, name)) {
+		throw new Error(`Infisical folder ${name} is missing after creation.`);
+	}
+}
+
+export async function reconcileInfisicalManualFolders({ manifest, ensureFolder, ensureSecret }) {
+	for (const environment of ENVIRONMENTS) {
+		for (const folder of Object.values(manifest.infisical.manual_folders)) {
+			let path = "/";
+			for (const name of folder.path.slice(1).split("/")) {
+				await ensureFolder({ environment: environment, path: path, name: name });
+				path = path === "/" ? `/${name}` : `${path}/${name}`;
+			}
+			for (const name of folder.secrets) {
+				await ensureSecret({ environment: environment, secretPath: folder.path, name: name });
+			}
+		}
+	}
+}
+
+export function getInfisicalManualSecretPermissions({ manifest, environment }) {
+	return Object.values(manifest.infisical.manual_folders).map((folder) => ({
+		subject: "secrets",
+		action: ["describeSecret", "readValue"],
+		conditions: { environment: { $eq: environment }, secretPath: { $eq: folder.path } },
+	}));
+}
+
+export async function reconcileInfisicalSecretPlaceholder({ name, listSecrets, createSecret }) {
+	const secrets = await listSecrets();
+	if (!Array.isArray(secrets) || !secrets.every((secret) => typeof secret?.secretKey === "string")) {
+		throw new Error("Infisical returned an invalid secret inventory.");
+	}
+	const matches = secrets.filter((secret) => secret.secretKey === name);
+	if (matches.length > 1) throw new Error(`Duplicate Infisical secret entries use name ${name}.`);
+	if (matches.length === 1) return;
+	await createSecret({ value: "" });
+	const verified = await listSecrets();
+	if (
+		!Array.isArray(verified) ||
+		!verified.every((secret) => typeof secret?.secretKey === "string") ||
+		verified.filter((secret) => secret.secretKey === name).length !== 1
+	) {
+		throw new Error(`Infisical secret placeholder ${name} could not be verified.`);
+	}
 }

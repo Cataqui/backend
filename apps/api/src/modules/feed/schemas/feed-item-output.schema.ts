@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { JobPaymentOutputSchema } from "../../../shared/schemas/job/job-payment-output.schema";
-import { FeedLocationOutputSchema } from "./feed-location-output.schema";
+import { FuzzyJobLocationOutputSchema } from "../../job/schemas/fuzzy-job-location-output.schema";
 
 export const FeedItemOutputSchema = z
 	.object({
@@ -10,8 +9,8 @@ export const FeedItemOutputSchema = z
 		descriptionSummary: z
 			.string()
 			.describe("Short worker-focused pitch with the most decision-useful grounded details from the post"),
-		payment: JobPaymentOutputSchema.describe("Payment details"),
-		location: FeedLocationOutputSchema.describe("Job location"),
+		payment: z.string().nullable().describe("Payment text derived from the job description, or null when unavailable"),
+		location: FuzzyJobLocationOutputSchema.describe("Job location"),
 	})
 	.strict()
 	.meta({ id: "FeedItemOutput" });

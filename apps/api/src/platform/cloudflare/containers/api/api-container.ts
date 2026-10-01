@@ -1,5 +1,4 @@
 import { Container, type StopParams } from "@cloudflare/containers";
-import { apiContainerOutboundHandlers } from "./outbound/api-container-outbound.handlers";
 
 export class ApiContainer extends Container<Cloudflare.Env> {
 	override defaultPort = 3000;
@@ -64,5 +63,3 @@ export class ApiContainer extends Container<Cloudflare.Env> {
 		});
 	}
 }
-
-ApiContainer.outboundByHost = apiContainerOutboundHandlers;

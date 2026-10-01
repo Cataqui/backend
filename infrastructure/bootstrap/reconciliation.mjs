@@ -62,26 +62,18 @@ export function validatePlatforms(platforms) {
 
 export function validateManifest(manifest) {
 	_requireExactKeys(manifest, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "manifest");
-	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "queues", "r2"], "manifest.cloudflare");
+	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "r2"], "manifest.cloudflare");
 	_requireExactKeys(
 		manifest.cloudflare.ai_gateways,
 		["derive_job_data_staging", "derive_job_data_production"],
 		"manifest.cloudflare.ai_gateways",
 	);
-	_requireExactKeys(
-		manifest.cloudflare.queues,
-		["derive_job_data_staging", "derive_job_data_production"],
-		"manifest.cloudflare.queues",
-	);
-	for (const environment of ENVIRONMENTS) {
-		_requireExactKeys(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`],
-			["name", "dead_letter_name"],
-			`manifest.cloudflare.queues.derive_job_data_${environment}`,
-		);
-	}
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
-	_requireExactKeys(manifest.cloudflare.r2.buckets, ["opentofu_state"], "manifest.cloudflare.r2.buckets");
+	_requireExactKeys(
+		manifest.cloudflare.r2.buckets,
+		["opentofu_state", "geoimage_images_staging", "geoimage_images_production"],
+		"manifest.cloudflare.r2.buckets",
+	);
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
 	_requireExactKeys(
 		manifest.google_cloud.projects,
@@ -105,8 +97,30 @@ export function validateManifest(manifest) {
 		["cataqui_backend_staging", "cataqui_backend_production"],
 		"manifest.google_cloud.github_auth.service_accounts",
 	);
-	_requireExactKeys(manifest.infisical, ["project", "opentofu_identities"], "manifest.infisical");
+	_requireExactKeys(manifest.infisical, ["project", "opentofu_identities", "manual_folders"], "manifest.infisical");
 	_requireExactKeys(manifest.infisical.project, ["name", "slug"], "manifest.infisical.project");
+	_requireExactKeys(manifest.infisical.manual_folders, ["geoimage_runtime"], "manifest.infisical.manual_folders");
+	_requireExactKeys(
+		manifest.infisical.manual_folders.geoimage_runtime,
+		["path", "secrets"],
+		"manifest.infisical.manual_folders.geoimage_runtime",
+	);
+	_requireString(
+		manifest.infisical.manual_folders.geoimage_runtime.path,
+		"manifest.infisical.manual_folders.geoimage_runtime",
+		/^\/manual\/[a-z][a-z0-9-]*\/runtime$/,
+	);
+	const manualSecrets = manifest.infisical.manual_folders.geoimage_runtime.secrets;
+	if (
+		!Array.isArray(manualSecrets) ||
+		manualSecrets.length === 0 ||
+		new Set(manualSecrets).size !== manualSecrets.length
+	) {
+		throw new Error("manifest.infisical.manual_folders.geoimage_runtime.secrets must contain unique secret names.");
+	}
+	for (const name of manualSecrets) {
+		_requireString(name, "manifest.infisical.manual_folders.geoimage_runtime.secrets", /^[A-Z][A-Z0-9_]*$/);
+	}
 	_requireExactKeys(
 		manifest.infisical.opentofu_identities,
 		["cataqui_backend_staging", "cataqui_backend_production"],
@@ -161,6 +175,13 @@ export function validateManifest(manifest) {
 		"cloudflare.r2.buckets.opentofu_state",
 		LOWERCASE_NAME_PATTERN,
 	);
+	for (const environment of ENVIRONMENTS) {
+		_requireString(
+			manifest.cloudflare.r2.buckets[`geoimage_images_${environment}`],
+			`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`,
+			LOWERCASE_NAME_PATTERN,
+		);
+	}
 	_requireString(manifest.infisical.project.name, "infisical.project.name");
 	_requireString(manifest.infisical.project.slug, "infisical.project.slug", LOWERCASE_NAME_PATTERN);
 	_requireString(
@@ -195,16 +216,6 @@ export function validateManifest(manifest) {
 		_requireString(
 			manifest.cloudflare.ai_gateways[`derive_job_data_${environment}`],
 			`cloudflare.ai_gateways.derive_job_data_${environment}`,
-			LOWERCASE_NAME_PATTERN,
-		);
-		_requireString(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`].name,
-			`cloudflare.queues.derive_job_data_${environment}.name`,
-			LOWERCASE_NAME_PATTERN,
-		);
-		_requireString(
-			manifest.cloudflare.queues[`derive_job_data_${environment}`].dead_letter_name,
-			`cloudflare.queues.derive_job_data_${environment}.dead_letter_name`,
 			LOWERCASE_NAME_PATTERN,
 		);
 		_requireString(

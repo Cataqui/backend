@@ -38,9 +38,10 @@ export class AiService {
 		config: ConfigType<typeof aiConfig>,
 	) {
 		this._unifiedProvider = createUnified({
-			baseURL: `https://gateway.ai.cloudflare.com/v1/${config.cloudflareAccountId}/${config.deriveJobDataAiGatewayId}/compat`,
+			baseURL: `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/v1`,
 			headers: {
-				"cf-aig-authorization": `Bearer ${config.aiGatewayApiToken}`,
+				Authorization: `Bearer ${config.aiGatewayApiToken}`,
+				"cf-aig-gateway-id": config.deriveJobDataAiGatewayId,
 				"cf-aig-skip-cache": "true",
 				..._getGatewayLoggingHeaders({ environment: config.environment }),
 			},
@@ -85,7 +86,7 @@ export class AiService {
 	private _getGatewayModelForTask(params: { task: AiTask }): string {
 		switch (params.task) {
 			case AiTask.DERIVE_JOB_DATA:
-				return "google-vertex-ai/google/gemini-3.5-flash-lite";
+				return "google/gemini-3.5-flash-lite";
 		}
 	}
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."JobStatus" RENAME VALUE 'CLOSED' TO 'ARCHIVED';

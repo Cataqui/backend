@@ -10,7 +10,6 @@ import { MicroservicesAuthController } from "../src/modules/auth/microservices-a
 import { FeedController } from "../src/modules/feed/feed.controller";
 import { HealthController } from "../src/modules/health/health.controller";
 import { JobController } from "../src/modules/job/job.controller";
-import { JobInboundController } from "../src/modules/job/job.inbound.controller";
 
 const reflector = new Reflector();
 
@@ -29,12 +28,7 @@ function _getPolicy(
 }
 
 describe("endpoint rate-limit policy contract", () => {
-	it.each([
-		["job draft creation", JobController, "createDraft", 20, 3_600_000],
-		["job draft editing", JobController, "updateDraft", 60, 3_600_000],
-		["public job editing", JobController, "updatePublicJob", 60, 3_600_000],
-		["job publication", JobController, "publish", 20, 3_600_000],
-	] as const)(
+	it.each([["direct job posting", JobController, "createJob", 20, 3_600_000]] as const)(
 		"should protect %s with its authenticated-user budget",
 		(_name, controller, method, requests, milliseconds) => {
 			expect(_getPolicy(controller, method)).toEqual({ requests: requests, milliseconds: milliseconds });
@@ -46,7 +40,7 @@ describe("endpoint rate-limit policy contract", () => {
 		["dependency health", HealthController, "check"],
 		["feed pagination", FeedController, "getFeed"],
 		["job detail", JobController, "getJob"],
-		["job contact reveal", JobController, "getJobContact"],
+		["contact reveal", JobController, "getJobContact"],
 		["session refresh", AuthSessionController, "refreshSession"],
 		["session inspection", AuthSessionController, "getCurrentSession"],
 		["current-session logout", AuthSessionController, "logoutCurrentSession"],
@@ -54,7 +48,6 @@ describe("endpoint rate-limit policy contract", () => {
 		["NOTP intent creation", NotpController, "createIntent"],
 		["NOTP intent exchange", NotpController, "exchangeIntentForSession"],
 		["geosearch access-token issuance", MicroservicesAuthController, "createGeosearchAccessToken"],
-		["inbound job derivation", JobInboundController, "deriveData"],
 		["direct WhatsApp auth verification", NotpInboundController, "verifyWhatsappNotp"],
 	] as const)("should leave %s without an application-level request budget", (_name, controller, method) => {
 		expect(_getPolicy(controller, method)).toEqual({ requests: undefined, milliseconds: undefined });

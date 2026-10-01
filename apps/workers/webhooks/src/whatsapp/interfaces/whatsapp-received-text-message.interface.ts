@@ -1,7 +1,8 @@
 export interface IWhatsappReceivedTextMessage {
-	providerMessageId: string;
-	providerSenderId: string;
-	providerContactIdentifier: string | undefined;
+	messageId: string;
+	senderId: string;
+	contactIdentifier: string | undefined;
+	profileName: string | undefined;
 	recipientPhoneNumberId: string;
 	text: string;
 }

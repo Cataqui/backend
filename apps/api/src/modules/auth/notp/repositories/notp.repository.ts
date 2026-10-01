@@ -16,6 +16,7 @@ type NotpIntent =
 			candidateSessionId: string;
 			status: NotpIntentStatus.VERIFIED;
 			userId: string;
+			authIdentityId: string;
 	  };
 
 enum NotpVerificationSubscriptionReadiness {
@@ -53,13 +54,15 @@ export class NotpRepository implements OnModuleInit {
 			local intentValues = redis.call("HMGET", KEYS[1],
 				"candidate_session_id",
 				"status",
-				"user_id"
+				"user_id",
+				"auth_identity_id"
 			)
 			if not intentValues[1] or not intentValues[2] then return {} end
 			return {
 				intentValues[1] or "",
 				intentValues[2] or "",
-				intentValues[3] or ""
+				intentValues[3] or "",
+				intentValues[4] or ""
 			}
 		`);
 		this._getIntentOrNullAndMarkAsProcessingScript = this._redis.createScript<string[]>(`
@@ -119,7 +122,8 @@ export class NotpRepository implements OnModuleInit {
 			if intentValues[3] ~= ARGV[6] then return 0 end
 			redis.call("HSET", KEYS[1],
 				"status", ARGV[3],
-				"user_id", ARGV[4]
+				"user_id", ARGV[4],
+				"auth_identity_id", ARGV[9]
 			)
 			redis.call("HDEL", KEYS[1],
 				"processing_message_id",
@@ -206,6 +210,7 @@ export class NotpRepository implements OnModuleInit {
 		if (typeof candidateSessionId !== "string" || candidateSessionId.length === 0) return null;
 		if (status === undefined) return null;
 		const storedUserId = storedIntentValues[2];
+		const storedAuthIdentityId = storedIntentValues[3];
 		if (status !== NotpIntentStatus.VERIFIED) {
 			if (storedUserId !== undefined && storedUserId !== "") return null;
 
@@ -215,7 +220,12 @@ export class NotpRepository implements OnModuleInit {
 			};
 		}
 
-		if (typeof storedUserId !== "string" || storedUserId.length === 0) {
+		if (
+			typeof storedUserId !== "string" ||
+			storedUserId.length === 0 ||
+			typeof storedAuthIdentityId !== "string" ||
+			storedAuthIdentityId.length === 0
+		) {
 			return null;
 		}
 
@@ -223,6 +233,7 @@ export class NotpRepository implements OnModuleInit {
 			candidateSessionId: candidateSessionId,
 			status: status,
 			userId: storedUserId,
+			authIdentityId: storedAuthIdentityId,
 		};
 	}
 
@@ -520,6 +531,7 @@ export class NotpRepository implements OnModuleInit {
 		providerMessageId: string;
 		channel: NotpChannel;
 		userId: string;
+		authIdentityId: string;
 	}): Promise<void> {
 		const result = await this._markProcessingIntentAsVerifiedScript.exec(
 			[
@@ -538,6 +550,7 @@ export class NotpRepository implements OnModuleInit {
 				params.candidateSessionId,
 				this._buildIntentVerificationChannel({ intentTokenHash: params.intentTokenHash }),
 				NotpIntentStatus.VERIFIED,
+				params.authIdentityId,
 			],
 		);
 

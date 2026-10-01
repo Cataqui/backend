@@ -12,6 +12,7 @@ export class AuthSessionRepository {
 		refreshTokenHash: string;
 		sessionId: string;
 		userId: string;
+		authIdentityId: string;
 	}): Promise<{ sessionId: string; userId: string }> {
 		const now = new Date();
 		const sessionData = {
@@ -27,6 +28,7 @@ export class AuthSessionRepository {
 				data: {
 					id: params.sessionId,
 					userId: params.userId,
+					authIdentityId: params.authIdentityId,
 					...sessionData,
 				},
 				select: { id: true, userId: true },
@@ -42,9 +44,13 @@ export class AuthSessionRepository {
 
 		const existingSession = await this._prisma.authSession.findUnique({
 			where: { id: params.sessionId },
-			select: { id: true, userId: true },
+			select: { id: true, userId: true, authIdentityId: true },
 		});
-		if (existingSession === null || existingSession.userId !== params.userId) {
+		if (
+			existingSession === null ||
+			existingSession.userId !== params.userId ||
+			existingSession.authIdentityId !== params.authIdentityId
+		) {
 			throw new AuthSessionUnavailableError();
 		}
 

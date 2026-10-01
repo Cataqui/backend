@@ -21,7 +21,6 @@ describe("ApiContainer request boundary", () => {
 				SLEEP_AFTER: "5m",
 				API_CONTAINER_POOL_SIZE: "10",
 				API_CONTAINER: {},
-				DERIVE_JOB_DATA_QUEUE: {},
 			} as never,
 		);
 
@@ -57,7 +56,7 @@ describe("ApiContainer request boundary", () => {
 
 		const response = await ApiContainer.prototype.fetch.call(
 			container,
-			new Request("https://api.cataqui.com/internal/inbound/derive-job-data", {
+			new Request("https://api.cataqui.com/internal/inbound/verify-whatsapp-notp", {
 				method: "POST",
 			}),
 		);
@@ -71,7 +70,7 @@ describe("ApiContainer request boundary", () => {
 
 		await ApiContainer.prototype.fetch.call(
 			container,
-			new Request("https://api.cataqui.com/internal/inbound/derive-job-data", {
+			new Request("https://api.cataqui.com/internal/inbound/verify-whatsapp-notp", {
 				method: "POST",
 			}),
 		);
@@ -107,7 +106,7 @@ describe("ApiContainer request boundary", () => {
 		const expectedResponse = new Response("ok");
 		const containerFetch = vi.fn().mockResolvedValue(expectedResponse);
 		const container = { containerFetch: containerFetch } as unknown as ApiContainer;
-		const request = new Request("https://api.cataqui.com/v1/jobs/drafts", { method: "POST" });
+		const request = new Request("https://api.cataqui.com/v1/jobs", { method: "POST" });
 
 		const response = await ApiContainer.prototype.fetch.call(container, request);
 

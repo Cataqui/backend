@@ -1,10 +1,11 @@
+import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { type Mock, vi } from "vitest";
 import { Prisma } from "../../../generated/prisma/client.js";
-import { InvalidCursorError } from "./errors/invalid-cursor.error";
+import { InvalidCursorError } from "../../core/errors/invalid-cursor.error";
 import { FeedService } from "./feed.service";
 import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
-import { CursorUtils } from "./utils/cursor.utils";
+import { encodeFeedPaginationCursor } from "./utils/cursor.utils";
 
 function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; createdAt: Date }): FeedItemRaw {
 	return {
@@ -12,12 +13,7 @@ function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; 
 		title: overrides.title ?? "Help unload truck",
 		createdAt: overrides.createdAt,
 		descriptionSummary: overrides.descriptionSummary ?? "",
-		paymentType: overrides.paymentType ?? ("FIXED" as const),
-		paymentMinAmount: overrides.paymentMinAmount ?? new Prisma.Decimal("150.00"),
-		paymentMaxAmount: overrides.paymentMaxAmount ?? null,
-		paymentNote: overrides.paymentNote ?? null,
-		paymentAmountPeriod: overrides.paymentAmountPeriod ?? ("SINGLE" as const),
-		paymentCurrency: overrides.paymentCurrency ?? "BRL",
+		payment: overrides.payment ?? "R$ 150",
 		fuzzyLatitude: overrides.fuzzyLatitude ?? new Prisma.Decimal("-23.550000"),
 		fuzzyLongitude: overrides.fuzzyLongitude ?? new Prisma.Decimal("-46.630000"),
 	};
@@ -27,6 +23,10 @@ const mockRepository = {
 	getFeedItems: vi.fn() as Mock,
 };
 
+const imageAuth = {
+	createGeoimageAccessToken: vi.fn(async (_params: { latitude: number; longitude: number }) => "image-permission"),
+};
+
 const PAGE_SIZE = 20;
 
 describe("FeedService", () => {
@@ -34,7 +34,14 @@ describe("FeedService", () => {
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }],
+			providers: [
+				{
+					provide: MicroservicesAuthService,
+					useValue: imageAuth,
+				},
+				FeedService,
+				{ provide: FeedRepository, useValue: mockRepository },
+			],
 		}).compile();
 
 		service = module.get<FeedService>(FeedService);
@@ -67,7 +74,7 @@ describe("FeedService", () => {
 			);
 			mockRepository.getFeedItems.mockResolvedValue(items);
 
-			const encodedCursor = CursorUtils.encodeCursor({
+			const encodedCursor = encodeFeedPaginationCursor({
 				createdAt: "2026-05-28T10:00:00.000Z",
 				jobId: "12345678-1234-4234-8234-1234567890ab",
 			});
@@ -102,9 +109,14 @@ describe("FeedService", () => {
 
 			const result = await service.getFeed({});
 
-			expect({ itemCount: result.data.length, pagination: result.pagination }).toEqual({
+			expect({
+				itemCount: result.data.length,
+				pagination: result.pagination,
+				permissionCount: imageAuth.createGeoimageAccessToken.mock.calls.length,
+			}).toEqual({
 				itemCount: PAGE_SIZE,
 				pagination: { hasMore: true, nextCursor: expect.any(String) },
+				permissionCount: PAGE_SIZE,
 			});
 		});
 
@@ -144,8 +156,39 @@ describe("FeedService", () => {
 			expect(result.data[0]).toMatchObject({
 				jobId: "job-1",
 				title: "Help unload truck",
-				payment: { type: "FIXED", minAmount: 150 },
-				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				payment: "R$ 150",
+				location: {
+					latitude: -23.55,
+					longitude: -46.63,
+					areaRadius: 2_000,
+					image: { accessToken: "image-permission" },
+				},
+			});
+		});
+
+		it("signs the persisted fuzzy coordinates for each returned feed item", async () => {
+			imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
+			mockRepository.getFeedItems.mockResolvedValue([
+				_createMockFeedItemRaw({
+					id: "first",
+					createdAt: new Date(),
+					fuzzyLatitude: new Prisma.Decimal(-23.6),
+					fuzzyLongitude: new Prisma.Decimal(-46.7),
+				}),
+				_createMockFeedItemRaw({
+					id: "second",
+					createdAt: new Date(),
+					fuzzyLatitude: new Prisma.Decimal(-23.8),
+					fuzzyLongitude: new Prisma.Decimal(-46.9),
+				}),
+			]);
+			const output = await service.getFeed({});
+			expect({
+				signedCoordinates: imageAuth.createGeoimageAccessToken.mock.calls,
+				imageAccessTokens: output.data.map((item) => item.location.image.accessToken),
+			}).toEqual({
+				signedCoordinates: [[{ latitude: -23.6, longitude: -46.7 }], [{ latitude: -23.8, longitude: -46.9 }]],
+				imageAccessTokens: ["image-permission", "image-permission"],
 			});
 		});
 

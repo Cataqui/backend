@@ -57,6 +57,7 @@ describe("NotpInboundController", () => {
 			providerMessageId: "wamid.message",
 			providerSenderId: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			providerContactIdentifier: "+5511999999999",
+			providerProfileName: "Ana Silva",
 			notpCodeHash: "a".repeat(64),
 		});
 
@@ -65,6 +66,7 @@ describe("NotpInboundController", () => {
 			providerMessageId: "wamid.message",
 			providerSubject: "user.9373795779eb6441c8adb2eaee5b848e7dd174ddd302d7db62142f4722d574b6",
 			contactIdentifier: "+5511999999999",
+			providerProfileName: "Ana Silva",
 			notpCodeHash: "a".repeat(64),
 		});
 	});

@@ -1,4 +1,4 @@
-import { JobContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client.js";
 import { JobContactReferenceOutputSchema } from "./job-contact-reference-output.schema";
 
 describe("JobContactReferenceOutputSchema", () => {
@@ -6,16 +6,16 @@ describe("JobContactReferenceOutputSchema", () => {
 		expect(
 			JobContactReferenceOutputSchema.parse({
 				contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-				contactMethod: JobContactMethod.WHATSAPP,
+				method: ContactMethod.WHATSAPP,
 			}),
-		).toEqual({ contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", contactMethod: JobContactMethod.WHATSAPP });
+		).toEqual({ contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", method: ContactMethod.WHATSAPP });
 	});
 
 	it("should reject database-only contact fields", () => {
 		expect(() =>
 			JobContactReferenceOutputSchema.parse({
 				contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-				contactMethod: JobContactMethod.WHATSAPP,
+				method: ContactMethod.WHATSAPP,
 				identifier: "+5511999999999",
 			}),
 		).toThrow();

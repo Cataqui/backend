@@ -16,5 +16,12 @@ export const JobDerivedDataSchema = z
 			.describe(
 				"A truthful, compact mini-pitch that helps a Cataquí worker decide whether to open the post. Write it in the description's language and writing system. Complement the title with the strongest grounded access advantage, fit or flexibility signal, material extra, and any crucial eligibility filter. Prefer facts such as no experience, first-job suitability, training, shift choice, short duration, quick payment, transport, meals, or mandatory requirements over routine duties. Do not include payment amounts, contact details, employer names, or exact location. Preserve the exact relationship between facts and qualifiers; never invent, hype, or end with punctuation.",
 			),
+		payment: z
+			.string()
+			.trim()
+			.nullable()
+			.describe(
+				"A short, faithful compensation label derived from the description, or null when compensation is absent, unclear, or explicitly negotiable without concrete terms. Preserve only stated amounts, currencies, units, and alternatives; do not infer missing currency or treat incidental benefits as pay.",
+			),
 	})
 	.strict();
