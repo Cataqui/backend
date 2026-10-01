@@ -1,3 +1,4 @@
+import { MapRendering } from "./maps/map-rendering";
 import { HTTPException } from "hono/http-exception";
 import { createTestBindings, Jpeg, Query } from "../test/fakes";
 import app from "./app";
@@ -56,6 +57,7 @@ describe("Geoimage GET images", () => {
 			apiKey: "test-secret",
 			center: "lonlat:-46.6333,-23.5505",
 			style: "osm-bright",
+			styleCustomization: MapRendering.styleCustomization,
 			width: "480",
 			height: "1280",
 			scaleFactor: "2",

@@ -10,7 +10,7 @@ export const GetImageDescription = {
 	tags: ["Images"],
 	summary: "Get a geographic image",
 	description:
-		"Returns a JPEG basemap with native provider labels and attribution. Workers Cache serves hits before Worker execution; misses read durable storage and generate if needed. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed. Successful images omit x-request-id. Use a consistent query order and numeric spelling for edge reuse; normalized inputs still share R2 objects.",
+		"Returns a JPEG basemap in the fixed Cataquí light style: pale land and streets, slate highways, cyan water, and green parks, with native provider labels and attribution. Workers Cache serves hits before Worker execution; misses read durable storage and generate if needed. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed. Successful images omit x-request-id. Use a consistent query order and numeric spelling for edge reuse; normalized inputs still share R2 objects.",
 	responses: {
 		200: {
 			description: "Stored or generated JPEG image",

@@ -17,6 +17,7 @@ export class MapRepository {
 			apiKey: this._config.apiKey,
 			center: `lonlat:${params.center.longitude},${params.center.latitude}`,
 			style: MapRendering.style,
+			styleCustomization: MapRendering.styleCustomization,
 			width: String(params.size.width),
 			height: String(params.size.height),
 			scaleFactor: String(params.density),
