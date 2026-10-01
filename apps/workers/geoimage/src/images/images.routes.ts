@@ -3,6 +3,7 @@ import { describeRoute, validator } from "hono-openapi";
 import { GeoimageErrorCode } from "../geoimage-error-code.enum";
 import { createGeoimageErrorResponse } from "../geoimage-error-response";
 import type { IGeoimageHonoEnvironment } from "../geoimage-hono-environment.interface";
+import { authService } from "../auth/auth.service";
 import { toValidationViolations } from "../validation-violations";
 import { ImageRepository } from "./image.repository";
 import { ImageService } from "./image.service";
@@ -42,6 +43,12 @@ export function createImagesRoutes(): Hono<IGeoimageHonoEnvironment> {
 			}),
 			async (context) => {
 				const input = context.req.valid("query");
+				await authService.authorizeImage({
+					authorization: context.req.header("Authorization"),
+					jwksUrl: context.env.MICROSERVICES_AUTH_JWKS_URL,
+					latitude: input.latitude,
+					longitude: input.longitude,
+				});
 				const service = new ImageService({
 					images: new ImageRepository({ bucket: context.env.IMAGES }),
 					generation: context.env.GENERATION,

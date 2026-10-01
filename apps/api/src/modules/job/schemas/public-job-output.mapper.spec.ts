@@ -17,11 +17,23 @@ describe("toPublicJobOutput", () => {
 	};
 
 	it("maps payment text and fuzzy location", () => {
-		const result = toPublicJobOutput(job);
+		const result = toPublicJobOutput({
+			job: job,
+			location: { latitude: -23, longitude: -46, areaRadius: 2000, image: { accessToken: "image-permission" } },
+		});
 		expect(result).toMatchObject({ payment: "R$ 100", location: { latitude: -23, longitude: -46 } });
 	});
 
 	it("maps null payment unchanged", () => {
-		expect(toPublicJobOutput({ ...job, payment: null }).payment).toBeNull();
+		expect(
+			toPublicJobOutput({
+				job: { ...job, payment: null },
+				location: { latitude: -23, longitude: -46, areaRadius: 2000, image: { accessToken: "image-permission" } },
+			}).payment,
+		).toBeNull();
+	});
+	it("uses the supplied fuzzy location instead of rebuilding it from the job record", () => {
+		const location = { latitude: -10, longitude: -20, areaRadius: 1500, image: { accessToken: "supplied-permission" } };
+		expect(toPublicJobOutput({ job: job, location: location }).location).toBe(location);
 	});
 });

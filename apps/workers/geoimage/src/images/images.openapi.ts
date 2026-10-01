@@ -9,8 +9,9 @@ export const GetImageDescription = {
 	operationId: "getImage",
 	tags: ["Images"],
 	summary: "Get a geographic image",
+	security: [{ geoimagePermission: [] }],
 	description:
-		"Returns a JPEG basemap in the fixed Cataquí light style: pale land and streets, slate highways, cyan water, and green parks, with native provider labels and attribution. Workers Cache serves hits before Worker execution; misses read durable storage and generate if needed. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed. Successful images omit x-request-id. Use a consistent query order and numeric spelling for edge reuse; normalized inputs still share R2 objects.",
+		"Returns a JPEG basemap in the fixed Cataquí light style: pale land and streets, slate highways, cyan water, and green parks, with native provider labels and attribution. Send the location image.accessToken from a Cataquí API response as Authorization: Bearer. It permits these coordinates without authenticating a user and has no expiration. Worker requests require valid permission before storage or generation; CDN hits are public and bypass verification. Workers Cache serves hits before Worker execution; misses read durable storage and generate if needed. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed. Successful images omit x-request-id. Use a consistent query order and numeric spelling for edge reuse; normalized inputs still share R2 objects.",
 	responses: {
 		200: {
 			description: "Stored or generated JPEG image",
@@ -33,6 +34,8 @@ export const GetImageDescription = {
 				},
 			},
 		},
+		401: { description: "UNAUTHORIZED: missing or invalid image permission", content: _errorContent },
+		403: { description: "FORBIDDEN: permission grants different coordinates", content: _errorContent },
 		413: {
 			description: "PAYLOAD_TOO_LARGE: body exceeds 4 KiB",
 			content: _errorContent,
@@ -49,7 +52,11 @@ export const GetImageDescription = {
 			description: "PROVIDER_UNAVAILABLE",
 			content: _errorContent,
 		},
-		503: { description: "STORAGE_UNAVAILABLE: durable storage could not be read; retry later", content: _errorContent },
+		503: {
+			description:
+				"STORAGE_UNAVAILABLE: durable storage could not be read; AUTH_UNAVAILABLE: verification keys could not be retrieved. Retry later.",
+			content: _errorContent,
+		},
 		504: {
 			description: "PROVIDER_TIMEOUT",
 			content: _errorContent,

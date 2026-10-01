@@ -1,7 +1,7 @@
 {
 	"name": "@cataqui/geoimage-worker",
 	"version": "1.0.0",
-	"description": "Cataqu\u00ed geographic image Worker",
+	"description": "Cataquí geographic image Worker",
 	"private": true,
 	"license": "BUSL-1.1",
 	"type": "module",
@@ -24,7 +24,9 @@
 		"@hono/swagger-ui": "^0.6.1",
 		"hono": "catalog:",
 		"hono-openapi": "^1.3.3",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"jose": "catalog:",
+		"@cataqui/microservices-auth-schemas": "workspace:*"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-plugin": "1.3.4",

@@ -59,6 +59,16 @@ app.get(
 	"/openapi.json",
 	openAPIRouteHandler(app, {
 		documentation: {
+			components: {
+				securitySchemes: {
+					geoimagePermission: {
+						type: "http",
+						scheme: "bearer",
+						bearerFormat: "JWT",
+						description: "Location-scoped image permission from the Cataquí API. CDN images remain public.",
+					},
+				},
+			},
 			info: {
 				title: "Geoimage",
 				version: "1.0.0",

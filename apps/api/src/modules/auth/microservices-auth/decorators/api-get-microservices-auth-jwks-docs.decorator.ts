@@ -1,6 +1,6 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { MicroservicesAuthJwksOutputSchema } from "@cataqui/microservices-auth-contracts";
+import { MicroservicesAuthJwksOutputSchema } from "@cataqui/microservices-auth-schemas/jwks";
 
 export function ApiGetMicroservicesAuthJwksDocs(): MethodDecorator & ClassDecorator {
 	return applyDecorators(

@@ -17,7 +17,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/workers/geosearch/package.json apps/workers/geosearch/package.json
 COPY apps/workers/webhooks/package.json apps/workers/webhooks/package.json
 COPY packages/api-internal-ingress/package.json packages/api-internal-ingress/package.json
-COPY packages/microservices-auth-contracts/package.json packages/microservices-auth-contracts/package.json
+COPY packages/microservices-auth-schemas/package.json packages/microservices-auth-schemas/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 	pnpm install --frozen-lockfile --ignore-scripts \

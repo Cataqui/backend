@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MicroservicesAuthPublicJwkOutputSchema } from "./microservices-auth-public-jwk-output.schema.js";
 
 export const MicroservicesAuthJwksOutputSchema = z
-	.object({
+	.strictObject({
 		keys: z
 			.array(MicroservicesAuthPublicJwkOutputSchema)
 			.min(1)
@@ -24,6 +24,5 @@ export const MicroservicesAuthJwksOutputSchema = z
 			})
 			.readonly(),
 	})
-	.strict()
 	.readonly()
 	.meta({ id: "MicroservicesAuthJwksOutput" });

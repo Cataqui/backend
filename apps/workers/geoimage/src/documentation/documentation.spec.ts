@@ -49,6 +49,7 @@ describe("development-only Geoimage documentation", () => {
 		});
 		expect(spec.paths["/v1/images"]).toMatchObject({
 			get: {
+				security: [{ geoimagePermission: [] }],
 				parameters: expect.arrayContaining([
 					expect.objectContaining({ name: "latitude", in: "query", required: true }),
 					expect.objectContaining({ name: "longitude", in: "query", required: true }),
@@ -72,16 +73,19 @@ describe("development-only Geoimage documentation", () => {
 							},
 						},
 					},
+					"401": { description: expect.stringContaining("UNAUTHORIZED") },
+					"403": { description: expect.stringContaining("FORBIDDEN") },
 					"413": expect.any(Object),
 					"405": expect.any(Object),
 					"500": expect.any(Object),
 					"502": expect.any(Object),
-					"503": expect.any(Object),
+					"503": { description: expect.stringContaining("AUTH_UNAVAILABLE") },
 					"504": expect.any(Object),
 				},
 			},
 		});
 		expect(spec.components).toMatchObject({
+			securitySchemes: { geoimagePermission: { type: "http", scheme: "bearer", bearerFormat: "JWT" } },
 			schemas: {
 				ValidationViolation: {
 					additionalProperties: false,
@@ -91,7 +95,11 @@ describe("development-only Geoimage documentation", () => {
 			},
 		});
 		expect(spec.paths["/v1/images"]).toMatchObject({
-			head: { operationId: "headImage", responses: { "200": { description: expect.any(String) } } },
+			head: {
+				security: [{ geoimagePermission: [] }],
+				operationId: "headImage",
+				responses: { "200": { description: expect.any(String) } },
+			},
 		});
 
 		expect(spec.paths["/v1/images"]).not.toHaveProperty("post");

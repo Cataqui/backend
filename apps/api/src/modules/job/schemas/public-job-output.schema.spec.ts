@@ -5,7 +5,7 @@ const job = {
 	description: "Ajudar a carregar caixas",
 	descriptionSummary: "Hoje à tarde",
 	contactReference: { contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", method: "WHATSAPP" },
-	location: { latitude: -23, longitude: -46, areaRadius: 2000 },
+	location: { latitude: -23, longitude: -46, areaRadius: 2000, image: { accessToken: "image-permission" } },
 	payment: "R$ 100",
 	status: "ACTIVE",
 	createdAt: "2026-09-22T12:00:00Z",

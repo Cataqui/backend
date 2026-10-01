@@ -66,7 +66,7 @@ jobs:
                   apps/workers/geosearch/*) deploy_geosearch=true ;;
                   apps/workers/webhooks/*) deploy_webhooks=true ;;
                   packages/api-internal-ingress/*) deploy_api=true; deploy_webhooks=true ;;
-                  packages/microservices-auth-contracts/*) deploy_api=true; deploy_geosearch=true ;;
+                  packages/microservices-auth-schemas/*) deploy_api=true; deploy_geosearch=true ;;
                 esac
               done < <(git diff --name-only "$base" "$GITHUB_SHA") ;;
             *) echo "Unsupported deployment scope." >&2; exit 1 ;;
@@ -133,8 +133,8 @@ jobs:
             let text="";process.stdin.on("data",c=>text+=c).on("end",()=>{const list=JSON.parse(text),{execFileSync}=require("node:child_process");for(const d of list){try{const s=JSON.parse(execFileSync("gh",["api",`repos/${process.env.GITHUB_REPOSITORY}/deployments/${d.id}/statuses?per_page=20`],{encoding:"utf8",env:process.env}));if(s.some(x=>x.state==="success")){process.stdout.write(d.sha);return}}catch{}}process.exit(1)});')"
           git merge-base --is-ancestor "$staging_sha" "$GITHUB_SHA"
           paths=(package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json)
-          [[ "$DEPLOY_API" == true ]] && paths+=(apps/api packages/api-internal-ingress packages/microservices-auth-contracts)
-          [[ "$DEPLOY_GEOSEARCH" == true ]] && paths+=(apps/workers/geosearch packages/microservices-auth-contracts)
+          [[ "$DEPLOY_API" == true ]] && paths+=(apps/api packages/api-internal-ingress packages/microservices-auth-schemas)
+          [[ "$DEPLOY_GEOSEARCH" == true ]] && paths+=(apps/workers/geosearch packages/microservices-auth-schemas)
           [[ "$DEPLOY_WEBHOOKS" == true ]] && paths+=(apps/workers/webhooks packages/api-internal-ingress)
           git diff --quiet "$staging_sha" "$GITHUB_SHA" -- "${paths[@]}" || { echo "Production source lacks matching successful staging evidence." >&2; exit 1; }
 

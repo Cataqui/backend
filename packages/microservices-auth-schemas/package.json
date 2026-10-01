@@ -1,7 +1,7 @@
 {
-	"name": "@cataqui/microservices-auth-contracts",
+	"name": "@cataqui/microservices-auth-schemas",
 	"version": "1.0.0",
-	"description": "Runtime-neutral JWT and JWKS contracts for Cataquí microservices",
+	"description": "Runtime-neutral, service-scoped authentication schemas for Cataqu\u00ed microservices",
 	"private": true,
 	"license": "BUSL-1.1",
 	"type": "module",
@@ -10,9 +10,17 @@
 		"package.json"
 	],
 	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+		"./geoimage": {
+			"types": "./dist/geoimage/index.d.ts",
+			"import": "./dist/geoimage/index.js"
+		},
+		"./geosearch": {
+			"types": "./dist/geosearch/index.d.ts",
+			"import": "./dist/geosearch/index.js"
+		},
+		"./jwks": {
+			"types": "./dist/jwks/index.d.ts",
+			"import": "./dist/jwks/index.js"
 		}
 	},
 	"scripts": {

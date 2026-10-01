@@ -202,7 +202,7 @@ Focused package tests:
 
 ```sh
 pnpm --filter @cataqui/api-internal-ingress test
-pnpm --filter @cataqui/microservices-auth-contracts test
+pnpm --filter @cataqui/microservices-auth-schemas test
 ```
 
 > [!CAUTION]

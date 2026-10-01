@@ -8,11 +8,7 @@ const _sizes = MapSizeSchema.options.map(
 );
 const _densities = MapDensitySchema.options.map((option) => String(option.value));
 
-const _coordinate = z
-	.string()
-	.trim()
-	.min(1, "Coordinate is required.")
-	.pipe(z.coerce.number<string>().finite("Coordinate must be a finite number."));
+const _coordinate = z.string().trim().min(1, "Coordinate is required.").pipe(z.coerce.number<string>());
 
 export const ImageQuerySchema = z
 	.strictObject({

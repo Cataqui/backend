@@ -39,6 +39,7 @@ export function createTestBindings() {
 		GENERATION: namespace,
 		GEOAPIFY_API_KEY: "test-secret",
 		ENVIRONMENT: "development",
+		MICROSERVICES_AUTH_JWKS_URL: "http://localhost:3000/v1/auth/microservices/jwks",
 	};
 	const execution = {
 		waitUntil: vi.fn(),

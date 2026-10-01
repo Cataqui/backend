@@ -1,3 +1,4 @@
+import { getImagePermissionJwks, permissionHeadersForUrl } from "./image-permission";
 import { createExecutionContext, evictDurableObject, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import app from "../src/app";
@@ -13,17 +14,24 @@ const _provider = vi.fn(async (request: RequestInfo | URL) => {
 
 beforeEach(() => {
 	_provider.mockClear();
-	vi.stubGlobal("fetch", _provider);
+	vi.stubGlobal("fetch", async (request: RequestInfo | URL) => {
+		const url = new URL(request instanceof Request ? request.url : String(request));
+		if (url.pathname.endsWith("/jwks")) return Response.json(await getImagePermissionJwks());
+		return _provider(request);
+	});
 });
 afterEach(() => vi.unstubAllGlobals());
 
 it("coalesces cold GETs through real RPC and reuses R2 after eviction without a provider key", async () => {
 	const contexts = Array.from({ length: 5 }, () => createExecutionContext());
 	const responses = await Promise.all(
-		contexts.map((context, index) =>
+		contexts.map(async (context, index) =>
 			app.fetch(
 				new Request(`https://geoimage.test/v1/images?${_query}`, {
-					headers: { "x-request-id": `runtime-${index}` },
+					headers: {
+						...(await permissionHeadersForUrl(`https://geoimage.test/v1/images?${_query}`)),
+						"x-request-id": `runtime-${index}`,
+					},
 				}),
 				env,
 				context,
@@ -48,7 +56,9 @@ it("coalesces cold GETs through real RPC and reuses R2 after eviction without a 
 	await evictDurableObject(env.GENERATION.getByName(key));
 	const context = createExecutionContext();
 	const response = await app.fetch(
-		new Request(`https://geoimage.test/v1/images?${_query}`),
+		new Request(`https://geoimage.test/v1/images?${_query}`, {
+			headers: await permissionHeadersForUrl(`https://geoimage.test/v1/images?${_query}`),
+		}),
 		{ ...env, GEOAPIFY_API_KEY: "" },
 		context,
 	);
@@ -61,7 +71,10 @@ it("coalesces cold GETs through real RPC and reuses R2 after eviction without a 
 it("generates and persists a cold HEAD without returning image bytes", async () => {
 	const context = createExecutionContext();
 	const response = await app.fetch(
-		new Request("https://geoimage.test/v1/images?latitude=1&longitude=1&size=480x480", { method: "HEAD" }),
+		new Request("https://geoimage.test/v1/images?latitude=1&longitude=1&size=480x480", {
+			method: "HEAD",
+			headers: await permissionHeadersForUrl("https://geoimage.test/v1/images?latitude=1&longitude=1&size=480x480"),
+		}),
 		env,
 		context,
 	);

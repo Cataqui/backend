@@ -4,7 +4,13 @@ const detail = {
 	jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 	description: "Ajudar a carregar caixas",
 	contact: { method: "WHATSAPP", identifier: "+5511999999999" },
-	location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46, areaRadius: 2000 },
+	location: {
+		title: "Rua Pardal Branco, 32",
+		latitude: -23,
+		longitude: -46,
+		areaRadius: 2000,
+		image: { accessToken: "image-permission" },
+	},
 	status: "ACTIVE",
 	createdAt: "2026-09-22T12:00:00Z",
 	updatedAt: "2026-09-22T12:00:00Z",
@@ -18,8 +24,10 @@ describe("UserJobOutputSchema", () => {
 
 	it("requires a location title and never exposes a public contact reference", () => {
 		expect(
-			UserJobOutputSchema.safeParse({ ...detail, location: { latitude: -23, longitude: -46, areaRadius: 2000 } })
-				.success,
+			UserJobOutputSchema.safeParse({
+				...detail,
+				location: { latitude: -23, longitude: -46, areaRadius: 2000, image: { accessToken: "image-permission" } },
+			}).success,
 		).toBe(false);
 		expect(
 			UserJobOutputSchema.safeParse({

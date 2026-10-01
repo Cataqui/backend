@@ -5,6 +5,9 @@ import { GeoimageErrorOutputSchema } from "./geoimage-error-output.schema";
 import type { IGeoimageHonoEnvironment } from "./geoimage-hono-environment.interface";
 
 const _statuses = {
+	[GeoimageErrorCode.UNAUTHORIZED]: 401,
+	[GeoimageErrorCode.FORBIDDEN]: 403,
+	[GeoimageErrorCode.AUTH_UNAVAILABLE]: 503,
 	[GeoimageErrorCode.INVALID_REQUEST]: 400,
 	[GeoimageErrorCode.VALIDATION_ERROR]: 400,
 	[GeoimageErrorCode.PAYLOAD_TOO_LARGE]: 413,

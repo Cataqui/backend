@@ -1,3 +1,4 @@
+import { authService } from "./auth/auth.service";
 import { MapRendering } from "./maps/map-rendering";
 import { HTTPException } from "hono/http-exception";
 import { createTestBindings, Jpeg, Query } from "../test/fakes";
@@ -22,6 +23,7 @@ function _request(params?: {
 }
 
 beforeEach(() => {
+	vi.spyOn(authService, "authorizeImage").mockResolvedValue(undefined);
 	_bindings = createTestBindings();
 	vi.stubGlobal("fetch", _fetch);
 	_fetch.mockImplementation(

@@ -39,6 +39,7 @@ Before changing a file, check its directory and parent directories for nested `A
 - Keep single-use values and short single-use logic inline. Extract only for real reuse or an independently meaningful contract.
 - Use Zod or an authoritative domain library before custom validation. Derive supported values from one source of truth instead of repeating literals.
 - Give every authoritative runtime schema its own dedicated `*.schema.ts` file, named for the schema it defines. Do not declare schemas inline in controllers, services, repositories, or utility files.
+- Inline small nested schemas within their owning schema when they have no independent contract or reuse and are unlikely to be reused. Do not create schema classes or separate schema files solely for those nested shapes. Extract them when they represent an independent validation boundary or have meaningful reuse.
 - Name, document, and shape general resource endpoints for the resource they represent, not just the first field or use case they serve. Include only information the endpoint can provide today; add more resource fields as they become supported without redefining the endpoint's purpose.
 - Never use a hardcoded single-language fallback, including English, for content a user can see. Prefer a meaningful language-neutral value; otherwise use locale-aware translations or let the client localize an explicit absence.
 - Never expose secrets, provider internals, database errors, stack traces, or private identifiers through public responses or logs.
@@ -48,6 +49,7 @@ Before changing a file, check its directory and parent directories for nested `A
 - Every application and package must independently maintain at least 90% statements, branches, functions, and lines.
 - Do not add automated tests for GitHub Actions, workflows, or documentation.
 - Run focused tests from the owning workspace. Before handoff, run the root frozen install, lint, typecheck, coverage, build, relevant Wrangler dry runs, relevant OpenTofu checks, and `git diff --check`.
+- Before finishing a task, inspect changed code for deprecated APIs against the installed dependency versions, using type-aware diagnostics and authoritative declarations or documentation. Replace deprecated usage with supported alternatives; do not assume a passing typecheck detects deprecation warnings or suppress those warnings to finish the task.
 - Select validation and deployment from changed paths, then expand through workspace dependencies. Shared package changes must validate all consumers.
 - Infrastructure readiness precedes database migration, and database migration precedes API deployment. Deploy API before a dependent Webhooks or Geosearch Worker.
 - Documentation-only and skills-only changes must not deploy runtime applications.

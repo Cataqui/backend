@@ -8,7 +8,7 @@ export default defineConfig({
 		coverage: {
 			...WorkspaceCoverage,
 			include: ["src/**/*.ts"],
-			exclude: ["src/index.ts"],
+			exclude: ["src/**/index.ts"],
 		},
 	},
 });

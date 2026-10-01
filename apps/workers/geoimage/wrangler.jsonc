@@ -8,7 +8,8 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": false,
 	"vars": {
-		"ENVIRONMENT": "development"
+		"ENVIRONMENT": "development",
+		"MICROSERVICES_AUTH_JWKS_URL": "http://localhost:3000/v1/auth/microservices/jwks"
 	},
 	"secrets": {
 		"required": ["GEOAPIFY_API_KEY"]
@@ -58,7 +59,8 @@
 				}
 			],
 			"vars": {
-				"ENVIRONMENT": "staging"
+				"ENVIRONMENT": "staging",
+				"MICROSERVICES_AUTH_JWKS_URL": "https://staging.api.cataqui.com/v1/auth/microservices/jwks"
 			},
 			"secrets": {
 				"required": ["GEOAPIFY_API_KEY"]
@@ -101,7 +103,8 @@
 				}
 			],
 			"vars": {
-				"ENVIRONMENT": "production"
+				"ENVIRONMENT": "production",
+				"MICROSERVICES_AUTH_JWKS_URL": "https://api.cataqui.com/v1/auth/microservices/jwks"
 			},
 			"secrets": {
 				"required": ["GEOAPIFY_API_KEY"]
