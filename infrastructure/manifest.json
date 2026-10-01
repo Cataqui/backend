@@ -6,7 +6,9 @@
 		},
 		"r2": {
 			"buckets": {
-				"opentofu_state": "cataqui-backend-opentofu-state"
+				"opentofu_state": "cataqui-backend-opentofu-state",
+				"geoimage_images_staging": "cataqui-geoimage-staging",
+				"geoimage_images_production": "cataqui-geoimage-production"
 			}
 		}
 	},
@@ -62,6 +64,12 @@
 		"opentofu_identities": {
 			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
 			"cataqui_backend_production": "cataqui-backend-opentofu-production"
+		},
+		"manual_folders": {
+			"geoimage_runtime": {
+				"path": "/manual/geoimage/runtime",
+				"secrets": ["GEOAPIFY_API_KEY"]
+			}
 		}
 	},
 	"github": {

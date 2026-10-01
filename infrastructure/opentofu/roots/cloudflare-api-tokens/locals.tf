@@ -23,6 +23,14 @@ locals {
       name  = "Workers AI Read"
       scope = "com.cloudflare.api.account"
     }
+    r2_storage_read = {
+      name  = "Workers R2 Storage Read"
+      scope = "com.cloudflare.api.account"
+    }
+    r2_storage_write = {
+      name  = "Workers R2 Storage Write"
+      scope = "com.cloudflare.api.account"
+    }
     queues_read = {
       name  = "Queues Read"
       scope = "com.cloudflare.api.account"
@@ -114,6 +122,10 @@ locals {
   }
 
   common_infrastructure_tokens = {
+    cloudflare-r2 = {
+      permissions = ["r2_storage_read", "r2_storage_write"]
+      scope       = "account"
+    }
     cloudflare-ai-gateways = {
       permissions = ["ai_gateway_read", "ai_gateway_write"]
       scope       = "account"
@@ -177,6 +189,11 @@ locals {
       account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
       zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
       folder_path         = "/generated/geosearch/deployment"
+    }
+    geoimage = {
+      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
+      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path         = "/generated/geoimage/deployment"
     }
     webhooks = {
       account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]

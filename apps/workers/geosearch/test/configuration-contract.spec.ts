@@ -44,7 +44,7 @@ describe("Geosearch Worker configuration", () => {
 			test: packageScripts["test"],
 			testCoverage: packageScripts["test:cov"],
 			typecheck: packageScripts["typecheck"],
-			authContracts: packageManifest.dependencies["@cataqui/microservices-auth-contracts"],
+			authContracts: packageManifest.dependencies["@cataqui/microservices-auth-schemas"],
 		}).toEqual({
 			build: "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
 			clean:

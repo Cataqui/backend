@@ -66,7 +66,7 @@ If prompted, enter the missing manually issued values interactively. Do not redi
 
 Bootstrap creates, imports, reuses, or reconciles:
 
-- the Infisical project, staging and production environments, `/opentofu/bootstrap`, generated secret folders, environment-scoped OIDC identities, and identity permissions;
+- the Infisical project, staging and production environments, `/opentofu/bootstrap`, `/manual/geoimage/runtime`, generated secret folders, environment-scoped OIDC identities, and identity permissions;
 - the private Cloudflare R2 state bucket and environment-scoped R2 credentials;
 - the foundational `infisical-generated-folders` OpenTofu root for staging and production, using the same remote state later used by CI;
 - the Meta Webhooks runtime secret, Upstash management credential, and one shared Neon account bootstrap issuer;
@@ -74,6 +74,14 @@ Bootstrap creates, imports, reuses, or reconciles:
 - GitHub staging and production environments, deployment branch policies, and the environment variables required for Infisical and Google authentication.
 
 Bootstrap is state-aware and repeatable: it inspects live resources and applicable OpenTofu state, adopts a valid existing resource when needed, reconciles owned configuration, and fails closed on ambiguous or foreign resources.
+
+### 3. Add manually issued application keys
+
+Bootstrap creates `/manual/geoimage/runtime` and an empty `GEOAPIFY_API_KEY` entry in both Infisical environments. Before deploying Geoimage, fill in that existing entry in `staging` and `production` with the appropriate Geoapify key for each environment.
+
+Bootstrap creates missing folders and secret names, and leaves every existing entry untouched, including blank values. CI reads the key from the selected environment and configures the deployed Worker; it does not create or rotate the key. Missing or blank keys stop deployment preflight.
+
+Keep manually supplied application credentials under `/manual`, automatically issued values under `/generated`, and OpenTofu initialization/provider credentials under `/opentofu/bootstrap`.
 
 ## Verification
 
@@ -87,6 +95,7 @@ After bootstrap:
 
 - confirm the staging and production GitHub environments have the expected branch policies and authentication variables;
 - confirm the expected values exist in `/opentofu/bootstrap` and the generated runtime folders without printing their contents;
+- confirm `GEOAPIFY_API_KEY` has been entered in `/manual/geoimage/runtime` for each environment that will deploy Geoimage;
 - apply `cloudflare-api-tokens` before application deployment so each application receives its environment-specific Workers credential under `/generated/<app>/deployment`;
 - run `pnpm check:opentofu` to validate the normal OpenTofu roots without applying them;
 - continue with the [deployment runbook](deployment.md) when the infrastructure is ready to reconcile and deploy.

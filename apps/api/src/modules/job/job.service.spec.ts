@@ -1,3 +1,6 @@
+import type { z } from "zod";
+import type { FuzzyJobLocationOutputSchema } from "./schemas/fuzzy-job-location-output.schema";
+import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
 import { Test } from "@nestjs/testing";
 import { JobStatus, Prisma } from "../../../generated/prisma/client.js";
 import { AiService } from "../ai/ai.service";
@@ -46,12 +49,14 @@ describe("JobService direct posting", () => {
 		activateOwnedJob: vi.fn(),
 		findActiveJobContact: vi.fn(),
 	};
+	const imageAuth = { createGeoimageAccessToken: vi.fn() };
 	const ai = { generateObject: vi.fn() };
 	const users = { getOrAddContact: vi.fn() };
 	const location = { fuzzCoordinate: vi.fn() };
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
 		repository.findByIdempotencyKey.mockResolvedValue(null);
 		repository.createJob.mockResolvedValue(job);
 		ai.generateObject.mockResolvedValue({
@@ -63,6 +68,10 @@ describe("JobService direct posting", () => {
 		location.fuzzCoordinate.mockReturnValue(dto.location);
 		const module = await Test.createTestingModule({
 			providers: [
+				{
+					provide: MicroservicesAuthService,
+					useValue: imageAuth,
+				},
 				JobService,
 				{ provide: JobRepository, useValue: repository },
 				{ provide: AiService, useValue: ai },
@@ -72,6 +81,59 @@ describe("JobService direct posting", () => {
 		}).compile();
 		service = module.get(JobService);
 	});
+
+	it.each(["create", "retry", "collision", "public", "owner", "archive", "activate", "list"])(
+		"issues %s permissions only for persisted fuzzy coordinates",
+		async (producer) => {
+			imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
+			const persisted = { ...job, fuzzyLatitude: new Prisma.Decimal(-23.6), fuzzyLongitude: new Prisma.Decimal(-46.7) };
+			repository.createJob.mockResolvedValue(persisted);
+			repository.findPublicById.mockResolvedValue(persisted);
+			repository.findUserJobById.mockResolvedValue({ ...persisted, locationTitle: dto.location.title, contact: null });
+			repository.archiveOwnedJob.mockResolvedValue(persisted);
+			repository.activateOwnedJob.mockResolvedValue(persisted);
+			repository.findUserJobs.mockResolvedValue([persisted, persisted]);
+			if (producer === "retry" || producer === "collision") {
+				const requestHash = (await import("node:crypto"))
+					.createHash("sha256")
+					.update(JSON.stringify(dto))
+					.digest("hex");
+				if (producer === "collision") {
+					repository.findByIdempotencyKey.mockResolvedValueOnce(null);
+					repository.createJob.mockRejectedValue(
+						new Prisma.PrismaClientKnownRequestError("duplicate", { code: "P2002", clientVersion: "7.9.1" }),
+					);
+				}
+				repository.findByIdempotencyKey.mockResolvedValue({ job: persisted, requestHash: requestHash });
+			}
+			let locations: z.output<typeof FuzzyJobLocationOutputSchema>[];
+			if (producer === "list") {
+				locations = (await service.getUserJobs({ posterUserId: params.posterUserId })).data.map(
+					(item) => item.location,
+				);
+			} else {
+				const output =
+					producer === "public"
+						? await service.getPublicJob({ jobId: job.id })
+						: producer === "owner"
+							? await service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId })
+							: producer === "archive"
+								? await service.archiveJob({ jobId: job.id, posterUserId: params.posterUserId })
+								: producer === "activate"
+									? await service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })
+									: await service.createJob(params);
+				locations = [output.location];
+			}
+			expect({ locations: locations, signedCoordinates: imageAuth.createGeoimageAccessToken.mock.calls }).toEqual({
+				locations: Array.from({ length: producer === "list" ? 2 : 1 }, () =>
+					expect.objectContaining({ latitude: -23.6, longitude: -46.7, image: { accessToken: "image-permission" } }),
+				),
+				signedCoordinates: Array.from({ length: producer === "list" ? 2 : 1 }, () => [
+					{ latitude: -23.6, longitude: -46.7 },
+				]),
+			});
+		},
+	);
 
 	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])(
 		"returns the poster's %s job with fuzzy location and real contact",
@@ -87,7 +149,13 @@ describe("JobService direct posting", () => {
 				jobId: job.id,
 				description: job.description,
 				contact: { method: "WHATSAPP", identifier: "+5511999999999" },
-				location: { title: "Rua Pardal Branco, 32", latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				location: {
+					title: "Rua Pardal Branco, 32",
+					latitude: -23.55,
+					longitude: -46.63,
+					areaRadius: 2_000,
+					image: { accessToken: "image-permission" },
+				},
 				status: status,
 				createdAt: "2026-09-22T12:00:00.000Z",
 				updatedAt: "2026-09-22T12:00:00.000Z",
@@ -140,14 +208,24 @@ describe("JobService direct posting", () => {
 				title: job.title,
 				descriptionSummary: job.descriptionSummary,
 				payment: job.payment,
-				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				location: {
+					latitude: -23.55,
+					longitude: -46.63,
+					areaRadius: 2_000,
+					image: { accessToken: "image-permission" },
+				},
 				status: JobStatus.ACTIVE,
 				createdAt: "2026-09-22T12:00:00.000Z",
 				updatedAt: "2026-09-22T12:00:00.000Z",
 			},
 			expect.objectContaining({
 				status: JobStatus.ARCHIVED,
-				location: { latitude: -23.55, longitude: -46.63, areaRadius: 2_000 },
+				location: {
+					latitude: -23.55,
+					longitude: -46.63,
+					areaRadius: 2_000,
+					image: { accessToken: "image-permission" },
+				},
 			}),
 		]);
 	});

@@ -7,11 +7,13 @@ locals {
   cloudflare_opentofu_roots = var.environment == "production" ? toset([
     "cloudflare-ai-gateways",
     "cloudflare-queues",
+    "cloudflare-r2",
     "cloudflare-zone-configuration",
     "cloudflare-zone-dns",
     ]) : toset([
     "cloudflare-ai-gateways",
     "cloudflare-queues",
+    "cloudflare-r2",
   ])
 
   # Datadog roots that authenticate with scoped keys issued by the datadog-api-keys root.

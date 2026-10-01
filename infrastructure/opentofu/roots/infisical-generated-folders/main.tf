@@ -142,3 +142,25 @@ resource "infisical_secret_folder" "datadog_opentofu_root" {
 
   depends_on = [infisical_secret_folder.opentofu]
 }
+
+resource "infisical_secret_folder" "geoimage" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "geoimage"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the Geoimage Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "geoimage_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/geoimage"
+  description      = "Generated privileged values consumed only by Geoimage deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.geoimage]
+}

@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import type { z } from "zod";
 import { PaginatedResult, type PaginatedResult as PaginatedResultType } from "../../shared/results/paginated-result";
+import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
+import { toFuzzyJobLocationOutput } from "../job/schemas/fuzzy-job-location-output.mapper";
 import { FeedRepository } from "./repositories/feed.repository";
 import { toFeedItemOutput } from "./schemas/feed-item-output.mapper";
 import { FeedItemOutputSchema } from "./schemas/feed-item-output.schema";
@@ -8,7 +10,10 @@ import { decodeFeedPaginationCursor, encodeFeedPaginationCursor } from "./utils/
 
 @Injectable()
 export class FeedService {
-	constructor(private readonly _feedRepository: FeedRepository) {}
+	constructor(
+		private readonly _feedRepository: FeedRepository,
+		private readonly _microservicesAuth: MicroservicesAuthService,
+	) {}
 
 	async getFeed(params: {
 		cursor?: string | undefined;
@@ -33,7 +38,22 @@ export class FeedService {
 			});
 		}
 
-		const items = rawItems.map((item) => toFeedItemOutput({ job: item }));
+		const items = await Promise.all(
+			rawItems.map(async (item) =>
+				toFeedItemOutput({
+					job: item,
+					location: toFuzzyJobLocationOutput({
+						fuzzyLatitude: item.fuzzyLatitude,
+						fuzzyLongitude: item.fuzzyLongitude,
+						imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
+							latitude: item.fuzzyLatitude.toNumber(),
+							longitude: item.fuzzyLongitude.toNumber(),
+						}),
+					}),
+				}),
+			),
+		);
+
 		return PaginatedResult.create({
 			data: items,
 			pagination: { hasMore: hasMore, nextCursor: nextCursor },

@@ -45,7 +45,7 @@
 	},
 	"dependencies": {
 		"@cataqui/api-internal-ingress": "workspace:*",
-		"@cataqui/microservices-auth-contracts": "workspace:*",
+		"@cataqui/microservices-auth-schemas": "workspace:*",
 		"@fastify/cors": "^11.3.0",
 		"@fastify/helmet": "^13.1.0",
 		"@fastify/static": "^10.1.3",
@@ -78,7 +78,7 @@
 		"@upstash/redis": "^1.38.2",
 		"ai": "^6.0.244",
 		"ai-gateway-provider": "^3.2.0",
-		"jose": "^6.2.9",
+		"jose": "catalog:",
 		"libphonenumber-js": "^1.13.10",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",

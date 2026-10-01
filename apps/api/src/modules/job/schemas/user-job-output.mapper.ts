@@ -1,21 +1,22 @@
 import type { z } from "zod";
-import { JobLocationConstants } from "../constants/job-location.constants";
+import type { FuzzyJobLocationOutputSchema } from "./fuzzy-job-location-output.schema";
 import type { UserJobRaw } from "../repositories/job.repository";
 import type { UserJobOutputSchema } from "./user-job-output.schema";
 
-export function toUserJobOutput(job: UserJobRaw): z.infer<typeof UserJobOutputSchema> {
+export function toUserJobOutput(params: {
+	job: UserJobRaw;
+	location: z.output<typeof FuzzyJobLocationOutputSchema>;
+}): z.infer<typeof UserJobOutputSchema> {
 	return {
-		jobId: job.id,
-		description: job.description,
-		contact: job.contact === null ? null : { method: job.contact.contactMethod, identifier: job.contact.identifier },
-		location: {
-			title: job.locationTitle,
-			latitude: job.fuzzyLatitude.toNumber(),
-			longitude: job.fuzzyLongitude.toNumber(),
-			areaRadius: JobLocationConstants.AREA_RADIUS_METERS,
-		},
-		status: job.status,
-		createdAt: job.createdAt.toISOString(),
-		updatedAt: job.updatedAt.toISOString(),
+		jobId: params.job.id,
+		description: params.job.description,
+		contact:
+			params.job.contact === null
+				? null
+				: { method: params.job.contact.contactMethod, identifier: params.job.contact.identifier },
+		location: { ...params.location, title: params.job.locationTitle },
+		status: params.job.status,
+		createdAt: params.job.createdAt.toISOString(),
+		updatedAt: params.job.updatedAt.toISOString(),
 	};
 }

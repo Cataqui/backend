@@ -7,9 +7,13 @@ import { knownSecrets, repositoryRoot, requestJson, runAsync } from "./bootstrap
 import {
 	classifyInfisicalOidcInspection,
 	explainInfisicalIdentityCreationFailure,
+	getInfisicalManualSecretPermissions,
 	INFISICAL_PROJECT_TYPE,
 	isInfisicalPrivilegeAlreadyPresent,
+	reconcileInfisicalFolderState,
+	reconcileInfisicalManualFolders,
 	reconcileInfisicalProjectState,
+	reconcileInfisicalSecretPlaceholder,
 	resolveInfisicalPrivilege,
 } from "./infisical-reconciliation.mjs";
 
@@ -182,13 +186,16 @@ async function _ensureFolder({ projectId, token, environment, path, name }) {
 		recursive: "false",
 	});
 	const url = `${infisicalApiBaseUrl}/api/v2/folders?${query}`;
-	const payload = await requestJson(url, { headers: _headers(token) });
-	if ((payload.folders ?? []).some((folder) => folder.name === name)) return;
-	await requestJson(`${infisicalApiBaseUrl}/api/v2/folders`, {
-		method: "POST",
-		headers: _headers(token),
-		body: { projectId, environment, path, name },
-		acceptedStatuses: [200, 201],
+	await reconcileInfisicalFolderState({
+		name: name,
+		listFolders: async () => (await requestJson(url, { headers: _headers(token) })).folders,
+		createFolder: () =>
+			requestJson(`${infisicalApiBaseUrl}/api/v2/folders`, {
+				method: "POST",
+				headers: _headers(token),
+				body: { projectId: projectId, environment: environment, path: path, name: name },
+				acceptedStatuses: [200, 201],
+			}),
 	});
 }
 
@@ -197,6 +204,55 @@ export async function ensureBootstrapFolders(projectId, infisicalToken) {
 		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/", name: "opentofu" });
 		await _ensureFolder({ projectId, token: infisicalToken, environment, path: "/opentofu", name: "bootstrap" });
 	}
+}
+
+export async function ensureManualFolders({ manifest, projectId, infisicalToken }) {
+	await reconcileInfisicalManualFolders({
+		manifest: manifest,
+		ensureSecret: ({ environment, secretPath, name }) => {
+			const query = new URLSearchParams({
+				projectId: projectId,
+				environment: environment,
+				secretPath: secretPath,
+				viewSecretValue: "false",
+				expandSecretReferences: "false",
+				recursive: "false",
+				includeImports: "false",
+				includePersonalOverrides: "false",
+			});
+			return reconcileInfisicalSecretPlaceholder({
+				name: name,
+				listSecrets: async () =>
+					(
+						await requestJson(`${infisicalApiBaseUrl}/api/v4/secrets?${query}`, {
+							headers: _headers(infisicalToken),
+						})
+					).secrets,
+				createSecret: ({ value }) =>
+					requestJson(`${infisicalApiBaseUrl}/api/v4/secrets/${encodeURIComponent(name)}`, {
+						method: "POST",
+						headers: _headers(infisicalToken),
+						body: {
+							projectId: projectId,
+							environment: environment,
+							secretPath: secretPath,
+							secretValue: value,
+							type: "shared",
+							skipMultilineEncoding: true,
+						},
+						acceptedStatuses: [200, 201],
+					}),
+			});
+		},
+		ensureFolder: ({ environment, path, name }) =>
+			_ensureFolder({
+				projectId: projectId,
+				token: infisicalToken,
+				environment: environment,
+				path: path,
+				name: name,
+			}),
+	});
 }
 
 export async function applyGeneratedFolders(infisicalProjectId, infisicalToken) {
@@ -350,6 +406,7 @@ export async function reconcileInfisicalIdentity({
 	let privilege = resolveInfisicalPrivilege(privilegeList.privileges ?? [], privilegeSlug);
 	const environmentCondition = { $eq: environment };
 	const permissions = [
+		...getInfisicalManualSecretPermissions({ manifest: manifest, environment: environment }),
 		{
 			subject: "secrets",
 			action: ["describeSecret", "readValue"],

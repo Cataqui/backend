@@ -1,6 +1,6 @@
 import { Controller, Get, Header, HttpCode, HttpStatus, Post, Version } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { MicroservicesAuthJwksOutputSchema } from "@cataqui/microservices-auth-contracts";
+import { MicroservicesAuthJwksOutputSchema } from "@cataqui/microservices-auth-schemas/jwks";
 import type { z } from "zod";
 import { SkipEnvelope } from "../../../shared/decorators/skip-envelope.decorator";
 import { AccessTokenRequired } from "../decorators/access-token-required.decorator";
