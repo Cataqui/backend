@@ -23,6 +23,8 @@ For a manual run, choose the intended scope in the Deploy workflow:
 
 Resolve any partial active rollout before starting another deployment.
 
+For an environment still using the retired job-derivation queues, deploy the API to complete that migration. Infrastructure-only runs retain those queues. Once the API migration deletes them, do not restore an older API version that requires them; recover forward or explicitly restore the required queue infrastructure and consumer configuration first.
+
 ## Deployment verification
 
 Confirm infrastructure reconciliation and migration checks succeeded, and the real Neon `main` branch reports `prisma migrate status` clean. Confirm the deployment probes passed:
