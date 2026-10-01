@@ -16,11 +16,11 @@ export default defineConfig({
 				extends: true,
 				plugins: [
 					cloudflareTest({
-						wrangler: { configPath: "./wrangler.jsonc" },
+						wrangler: { configPath: "./wrangler.jsonc", environment: "staging" },
 						miniflare: { bindings: { GEOAPIFY_API_KEY: "runtime-test-key" } },
 					}),
 				],
-				test: { name: "runtime", globals: true, include: ["test/runtime.spec.ts"] },
+				test: { name: "runtime", globals: true, include: ["test/runtime.spec.ts", "test/entrypoint.runtime.spec.ts"] },
 			},
 		],
 		coverage: {

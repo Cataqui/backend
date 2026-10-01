@@ -22,6 +22,30 @@
 		}
 	},
 	"preview_urls": false,
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "cataqui-geoimage-development"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "GENERATION",
+				"class_name": "GeoImageGeneration"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["GeoImageGeneration"]
+		}
+	],
+	"cache": {
+		"enabled": false,
+		"cross_version_cache": false
+	},
 	"env": {
 		"staging": {
 			"name": "cataqui-geoimage-staging",
@@ -60,6 +84,10 @@
 						"class_name": "GeoImageGeneration"
 					}
 				]
+			},
+			"cache": {
+				"enabled": true,
+				"cross_version_cache": false
 			}
 		},
 		"production": {
@@ -99,27 +127,11 @@
 						"class_name": "GeoImageGeneration"
 					}
 				]
+			},
+			"cache": {
+				"enabled": true,
+				"cross_version_cache": false
 			}
 		}
-	},
-	"r2_buckets": [
-		{
-			"binding": "IMAGES",
-			"bucket_name": "cataqui-geoimage-development"
-		}
-	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"name": "GENERATION",
-				"class_name": "GeoImageGeneration"
-			}
-		]
-	},
-	"migrations": [
-		{
-			"tag": "v1",
-			"new_sqlite_classes": ["GeoImageGeneration"]
-		}
-	]
+	}
 }

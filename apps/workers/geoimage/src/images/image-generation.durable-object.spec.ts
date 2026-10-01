@@ -17,7 +17,6 @@ async function _generate(): Promise<Response> {
 const _fetch = vi.fn<typeof fetch>();
 beforeEach(() => {
 	_bindings = createTestBindings();
-	vi.stubGlobal("caches", { default: _bindings.cache });
 	_object = new ImageGenerationDurableObject({} as DurableObjectState, _bindings.env);
 	vi.stubGlobal("fetch", _fetch);
 });

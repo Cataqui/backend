@@ -90,6 +90,10 @@ describe("development-only Geoimage documentation", () => {
 				},
 			},
 		});
+		expect(spec.paths["/v1/images"]).toMatchObject({
+			head: { operationId: "headImage", responses: { "200": { description: expect.any(String) } } },
+		});
+
 		expect(spec.paths["/v1/images"]).not.toHaveProperty("post");
 		const serialized = JSON.stringify(spec);
 		expect(serialized).not.toContain(_env.GEOAPIFY_API_KEY);

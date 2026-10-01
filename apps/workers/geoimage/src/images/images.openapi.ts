@@ -10,7 +10,7 @@ export const GetImageDescription = {
 	tags: ["Images"],
 	summary: "Get a geographic image",
 	description:
-		"Returns a JPEG basemap with native provider labels and attribution. Reads edge cache, then durable storage, generating on a miss. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed.",
+		"Returns a JPEG basemap with native provider labels and attribution. Workers Cache serves hits before Worker execution; misses read durable storage and generate if needed. Zoom is fixed at 13 with no overlays. Example: /v1/images?latitude=-23.5505&longitude=-46.6333&size=480x1280&density=2. Size is the logical viewport; density changes pixel resolution, not geographic area. Successful responses allow one day of client caching and one year at the edge; cache retention and client disk caching are not guaranteed. Successful images omit x-request-id. Use a consistent query order and numeric spelling for edge reuse; normalized inputs still share R2 objects.",
 	responses: {
 		200: {
 			description: "Stored or generated JPEG image",
@@ -38,7 +38,7 @@ export const GetImageDescription = {
 			content: _errorContent,
 		},
 		405: {
-			description: "METHOD_NOT_ALLOWED: use GET. HEAD does not generate images.",
+			description: "METHOD_NOT_ALLOWED: use GET or HEAD.",
 			content: _errorContent,
 		},
 		500: {
@@ -55,4 +55,18 @@ export const GetImageDescription = {
 			content: _errorContent,
 		},
 	},
+} satisfies DescribeRouteOptions;
+
+export const HeadImageDescription = {
+	...GetImageDescription,
+	operationId: "headImage",
+	summary: "Get geographic image headers",
+	description:
+		"Returns GET-equivalent image headers without a response body. A cold HEAD may generate and store the image. GET and HEAD share the front-cache entry. Successful image responses omit x-request-id; errors retain request tracing and are not cached.",
+	responses: Object.fromEntries(
+		Object.entries(GetImageDescription.responses).map(([status, response]) => [
+			status,
+			{ description: response.description },
+		]),
+	),
 } satisfies DescribeRouteOptions;

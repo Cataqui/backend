@@ -20,34 +20,21 @@ export class ImageService {
 	async getImage(params: {
 		input: z.output<typeof ImageQuerySchema>;
 		environment: GeoimageWorkerEnv["ENVIRONMENT"];
-		origin: string;
 		requestId: string;
-		waitUntil: (promise: Promise<void>) => void;
 	}): Promise<Response> {
 		const key = await getImageIdentity({ input: params.input, environment: params.environment });
-		const cacheKey = new Request(`${params.origin}/__geoimage-cache/${key}`);
-		const cached = await this._images.getCachedImage({ key: cacheKey, requestId: params.requestId });
-		if (cached !== undefined) return cached;
 		const stored = await this._images.getStoredImage({ key: key });
-		let response: Response;
-		if (stored !== null) {
-			response = stored;
-		} else {
-			const result = await this._generation.getByName(key).generate({
-				key: key,
-				map: {
-					center: { latitude: params.input.latitude, longitude: params.input.longitude },
-					size: params.input.map.size,
-					density: params.input.map.density,
-				},
-				requestId: params.requestId,
-			});
-			if ("errorCode" in result) throw new GeoimageError(result.errorCode);
-			response = result.response;
-		}
-		params.waitUntil(
-			this._images.saveCachedImage({ key: cacheKey, response: response.clone(), requestId: params.requestId }),
-		);
-		return response;
+		if (stored !== null) return stored;
+		const result = await this._generation.getByName(key).generate({
+			key: key,
+			map: {
+				center: { latitude: params.input.latitude, longitude: params.input.longitude },
+				size: params.input.map.size,
+				density: params.input.map.density,
+			},
+			requestId: params.requestId,
+		});
+		if ("errorCode" in result) throw new GeoimageError(result.errorCode);
+		return result.response;
 	}
 }

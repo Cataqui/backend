@@ -31,8 +31,8 @@ it("coalesces cold GETs through real RPC and reuses R2 after eviction without a 
 		),
 	);
 	expect(responses.map((response) => response.status)).toEqual([200, 200, 200, 200, 200]);
-	for (const [index, response] of responses.entries()) {
-		expect(response.headers.get("x-request-id")).toBe(`runtime-${index}`);
+	for (const response of responses) {
+		expect(response.headers.get("x-request-id")).toBeNull();
 		expect(new Uint8Array(await response.arrayBuffer())).toEqual(_jpeg);
 	}
 	await Promise.all(contexts.map((context) => waitOnExecutionContext(context)));
@@ -46,7 +46,6 @@ it("coalesces cold GETs through real RPC and reuses R2 after eviction without a 
 		environment: env.ENVIRONMENT,
 	});
 	await evictDurableObject(env.GENERATION.getByName(key));
-	await caches.default.delete(new Request(`https://geoimage.test/__geoimage-cache/${key}`));
 	const context = createExecutionContext();
 	const response = await app.fetch(
 		new Request(`https://geoimage.test/v1/images?${_query}`),
@@ -59,15 +58,16 @@ it("coalesces cold GETs through real RPC and reuses R2 after eviction without a 
 	expect(_provider).toHaveBeenCalledTimes(1);
 }, 30000);
 
-it("rejects HEAD without invoking real generation", async () => {
+it("generates and persists a cold HEAD without returning image bytes", async () => {
 	const context = createExecutionContext();
 	const response = await app.fetch(
 		new Request("https://geoimage.test/v1/images?latitude=1&longitude=1&size=480x480", { method: "HEAD" }),
 		env,
 		context,
 	);
-	expect(response.status).toBe(405);
-	expect(response.headers.get("Allow")).toBe("GET");
+	expect(response.status).toBe(200);
+	expect(response.headers.get("Content-Type")).toBe("image/jpeg");
+	expect(await response.text()).toBe("");
 	await waitOnExecutionContext(context);
-	expect(_provider).not.toHaveBeenCalled();
+	expect(_provider).toHaveBeenCalledTimes(1);
 });

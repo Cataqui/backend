@@ -22,7 +22,7 @@ export class ImageGenerationDurableObject extends DurableObject<GeoimageWorkerEn
 
 	constructor(state: DurableObjectState, env: GeoimageWorkerEnv) {
 		super(state, env);
-		this._images = new ImageRepository({ bucket: env.IMAGES, cache: caches.default });
+		this._images = new ImageRepository({ bucket: env.IMAGES });
 		this._map = new MapService({ repository: () => new MapRepository({ config: getGeoapifyConfig({ env: env }) }) });
 	}
 

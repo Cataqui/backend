@@ -23,7 +23,7 @@ app.use("*", async (context, next) => {
 	context.set("requestId", requestId);
 	await next();
 	if (!context.res.headers.has("Cache-Control")) context.header("Cache-Control", "no-store");
-	context.header("x-request-id", requestId);
+	if (context.res.headers.get("Cache-Control") === "no-store") context.header("x-request-id", requestId);
 });
 
 app.use(

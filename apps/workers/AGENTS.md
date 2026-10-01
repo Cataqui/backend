@@ -26,6 +26,7 @@ These instructions apply to every standalone Worker under this directory and sup
 ## Wrangler and Verification
 
 - Keep `main`, `tsconfig`, bindings, secrets declarations, routes, and per-environment settings in the owning Worker configuration.
+- Keep all top-level Wrangler settings before the `env` block, with `env` as the final top-level property. Never place root configuration after named environments; keep environment-specific overrides inside their respective `env` entries.
 - Regenerate and check environment declarations after changing a Wrangler binding or environment.
 - Keep development, staging, and production resources explicitly separated. Do not loosen a route, binding, secret, rate limit, or compatibility setting to make local development easier.
 - Each Worker must pass its own typecheck, tests, four-metric 90% coverage gate, build dry run, and generated-type check.
