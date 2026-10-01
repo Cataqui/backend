@@ -48,7 +48,7 @@ jobs:
               base="$BEFORE_SHA"; [[ -z "$base" || "$base" =~ ^0+$ ]] && base=HEAD^
               while IFS= read -r path; do
                 case "$path" in
-                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/workflows/deploy.yml|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
+                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
                   apps/api/*) deploy_api=true ;;
                   apps/workers/geosearch/*) deploy_geosearch=true ;;
                   apps/workers/webhooks/*) deploy_webhooks=true ;;
@@ -107,7 +107,7 @@ jobs:
         run: pnpm build:packages
 
       - name: Verify production staging evidence
-        if: needs.prepare.outputs.environment == 'production'
+        if: needs.prepare.outputs.environment == 'production' && (needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-geosearch == 'true' || needs.prepare.outputs.deploy-webhooks == 'true')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
