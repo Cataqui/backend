@@ -1,6 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { GeoimageErrorCode } from "../geoimage-error-code.enum";
 import { GeoimageError } from "../geoimage.error";
+import { LandmarkCompositor } from "../landmarks/landmark-compositor";
+import { LandmarkRepository } from "../landmarks/landmark.repository";
 import { getGeoapifyConfig } from "../maps/geoapify.config";
 import type { MapImageInput } from "../maps/map-image-input.interface";
 import { MapRepository } from "../maps/map.repository";
@@ -23,7 +25,11 @@ export class ImageGenerationDurableObject extends DurableObject<GeoimageWorkerEn
 	constructor(state: DurableObjectState, env: GeoimageWorkerEnv) {
 		super(state, env);
 		this._images = new ImageRepository({ bucket: env.IMAGES });
-		this._map = new MapService({ repository: () => new MapRepository({ config: getGeoapifyConfig({ env: env }) }) });
+		this._map = new MapService({
+			repository: () => new MapRepository({ config: getGeoapifyConfig({ env: env }) }),
+			landmarks: () => new LandmarkRepository({ config: getGeoapifyConfig({ env: env }) }),
+			compositor: () => new LandmarkCompositor(),
+		});
 	}
 
 	async generate(

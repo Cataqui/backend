@@ -17,6 +17,7 @@ beforeEach(() => {
 	vi.stubGlobal("fetch", async (request: RequestInfo | URL) => {
 		const url = new URL(request instanceof Request ? request.url : String(request));
 		if (url.pathname.endsWith("/jwks")) return Response.json(await getImagePermissionJwks());
+		if (url.host === "api.geoapify.com") return Response.json({ features: [] });
 		return _provider(request);
 	});
 });

@@ -6,6 +6,7 @@
 	"tsconfig": "./tsconfig.json",
 	"compatibility_date": "2026-09-30",
 	"compatibility_flags": ["nodejs_compat"],
+	"rules": [{ "type": "Data", "globs": ["**/*.ttf"], "fallthrough": true }],
 	"workers_dev": false,
 	"vars": {
 		"ENVIRONMENT": "development",

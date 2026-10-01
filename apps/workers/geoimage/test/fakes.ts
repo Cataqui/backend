@@ -1,6 +1,14 @@
 import { ImageGenerationDurableObject } from "../src/images/image-generation.durable-object";
 
 export const Jpeg = new Uint8Array([255, 216, 255, 217]);
+
+// Answers Geoapify Places lookups with no places, so map tests observe only the static map provider.
+export function withoutLandmarks(provider: typeof fetch): typeof fetch {
+	return (input, init) =>
+		new URL(input instanceof Request ? input.url : String(input)).host === "api.geoapify.com"
+			? Promise.resolve(Response.json({ features: [] }))
+			: provider(input, init);
+}
 export const Query = "latitude=-23.5505&longitude=-46.6333&size=480x1280";
 
 export function createTestBindings() {

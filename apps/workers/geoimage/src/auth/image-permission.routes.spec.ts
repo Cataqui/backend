@@ -1,5 +1,5 @@
 import app from "../app";
-import { createTestBindings, Jpeg, Query } from "../../test/fakes";
+import { createTestBindings, Jpeg, Query, withoutLandmarks } from "../../test/fakes";
 import { createImagePermission, getImagePermissionJwks } from "../../test/image-permission";
 import { AuthService, authService } from "./auth.service";
 
@@ -16,10 +16,10 @@ beforeEach(async () => {
 	_provider
 		.mockReset()
 		.mockImplementation(async () => new Response(Jpeg, { headers: { "Content-Type": "image/jpeg" } }));
-	vi.stubGlobal("fetch", (url: RequestInfo | URL, init?: RequestInit) => {
-		if (String(url).includes("/jwks")) return _jwks(url, init);
-		return _provider(url, init);
-	});
+	vi.stubGlobal(
+		"fetch",
+		withoutLandmarks((url, init) => (String(url).includes("/jwks") ? _jwks(url, init) : _provider(url, init))),
+	);
 });
 afterEach(() => {
 	vi.restoreAllMocks();

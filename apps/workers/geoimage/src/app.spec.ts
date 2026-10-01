@@ -1,7 +1,7 @@
 import { authService } from "./auth/auth.service";
 import { MapRendering } from "./maps/map-rendering";
 import { HTTPException } from "hono/http-exception";
-import { createTestBindings, Jpeg, Query } from "../test/fakes";
+import { createTestBindings, Jpeg, Query, withoutLandmarks } from "../test/fakes";
 import app from "./app";
 import { ImageService } from "./images/image.service";
 import { MapService } from "./maps/map.service";
@@ -25,7 +25,7 @@ function _request(params?: {
 beforeEach(() => {
 	vi.spyOn(authService, "authorizeImage").mockResolvedValue(undefined);
 	_bindings = createTestBindings();
-	vi.stubGlobal("fetch", _fetch);
+	vi.stubGlobal("fetch", withoutLandmarks(_fetch));
 	_fetch.mockImplementation(
 		async () => new Response(Jpeg, { headers: { "Content-Type": "image/jpeg", "x-provider-secret": "private" } }),
 	);

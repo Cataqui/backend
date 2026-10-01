@@ -1,9 +1,16 @@
 // Change the version whenever rendering changes, so stored images remain immutable.
 export const MapRendering = {
-	version: "cataqui-light-jpeg-zoom13-v12",
+	version: "cataqui-light-jpeg-zoom13-landmarks-v1",
 	style: "osm-bright",
 	zoom: 13,
 	format: "jpeg",
+	landmarks: {
+		// Upper limit per image; quieter areas get fewer pins. Changing a limit needs a new version above.
+		maxPerTallImage: 10,
+		maxPerSquareImage: 5,
+		// Tall images are cropped to their middle by the app, so pins stay in the visible half.
+		tallImageVisibleFraction: 0.5,
+	},
 	styleCustomization: [
 		// Land and vegetation.
 		"background:#f5f1f0",

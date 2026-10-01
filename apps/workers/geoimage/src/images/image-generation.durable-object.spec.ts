@@ -1,4 +1,4 @@
-import { createTestBindings, Jpeg } from "../../test/fakes";
+import { createTestBindings, Jpeg, withoutLandmarks } from "../../test/fakes";
 import { GeoimageError } from "../geoimage.error";
 import { ImageGenerationDurableObject } from "./image-generation.durable-object";
 
@@ -18,7 +18,7 @@ const _fetch = vi.fn<typeof fetch>();
 beforeEach(() => {
 	_bindings = createTestBindings();
 	_object = new ImageGenerationDurableObject({} as DurableObjectState, _bindings.env);
-	vi.stubGlobal("fetch", _fetch);
+	vi.stubGlobal("fetch", withoutLandmarks(_fetch));
 });
 afterEach(() => {
 	vi.unstubAllGlobals();
