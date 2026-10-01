@@ -298,9 +298,11 @@ jobs:
         uses: ./.github/actions/deploy-api
         with: { environment: "${{ needs.prepare.outputs.environment }}" }
       - name: Load Queues credentials
+        if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Apply Queues
+        if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/cloudflare-queues
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
       - name: Clear API deployment credential
