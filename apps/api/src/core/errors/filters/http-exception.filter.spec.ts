@@ -3,6 +3,10 @@ import { ErrorCode } from "../error-code.enum";
 import { RequestValidationError } from "../request-validation.error";
 import { HttpExceptionFilter } from "./http-exception.filter";
 
+const recordRequestException = vi.hoisted(() => vi.fn());
+
+vi.mock("../../observability/http-telemetry.hook", () => ({ recordRequestException: recordRequestException }));
+
 function createMockHost(exception: unknown, requestId?: string) {
 	const statusMock = vi.fn();
 	const sendMock = vi.fn();
@@ -27,6 +31,43 @@ function createMockHost(exception: unknown, requestId?: string) {
 }
 
 describe("HttpExceptionFilter", () => {
+	describe("request trace errors", () => {
+		beforeEach(() => {
+			recordRequestException.mockClear();
+		});
+
+		it("should mark the request trace as failed when an unexpected error becomes a 500", () => {
+			const error = new TypeError("Cannot read properties of undefined");
+
+			const { request } = createMockHost(error);
+
+			expect(recordRequestException).toHaveBeenCalledWith(request, error);
+		});
+
+		it("should mark the request trace as failed when a domain error reports a server-side status", () => {
+			const error = new HttpException(
+				{ errorCode: ErrorCode.INTERNAL_ERROR, message: "Provider down" },
+				HttpStatus.SERVICE_UNAVAILABLE,
+			);
+
+			const { request } = createMockHost(error);
+
+			expect(recordRequestException).toHaveBeenCalledWith(request, error);
+		});
+
+		it("should not mark client errors as failed traces because the API behaved correctly", () => {
+			createMockHost(new HttpException({ errorCode: ErrorCode.NOT_FOUND, message: "Missing" }, HttpStatus.NOT_FOUND));
+
+			expect(recordRequestException).not.toHaveBeenCalled();
+		});
+
+		it("should not record thrown values that are not errors because they carry no stack", () => {
+			createMockHost("plain string failure");
+
+			expect(recordRequestException).not.toHaveBeenCalled();
+		});
+	});
+
 	it("should handle DomainError subclass with camelCase and metadata", () => {
 		class TestNotFoundError extends HttpException {
 			constructor(message: string) {

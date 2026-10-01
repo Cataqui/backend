@@ -19,6 +19,7 @@ import {
 	runBootstrapPhase,
 	startBootstrapUi,
 } from "./bootstrap-runtime.mjs";
+import { reconcileDatadogBootstrapCredentials, verifyDatadogCliAuthenticationAsync } from "./datadog-bootstrap.mjs";
 import { getGithubOidcSubjectPrefix, reconcileGithubEnvironment } from "./github-bootstrap.mjs";
 import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects } from "./google-cloud-bootstrap.mjs";
 import {
@@ -34,7 +35,9 @@ import { ENVIRONMENTS, redactSecrets, validateManifest, validatePlatforms } from
 import { reconcileUpstashApiKey } from "./upstash-bootstrap.mjs";
 
 async function _validateLocalAuthentication(platforms) {
-	await Promise.all(["tofu", "wrangler", "infisical", "gcloud", "gh", "neon"].map((tool) => requireToolAsync(tool)));
+	await Promise.all(
+		["tofu", "wrangler", "infisical", "gcloud", "gh", "neon", "pup"].map((tool) => requireToolAsync(tool)),
+	);
 	const wranglerIdentity = await runAsync("wrangler", ["whoami"]);
 	if (!wranglerIdentity.stdout.includes(platforms.cloudflare.account_id)) {
 		throw new Error(`Wrangler is not authenticated to Cloudflare account ${platforms.cloudflare.account_id}.`);
@@ -48,6 +51,7 @@ async function _validateLocalAuthentication(platforms) {
 	await runAsync("gcloud", ["auth", "application-default", "print-access-token"]);
 	await runAsync("infisical", ["login", "status", "--json"]);
 	await verifyNeonCliAuthenticationAsync();
+	await verifyDatadogCliAuthenticationAsync(platforms);
 }
 
 async function _getInfisicalToken() {
@@ -101,6 +105,7 @@ async function _main() {
 		await _phase("Reconciling provider credentials", "Provider credentials ready", async () => {
 			await reconcileMetaAppSecret(infisicalProjectId, infisicalToken);
 			await reconcileUpstashApiKey(platforms, infisicalProjectId, infisicalToken);
+			await reconcileDatadogBootstrapCredentials({ platforms, manifest }, infisicalProjectId, infisicalToken);
 			await reconcileNeonAccountApiKey({ platforms, manifest }, infisicalProjectId, infisicalToken);
 		});
 		const googleAuth = await _phase(

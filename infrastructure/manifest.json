@@ -12,6 +12,30 @@
 			}
 		}
 	},
+	"datadog": {
+		"opentofu": {
+			"service_account": {
+				"name": "cataqui-backend-opentofu",
+				"email": "cataqui-backend-opentofu@cataqui.com"
+			},
+			"credentials": {
+				"staging": {
+					"name": "cataqui-backend-opentofu-staging"
+				},
+				"production": {
+					"name": "cataqui-backend-opentofu-production"
+				}
+			}
+		},
+		"api_keys": {
+			"cataqui_api_staging": {
+				"name": "cataqui-api-staging"
+			},
+			"cataqui_api_production": {
+				"name": "cataqui-api-production"
+			}
+		}
+	},
 	"google_cloud": {
 		"projects": {
 			"cataqui_staging": {

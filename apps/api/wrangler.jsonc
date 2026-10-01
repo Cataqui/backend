@@ -50,7 +50,8 @@
 		"CORS_ORIGINS": "http://localhost:3000",
 		"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-development",
 		"API_CONTAINER_POOL_SIZE": "1",
-		"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+		"WHATSAPP_NOTP_RECEIVER": "+15556625497",
+		"DATADOG_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.us5.datadoghq.com"
 	},
 	"secrets": {
 		"required": [
@@ -60,9 +61,12 @@
 			"UPSTASH_REDIS_REST_URL",
 			"UPSTASH_REDIS_REST_TOKEN",
 			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+			"DATADOG_API_KEY"
 		]
 	},
+
+	"version_metadata": { "binding": "WORKER_VERSION" },
 
 	"observability": {
 		"enabled": true,
@@ -100,7 +104,8 @@
 				"CORS_ORIGINS": "https://staging.cataqui.com",
 				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-staging",
 				"API_CONTAINER_POOL_SIZE": "1",
-				"WHATSAPP_NOTP_RECEIVER": "+15556625497"
+				"WHATSAPP_NOTP_RECEIVER": "+15556625497",
+				"DATADOG_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.us5.datadoghq.com"
 			},
 			"secrets": {
 				"required": [
@@ -110,9 +115,11 @@
 					"UPSTASH_REDIS_REST_URL",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+					"DATADOG_API_KEY"
 				]
 			},
+			"version_metadata": { "binding": "WORKER_VERSION" },
 			"observability": {
 				"enabled": true,
 				"logs": { "enabled": true, "head_sampling_rate": 1 }
@@ -148,7 +155,8 @@
 				"CORS_ORIGINS": "https://cataqui.com",
 				"DERIVE_JOB_DATA_AI_GATEWAY_ID": "cataqui-derive-job-data-production",
 				"API_CONTAINER_POOL_SIZE": "1",
-				"WHATSAPP_NOTP_RECEIVER": "+5511963270517"
+				"WHATSAPP_NOTP_RECEIVER": "+5511963270517",
+				"DATADOG_OTLP_ENDPOINT": "https://cloudflare.integrations.otlp.us5.datadoghq.com"
 			},
 			"secrets": {
 				"required": [
@@ -158,9 +166,11 @@
 					"UPSTASH_REDIS_REST_URL",
 					"UPSTASH_REDIS_REST_TOKEN",
 					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+					"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
+					"DATADOG_API_KEY"
 				]
 			},
+			"version_metadata": { "binding": "WORKER_VERSION" },
 			"observability": {
 				"enabled": true,
 				"logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false }

@@ -198,6 +198,30 @@ jobs:
       - name: Apply Upstash
         uses: ./.github/actions/upstash-redis
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Load Datadog credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: datadog-opentofu, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Apply Datadog API keys
+        uses: ./.github/actions/datadog-api-keys
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Clear Datadog management credentials
+        shell: bash
+        run: |
+          for name in DD_API_KEY DD_APP_KEY; do
+            echo "$name=" >> "$GITHUB_ENV"
+          done
+      - name: Load Datadog observability credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: datadog-observability, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Apply Datadog observability
+        uses: ./.github/actions/datadog-observability
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Clear Datadog observability credentials
+        shell: bash
+        run: |
+          for name in DD_API_KEY DD_APP_KEY; do
+            echo "$name=" >> "$GITHUB_ENV"
+          done
       - name: Load AI Gateway credentials
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
@@ -357,4 +381,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for name in CLOUDFLARE_API_TOKEN NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_PROJECT_API_KEY NEON_API_KEY NEON_PROJECT_ID TF_VAR_neon_project_id DATABASE_OWNER_DIRECT_URL DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 GOOGLE_PLACES_API_KEY GEOAPIFY_API_KEY META_APP_SECRET WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN INFISICAL_AUTH_JWT GOOGLE_OAUTH_ACCESS_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+          for name in CLOUDFLARE_API_TOKEN NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_PROJECT_API_KEY NEON_API_KEY NEON_PROJECT_ID TF_VAR_neon_project_id DATABASE_OWNER_DIRECT_URL DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN DATADOG_API_KEY DD_API_KEY DD_APP_KEY AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 GOOGLE_PLACES_API_KEY GEOAPIFY_API_KEY META_APP_SECRET WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN INFISICAL_AUTH_JWT GOOGLE_OAUTH_ACCESS_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done

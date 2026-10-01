@@ -1,0 +1,225 @@
+{
+  "title": "Cataquí API (${environment})",
+  "description": "Requests, errors, latency, logs, and runtime health of the Cataquí API in ${environment}. Managed by OpenTofu; edit the template in the backend repository instead of this dashboard.",
+  "layout_type": "ordered",
+  "reflow_type": "auto",
+  "widgets": [
+    {
+      "definition": {
+        "type": "group",
+        "title": "Requests",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Requests per endpoint",
+              "show_legend": true,
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "bars",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "requests",
+                      "query": "sum:trace.http.server.request.hits{${metric_scope}} by {resource_name}.as_count()"
+                    }
+                  ],
+                  "formulas": [{ "formula": "requests" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Error rate (%)",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "errors",
+                      "query": "sum:trace.http.server.request.errors{${metric_scope}}.as_count()"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "requests",
+                      "query": "sum:trace.http.server.request.hits{${metric_scope}}.as_count()"
+                    }
+                  ],
+                  "formulas": [{ "formula": "100 * errors / requests", "alias": "error rate" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Response time (seconds)",
+              "show_legend": true,
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    { "data_source": "metrics", "name": "p50", "query": "p50:trace.http.server.request{${metric_scope}}" },
+                    { "data_source": "metrics", "name": "p95", "query": "p95:trace.http.server.request{${metric_scope}}" },
+                    { "data_source": "metrics", "name": "p99", "query": "p99:trace.http.server.request{${metric_scope}}" }
+                  ],
+                  "formulas": [
+                    { "formula": "p50", "alias": "p50" },
+                    { "formula": "p95", "alias": "p95" },
+                    { "formula": "p99", "alias": "p99" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Slowest endpoints (p95, seconds)",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "latency",
+                      "query": "p95:trace.http.server.request{${metric_scope}} by {resource_name}",
+                      "aggregator": "max"
+                    }
+                  ],
+                  "formulas": [{ "formula": "latency", "limit": { "count": 10, "order": "desc" } }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Endpoints with the most 5xx errors",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "errors",
+                      "query": "sum:trace.http.server.request.errors{${metric_scope}} by {resource_name}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [{ "formula": "errors", "limit": { "count": 10, "order": "desc" } }]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Errors and alerts",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "manage_status",
+              "title": "Monitors",
+              "query": "tag:(service:${service} AND env:${environment})",
+              "summary_type": "monitors",
+              "display_format": "countsAndList",
+              "sort": "status,asc",
+              "hide_zero_counts": true,
+              "show_last_triggered": true
+            }
+          },
+          {
+            "definition": {
+              "type": "list_stream",
+              "title": "Warning and error logs",
+              "requests": [
+                {
+                  "response_format": "event_list",
+                  "query": {
+                    "data_source": "logs_stream",
+                    "query_string": "${log_scope} status:(warn OR error OR critical)",
+                    "indexes": []
+                  },
+                  "columns": [
+                    { "field": "status_line", "width": "auto" },
+                    { "field": "timestamp", "width": "auto" },
+                    { "field": "content", "width": "compact" }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Runtime",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Event loop delay p99 (seconds)",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    { "data_source": "metrics", "name": "delay", "query": "max:nodejs.eventloop.delay.p99{${metric_scope}}" }
+                  ],
+                  "formulas": [{ "formula": "delay" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Heap used (bytes)",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    { "data_source": "metrics", "name": "heap", "query": "sum:v8js.memory.heap.used{${metric_scope}}" }
+                  ],
+                  "formulas": [{ "formula": "heap" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Event loop utilization",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    { "data_source": "metrics", "name": "utilization", "query": "max:nodejs.eventloop.utilization{${metric_scope}}" }
+                  ],
+                  "formulas": [{ "formula": "utilization" }]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

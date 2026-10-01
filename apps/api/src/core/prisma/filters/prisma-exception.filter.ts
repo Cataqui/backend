@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from "@nest
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { RequestUtils } from "../../../shared/utils/request.utils";
+import { recordRequestException } from "../../observability/http-telemetry.hook";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { toErrorOutput } from "../../errors/error-output.js";
 
@@ -66,6 +67,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 				`Prisma error ${exception.code} on ${request.method} ${endpoint} - Meta: ${JSON.stringify(sanitizedMeta)}`,
 			);
 		} else {
+			recordRequestException(request, exception);
 			this._logger.error(
 				`Unhandled Prisma database error ${exception.code} on ${request.method} ${endpoint}`,
 				JSON.stringify(logMetadata),

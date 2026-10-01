@@ -3,6 +3,10 @@ import { Prisma } from "../../../../generated/prisma/client.js";
 import { ErrorCode } from "../../errors/error-code.enum.js";
 import { PrismaExceptionFilter } from "./prisma-exception.filter.js";
 
+const recordRequestException = vi.hoisted(() => vi.fn());
+
+vi.mock("../../observability/http-telemetry.hook", () => ({ recordRequestException: recordRequestException }));
+
 function createMockHost(exception: Prisma.PrismaClientKnownRequestError, requestId?: string) {
 	const statusMock = vi.fn();
 	const sendMock = vi.fn();
@@ -77,6 +81,23 @@ describe("PrismaExceptionFilter", () => {
 	});
 
 	describe("unknown Prisma error", () => {
+		it("should mark the request trace as failed with the database error", () => {
+			recordRequestException.mockClear();
+			const error = createMockPrismaError("P9999");
+
+			const { request } = createMockHost(error);
+
+			expect(recordRequestException).toHaveBeenCalledWith(request, error);
+		});
+
+		it("should not mark the request trace as failed for mapped client errors", () => {
+			recordRequestException.mockClear();
+
+			createMockHost(createMockPrismaError("P2025"));
+
+			expect(recordRequestException).not.toHaveBeenCalled();
+		});
+
 		it("should return 500 with INTERNAL_ERROR", () => {
 			const { sendMock, statusMock } = createMockHost(createMockPrismaError("P9999"));
 

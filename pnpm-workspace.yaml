@@ -19,6 +19,7 @@ allowBuilds:
   "@scarf/scarf": false
   esbuild: true
   prisma: true
+  protobufjs: false
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:

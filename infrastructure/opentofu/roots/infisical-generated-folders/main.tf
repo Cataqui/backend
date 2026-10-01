@@ -130,6 +130,19 @@ resource "infisical_secret_folder" "cloudflare_opentofu_root" {
   depends_on = [infisical_secret_folder.opentofu]
 }
 
+resource "infisical_secret_folder" "datadog_opentofu_root" {
+  for_each = local.datadog_opentofu_roots
+
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = each.value
+  folder_path      = "/generated/opentofu"
+  description      = "Generated Datadog credentials for the ${each.value} OpenTofu root."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.opentofu]
+}
+
 resource "infisical_secret_folder" "geoimage" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment

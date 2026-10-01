@@ -26,10 +26,15 @@ function _requireExactKeys(value, expectedKeys, path) {
 }
 
 export function validatePlatforms(platforms) {
-	_requireExactKeys(platforms, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "platforms");
+	_requireExactKeys(
+		platforms,
+		["cloudflare", "datadog", "google_cloud", "infisical", "github", "neon", "upstash"],
+		"platforms",
+	);
 	_requireExactKeys(platforms.cloudflare, ["account_id", "zones"], "platforms.cloudflare");
 	_requireExactKeys(platforms.cloudflare.zones, ["cataqui.com"], "platforms.cloudflare.zones");
 	_requireExactKeys(platforms.cloudflare.zones["cataqui.com"], ["zone_id"], "platforms.cloudflare.zones.cataqui.com");
+	_requireExactKeys(platforms.datadog, ["site"], "platforms.datadog");
 	_requireExactKeys(platforms.google_cloud, ["organization_id", "billing_account_id"], "platforms.google_cloud");
 	_requireExactKeys(platforms.infisical, ["organization_id"], "platforms.infisical");
 	_requireExactKeys(platforms.github, ["repository"], "platforms.github");
@@ -42,6 +47,7 @@ export function validatePlatforms(platforms) {
 		"cloudflare.zones.cataqui.com.zone_id",
 		/^[a-f0-9]{32}$/,
 	);
+	_requireString(platforms?.datadog?.site, "datadog.site", /^(?:[a-z0-9]+\.)?datadoghq\.(?:com|eu)$/);
 	_requireString(platforms?.google_cloud?.organization_id, "google_cloud.organization_id", /^\d+$/);
 	_requireString(
 		platforms?.google_cloud?.billing_account_id,
@@ -61,7 +67,11 @@ export function validatePlatforms(platforms) {
 }
 
 export function validateManifest(manifest) {
-	_requireExactKeys(manifest, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "manifest");
+	_requireExactKeys(
+		manifest,
+		["cloudflare", "datadog", "google_cloud", "infisical", "github", "neon", "upstash"],
+		"manifest",
+	);
 	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "r2"], "manifest.cloudflare");
 	_requireExactKeys(
 		manifest.cloudflare.ai_gateways,
@@ -73,6 +83,19 @@ export function validateManifest(manifest) {
 		manifest.cloudflare.r2.buckets,
 		["opentofu_state", "geoimage_images_staging", "geoimage_images_production"],
 		"manifest.cloudflare.r2.buckets",
+	);
+	_requireExactKeys(manifest.datadog, ["opentofu", "api_keys"], "manifest.datadog");
+	_requireExactKeys(manifest.datadog.opentofu, ["service_account", "credentials"], "manifest.datadog.opentofu");
+	_requireExactKeys(
+		manifest.datadog.opentofu.service_account,
+		["name", "email"],
+		"manifest.datadog.opentofu.service_account",
+	);
+	_requireExactKeys(manifest.datadog.opentofu.credentials, ENVIRONMENTS, "manifest.datadog.opentofu.credentials");
+	_requireExactKeys(
+		manifest.datadog.api_keys,
+		["cataqui_api_staging", "cataqui_api_production"],
+		"manifest.datadog.api_keys",
 	);
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
 	_requireExactKeys(
@@ -207,7 +230,38 @@ export function validateManifest(manifest) {
 		/^[a-z][a-z0-9_]*$/,
 	);
 
+	_requireString(
+		manifest.datadog.opentofu.service_account.name,
+		"datadog.opentofu.service_account.name",
+		LOWERCASE_NAME_PATTERN,
+	);
+	_requireString(
+		manifest.datadog.opentofu.service_account.email,
+		"datadog.opentofu.service_account.email",
+		EMAIL_PATTERN,
+	);
+
 	for (const environment of ENVIRONMENTS) {
+		_requireExactKeys(
+			manifest.datadog.opentofu.credentials[environment],
+			["name"],
+			`manifest.datadog.opentofu.credentials.${environment}`,
+		);
+		_requireString(
+			manifest.datadog.opentofu.credentials[environment].name,
+			`datadog.opentofu.credentials.${environment}.name`,
+			LOWERCASE_NAME_PATTERN,
+		);
+		_requireExactKeys(
+			manifest.datadog.api_keys[`cataqui_api_${environment}`],
+			["name"],
+			`manifest.datadog.api_keys.cataqui_api_${environment}`,
+		);
+		_requireString(
+			manifest.datadog.api_keys[`cataqui_api_${environment}`].name,
+			`datadog.api_keys.cataqui_api_${environment}.name`,
+			LOWERCASE_NAME_PATTERN,
+		);
 		_requireString(
 			manifest.neon.api_keys.project_access[`cataqui_${environment}`].name,
 			`neon.api_keys.project_access.cataqui_${environment}.name`,

@@ -8,6 +8,17 @@ import {
 	getR2TokenName,
 } from "../infrastructure/bootstrap/cloudflare-reconciliation.mjs";
 import {
+	classifyDatadogCredentialResponse,
+	DATADOG_OPENTOFU_SCOPES,
+	decideDatadogApplicationKeyScopes,
+	decideDatadogCredentials,
+	isSupportedPupVersion,
+	reconcileDatadogEnvironmentCredentials,
+	resolveDatadogApiKey,
+	resolveDatadogRole,
+	resolveDatadogServiceAccount,
+} from "../infrastructure/bootstrap/datadog-reconciliation.mjs";
+import {
 	classifyGoogleProjectDiscovery,
 	decideGoogleProject,
 } from "../infrastructure/bootstrap/google-cloud-reconciliation.mjs";
@@ -347,6 +358,11 @@ describe("infrastructure bootstrap reconciliation", () => {
 			production: { branches: ["main"] },
 		});
 		expect(platformCoordinates.upstash).toEqual({ account_email: "ryan@ventairy.com" });
+		expect(platformCoordinates.datadog).toEqual({ site: "us5.datadoghq.com" });
+		expect(manifest.datadog.api_keys).toEqual({
+			cataqui_api_staging: { name: "cataqui-api-staging" },
+			cataqui_api_production: { name: "cataqui-api-production" },
+		});
 		expect(manifest.upstash.redis.databases).toEqual({
 			cataqui_api_staging: { name: "cataqui-api-staging" },
 			cataqui_api_production: { name: "cataqui-api-production" },
@@ -407,6 +423,33 @@ describe("infrastructure bootstrap reconciliation", () => {
 				upstash: { ...platformCoordinates.upstash, api_key: "forbidden" },
 			}),
 		).toThrow("Unexpected keys in infrastructure configuration object: platforms.upstash");
+		expect(() => validatePlatforms({ ...platformCoordinates, datadog: { site: "https://us5.datadoghq.com" } })).toThrow(
+			"datadog.site",
+		);
+		expect(() =>
+			validatePlatforms({ ...platformCoordinates, datadog: { ...platformCoordinates.datadog, api_key: "forbidden" } }),
+		).toThrow("Unexpected keys in infrastructure configuration object: platforms.datadog");
+		expect(() =>
+			validateManifest({
+				...manifest,
+				datadog: {
+					...manifest.datadog,
+					api_keys: { ...manifest.datadog.api_keys, cataqui_api_development: { name: "cataqui-api-dev" } },
+				},
+			}),
+		).toThrow("Unexpected keys in infrastructure configuration object: manifest.datadog.api_keys");
+		expect(() =>
+			validateManifest({
+				...manifest,
+				datadog: {
+					...manifest.datadog,
+					opentofu: {
+						...manifest.datadog.opentofu,
+						service_account: { ...manifest.datadog.opentofu.service_account, email: "not-an-email" },
+					},
+				},
+			}),
+		).toThrow("datadog.opentofu.service_account.email");
 	});
 
 	it("rejects invalid and unexpected desired infrastructure values", () => {
@@ -866,6 +909,185 @@ describe("infrastructure bootstrap reconciliation", () => {
 			}),
 		).rejects.toThrow("supplied Upstash bootstrap API key is invalid");
 		expect(events).toEqual([]);
+	});
+
+	it.each([
+		[200, "accepted"],
+		[401, "rejected"],
+		[403, "rejected"],
+		[429, "indeterminate"],
+		[500, "indeterminate"],
+	] as const)("classifies Datadog credential responses", (status, expected) => {
+		expect(classifyDatadogCredentialResponse(status)).toBe(expected);
+	});
+
+	it.each([
+		["pup 1.18.0", true],
+		["pup 1.23.4", true],
+		["pup 2.0.0", true],
+		["pup 1.17.9", false],
+		["pup 0.99.0", false],
+		["pup", false],
+	] as const)("requires a pup release that can print its OAuth token (%s)", (versionOutput, expected) => {
+		expect(isSupportedPupVersion(versionOutput)).toBe(expected);
+	});
+
+	it("resolves the committed OpenTofu identity from the manifest", () => {
+		expect(manifest.datadog.opentofu).toEqual({
+			service_account: { name: "cataqui-backend-opentofu", email: "cataqui-backend-opentofu@cataqui.com" },
+			credentials: {
+				staging: { name: "cataqui-backend-opentofu-staging" },
+				production: { name: "cataqui-backend-opentofu-production" },
+			},
+		});
+		expect(DATADOG_OPENTOFU_SCOPES).toEqual([
+			"api_keys_read",
+			"api_keys_write",
+			"service_account_write",
+			"user_access_read",
+		]);
+	});
+
+	it("reuses only the enabled Datadog service account with the owned email", () => {
+		const expected = manifest.datadog.opentofu.service_account;
+		const owned = { id: "owned", name: expected.name, email: expected.email, disabled: false };
+		expect(resolveDatadogServiceAccount([owned], expected)).toBe(owned);
+		expect(resolveDatadogServiceAccount([], expected)).toBeUndefined();
+		expect(() => resolveDatadogServiceAccount([{ ...owned, email: "someone@example.com" }], expected)).toThrow(
+			"Foreign resource",
+		);
+		expect(() => resolveDatadogServiceAccount([{ ...owned, disabled: true }], expected)).toThrow("Foreign resource");
+		expect(() => resolveDatadogServiceAccount([owned, { ...owned, id: "copy" }], expected)).toThrow("Duplicate");
+	});
+
+	it("requires exactly one matching Datadog role and API key name", () => {
+		expect(resolveDatadogRole([{ id: "admin", name: "Datadog Admin Role" }], "Datadog Admin Role").id).toBe("admin");
+		expect(() => resolveDatadogRole([], "Datadog Admin Role")).toThrow("does not exist");
+		expect(
+			resolveDatadogApiKey(
+				[{ id: "key", name: "cataqui-backend-opentofu-staging" }],
+				"cataqui-backend-opentofu-staging",
+			)?.id,
+		).toBe("key");
+		expect(() =>
+			resolveDatadogApiKey(
+				[
+					{ id: "a", name: "cataqui-backend-opentofu-staging" },
+					{ id: "b", name: "cataqui-backend-opentofu-staging" },
+				],
+				"cataqui-backend-opentofu-staging",
+			),
+		).toThrow("Duplicate");
+	});
+
+	it("updates the scopes of the owned application key only when they drift", () => {
+		const applicationKeys = [
+			{ id: "current", last4: "abcd", scopes: [...DATADOG_OPENTOFU_SCOPES].reverse() },
+			{ id: "other", last4: "wxyz", scopes: ["api_keys_read"] },
+		];
+		expect(
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-abcd",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toEqual({ id: "current", needsUpdate: false });
+		expect(
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-wxyz",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toEqual({ id: "other", needsUpdate: true });
+		expect(() =>
+			decideDatadogApplicationKeyScopes({
+				applicationKeys,
+				storedAppKey: "secret-0000",
+				requiredScopes: DATADOG_OPENTOFU_SCOPES,
+			}),
+		).toThrow("not exactly one owned key");
+	});
+
+	it("reuses accepted Datadog credentials and issues new ones when missing, partial, or rejected", () => {
+		const stored = { apiKey: randomUUID(), appKey: randomUUID() };
+		expect(decideDatadogCredentials({ stored, credentialStatus: "accepted" })).toEqual({ action: "reuse" });
+		expect(decideDatadogCredentials({ stored, credentialStatus: "rejected" })).toEqual({ action: "issue" });
+		expect(decideDatadogCredentials({ stored: { apiKey: stored.apiKey }, credentialStatus: "missing" })).toEqual({
+			action: "issue",
+		});
+		expect(() => decideDatadogCredentials({ stored, credentialStatus: "indeterminate" })).toThrow(
+			"Unable to determine",
+		);
+	});
+
+	function _datadogCredentialHarness(options: { stored?: { apiKey?: string; appKey?: string }; verify: string[] }) {
+		const events: string[] = [];
+		const verifyResults = [...options.verify];
+		return {
+			events,
+			params: {
+				stored: options.stored,
+				verifyCredentials: async () => {
+					events.push("verify");
+					return verifyResults.shift() ?? "accepted";
+				},
+				getOrCreateApiKey: async () => {
+					events.push("api-key");
+					return "api-key-value";
+				},
+				createApplicationKey: async () => {
+					events.push("create-app-key");
+					return { id: "new-app-key", key: "app-key-value" };
+				},
+				listApplicationKeys: async () => [{ id: "new-app-key" }, { id: "lost-app-key" }],
+				deleteApplicationKey: async (id: string) => events.push(`delete:${id}`),
+				writeCredentials: async () => events.push("write"),
+				wait: async () => {
+					events.push("wait");
+				},
+			},
+		};
+	}
+
+	it("keeps working stored Datadog credentials without touching Datadog", async () => {
+		const harness = _datadogCredentialHarness({ stored: { apiKey: "a", appKey: "b" }, verify: ["accepted"] });
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).resolves.toEqual({ action: "reuse" });
+		expect(harness.events).toEqual(["verify"]);
+	});
+
+	it("stores newly issued Datadog credentials before removing lost same-named application keys", async () => {
+		const harness = _datadogCredentialHarness({ stored: undefined, verify: ["accepted"] });
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).resolves.toEqual({
+			action: "issue",
+			deletedApplicationKeys: 1,
+		});
+		expect(harness.events).toEqual(["api-key", "create-app-key", "verify", "write", "delete:lost-app-key"]);
+	});
+
+	it("waits for a new application key to propagate before storing it", async () => {
+		const harness = _datadogCredentialHarness({ stored: undefined, verify: ["rejected", "rejected", "accepted"] });
+		await reconcileDatadogEnvironmentCredentials(harness.params);
+		expect(harness.events).toEqual([
+			"api-key",
+			"create-app-key",
+			"verify",
+			"wait",
+			"verify",
+			"wait",
+			"verify",
+			"write",
+			"delete:lost-app-key",
+		]);
+	});
+
+	it("revokes a new application key that is still rejected after propagation and never stores it", async () => {
+		const harness = _datadogCredentialHarness({
+			stored: { apiKey: "a", appKey: "b" },
+			verify: ["rejected", "rejected", "rejected", "rejected", "rejected", "rejected", "rejected"],
+		});
+		await expect(reconcileDatadogEnvironmentCredentials(harness.params)).rejects.toThrow("did not accept");
+		expect(harness.events.filter((event) => event === "write")).toEqual([]);
+		expect(harness.events.at(-1)).toBe("delete:new-app-key");
 	});
 
 	it("reuses one healthy owned resource and fails closed on duplicates or foreign ownership", () => {
@@ -1401,6 +1623,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(source).toContain('from "./github-bootstrap.mjs"');
 		expect(source).toContain('from "./neon-bootstrap.mjs"');
 		expect(source).toContain('from "./upstash-bootstrap.mjs"');
+		expect(source).toContain('from "./datadog-bootstrap.mjs"');
 		expect(source).toContain("applyGeneratedFolders(infisicalProjectId, infisicalToken)");
 		expect(infisicalSource).toContain('"infrastructure/opentofu/roots/infisical-generated-folders"');
 		expect(infisicalSource).toContain("INFISICAL_TOKEN: infisicalToken");
