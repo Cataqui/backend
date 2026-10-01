@@ -2,34 +2,40 @@
 
 ## Purpose
 
-Use this runbook for staging and production deployments from `Cataqui/backend`. The workflow reconciles infrastructure, validates and applies database migrations, deploys the API, then deploys dependent Workers. It never rewinds a database migration automatically.
+Use this runbook to deploy, verify, and recover staging and production releases from `Cataqui/backend`.
 
 ## Prerequisites
 
-- Local infrastructure bootstrap has completed successfully.
+- [Infrastructure bootstrap](infrastructure-bootstrap.md), including manually supplied application keys, has completed successfully.
 - The selected GitHub environment has its required reviewers and branch policy, `INFISICAL_OPENTOFU_IDENTITY_ID`, `GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, and `GOOGLE_OPENTOFU_SERVICE_ACCOUNT`.
-- `/opentofu/bootstrap` contains healthy R2, provider, Neon account, and Upstash credentials; each `/generated/<app>/deployment` folder contains that application's environment-scoped Cloudflare Workers token; `/generated/api/deployment` also contains the project-scoped Neon key; `/generated/webhooks/runtime` contains the Meta app secret and generated webhook verification token.
 - CI is green for the exact commit. Production application source must already have a successful staging deployment and remain unchanged on the path to `main`.
-- Cloudflare, Neon, Infisical, Google Cloud, and GitHub status pages show no incident affecting deployment.
+- Cloudflare, Neon, Infisical, Google Cloud, Geoapify, and GitHub status pages show no incident affecting deployment.
 
 ## Normal deployment
 
-Push to `staging` for staging or merge the staging-proven commit to `main` for production. CI calls the reusable deployment workflow after the full repository gate.
+Push to `staging` for staging or merge the staging-proven commit to `main` for production. Wait for CI and the deployment workflow to succeed.
 
-Confirm these signals in order:
+For a manual run, choose the intended scope in the Deploy workflow:
 
-1. Every OpenTofu root applies its exact saved plan without exposing raw plans; Neon projects precede their project-scoped API keys and database access.
-2. The Neon validation branch is created with a 24-hour expiry, migrations and the candidate API pass, and the branch is deleted.
-3. The real Neon `main` branch reports `prisma migrate status` clean.
-4. API liveness returns `204`; readiness and JWKS return `200` for five consecutive probes.
-5. Geosearch returns `204` through its candidate override and every rollout stage.
-6. Webhooks accepts the signed empty WhatsApp payload with `200`; the empty `entry` list must produce no internal forwarding.
+- `infrastructure`: reconcile infrastructure without deploying applications.
+- `all`: deploy all applications.
+- An application scope: deploy only the selected application. Deploy the API before a dependent Worker when its required API behavior changes. A Geoimage-only deployment requires its configured API JWKS endpoint to already be healthy.
 
-Infrastructure-only changes still reconcile all roots but do not deploy applications. Manual `all` forces API, Geosearch, and Webhooks in that order.
+Resolve any partial active rollout before starting another deployment.
+
+## Deployment verification
+
+Confirm infrastructure reconciliation and migration checks succeeded, and the real Neon `main` branch reports `prisma migrate status` clean. Confirm the deployment probes passed:
+
+- API liveness returns `204`; readiness and JWKS return `200`.
+- Geosearch and Geoimage health return `204`.
+- Webhooks accepts the signed empty WhatsApp payload with `200` without internal forwarding.
+
+Before releasing Geoimage changes to production, verify a signed image request in staging, reuse from R2, and public CDN reuse with Authorization-bearing requests. CI health probes do not check image generation, storage, or CDN behavior. Obtain the location permission from an actual API response; keep it out of logs and URLs.
 
 ## Migration compatibility
 
-The deployment workflow applies every pending Prisma migration after validating it on an expiring Neon branch. It does not classify or automatically reject destructive SQL, so migration compatibility must be reviewed before merging.
+Review every pending Prisma migration for compatibility before merging. CI does not automatically reject destructive SQL.
 
 Use expand and contract as separate releases when a schema change can break the currently deployed API:
 
@@ -43,6 +49,7 @@ Do not combine a column or table removal with the application change that stops 
 
 - API: deployment failure, a terminal Container rollout failure, rollout timeout, or three consecutive failed public probes restores the captured Worker version and its retained container target.
 - Geosearch or Webhooks: failed candidate smoke or two consecutive rollout probe failures restores the previous version at 100%.
+- Geoimage: deployment failure, three consecutive failed health probes, or health verification timeout attempts to restore the previous version. Geoimage releases receive 100% of traffic immediately; a failed check can affect users before restoration. If the release applied a Durable Object lifecycle change, restoration to earlier versions is unavailable; inspect the deployment and recover forward.
 - First deployment: there is no previous version. The workflow stops and declares a first-deployment incident; it must not claim rollback succeeded.
 
 Rollback does not revert OpenTofu changes, database migrations, external provider state, or deleted resources. Old Cloudflare container images must remain available because retained Worker versions depend on them.
@@ -53,7 +60,7 @@ When a defect appears after workflow success, select the last known-good version
 
 ## Failed migration recovery
 
-If only the ephemeral branch fails, inspect the migration and candidate logs, fix forward, and rerun. The branch deletion trap runs automatically; its 24-hour expiry is the fallback.
+If only the validation branch fails, inspect the migration and candidate logs, fix forward, and rerun. Confirm the temporary branch was cleaned up; its 24-hour expiry is the fallback.
 
 If the real migration fails, stop application deployment. Inspect Prisma migration state and PostgreSQL locks, then use Prisma's forward-recovery procedure. Never edit an applied migration, reset a shared database, or mark a failed migration resolved without confirming the actual database state.
 

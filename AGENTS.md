@@ -19,6 +19,12 @@ Cross-workspace behavior must use a named package and its public `package.json` 
 
 Before changing a file, check its directory and parent directories for nested `AGENTS.md` files. Apply every applicable instruction; when instructions conflict, the `AGENTS.md` closest to the file being changed takes precedence over parent guidance.
 
+## Human Communication and Decisions
+
+- Explain consequential implementation choices to the human, including what changed, why, and any limitations, unsupported scenarios, manual requirements, or failure behavior. Raise these during the work and include unresolved limitations in the handoff; writing them only in documentation is not sufficient.
+- Do not silently narrow the agreed scope or introduce operational restrictions. When a choice changes expected behavior, deployment safety, rollback support, or required manual work and the human has not already chosen that tradeoff, explain the alternatives and ask what to do before implementing the dependent change. Routine implementation details within the agreed scope do not require repeated approval.
+- For example, a deployment flow that supports an initial Durable Object migration but fails on later migrations must be explicitly discussed. Do not present that flow as complete without explaining the unsupported case and agreeing on its handling.
+
 ## Toolchain
 
 - Node.js 24, TypeScript 6, pnpm, Biome, Vitest, Wrangler and OpenTofu for infrastructure setup.

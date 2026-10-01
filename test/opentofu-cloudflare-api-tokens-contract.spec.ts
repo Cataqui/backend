@@ -132,6 +132,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		for (const path of [
 			"/generated/api/deployment",
 			"/generated/geosearch/deployment",
+			"/generated/geoimage/deployment",
 			"/generated/webhooks/deployment",
 		]) {
 			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));

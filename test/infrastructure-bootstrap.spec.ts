@@ -17,6 +17,10 @@ import {
 	assertInfisicalOrganizationScope,
 	assertInfisicalProjectContract,
 	classifyInfisicalOidcInspection,
+	getInfisicalManualSecretPermissions,
+	reconcileInfisicalFolderState,
+	reconcileInfisicalManualFolders,
+	reconcileInfisicalSecretPlaceholder,
 	decideInfisicalProject,
 	explainInfisicalIdentityCreationFailure,
 	getMissingInfisicalEnvironments,
@@ -71,6 +75,239 @@ describe("infrastructure bootstrap reconciliation", () => {
 		).toThrow("invalid immutable OIDC subject prefix");
 		expect(() => parseGithubOidcSubjectPrefix("Cataqui/backend", undefined)).toThrow(
 			"invalid immutable OIDC subject prefix",
+		);
+	});
+
+	it("creates manual runtime folders in both environments and reuses them without touching secrets", async () => {
+		const inventories = new Map<string, { name: string }[]>();
+		const created: string[] = [];
+		const ensureFolder = async ({ environment, path, name }: { environment: string; path: string; name: string }) => {
+			const key = `${environment}:${path}`;
+			await reconcileInfisicalFolderState({
+				name: name,
+				listFolders: async () => inventories.get(key) ?? [],
+				createFolder: async () => {
+					created.push(`${environment}:${path === "/" ? "" : path}/${name}`);
+					inventories.set(key, [...(inventories.get(key) ?? []), { name: name }]);
+				},
+			});
+		};
+		await reconcileInfisicalManualFolders({
+			manifest: manifest,
+			ensureFolder: ensureFolder,
+			ensureSecret: async () => {},
+		});
+		await reconcileInfisicalManualFolders({
+			manifest: manifest,
+			ensureFolder: ensureFolder,
+			ensureSecret: async () => {},
+		});
+		expect(created).toEqual([
+			"staging:/manual",
+			"staging:/manual/geoimage",
+			"staging:/manual/geoimage/runtime",
+			"production:/manual",
+			"production:/manual/geoimage",
+			"production:/manual/geoimage/runtime",
+		]);
+	});
+
+	it("fails closed on ambiguous or unavailable folder inventories before creation", async () => {
+		let created = false;
+		const createFolder = async () => {
+			created = true;
+		};
+		for (const inventory of [undefined, [{ name: "manual" }, { name: "manual" }]]) {
+			await expect(
+				reconcileInfisicalFolderState({
+					name: "manual",
+					listFolders: async () => inventory,
+					createFolder: createFolder,
+				}),
+			).rejects.toThrow();
+		}
+		await expect(
+			reconcileInfisicalFolderState({
+				name: "manual",
+				listFolders: async () => {
+					throw new Error("Provider unavailable");
+				},
+				createFolder: createFolder,
+			}),
+		).rejects.toThrow("Provider unavailable");
+		expect(created).toBe(false);
+	});
+
+	it("verifies folder creation and preserves failures instead of reporting success", async () => {
+		for (const verified of [undefined, [], [{ name: "manual" }, { name: "manual" }]]) {
+			let reads = 0;
+			await expect(
+				reconcileInfisicalFolderState({
+					name: "manual",
+					listFolders: async () => (++reads === 1 ? [] : verified),
+					createFolder: async () => {},
+				}),
+			).rejects.toThrow();
+		}
+		await expect(
+			reconcileInfisicalFolderState({
+				name: "manual",
+				listFolders: async () => [],
+				createFolder: async () => {
+					throw new Error("Creation rejected");
+				},
+			}),
+		).rejects.toThrow("Creation rejected");
+	});
+
+	it.each(["staging", "production"])(
+		"limits manual secret permissions to exact read-only %s runtime access",
+		(environment) => {
+			expect(getInfisicalManualSecretPermissions({ manifest: manifest, environment: environment })).toEqual([
+				{
+					subject: "secrets",
+					action: ["describeSecret", "readValue"],
+					conditions: { environment: { $eq: environment }, secretPath: { $eq: "/manual/geoimage/runtime" } },
+				},
+			]);
+		},
+	);
+
+	it("creates only missing empty manual key entries in each environment after its folders", async () => {
+		const events: string[] = [];
+		const keys = new Map<string, { secretKey: string; secretValue: string }[]>();
+		const ensureSecret = async ({
+			environment,
+			secretPath,
+			name,
+		}: {
+			environment: string;
+			secretPath: string;
+			name: string;
+		}) => {
+			await reconcileInfisicalSecretPlaceholder({
+				name: name,
+				listSecrets: async () => keys.get(environment) ?? [],
+				createSecret: async ({ value }: { value: string }) => {
+					events.push(`${environment}:${secretPath}:${name}`);
+					expect(value).toBe("");
+					keys.set(environment, [{ secretKey: name, secretValue: value }]);
+				},
+			});
+		};
+		await reconcileInfisicalManualFolders({
+			manifest: manifest,
+			ensureFolder: async () => {},
+			ensureSecret: ensureSecret,
+		});
+		await reconcileInfisicalManualFolders({
+			manifest: manifest,
+			ensureFolder: async () => {},
+			ensureSecret: ensureSecret,
+		});
+		expect(events).toEqual([
+			"staging:/manual/geoimage/runtime:GEOAPIFY_API_KEY",
+			"production:/manual/geoimage/runtime:GEOAPIFY_API_KEY",
+		]);
+	});
+
+	it.each(["", "operator-supplied-value"])(
+		"preserves an existing manual key value %j without writes",
+		async (value) => {
+			let created = false;
+			await reconcileInfisicalSecretPlaceholder({
+				name: "GEOAPIFY_API_KEY",
+				listSecrets: async () => [{ secretKey: "GEOAPIFY_API_KEY", secretValue: value }],
+				createSecret: async () => {
+					created = true;
+				},
+			});
+			expect(created).toBe(false);
+		},
+	);
+
+	it("does not create placeholders from failed, malformed, or ambiguous inventories", async () => {
+		let created = false;
+		for (const inventory of [undefined, [{}], [{ secretKey: "GEOAPIFY_API_KEY" }, { secretKey: "GEOAPIFY_API_KEY" }]]) {
+			await expect(
+				reconcileInfisicalSecretPlaceholder({
+					name: "GEOAPIFY_API_KEY",
+					listSecrets: async () => inventory,
+					createSecret: async () => {
+						created = true;
+					},
+				}),
+			).rejects.toThrow();
+		}
+		await expect(
+			reconcileInfisicalSecretPlaceholder({
+				name: "GEOAPIFY_API_KEY",
+				listSecrets: async () => {
+					throw new Error("Unavailable");
+				},
+				createSecret: async () => {
+					created = true;
+				},
+			}),
+		).rejects.toThrow("Unavailable");
+		expect(created).toBe(false);
+	});
+
+	it("verifies new placeholders and propagates creation failures", async () => {
+		for (const inventory of [
+			undefined,
+			[{}],
+			[],
+			[{ secretKey: "GEOAPIFY_API_KEY" }, { secretKey: "GEOAPIFY_API_KEY" }],
+		]) {
+			let reads = 0;
+			await expect(
+				reconcileInfisicalSecretPlaceholder({
+					name: "GEOAPIFY_API_KEY",
+					listSecrets: async () => (++reads === 1 ? [] : inventory),
+					createSecret: async () => {},
+				}),
+			).rejects.toThrow("could not be verified");
+		}
+		await expect(
+			reconcileInfisicalSecretPlaceholder({
+				name: "GEOAPIFY_API_KEY",
+				listSecrets: async () => [],
+				createSecret: async () => {
+					throw new Error("Rejected");
+				},
+			}),
+		).rejects.toThrow("Rejected");
+	});
+
+	it("rejects malformed or duplicate manual secret names", () => {
+		for (const secrets of [undefined, [], ["GEOAPIFY_API_KEY", "GEOAPIFY_API_KEY"], ["invalid-name"], [1]]) {
+			expect(() =>
+				validateManifest({
+					...manifest,
+					infisical: {
+						...manifest.infisical,
+						manual_folders: { geoimage_runtime: { path: "/manual/geoimage/runtime", secrets: secrets } },
+					},
+				}),
+			).toThrow("manual_folders.geoimage_runtime.secrets");
+		}
+	});
+
+	it("rejects missing or unsafe manual folder declarations", () => {
+		for (const path of ["/generated/geoimage/runtime", "/manual/../runtime", "/manual/geoimage/runtime/", ""]) {
+			expect(() =>
+				validateManifest({
+					...manifest,
+					infisical: {
+						...manifest.infisical,
+						manual_folders: { geoimage_runtime: { path: path, secrets: ["GEOAPIFY_API_KEY"] } },
+					},
+				}),
+			).toThrow("manual_folders.geoimage_runtime");
+		}
+		expect(() => validateManifest({ ...manifest, infisical: { ...manifest.infisical, manual_folders: {} } })).toThrow(
+			"manual_folders",
 		);
 	});
 

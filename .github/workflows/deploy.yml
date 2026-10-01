@@ -11,7 +11,7 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, infrastructure, api, geosearch, webhooks]
+        options: [all, infrastructure, api, geosearch, geoimage, webhooks]
 
 permissions:
   contents: read
@@ -24,6 +24,7 @@ jobs:
       environment: ${{ steps.scope.outputs.environment }}
       deploy-api: ${{ steps.scope.outputs.deploy-api }}
       deploy-geosearch: ${{ steps.scope.outputs.deploy-geosearch }}
+      deploy-geoimage: ${{ steps.scope.outputs.deploy-geoimage }}
       deploy-webhooks: ${{ steps.scope.outputs.deploy-webhooks }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -37,12 +38,13 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in refs/heads/staging) environment=staging ;; refs/heads/main) environment=production ;; *) echo "Deployments require staging or main." >&2; exit 1 ;; esac
-          deploy_api=false; deploy_geosearch=false; deploy_webhooks=false
+          deploy_api=false; deploy_geosearch=false; deploy_geoimage=false; deploy_webhooks=false
           case "$DEPLOYMENT_SCOPE" in
-            all) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
+            all) deploy_api=true; deploy_geosearch=true; deploy_geoimage=true; deploy_webhooks=true ;;
             infrastructure) ;;
             api) deploy_api=true ;;
             geosearch) deploy_geosearch=true ;;
+            geoimage) deploy_geoimage=true ;;
             webhooks) deploy_webhooks=true ;;
             automatic)
               base="$BEFORE_SHA"; [[ -z "$base" || "$base" =~ ^0+$ ]] && base=HEAD^
@@ -60,19 +62,21 @@ jobs:
           delete after["cloudflare-r2"];
           process.exit(isDeepStrictEqual(before, after) ? 0 : 1);
           NODE
-                    then deploy_api=true; deploy_geosearch=true; deploy_webhooks=true; fi ;;
-                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_webhooks=true ;;
+                    then deploy_api=true; deploy_geosearch=true; deploy_geoimage=true; deploy_webhooks=true; fi ;;
+                  .github/actions/deploy-geoimage/*) deploy_geoimage=true ;;
+                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_geosearch=true; deploy_geoimage=true; deploy_webhooks=true ;;
                   apps/api/*) deploy_api=true ;;
                   apps/workers/geosearch/*) deploy_geosearch=true ;;
+                  apps/workers/geoimage/*) deploy_geoimage=true ;;
                   apps/workers/webhooks/*) deploy_webhooks=true ;;
                   packages/api-internal-ingress/*) deploy_api=true; deploy_webhooks=true ;;
-                  packages/microservices-auth-schemas/*) deploy_api=true; deploy_geosearch=true ;;
+                  packages/microservices-auth-schemas/*) deploy_api=true; deploy_geosearch=true; deploy_geoimage=true ;;
                 esac
               done < <(git diff --name-only "$base" "$GITHUB_SHA") ;;
             *) echo "Unsupported deployment scope." >&2; exit 1 ;;
           esac
-          printf 'environment=%s\ndeploy-api=%s\ndeploy-geosearch=%s\ndeploy-webhooks=%s\n' \
-            "$environment" "$deploy_api" "$deploy_geosearch" "$deploy_webhooks" >> "$GITHUB_OUTPUT"
+          printf 'environment=%s\ndeploy-api=%s\ndeploy-geosearch=%s\ndeploy-geoimage=%s\ndeploy-webhooks=%s\n' \
+            "$environment" "$deploy_api" "$deploy_geosearch" "$deploy_geoimage" "$deploy_webhooks" >> "$GITHUB_OUTPUT"
 
   validate:
     needs: prepare
@@ -116,7 +120,7 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Build shared application packages
-        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-geosearch == 'true' || needs.prepare.outputs.deploy-webhooks == 'true'
+        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-geosearch == 'true' || needs.prepare.outputs.deploy-geoimage == 'true' || needs.prepare.outputs.deploy-webhooks == 'true'
         run: pnpm build:packages
 
       - name: Verify production staging evidence
@@ -126,6 +130,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_API: ${{ needs.prepare.outputs.deploy-api }}
           DEPLOY_GEOSEARCH: ${{ needs.prepare.outputs.deploy-geosearch }}
+          DEPLOY_GEOIMAGE: ${{ needs.prepare.outputs.deploy-geoimage }}
           DEPLOY_WEBHOOKS: ${{ needs.prepare.outputs.deploy-webhooks }}
         run: |
           set -euo pipefail
@@ -135,6 +140,7 @@ jobs:
           paths=(package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json)
           [[ "$DEPLOY_API" == true ]] && paths+=(apps/api packages/api-internal-ingress packages/microservices-auth-schemas)
           [[ "$DEPLOY_GEOSEARCH" == true ]] && paths+=(apps/workers/geosearch packages/microservices-auth-schemas)
+          [[ "$DEPLOY_GEOIMAGE" == true ]] && paths+=(apps/workers/geoimage packages/microservices-auth-schemas)
           [[ "$DEPLOY_WEBHOOKS" == true ]] && paths+=(apps/workers/webhooks packages/api-internal-ingress)
           git diff --quiet "$staging_sha" "$GITHUB_SHA" -- "${paths[@]}" || { echo "Production source lacks matching successful staging evidence." >&2; exit 1; }
 
@@ -222,6 +228,15 @@ jobs:
         uses: ./.github/actions/cloudflare-zone-configuration
         with: { operation: apply }
 
+      - name: Validate Geoimage runtime secret before application deployment
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: geoimage-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Clear preflight Geoimage runtime secret
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        shell: bash
+        run: echo "GEOAPIFY_API_KEY=" >> "$GITHUB_ENV"
+
       - name: Load API migration values
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/load-infisical-secrets
@@ -308,6 +323,24 @@ jobs:
         if: needs.prepare.outputs.deploy-geosearch == 'true'
         shell: bash
         run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
+      - name: Load Geoimage deployment credential
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: geoimage-deployment, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Load Geoimage runtime
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: geoimage-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Deploy Geoimage
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        uses: ./.github/actions/deploy-geoimage
+        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+      - name: Clear Geoimage deployment credentials
+        if: needs.prepare.outputs.deploy-geoimage == 'true'
+        shell: bash
+        run: |
+          echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
+          echo "GEOAPIFY_API_KEY=" >> "$GITHUB_ENV"
       - name: Load Webhooks deployment credential
         if: needs.prepare.outputs.deploy-webhooks == 'true'
         uses: ./.github/actions/load-infisical-secrets
@@ -324,4 +357,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for name in CLOUDFLARE_API_TOKEN NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_PROJECT_API_KEY NEON_API_KEY NEON_PROJECT_ID TF_VAR_neon_project_id DATABASE_OWNER_DIRECT_URL DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 GOOGLE_PLACES_API_KEY META_APP_SECRET WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN INFISICAL_AUTH_JWT GOOGLE_OAUTH_ACCESS_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+          for name in CLOUDFLARE_API_TOKEN NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_PROJECT_API_KEY NEON_API_KEY NEON_PROJECT_ID TF_VAR_neon_project_id DATABASE_OWNER_DIRECT_URL DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 GOOGLE_PLACES_API_KEY GEOAPIFY_API_KEY META_APP_SECRET WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN INFISICAL_AUTH_JWT GOOGLE_OAUTH_ACCESS_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done

@@ -40,6 +40,12 @@
 		"opentofu_identities": {
 			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
 			"cataqui_backend_production": "cataqui-backend-opentofu-production"
+		},
+		"manual_folders": {
+			"geoimage_runtime": {
+				"path": "/manual/geoimage/runtime",
+				"secrets": ["GEOAPIFY_API_KEY"]
+			}
 		}
 	},
 	"github": {

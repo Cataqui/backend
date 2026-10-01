@@ -236,6 +236,7 @@ The root [`.env.example`](.env.example) is the authoritative inventory of local 
 | Core API | Application runtime, CORS, pooled database access, Cloudflare AI Gateway, Redis, and authentication keys |
 | Prisma CLI | Privileged direct database URL used only for migration and inspection |
 | Geosearch Worker | Google Places key; its development JWKS URL comes from Wrangler configuration |
+| Geoimage Worker | Geoapify key; environment-specific API JWKS URL and private R2/coordination bindings come from Wrangler |
 | Webhooks Worker | Meta signature/verification secrets and NOTP provider configuration |
 
 Keep development, staging, and production credentials separate. Secrets belong in the configured secret-management boundary, never source control, shell history, logs, command arguments, OpenTofu outputs, or saved plans. Stable non-secret provider coordinates live in [`infrastructure/platforms.json`](infrastructure/platforms.json); repository-owned resource identities live in [`infrastructure/manifest.json`](infrastructure/manifest.json).
