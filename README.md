@@ -15,7 +15,6 @@
   <a href="#start-here">Start here</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#quick-start">Quick start</a> ·
-  <a href="#workspace-map">Workspace map</a> ·
   <a href="#development-workflow">Development</a> ·
   <a href="#operations-documentation">Operations</a> ·
   <a href="#guide-for-coding-agents">Agent guide</a> ·
@@ -53,8 +52,12 @@ flowchart LR
     Client[Mobile clients] -->|public HTTPS| ApiWorker[API Worker]
     ApiWorker -->|container boundary| Api[NestJS API container]
 
-    Client -->|authenticated search| Geosearch[Geosearch Worker]
-    Geosearch --> Places[Google Places]
+    Client -->|authenticated search or public image read| Maps[Maps Worker]
+    Maps --> Places[Google Places]
+    ApiWorker -->|private generation RPC| Maps
+    Maps -->|source PNG| Geoapify[Geoapify]
+    Maps -->|WebP encoding| Images[Images binding]
+    Maps -->|finished WebP| R2[(Private R2 maps)]
 
     Providers[External providers] -->|signed webhooks| Webhooks[Webhooks Worker]
     Webhooks -->|private Service Binding| ApiWorker
@@ -66,7 +69,7 @@ flowchart LR
     Queue -->|typed inbound receiver| ApiWorker
 
     Wrangler[Wrangler delivery] -. deploys .-> ApiWorker
-    Wrangler -. deploys .-> Geosearch
+    Wrangler -. deploys .-> Maps
     Wrangler -. deploys .-> Webhooks
 
     Infra[OpenTofu backing resources] -. provisions .-> Queue
@@ -77,7 +80,8 @@ flowchart LR
 The important boundaries are:
 
 - **Core product API requests** enter through the API Worker, which selects and forwards to the NestJS container. Public traffic never reaches internal routes.
-- **Narrow public ingress** enters directly through Geosearch or Webhooks, where edge authentication and provider-specific validation belong.
+- **Narrow public ingress** enters directly through Maps or Webhooks, where edge authentication and provider-specific validation belong.
+- **Maps is one Worker** with `places` and `static` feature modules. Static owns generation, rendering, storage, and delivery; authentication and error handling are shared across the Worker.
 - **Immediate private work** crosses named Worker Service Bindings and typed inbound receivers—never synthetic internal URLs or shared-secret headers.
 - **Durable asynchronous work** uses Cloudflare Queues, with retry and dead-letter behavior owned by the API Worker.
 - **Container-to-Cloudflare work** uses a typed outbound manifest instead of importing Worker bindings into NestJS feature code.
@@ -136,9 +140,10 @@ Start only the processes required by the boundary under test:
 
 | Flow | Start | Required dependency |
 | --- | --- | --- |
-| Core API feature | Direct NestJS API | Provisioned PostgreSQL and Redis |
+| Core API feature without Worker bindings | Direct NestJS API | Provisioned PostgreSQL and Redis |
+| Job creation with map generation | API Worker + Container and Maps Worker | Docker, root `.env`, and Maps provider credentials and bindings |
 | API edge, Queue, outbound call, or Container behavior | API Worker + Container | Docker and root `.env` |
-| Authenticated address search | Direct NestJS API, then Geosearch Worker | API JWKS at `localhost:3000`, a development access token, and Google Places credentials |
+| Authenticated address search | Direct NestJS API, then Maps Worker | API JWKS at `localhost:3000`, a development access token, and Google Places credentials |
 | Provider webhook delivery | Webhooks Worker + API Worker/Container | A local multi-Worker graph; direct NestJS alone is insufficient |
 
 Use the owning workspace so Wrangler configuration and root `.env` paths resolve correctly:
@@ -148,13 +153,13 @@ Use the owning workspace so Wrangler configuration and root `.env` paths resolve
 pnpm --filter @cataqui/api cf:dev
 
 # Authenticated address search
-pnpm --filter @cataqui/geosearch-worker cf:dev
+pnpm --filter @cataqui/maps-worker cf:dev
 
 # Provider webhook ingress
 pnpm --filter @cataqui/webhooks-worker cf:dev
 ```
 
-For an authenticated Geosearch request, create and exchange an NOTP intent through the `auth` endpoints in Swagger. The configured development receiver completes the out-of-band WhatsApp proof and the exchange returns a session access token. There is no seeded identity or development authentication bypass.
+Use the API Swagger documentation for session sign-in and Maps token issuance during local development. The configured development receiver completes the out-of-band WhatsApp proof. There is no seeded identity or development authentication bypass.
 
 For local webhook-to-API delivery, run the API Worker and Webhooks Worker in separate terminals. Each workspace script loads the root `.env`, and Wrangler connects the matching local service names across development sessions. The explicit API port avoids a collision; send the signed webhook to the URL reported by the Webhooks process.
 
@@ -194,7 +199,7 @@ Focused application tests:
 
 ```sh
 pnpm test:api
-pnpm test:geosearch
+pnpm test:maps
 pnpm test:webhooks
 ```
 
@@ -235,8 +240,7 @@ The root [`.env.example`](.env.example) is the authoritative inventory of local 
 | --- | --- |
 | Core API | Application runtime, CORS, pooled database access, Cloudflare AI Gateway, Redis, and authentication keys |
 | Prisma CLI | Privileged direct database URL used only for migration and inspection |
-| Geosearch Worker | Google Places key; its development JWKS URL comes from Wrangler configuration |
-| Geoimage Worker | Geoapify key; environment-specific API JWKS URL and private R2/coordination bindings come from Wrangler |
+| Maps Worker | Google Places and Geoapify keys; JWKS URL, Cloudflare Images, private R2 storage, and generation coordination bindings come from Wrangler |
 | Webhooks Worker | Meta signature/verification secrets and NOTP provider configuration |
 
 Keep development, staging, and production credentials separate. Secrets belong in the configured secret-management boundary, never source control, shell history, logs, command arguments, OpenTofu outputs, or saved plans. Stable non-secret provider coordinates live in [`infrastructure/platforms.json`](infrastructure/platforms.json); repository-owned resource identities live in [`infrastructure/manifest.json`](infrastructure/manifest.json).

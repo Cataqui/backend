@@ -11,6 +11,7 @@ const _publicJobOutputSelection = {
 	contact: { select: { id: true, contactMethod: true } },
 	fuzzyLatitude: true,
 	fuzzyLongitude: true,
+	locationImageUrl: true,
 	payment: true,
 	status: true,
 	createdAt: true,
@@ -26,6 +27,7 @@ const _userJobSummaryOutputSelection = {
 	payment: true,
 	fuzzyLatitude: true,
 	fuzzyLongitude: true,
+	locationImageUrl: true,
 	status: true,
 	createdAt: true,
 	updatedAt: true,
@@ -40,6 +42,7 @@ const _userJobOutputSelection = {
 	locationTitle: true,
 	fuzzyLatitude: true,
 	fuzzyLongitude: true,
+	locationImageUrl: true,
 	status: true,
 	createdAt: true,
 	updatedAt: true,
@@ -101,19 +104,50 @@ export class JobRepository {
 		});
 	}
 
-	async createJob(params: {
+	async reservePostRequest(params: {
 		posterUserId: string;
 		idempotencyKey: string;
 		requestHash: string;
+		fuzzyLocation: { latitude: number; longitude: number };
+	}) {
+		await this._prisma.jobPostRequest.createMany({
+			data: [
+				{
+					posterUserId: params.posterUserId,
+					idempotencyKey: params.idempotencyKey,
+					requestHash: params.requestHash,
+					fuzzyLatitude: params.fuzzyLocation.latitude,
+					fuzzyLongitude: params.fuzzyLocation.longitude,
+				},
+			],
+			skipDuplicates: true,
+		});
+		return this._prisma.jobPostRequest.findUniqueOrThrow({
+			where: {
+				posterUserId_idempotencyKey: { posterUserId: params.posterUserId, idempotencyKey: params.idempotencyKey },
+			},
+			include: { job: { include: { contact: true } } },
+		});
+	}
+
+	async createJob(params: {
+		posterUserId: string;
+		postRequestId: string;
+		locationImageUrl: string;
 		contactId: string;
 		description: string;
 		payment: string | null;
 		title: string;
 		descriptionSummary: string;
 		location: { title: string; latitude: number; longitude: number };
-		fuzzyLocation: { latitude: number; longitude: number };
 	}): Promise<Prisma.JobGetPayload<{ include: { contact: true } }>> {
 		return this._prisma.$transaction(async (tx) => {
+			await tx.$queryRaw`SELECT "id" FROM "public"."job_post_requests" WHERE "id" = ${params.postRequestId}::uuid FOR UPDATE`;
+			const request = await tx.jobPostRequest.findUniqueOrThrow({
+				where: { id: params.postRequestId },
+				include: { job: { include: { contact: true } } },
+			});
+			if (request.job !== null) return request.job;
 			const job = await tx.job.create({
 				data: {
 					posterUserId: params.posterUserId,
@@ -123,8 +157,9 @@ export class JobRepository {
 					title: params.title,
 					descriptionSummary: params.descriptionSummary,
 					locationTitle: params.location.title,
-					fuzzyLatitude: params.fuzzyLocation.latitude,
-					fuzzyLongitude: params.fuzzyLocation.longitude,
+					fuzzyLatitude: request.fuzzyLatitude,
+					fuzzyLongitude: request.fuzzyLongitude,
+					locationImageUrl: params.locationImageUrl,
 					status: JobStatus.ACTIVE,
 				},
 				include: { contact: true },
@@ -134,14 +169,7 @@ export class JobRepository {
 				SET "location_point" = ST_SetSRID(ST_MakePoint(${params.location.longitude}, ${params.location.latitude}), 4326)
 				WHERE "id" = ${job.id}::uuid
 			`;
-			await tx.jobPostRequest.create({
-				data: {
-					posterUserId: params.posterUserId,
-					idempotencyKey: params.idempotencyKey,
-					requestHash: params.requestHash,
-					jobId: job.id,
-				},
-			});
+			await tx.jobPostRequest.update({ where: { id: params.postRequestId }, data: { jobId: job.id } });
 			return job;
 		});
 	}
@@ -187,7 +215,7 @@ export class JobRepository {
 				job."id", job."title", job."description", job."description_summary" AS "descriptionSummary",
 				contact."id" AS "contactId", contact."contact_method" AS "contactMethod",
 				job."fuzzy_latitude" AS "fuzzyLatitude", job."fuzzy_longitude" AS "fuzzyLongitude",
-				job."payment", job."status", job."created_at" AS "createdAt", job."updated_at" AS "updatedAt"
+				job."location_image_url" AS "locationImageUrl", job."payment", job."status", job."created_at" AS "createdAt", job."updated_at" AS "updatedAt"
 			FROM "public"."jobs" AS job
 			LEFT JOIN "public"."contacts" AS contact ON contact."id" = job."contact_id"
 			WHERE job."id" = ${params.jobId}::uuid

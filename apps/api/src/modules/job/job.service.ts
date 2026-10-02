@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { Prisma } from "../../../generated/prisma/client.js";
 import { PaginatedResult, type PaginatedResult as PaginatedResultType } from "../../shared/results/paginated-result";
 import { AiTask } from "../ai/ai-task.enum";
 import { AiService } from "../ai/ai.service";
 import { ContactService } from "../contact/contact.service";
 import { LocationService } from "../location/location.service";
-import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
+import { workerCall } from "../../platform/outbound/worker-call";
+import { JobImagesUnavailableError } from "./errors/job-images-unavailable.error";
 import { toFuzzyJobLocationOutput } from "./schemas/fuzzy-job-location-output.mapper";
 import { JobLocationConstants } from "./constants/job-location.constants";
 import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-unavailable.error";
@@ -32,7 +32,6 @@ export class JobService {
 		private readonly _contactService: ContactService,
 		private readonly _aiService: AiService,
 		private readonly _locationService: LocationService,
-		private readonly _microservicesAuth: MicroservicesAuthService,
 	) {}
 
 	async getUserJob(params: { jobId: string; posterUserId: string }): Promise<z.infer<typeof UserJobOutputSchema>> {
@@ -43,10 +42,7 @@ export class JobService {
 			location: toFuzzyJobLocationOutput({
 				fuzzyLatitude: job.fuzzyLatitude,
 				fuzzyLongitude: job.fuzzyLongitude,
-				imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-					latitude: job.fuzzyLatitude.toNumber(),
-					longitude: job.fuzzyLongitude.toNumber(),
-				}),
+				locationImageUrl: job.locationImageUrl,
 			}),
 		});
 	}
@@ -70,27 +66,20 @@ export class JobService {
 				? encodeUserJobsCursor({ createdAt: lastItem.createdAt.toISOString(), jobId: lastItem.id })
 				: null;
 		return PaginatedResult.create({
-			data: await Promise.all(
-				page.map(async (job) => {
-					return {
-						jobId: job.id,
-						title: job.title,
-						descriptionSummary: job.descriptionSummary,
-						payment: job.payment,
-						location: toFuzzyJobLocationOutput({
-							fuzzyLatitude: job.fuzzyLatitude,
-							fuzzyLongitude: job.fuzzyLongitude,
-							imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-								latitude: job.fuzzyLatitude.toNumber(),
-								longitude: job.fuzzyLongitude.toNumber(),
-							}),
-						}),
-						status: job.status,
-						createdAt: job.createdAt.toISOString(),
-						updatedAt: job.updatedAt.toISOString(),
-					};
+			data: page.map((job) => ({
+				jobId: job.id,
+				title: job.title,
+				descriptionSummary: job.descriptionSummary,
+				payment: job.payment,
+				location: toFuzzyJobLocationOutput({
+					fuzzyLatitude: job.fuzzyLatitude,
+					fuzzyLongitude: job.fuzzyLongitude,
+					locationImageUrl: job.locationImageUrl,
 				}),
-			),
+				status: job.status,
+				createdAt: job.createdAt.toISOString(),
+				updatedAt: job.updatedAt.toISOString(),
+			})),
 			pagination: { hasMore: hasMore, nextCursor: nextCursor },
 		});
 	}
@@ -102,81 +91,64 @@ export class JobService {
 	}): Promise<z.infer<typeof PublicJobOutputSchema>> {
 		const requestHash = createHash("sha256").update(JSON.stringify(params.dto)).digest("hex");
 
-		const existing = await this._jobRepository.findByIdempotencyKey({
+		let reservation = await this._jobRepository.findByIdempotencyKey({
 			posterUserId: params.posterUserId,
 			idempotencyKey: params.idempotencyKey,
 		});
-
-		if (existing) {
-			if (existing.requestHash !== requestHash) throw new JobIdempotencyConflictError();
-			return toPublicJobOutput({
-				job: existing.job,
-				location: toFuzzyJobLocationOutput({
-					fuzzyLatitude: existing.job.fuzzyLatitude,
-					fuzzyLongitude: existing.job.fuzzyLongitude,
-					imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-						latitude: existing.job.fuzzyLatitude.toNumber(),
-						longitude: existing.job.fuzzyLongitude.toNumber(),
-					}),
-				}),
-			});
-		}
-
-		const derived = await this.getDerivedJobDataFromDescription({ description: params.dto.description });
-		const contact = await this._contactService.getOrAddContact({
-			userId: params.posterUserId,
-			contact: params.dto.contact,
-		});
-		const fuzzyLocation = this._locationService.fuzzCoordinate({
-			latitude: params.dto.location.latitude,
-			longitude: params.dto.location.longitude,
-			minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
-			maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
-		});
-		try {
-			const created = await this._jobRepository.createJob({
+		if (reservation === null) {
+			reservation = await this._jobRepository.reservePostRequest({
 				posterUserId: params.posterUserId,
 				idempotencyKey: params.idempotencyKey,
 				requestHash: requestHash,
-				contactId: contact.contactId,
-				description: params.dto.description,
-				payment: derived.payment,
-				title: derived.title,
-				descriptionSummary: derived.descriptionSummary,
-				location: params.dto.location,
-				fuzzyLocation: fuzzyLocation,
-			});
-			return toPublicJobOutput({
-				job: created,
-				location: toFuzzyJobLocationOutput({
-					fuzzyLatitude: created.fuzzyLatitude,
-					fuzzyLongitude: created.fuzzyLongitude,
-					imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-						latitude: created.fuzzyLatitude.toNumber(),
-						longitude: created.fuzzyLongitude.toNumber(),
-					}),
-				}),
-			});
-		} catch (error) {
-			if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-			const winner = await this._jobRepository.findByIdempotencyKey({
-				posterUserId: params.posterUserId,
-				idempotencyKey: params.idempotencyKey,
-			});
-			if (!winner) throw error;
-			if (winner.requestHash !== requestHash) throw new JobIdempotencyConflictError();
-			return toPublicJobOutput({
-				job: winner.job,
-				location: toFuzzyJobLocationOutput({
-					fuzzyLatitude: winner.job.fuzzyLatitude,
-					fuzzyLongitude: winner.job.fuzzyLongitude,
-					imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-						latitude: winner.job.fuzzyLatitude.toNumber(),
-						longitude: winner.job.fuzzyLongitude.toNumber(),
-					}),
+				fuzzyLocation: this._locationService.fuzzCoordinate({
+					latitude: params.dto.location.latitude,
+					longitude: params.dto.location.longitude,
+					minDistanceMeters: JobLocationConstants.FUZZ_MIN_DISTANCE_METERS,
+					maxDistanceMeters: JobLocationConstants.FUZZ_MAX_DISTANCE_METERS,
 				}),
 			});
 		}
+		if (reservation.requestHash !== requestHash) throw new JobIdempotencyConflictError();
+		if (reservation.job !== null) {
+			return toPublicJobOutput({
+				job: reservation.job,
+				location: toFuzzyJobLocationOutput({
+					fuzzyLatitude: reservation.job.fuzzyLatitude,
+					fuzzyLongitude: reservation.job.fuzzyLongitude,
+					locationImageUrl: reservation.job.locationImageUrl,
+				}),
+			});
+		}
+		const [derived, imageUrl, contact] = await Promise.all([
+			this.getDerivedJobDataFromDescription({ description: params.dto.description }),
+			this._generateLocationImage({
+				latitude: reservation.fuzzyLatitude.toNumber(),
+				longitude: reservation.fuzzyLongitude.toNumber(),
+			}),
+			this._contactService.getOrAddContact({
+				userId: params.posterUserId,
+				contact: params.dto.contact,
+			}),
+		]);
+		const created = await this._jobRepository.createJob({
+			posterUserId: params.posterUserId,
+			postRequestId: reservation.id,
+			contactId: contact.contactId,
+			description: params.dto.description,
+			payment: derived.payment,
+			title: derived.title,
+			descriptionSummary: derived.descriptionSummary,
+			location: params.dto.location,
+			locationImageUrl: imageUrl,
+		});
+		return toPublicJobOutput({
+			job: created,
+			location: toFuzzyJobLocationOutput({
+				fuzzyLatitude: created.fuzzyLatitude,
+				fuzzyLongitude: created.fuzzyLongitude,
+				locationImageUrl: created.locationImageUrl,
+			}),
+		});
 	}
 
 	async getDerivedJobDataFromDescription(params: {
@@ -214,10 +186,7 @@ export class JobService {
 			location: toFuzzyJobLocationOutput({
 				fuzzyLatitude: job.fuzzyLatitude,
 				fuzzyLongitude: job.fuzzyLongitude,
-				imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-					latitude: job.fuzzyLatitude.toNumber(),
-					longitude: job.fuzzyLongitude.toNumber(),
-				}),
+				locationImageUrl: job.locationImageUrl,
 			}),
 		});
 	}
@@ -230,10 +199,7 @@ export class JobService {
 			location: toFuzzyJobLocationOutput({
 				fuzzyLatitude: job.fuzzyLatitude,
 				fuzzyLongitude: job.fuzzyLongitude,
-				imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-					latitude: job.fuzzyLatitude.toNumber(),
-					longitude: job.fuzzyLongitude.toNumber(),
-				}),
+				locationImageUrl: job.locationImageUrl,
 			}),
 		});
 	}
@@ -246,10 +212,7 @@ export class JobService {
 			location: toFuzzyJobLocationOutput({
 				fuzzyLatitude: job.fuzzyLatitude,
 				fuzzyLongitude: job.fuzzyLongitude,
-				imageAccessToken: await this._microservicesAuth.createGeoimageAccessToken({
-					latitude: job.fuzzyLatitude.toNumber(),
-					longitude: job.fuzzyLongitude.toNumber(),
-				}),
+				locationImageUrl: job.locationImageUrl,
 			}),
 		});
 	}
@@ -258,5 +221,18 @@ export class JobService {
 		const contact = await this._jobRepository.findActiveJobContact(params);
 		if (contact === null) throw new JobNotFoundError();
 		return { method: contact.contactMethod, identifier: contact.identifier };
+	}
+
+	private async _generateLocationImage(params: { latitude: number; longitude: number }): Promise<string> {
+		const result = await workerCall({
+			worker: "maps",
+			method: "generateStaticMaps",
+			input: { latitude: params.latitude, longitude: params.longitude },
+			signal: AbortSignal.timeout(45_000),
+		}).catch(() => {
+			throw new JobImagesUnavailableError();
+		});
+		if (result.kind === "ready") return result.asset.url;
+		throw new JobImagesUnavailableError();
 	}
 }

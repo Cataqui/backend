@@ -10,13 +10,9 @@
 		"package.json"
 	],
 	"exports": {
-		"./geoimage": {
-			"types": "./dist/geoimage/index.d.ts",
-			"import": "./dist/geoimage/index.js"
-		},
-		"./geosearch": {
-			"types": "./dist/geosearch/index.d.ts",
-			"import": "./dist/geosearch/index.js"
+		"./maps": {
+			"types": "./dist/maps/index.d.ts",
+			"import": "./dist/maps/index.js"
 		},
 		"./jwks": {
 			"types": "./dist/jwks/index.d.ts",

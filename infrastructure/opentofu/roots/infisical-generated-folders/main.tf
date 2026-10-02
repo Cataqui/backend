@@ -151,3 +151,36 @@ resource "infisical_secret_folder" "geoimage_deployment" {
 
   depends_on = [infisical_secret_folder.geoimage]
 }
+
+resource "infisical_secret_folder" "maps" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "maps"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the Maps Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "maps_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/maps"
+  description      = "Generated privileged values consumed only by Maps deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.maps]
+}
+
+resource "infisical_secret_folder" "maps_runtime" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "runtime"
+  folder_path      = "/generated/maps"
+  description      = "Runtime credentials consumed by the Maps Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.maps]
+}

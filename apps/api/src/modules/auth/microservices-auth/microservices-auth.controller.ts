@@ -6,7 +6,7 @@ import { SkipEnvelope } from "../../../shared/decorators/skip-envelope.decorator
 import { AccessTokenRequired } from "../decorators/access-token-required.decorator";
 import { CurrentAuthSession } from "../decorators/current-auth-session.decorator";
 import type { IAuthenticatedSession } from "../interfaces/authenticated-session.interface";
-import { ApiCreateGeosearchAccessTokenDocs } from "./decorators/api-create-geosearch-access-token-docs.decorator";
+import { ApiCreateMapsAccessTokenDocs } from "./decorators/api-create-maps-access-token-docs.decorator";
 import { ApiGetMicroservicesAuthJwksDocs } from "./decorators/api-get-microservices-auth-jwks-docs.decorator";
 import { MicroservicesAuthService } from "./microservices-auth.service";
 import { MicroserviceAccessTokenOutputSchema } from "./schemas/microservice-access-token-output.schema";
@@ -26,15 +26,15 @@ export class MicroservicesAuthController {
 		return this._microservicesAuthService.getPublicJwks();
 	}
 
-	@Post("geosearch")
+	@Post("maps")
 	@Version("1")
 	@Header("Cache-Control", "no-store")
 	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
-	@ApiCreateGeosearchAccessTokenDocs()
-	async createGeosearchAccessToken(
+	@ApiCreateMapsAccessTokenDocs()
+	async createMapsAccessToken(
 		@CurrentAuthSession() authSession: IAuthenticatedSession,
 	): Promise<z.infer<typeof MicroserviceAccessTokenOutputSchema>> {
-		return this._microservicesAuthService.createGeosearchAccessToken({ userId: authSession.userId });
+		return this._microservicesAuthService.createMapsAccessToken({ userId: authSession.userId });
 	}
 }

@@ -1,0 +1,5 @@
+{
+	"extends": "../tsconfig.json",
+	"files": ["./maps-worker-env.d.ts"],
+	"include": ["./src/**/*.ts", "./test/**/*.ts", "./vitest.config.ts"]
+}

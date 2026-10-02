@@ -2,7 +2,8 @@
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"account_id": "1fca946385505503c59dd6a2a4eeb442",
 	"name": "cataqui-api-development",
-	"main": "./src/platform/cloudflare/workers/api/worker.ts",
+	"services": [{ "binding": "MAPS", "service": "cataqui-maps-development", "entrypoint": "MapsEntrypoint" }],
+	"main": "./src/platform/cloudflare/worker/worker.ts",
 	"tsconfig": "./src/platform/cloudflare/tsconfig.json",
 	"compatibility_date": "2025-12-18",
 	"compatibility_flags": ["nodejs_compat"],
@@ -72,6 +73,7 @@
 	"env": {
 		"staging": {
 			"name": "cataqui-api-staging",
+			"services": [{ "binding": "MAPS", "service": "cataqui-maps-staging", "entrypoint": "MapsEntrypoint" }],
 			"workers_dev": false,
 			"containers": [
 				{
@@ -120,6 +122,7 @@
 		},
 		"production": {
 			"name": "cataqui-api-production",
+			"services": [{ "binding": "MAPS", "service": "cataqui-maps-production", "entrypoint": "MapsEntrypoint" }],
 			"workers_dev": false,
 			"containers": [
 				{

@@ -1,9 +1,5 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
-import { GeosearchAccessTokenConstants } from "@cataqui/microservices-auth-schemas/geosearch";
-import {
-	GeoimageAccessTokenConstants,
-	GeoimageAccessTokenPayloadSchema,
-} from "@cataqui/microservices-auth-schemas/geoimage";
+import { MapsAccessTokenConstants } from "@cataqui/microservices-auth-schemas/maps";
 import {
 	MicroservicesAuthJwksOutputSchema,
 	MicroservicesAuthJwksConstants,
@@ -21,21 +17,21 @@ export class MicroservicesAuthService implements OnModuleInit {
 	private _signingKey: Awaited<ReturnType<typeof importPKCS8>> | undefined;
 	private _publicJwks: z.infer<typeof MicroservicesAuthJwksOutputSchema> | undefined;
 
-	async createGeosearchAccessToken(params: {
+	async createMapsAccessToken(params: {
 		userId: string;
 	}): Promise<z.infer<typeof MicroserviceAccessTokenOutputSchema>> {
 		if (this._signingKey === undefined) throw new Error("The microservice JWT signing key is unavailable");
 
 		const issuedAtEpochSeconds = Math.floor(Date.now() / 1_000);
-		const expiresAtEpochSeconds = issuedAtEpochSeconds + GeosearchAccessTokenConstants.LIFETIME_SECONDS;
+		const expiresAtEpochSeconds = issuedAtEpochSeconds + MapsAccessTokenConstants.LIFETIME_SECONDS;
 		const accessToken = await new SignJWT()
 			.setProtectedHeader({
-				alg: GeosearchAccessTokenConstants.ALGORITHM,
+				alg: MapsAccessTokenConstants.ALGORITHM,
 				kid: this._config.signingKeyId,
-				typ: GeosearchAccessTokenConstants.TOKEN_TYPE,
+				typ: MapsAccessTokenConstants.TOKEN_TYPE,
 			})
 			.setSubject(params.userId)
-			.setAudience(GeosearchAccessTokenConstants.AUDIENCE)
+			.setAudience(MapsAccessTokenConstants.AUDIENCE)
 			.setIssuedAt(issuedAtEpochSeconds)
 			.setExpirationTime(expiresAtEpochSeconds)
 			.sign(this._signingKey);
@@ -45,22 +41,6 @@ export class MicroservicesAuthService implements OnModuleInit {
 			expiresAt: new Date(expiresAtEpochSeconds * 1_000).toISOString(),
 			tokenType: "Bearer",
 		};
-	}
-
-	async createGeoimageAccessToken(params: { latitude: number; longitude: number }): Promise<string> {
-		if (this._signingKey === undefined) throw new Error("The microservice JWT signing key is unavailable");
-		const payload = GeoimageAccessTokenPayloadSchema.parse({
-			aud: GeoimageAccessTokenConstants.AUDIENCE,
-			latitude: params.latitude,
-			longitude: params.longitude,
-		});
-		return new SignJWT(payload)
-			.setProtectedHeader({
-				alg: GeoimageAccessTokenConstants.ALGORITHM,
-				kid: this._config.signingKeyId,
-				typ: GeoimageAccessTokenConstants.TOKEN_TYPE,
-			})
-			.sign(this._signingKey);
 	}
 
 	getPublicJwks(): z.infer<typeof MicroservicesAuthJwksOutputSchema> {

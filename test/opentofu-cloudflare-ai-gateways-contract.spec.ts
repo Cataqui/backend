@@ -22,7 +22,7 @@ function _getApplicationConfiguration(): string {
 		".env.example",
 		"apps/api/src/core/config/env.schema.ts",
 		"apps/api/src/modules/ai/ai.config.ts",
-		"apps/api/src/platform/cloudflare/containers/api/api-container.ts",
+		"apps/api/src/platform/cloudflare/container/api-container.ts",
 		"apps/api/wrangler.jsonc",
 	]
 		.map((path) => readFileSync(resolve(repositoryRoot, path), "utf8"))

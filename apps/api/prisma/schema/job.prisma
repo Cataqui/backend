@@ -14,6 +14,7 @@ model Job {
   fuzzyLongitude      Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
   status              JobStatus                            @default(ACTIVE)
   payment             String?                              @db.Text
+  locationImageUrl    String?                              @map("location_image_url") @db.Text
   postRequest         JobPostRequest?
   createdAt           DateTime                             @default(now()) @map("created_at")
   updatedAt           DateTime                             @updatedAt @map("updated_at")
@@ -31,8 +32,10 @@ model JobPostRequest {
   poster         User     @relation(fields: [posterUserId], references: [id], onDelete: Cascade)
   idempotencyKey String   @map("idempotency_key") @db.Uuid
   requestHash    String   @map("request_hash") @db.VarChar(64)
-  jobId          String   @unique @map("job_id") @db.Uuid
-  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fuzzyLatitude  Decimal @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude Decimal @map("fuzzy_longitude") @db.Decimal(9, 6)
+  jobId          String?  @unique @map("job_id") @db.Uuid
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@unique([posterUserId, idempotencyKey])

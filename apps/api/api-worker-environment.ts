@@ -1,5 +1,5 @@
 // Generated from api-worker-env.d.ts by pnpm cf:types. Do not edit manually.
-import type { DurableObjectNamespace } from "@cloudflare/workers-types/index";
+import type { DurableObjectNamespace, Service } from "@cloudflare/workers-types/index";
 
 export interface ApiWorkerEnvironment {
 	NODE_ENV: "staging" | "production" | "development";
@@ -19,4 +19,8 @@ export interface ApiWorkerEnvironment {
 	AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: string;
 	MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: string;
 	API_CONTAINER: DurableObjectNamespace;
+	MAPS:
+		| Service /* entrypoint MapsEntrypoint from cataqui-maps-staging */
+		| Service /* entrypoint MapsEntrypoint from cataqui-maps-production */
+		| Service /* entrypoint MapsEntrypoint from cataqui-maps-development */;
 }

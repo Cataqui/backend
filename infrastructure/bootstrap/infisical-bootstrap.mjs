@@ -7,11 +7,10 @@ import { knownSecrets, repositoryRoot, requestJson, runAsync } from "./bootstrap
 import {
 	classifyInfisicalOidcInspection,
 	explainInfisicalIdentityCreationFailure,
-	getInfisicalManualSecretPermissions,
 	INFISICAL_PROJECT_TYPE,
 	isInfisicalPrivilegeAlreadyPresent,
 	reconcileInfisicalFolderState,
-	reconcileInfisicalManualFolders,
+	reconcileInfisicalManualSecrets,
 	reconcileInfisicalProjectState,
 	reconcileInfisicalSecretPlaceholder,
 	resolveInfisicalPrivilege,
@@ -206,8 +205,8 @@ export async function ensureBootstrapFolders(projectId, infisicalToken) {
 	}
 }
 
-export async function ensureManualFolders({ manifest, projectId, infisicalToken }) {
-	await reconcileInfisicalManualFolders({
+export async function ensureManualSecrets({ manifest, projectId, infisicalToken }) {
+	await reconcileInfisicalManualSecrets({
 		manifest: manifest,
 		ensureSecret: ({ environment, secretPath, name }) => {
 			const query = new URLSearchParams({
@@ -244,14 +243,6 @@ export async function ensureManualFolders({ manifest, projectId, infisicalToken 
 					}),
 			});
 		},
-		ensureFolder: ({ environment, path, name }) =>
-			_ensureFolder({
-				projectId: projectId,
-				token: infisicalToken,
-				environment: environment,
-				path: path,
-				name: name,
-			}),
 	});
 }
 
@@ -406,7 +397,6 @@ export async function reconcileInfisicalIdentity({
 	let privilege = resolveInfisicalPrivilege(privilegeList.privileges ?? [], privilegeSlug);
 	const environmentCondition = { $eq: environment };
 	const permissions = [
-		...getInfisicalManualSecretPermissions({ manifest: manifest, environment: environment }),
 		{
 			subject: "secrets",
 			action: ["describeSecret", "readValue"],

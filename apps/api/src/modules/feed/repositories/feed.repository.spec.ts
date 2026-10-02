@@ -12,6 +12,7 @@ const job = {
 	payment: "R$ 150",
 	fuzzyLatitude: new Prisma.Decimal(-23.55),
 	fuzzyLongitude: new Prisma.Decimal(-46.63),
+	locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 };
 
 describe("FeedRepository", () => {
@@ -40,6 +41,7 @@ describe("FeedRepository", () => {
 				payment: true,
 				fuzzyLatitude: true,
 				fuzzyLongitude: true,
+				locationImageUrl: true,
 			},
 		});
 	});

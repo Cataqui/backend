@@ -46,7 +46,7 @@ run "staging_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 8
+    ) == 9
     error_message = "Staging must deliver three infrastructure, one API runtime, and four application deployment tokens."
   }
 
@@ -72,6 +72,7 @@ run "staging_token_inventory" {
       cloudflare_api_token.worker_deployment["api"].name == "cataqui-api-workers-deployment-staging" &&
       cloudflare_api_token.worker_deployment["geosearch"].name == "cataqui-geosearch-workers-deployment-staging" &&
       cloudflare_api_token.worker_deployment["geoimage"].name == "cataqui-geoimage-workers-deployment-staging" &&
+      cloudflare_api_token.worker_deployment["maps"].name == "cataqui-maps-workers-deployment-staging" &&
       cloudflare_api_token.worker_deployment["webhooks"].name == "cataqui-webhooks-workers-deployment-staging"
     )
     error_message = "Staging must create one deterministic Workers deployment token per application."
@@ -95,7 +96,7 @@ run "production_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.worker_deployment_cloudflare_api_token)
-    ) == 10
+    ) == 11
     error_message = "Production must deliver five infrastructure, one API runtime, and four application deployment tokens."
   }
 
@@ -107,6 +108,7 @@ run "production_token_inventory" {
       cloudflare_api_token.worker_deployment["api"].name == "cataqui-api-workers-deployment-production" &&
       cloudflare_api_token.worker_deployment["geosearch"].name == "cataqui-geosearch-workers-deployment-production" &&
       cloudflare_api_token.worker_deployment["geoimage"].name == "cataqui-geoimage-workers-deployment-production" &&
+      cloudflare_api_token.worker_deployment["maps"].name == "cataqui-maps-workers-deployment-production" &&
       cloudflare_api_token.worker_deployment["webhooks"].name == "cataqui-webhooks-workers-deployment-production"
     )
     error_message = "Production zone and service-owned runtime tokens must use deterministic names."
@@ -142,6 +144,11 @@ run "least_privilege_permissions" {
         "account_settings_read",
       ]) &&
       tolist(local.worker_deployment_tokens.geosearch.account_permissions) == tolist([
+        "workers_scripts_read",
+        "workers_scripts_write",
+        "account_settings_read",
+      ]) &&
+      tolist(local.worker_deployment_tokens.maps.account_permissions) == tolist([
         "workers_scripts_read",
         "workers_scripts_write",
         "account_settings_read",

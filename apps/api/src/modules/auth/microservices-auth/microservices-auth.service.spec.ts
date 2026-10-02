@@ -33,22 +33,22 @@ describe("MicroservicesAuthService", () => {
 		vi.useRealTimers();
 	});
 
-	it("should create a geosearch token with the fixed protected header and claims", async () => {
+	it("should create a maps token with the fixed protected header and claims", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-22T15:00:00.000Z"));
 		const service = await createService();
 
-		const result = await service.createGeosearchAccessToken({ userId: userId });
+		const result = await service.createMapsAccessToken({ userId: userId });
 		const verified = await jwtVerify(result.accessToken, await importSPKI(publicKey, "ES256"), {
 			algorithms: ["ES256"],
-			audience: "GEOSEARCH",
+			audience: "MAPS",
 			typ: "microservice-access+jwt",
 		});
 
 		expect({ header: verified.protectedHeader, payload: verified.payload }).toEqual({
 			header: { alg: "ES256", kid: "V1", typ: "microservice-access+jwt" },
 			payload: {
-				aud: "GEOSEARCH",
+				aud: "MAPS",
 				exp: 1_787_411_400,
 				iat: 1_787_410_800,
 				sub: userId,
@@ -61,21 +61,21 @@ describe("MicroservicesAuthService", () => {
 		vi.setSystemTime(new Date("2026-08-22T15:00:00.000Z"));
 		const service = await createService();
 
-		const result = await service.createGeosearchAccessToken({ userId: userId });
+		const result = await service.createMapsAccessToken({ userId: userId });
 
 		expect(result).toMatchObject({ tokenType: "Bearer", expiresAt: "2026-08-22T15:10:00.000Z" });
 	});
 
 	it("should publish only the public key that verifies issued tokens", async () => {
 		const service = await createService();
-		const accessToken = await service.createGeosearchAccessToken({ userId: userId });
+		const accessToken = await service.createMapsAccessToken({ userId: userId });
 		const jwks = service.getPublicJwks();
 		const publicJwk = jwks.keys[0];
 		if (publicJwk === undefined) throw new Error("The test public JWK is unavailable");
 
 		const verified = await jwtVerify(accessToken.accessToken, await importJWK(publicJwk, "ES256"), {
 			algorithms: ["ES256"],
-			audience: "GEOSEARCH",
+			audience: "MAPS",
 			typ: "microservice-access+jwt",
 		});
 
@@ -129,32 +129,5 @@ describe("MicroservicesAuthService", () => {
 		};
 
 		await expect(createService({ config: wrongCurveConfig })).rejects.toThrow();
-	});
-	it("issues non-expiring coordinate permissions verified by its published JWKS", async () => {
-		const service = await createService();
-		const token = await service.createGeoimageAccessToken({ latitude: -23.55, longitude: -46.63 });
-		const key = await importJWK(service.getPublicJwks().keys[0]!, "ES256");
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2040-01-01"));
-		const verified = await jwtVerify(token, key, {
-			algorithms: ["ES256"],
-			audience: "geoimage",
-			typ: "geoimage-access+jwt",
-		});
-		expect(verified.payload).toEqual({ aud: "geoimage", latitude: -23.55, longitude: -46.63 });
-		expect(verified.protectedHeader).toEqual({ alg: "ES256", kid: "V1", typ: "geoimage-access+jwt" });
-		await expect(jwtVerify(token, key, { audience: "GEOSEARCH", typ: "microservice-access+jwt" })).rejects.toThrow();
-		const geosearch = await service.createGeosearchAccessToken({ userId: userId });
-		await expect(
-			jwtVerify(geosearch.accessToken, key, { audience: "geoimage", typ: "geoimage-access+jwt" }),
-		).rejects.toThrow();
-	});
-	it("refuses to sign image permissions before key initialization", async () => {
-		const service = new MicroservicesAuthService(config);
-		await expect(service.createGeoimageAccessToken({ latitude: 0, longitude: 0 })).rejects.toThrow("unavailable");
-	});
-	it("rejects invalid internal coordinates before signing", async () => {
-		const service = await createService();
-		await expect(service.createGeoimageAccessToken({ latitude: 91, longitude: 0 })).rejects.toThrow();
 	});
 });

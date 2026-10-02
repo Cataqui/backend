@@ -14,7 +14,7 @@
 	"scripts": {
 		"build": "pnpm -r --if-present run build",
 		"build:api": "pnpm --filter \"@cataqui/api...\" run build",
-		"build:geosearch": "pnpm --filter \"@cataqui/geosearch-worker...\" run build",
+		"build:maps": "pnpm --filter \"@cataqui/maps-worker...\" run build",
 		"build:packages": "pnpm --filter \"./packages/*\" run build",
 		"build:webhooks": "pnpm --filter \"@cataqui/webhooks-worker...\" run build",
 		"check": "pnpm check:opentofu && pnpm lint:check && pnpm typecheck && pnpm test:cov && pnpm build",
@@ -34,7 +34,7 @@
 		"test": "pnpm build:packages && pnpm test:repo && pnpm -r --if-present run test",
 		"test:api": "pnpm build:packages && pnpm --filter @cataqui/api run test",
 		"test:cov": "pnpm build:packages && pnpm test:repo:cov && pnpm -r --if-present run test:cov",
-		"test:geosearch": "pnpm build:packages && pnpm --filter @cataqui/geosearch-worker run test",
+		"test:maps": "pnpm build:packages && pnpm --filter @cataqui/maps-worker run test",
 		"test:repo": "vitest run --config vitest.config.ts",
 		"test:repo:cov": "vitest run --config vitest.config.ts --coverage",
 		"test:webhooks": "pnpm build:packages && pnpm --filter @cataqui/webhooks-worker run test",

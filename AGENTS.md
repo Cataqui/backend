@@ -25,6 +25,12 @@ Before changing a file, check its directory and parent directories for nested `A
 - Do not silently narrow the agreed scope or introduce operational restrictions. When a choice changes expected behavior, deployment safety, rollback support, or required manual work and the human has not already chosen that tradeoff, explain the alternatives and ask what to do before implementing the dependent change. Routine implementation details within the agreed scope do not require repeated approval.
 - For example, a deployment flow that supports an initial Durable Object migration but fails on later migrations must be explicitly discussed. Do not present that flow as complete without explaining the unsupported case and agreeing on its handling.
 
+## Documentation
+
+- Keep READMEs focused on general project context, purpose, high-level architecture, prerequisites, setup, and basic development commands.
+- Do not append every feature change or explain each subsystem's internal behavior in a README. Avoid detailed request flows, implementation walkthroughs, and duplicated API contracts.
+- Put endpoint details in the owning Swagger/OpenAPI documentation and deeper architecture or operational procedures in focused documentation or runbooks. Link to those sources from the README when useful.
+
 ## Toolchain
 
 - Node.js 24, TypeScript 6, pnpm, Biome, Vitest, Wrangler and OpenTofu for infrastructure setup.
@@ -35,11 +41,19 @@ Before changing a file, check its directory and parent directories for nested `A
 - Shared packages publish compiled `dist` entrypoints. Build dependencies before consumers with recursive or dependency-aware pnpm filters.
 - Do not add Turbo or Nx.
 
+## Layer Responsibilities
+
+- Repositories own real external boundaries: database and storage access, provider calls, and infrastructure bindings. Translate provider results into narrow typed data, explicit outcomes, or owned errors. Do not construct public HTTP responses or choose their status codes and headers.
+- Services own business rules and orchestration. Coordinate repositories and other owned services, and return transport-independent data or outcomes. Keep services independent of HTTP responses, request contexts, and presentation formatting. Durable Object coordinators follow the same separation for their RPC results.
+- Controllers, routes, and response adapters own the public transport contract: request parsing and validation, authentication at ingress, status codes, response headers, serialization, and error presentation. Call services for business behavior; do not perform storage queries or provider operations directly.
+- Provider-specific transport mechanisms remain at their integration boundary. A repository may use HTTP to call an external provider, pass native conditional-read headers to storage, or persist storage metadata; this does not make it responsible for the application's public HTTP response. Keep shared representation and cache policy in explicitly owned feature contracts rather than importing a response adapter into a repository.
+
 ## Shared Engineering Conventions
 
 - Keep code explicit, unsurprising, strictly typed, and locally extensible. Do not use `any`, dead code, speculative abstractions, or broad catch-and-rethrow blocks.
 - Prefer guard clauses and exhaustive closed variants. Never add a `default` branch that hides an unhandled enum member.
 - Use named object parameters unless every positional value is self-evident at the call site. Spell object keys and values explicitly instead of shorthand.
+- When source and destination inputs use independently defined types, map each field explicitly even when their properties match. Do not forward the whole object or spread it into the destination input; pass it directly only when both sides intentionally reuse the same input contract.
 - Name fields relative to their containing object. Avoid repeating the object's name when the context already makes it clear: e.g use `contact.method` instead of `contact.contactMethod`. Keep a qualifier when it distinguishes otherwise ambiguous fields or is required by an externally owned contract.
 - Prefix private class members and module-private functions with `_`.
 - Keep single-use values and short single-use logic inline. Extract only for real reuse or an independently meaningful contract.

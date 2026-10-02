@@ -24,7 +24,7 @@ import { applyGoogleGithubAuth, getBackendCredentials, reconcileGoogleProjects }
 import {
 	applyGeneratedFolders,
 	ensureBootstrapFolders,
-	ensureManualFolders,
+	ensureManualSecrets,
 	reconcileInfisicalIdentity,
 	reconcileInfisicalProject,
 } from "./infisical-bootstrap.mjs";
@@ -92,11 +92,11 @@ async function _main() {
 			const cloudflareToken = await resolveCloudflareBootstrapToken(infisicalProjectId, infisicalToken);
 			await reconcileR2Credentials({ platforms, manifest, infisicalProjectId, infisicalToken, cloudflareToken });
 		});
-		await _phase("Reconciling manual secret placeholders", "Manual secret placeholders ready", () =>
-			ensureManualFolders({ manifest: manifest, projectId: infisicalProjectId, infisicalToken: infisicalToken }),
-		);
 		await _phase("Reconciling generated secret folders", "Generated secret folders ready", () =>
 			applyGeneratedFolders(infisicalProjectId, infisicalToken),
+		);
+		await _phase("Reconciling manual secret placeholders", "Manual secret placeholders ready", () =>
+			ensureManualSecrets({ manifest: manifest, projectId: infisicalProjectId, infisicalToken: infisicalToken }),
 		);
 		await _phase("Reconciling provider credentials", "Provider credentials ready", async () => {
 			await reconcileMetaAppSecret(infisicalProjectId, infisicalToken);

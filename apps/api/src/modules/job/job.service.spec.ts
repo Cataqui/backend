@@ -1,6 +1,9 @@
-import type { z } from "zod";
-import type { FuzzyJobLocationOutputSchema } from "./schemas/fuzzy-job-location-output.schema";
-import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
+import { createHash } from "node:crypto";
+import { JobImagesUnavailableError } from "./errors/job-images-unavailable.error";
+import { workerCall } from "../../platform/outbound/worker-call";
+import type { GenerateStaticMapsResult } from "@cataqui/maps-contracts";
+
+vi.mock("../../platform/outbound/worker-call");
 import { Test } from "@nestjs/testing";
 import { JobStatus, Prisma } from "../../../generated/prisma/client.js";
 import { AiService } from "../ai/ai.service";
@@ -27,6 +30,7 @@ const job = {
 	contact: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", contactMethod: "WHATSAPP" as const },
 	fuzzyLatitude: new Prisma.Decimal(-23.55),
 	fuzzyLongitude: new Prisma.Decimal(-46.63),
+	locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 	status: JobStatus.ACTIVE,
 	createdAt: new Date("2026-09-22T12:00:00Z"),
 	updatedAt: new Date("2026-09-22T12:00:00Z"),
@@ -43,21 +47,31 @@ describe("JobService direct posting", () => {
 		findUserJobs: vi.fn(),
 		findUserJobById: vi.fn(),
 		findByIdempotencyKey: vi.fn(),
+		reservePostRequest: vi.fn(),
 		createJob: vi.fn(),
 		findPublicById: vi.fn(),
 		archiveOwnedJob: vi.fn(),
 		activateOwnedJob: vi.fn(),
 		findActiveJobContact: vi.fn(),
 	};
-	const imageAuth = { createGeoimageAccessToken: vi.fn() };
 	const ai = { generateObject: vi.fn() };
 	const users = { getOrAddContact: vi.fn() };
 	const location = { fuzzCoordinate: vi.fn() };
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
-		imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
+		vi.mocked(workerCall).mockResolvedValue({
+			kind: "ready",
+			asset: { id: "a".repeat(64), url: job.locationImageUrl },
+		});
 		repository.findByIdempotencyKey.mockResolvedValue(null);
+		repository.reservePostRequest.mockImplementation(async (input) => ({
+			id: "request",
+			requestHash: input.requestHash,
+			job: null,
+			fuzzyLatitude: new Prisma.Decimal(-23.55),
+			fuzzyLongitude: new Prisma.Decimal(-46.63),
+		}));
 		repository.createJob.mockResolvedValue(job);
 		ai.generateObject.mockResolvedValue({
 			title: job.title,
@@ -68,10 +82,6 @@ describe("JobService direct posting", () => {
 		location.fuzzCoordinate.mockReturnValue(dto.location);
 		const module = await Test.createTestingModule({
 			providers: [
-				{
-					provide: MicroservicesAuthService,
-					useValue: imageAuth,
-				},
 				JobService,
 				{ provide: JobRepository, useValue: repository },
 				{ provide: AiService, useValue: ai },
@@ -82,58 +92,111 @@ describe("JobService direct posting", () => {
 		service = module.get(JobService);
 	});
 
-	it.each(["create", "retry", "collision", "public", "owner", "archive", "activate", "list"])(
-		"issues %s permissions only for persisted fuzzy coordinates",
-		async (producer) => {
-			imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
-			const persisted = { ...job, fuzzyLatitude: new Prisma.Decimal(-23.6), fuzzyLongitude: new Prisma.Decimal(-46.7) };
-			repository.createJob.mockResolvedValue(persisted);
-			repository.findPublicById.mockResolvedValue(persisted);
-			repository.findUserJobById.mockResolvedValue({ ...persisted, locationTitle: dto.location.title, contact: null });
-			repository.archiveOwnedJob.mockResolvedValue(persisted);
-			repository.activateOwnedJob.mockResolvedValue(persisted);
-			repository.findUserJobs.mockResolvedValue([persisted, persisted]);
-			if (producer === "retry" || producer === "collision") {
-				const requestHash = (await import("node:crypto"))
-					.createHash("sha256")
-					.update(JSON.stringify(dto))
-					.digest("hex");
-				if (producer === "collision") {
-					repository.findByIdempotencyKey.mockResolvedValueOnce(null);
-					repository.createJob.mockRejectedValue(
-						new Prisma.PrismaClientKnownRequestError("duplicate", { code: "P2002", clientVersion: "7.9.1" }),
-					);
-				}
-				repository.findByIdempotencyKey.mockResolvedValue({ job: persisted, requestHash: requestHash });
-			}
-			let locations: z.output<typeof FuzzyJobLocationOutputSchema>[];
-			if (producer === "list") {
-				locations = (await service.getUserJobs({ posterUserId: params.posterUserId })).data.map(
-					(item) => item.location,
-				);
-			} else {
-				const output =
-					producer === "public"
-						? await service.getPublicJob({ jobId: job.id })
-						: producer === "owner"
-							? await service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId })
-							: producer === "archive"
-								? await service.archiveJob({ jobId: job.id, posterUserId: params.posterUserId })
-								: producer === "activate"
-									? await service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })
-									: await service.createJob(params);
-				locations = [output.location];
-			}
-			expect({ locations: locations, signedCoordinates: imageAuth.createGeoimageAccessToken.mock.calls }).toEqual({
-				locations: Array.from({ length: producer === "list" ? 2 : 1 }, () =>
-					expect.objectContaining({ latitude: -23.6, longitude: -46.7, image: { accessToken: "image-permission" } }),
-				),
-				signedCoordinates: Array.from({ length: producer === "list" ? 2 : 1 }, () => [
-					{ latitude: -23.6, longitude: -46.7 },
-				]),
-			});
+	it("passes only reserved fuzzy coordinates to Maps", async () => {
+		await service.createJob(params);
+		expect(vi.mocked(workerCall)).toHaveBeenCalledExactlyOnceWith({
+			worker: "maps",
+			method: "generateStaticMaps",
+			input: { latitude: -23.55, longitude: -46.63 },
+			signal: expect.any(AbortSignal),
+		});
+	});
+	it("uses a 45-second Maps timeout and persists the returned images", async () => {
+		const timeout = vi.spyOn(AbortSignal, "timeout");
+		try {
+			await service.createJob(params);
+			expect(timeout).toHaveBeenCalledWith(45_000);
+			expect(workerCall).toHaveBeenCalledOnce();
+			expect(repository.createJob).toHaveBeenCalledWith(
+				expect.objectContaining({ locationImageUrl: job.locationImageUrl }),
+			);
+		} finally {
+			timeout.mockRestore();
+		}
+	});
+	it.each([true, false])("does not publish or multiply Maps retries when retryable is %s", async (retryable) => {
+		vi.mocked(workerCall).mockResolvedValue({ kind: "failed", code: "PROVIDER_UNAVAILABLE", retryable: retryable });
+		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
+		expect(workerCall).toHaveBeenCalledOnce();
+		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+	it.each([new Error("transport"), new DOMException("deadline", "TimeoutError")])(
+		"does not publish or repeat an ambiguous or timed-out Maps call: %s",
+		async (error) => {
+			vi.mocked(workerCall).mockRejectedValue(error);
+			await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
+			expect(workerCall).toHaveBeenCalledOnce();
+			expect(repository.createJob).not.toHaveBeenCalled();
 		},
 	);
+
+	it("keeps an unsuccessful posting reservation and creates no public job", async () => {
+		vi.mocked(workerCall).mockRejectedValue(new JobImagesUnavailableError());
+		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
+		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+	it("reuses reserved fuzzy coordinates after a failed posting attempt", async () => {
+		repository.findByIdempotencyKey.mockResolvedValue({
+			id: "request",
+			job: null,
+			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+			fuzzyLatitude: new Prisma.Decimal(-23.6),
+			fuzzyLongitude: new Prisma.Decimal(-46.7),
+		});
+		await service.createJob(params);
+		expect(vi.mocked(workerCall)).toHaveBeenCalledExactlyOnceWith({
+			worker: "maps",
+			method: "generateStaticMaps",
+			input: { latitude: -23.6, longitude: -46.7 },
+			signal: expect.any(AbortSignal),
+		});
+	});
+	it("does not generate maps again for an already completed posting key", async () => {
+		repository.findByIdempotencyKey.mockResolvedValue({
+			job: job,
+			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+		});
+		await service.createJob(params);
+		expect(vi.mocked(workerCall)).not.toHaveBeenCalled();
+	});
+	it("derives job data and prepares the contact while waiting for map readiness", async () => {
+		let resolveMaps: (result: GenerateStaticMapsResult) => void = () => {};
+		const promise = new Promise<GenerateStaticMapsResult>((resolve) => {
+			resolveMaps = resolve;
+		});
+		vi.mocked(workerCall).mockReturnValue(promise);
+		const pending = service.createJob(params);
+		await vi.waitFor(() => expect(vi.mocked(workerCall)).toHaveBeenCalledOnce());
+		const createdBeforeReady = repository.createJob.mock.calls.length;
+		const contactsStartedBeforeReady = users.getOrAddContact.mock.calls.length;
+		expect(ai.generateObject).toHaveBeenCalledOnce();
+		resolveMaps({ kind: "ready", asset: { id: "a".repeat(64), url: job.locationImageUrl } });
+		await pending;
+		expect(createdBeforeReady).toBe(0);
+		expect(contactsStartedBeforeReady).toBe(1);
+	});
+
+	it("waits for contact readiness before creating the job", async () => {
+		let resolveContact: (contact: { contactId: string }) => void = () => {};
+		const contact = new Promise<{ contactId: string }>((resolve) => {
+			resolveContact = resolve;
+		});
+		users.getOrAddContact.mockReturnValue(contact);
+		const pending = service.createJob(params);
+		await vi.waitFor(() => expect(users.getOrAddContact).toHaveBeenCalledOnce());
+		const createdBeforeReady = repository.createJob.mock.calls.length;
+		resolveContact({ contactId: job.contact.id });
+		await pending;
+		expect(createdBeforeReady).toBe(0);
+		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ contactId: job.contact.id }));
+	});
+
+	it("does not create a job when parallel contact preparation fails", async () => {
+		const error = new Error("Contact unavailable");
+		users.getOrAddContact.mockRejectedValue(error);
+		await expect(service.createJob(params)).rejects.toBe(error);
+		expect(repository.createJob).not.toHaveBeenCalled();
+	});
 
 	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])(
 		"returns the poster's %s job with fuzzy location and real contact",
@@ -154,7 +217,7 @@ describe("JobService direct posting", () => {
 					latitude: -23.55,
 					longitude: -46.63,
 					areaRadius: 2_000,
-					image: { accessToken: "image-permission" },
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				},
 				status: status,
 				createdAt: "2026-09-22T12:00:00.000Z",
@@ -212,7 +275,7 @@ describe("JobService direct posting", () => {
 					latitude: -23.55,
 					longitude: -46.63,
 					areaRadius: 2_000,
-					image: { accessToken: "image-permission" },
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				},
 				status: JobStatus.ACTIVE,
 				createdAt: "2026-09-22T12:00:00.000Z",
@@ -224,7 +287,7 @@ describe("JobService direct posting", () => {
 					latitude: -23.55,
 					longitude: -46.63,
 					areaRadius: 2_000,
-					image: { accessToken: "image-permission" },
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				},
 			}),
 		]);
@@ -312,8 +375,8 @@ describe("JobService direct posting", () => {
 				payment: job.payment,
 				description: dto.description,
 				location: dto.location,
-				fuzzyLocation: dto.location,
-				requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+				postRequestId: "request",
+				locationImageUrl: job.locationImageUrl,
 			}),
 		);
 	});
@@ -387,14 +450,12 @@ describe("JobService direct posting", () => {
 		expect(repository.createJob).not.toHaveBeenCalled();
 	});
 
-	it("returns the winning post after a concurrent insert collision", async () => {
-		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
-		repository.findByIdempotencyKey
-			.mockResolvedValueOnce(null)
-			.mockResolvedValueOnce({ job: job, requestHash: requestHash });
-		repository.createJob.mockRejectedValue(
-			new Prisma.PrismaClientKnownRequestError("duplicate", { code: "P2002", clientVersion: "7.9.1" }),
-		);
-		expect((await service.createJob(params)).jobId).toBe(job.id);
+	it("returns a concurrently completed reservation without generating another map", async () => {
+		repository.reservePostRequest.mockResolvedValue({
+			job: job,
+			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+		});
+		await service.createJob(params);
+		expect(vi.mocked(workerCall)).not.toHaveBeenCalled();
 	});
 });

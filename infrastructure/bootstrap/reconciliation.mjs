@@ -71,7 +71,7 @@ export function validateManifest(manifest) {
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
 	_requireExactKeys(
 		manifest.cloudflare.r2.buckets,
-		["opentofu_state", "geoimage_images_staging", "geoimage_images_production"],
+		["opentofu_state", "geoimage_images_staging", "geoimage_images_production", "maps_staging", "maps_production"],
 		"manifest.cloudflare.r2.buckets",
 	);
 	_requireExactKeys(manifest.google_cloud, ["projects", "github_auth"], "manifest.google_cloud");
@@ -97,29 +97,29 @@ export function validateManifest(manifest) {
 		["cataqui_backend_staging", "cataqui_backend_production"],
 		"manifest.google_cloud.github_auth.service_accounts",
 	);
-	_requireExactKeys(manifest.infisical, ["project", "opentofu_identities", "manual_folders"], "manifest.infisical");
+	_requireExactKeys(manifest.infisical, ["project", "opentofu_identities", "manual_secrets"], "manifest.infisical");
 	_requireExactKeys(manifest.infisical.project, ["name", "slug"], "manifest.infisical.project");
-	_requireExactKeys(manifest.infisical.manual_folders, ["geoimage_runtime"], "manifest.infisical.manual_folders");
+	_requireExactKeys(manifest.infisical.manual_secrets, ["maps_runtime"], "manifest.infisical.manual_secrets");
 	_requireExactKeys(
-		manifest.infisical.manual_folders.geoimage_runtime,
+		manifest.infisical.manual_secrets.maps_runtime,
 		["path", "secrets"],
-		"manifest.infisical.manual_folders.geoimage_runtime",
+		"manifest.infisical.manual_secrets.maps_runtime",
 	);
 	_requireString(
-		manifest.infisical.manual_folders.geoimage_runtime.path,
-		"manifest.infisical.manual_folders.geoimage_runtime",
-		/^\/manual\/[a-z][a-z0-9-]*\/runtime$/,
+		manifest.infisical.manual_secrets.maps_runtime.path,
+		"manifest.infisical.manual_secrets.maps_runtime",
+		/^\/generated\/maps\/runtime$/,
 	);
-	const manualSecrets = manifest.infisical.manual_folders.geoimage_runtime.secrets;
+	const manualSecrets = manifest.infisical.manual_secrets.maps_runtime.secrets;
 	if (
 		!Array.isArray(manualSecrets) ||
 		manualSecrets.length === 0 ||
 		new Set(manualSecrets).size !== manualSecrets.length
 	) {
-		throw new Error("manifest.infisical.manual_folders.geoimage_runtime.secrets must contain unique secret names.");
+		throw new Error("manifest.infisical.manual_secrets.maps_runtime.secrets must contain unique secret names.");
 	}
 	for (const name of manualSecrets) {
-		_requireString(name, "manifest.infisical.manual_folders.geoimage_runtime.secrets", /^[A-Z][A-Z0-9_]*$/);
+		_requireString(name, "manifest.infisical.manual_secrets.maps_runtime.secrets", /^[A-Z][A-Z0-9_]*$/);
 	}
 	_requireExactKeys(
 		manifest.infisical.opentofu_identities,
@@ -176,6 +176,11 @@ export function validateManifest(manifest) {
 		LOWERCASE_NAME_PATTERN,
 	);
 	for (const environment of ENVIRONMENTS) {
+		_requireString(
+			manifest.cloudflare.r2.buckets[`maps_${environment}`],
+			`manifest.cloudflare.r2.buckets.maps_${environment}`,
+			LOWERCASE_NAME_PATTERN,
+		);
 		_requireString(
 			manifest.cloudflare.r2.buckets[`geoimage_images_${environment}`],
 			`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`,

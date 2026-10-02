@@ -43,7 +43,7 @@ describe("API and Webhooks Worker configuration integration", () => {
 			entrypoints: [apiConfig.main, webhooksConfig.main],
 		}).toEqual({
 			accounts: ["1fca946385505503c59dd6a2a4eeb442", "1fca946385505503c59dd6a2a4eeb442"],
-			entrypoints: ["./src/platform/cloudflare/workers/api/worker.ts", "./src/app.ts"],
+			entrypoints: ["./src/platform/cloudflare/worker/worker.ts", "./src/app.ts"],
 		});
 	});
 
@@ -139,7 +139,7 @@ describe("API and Webhooks Worker configuration integration", () => {
 
 	it("should keep API container placement and capacity at the API boundary", () => {
 		const apiContainerSource = readFileSync(
-			resolve(repositoryRoot, "apps/api/src/platform/cloudflare/containers/api/api-container.ts"),
+			resolve(repositoryRoot, "apps/api/src/platform/cloudflare/container/api-container.ts"),
 			"utf8",
 		);
 		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];

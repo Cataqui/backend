@@ -47,7 +47,7 @@ describe("endpoint rate-limit policy contract", () => {
 		["all-session revocation", AuthSessionController, "revokeAllSessions"],
 		["NOTP intent creation", NotpController, "createIntent"],
 		["NOTP intent exchange", NotpController, "exchangeIntentForSession"],
-		["geosearch access-token issuance", MicroservicesAuthController, "createGeosearchAccessToken"],
+		["maps access-token issuance", MicroservicesAuthController, "createMapsAccessToken"],
 		["direct WhatsApp auth verification", NotpInboundController, "verifyWhatsappNotp"],
 	] as const)("should leave %s without an application-level request budget", (_name, controller, method) => {
 		expect(_getPolicy(controller, method)).toEqual({ requests: undefined, milliseconds: undefined });

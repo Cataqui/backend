@@ -168,7 +168,7 @@ describe("Google Cloud OpenTofu contract", () => {
 
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-geosearch-places-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/display_name\s*=\s*"Cataqui Geosearch Places \$\{title\(var\.environment\)\}"/);
-		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/geosearch\/runtime"/);
+		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/maps\/runtime"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"GOOGLE_PLACES_API_KEY"/);
 		expect(rootHcl).toMatch(/value_wo\s*=\s*google_apikeys_key\.geosearch_places\.key_string/);
 		expect(rootHcl).toMatch(/value_wo_version\s*=\s*1/);

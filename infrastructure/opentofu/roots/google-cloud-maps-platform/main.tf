@@ -81,7 +81,7 @@ resource "google_apikeys_key" "mobile_maps_ios" {
 resource "infisical_secret" "google_places_api_key" {
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
-  folder_path      = "/generated/geosearch/runtime"
+  folder_path      = "/generated/maps/runtime"
   name             = "GOOGLE_PLACES_API_KEY"
   value_wo         = google_apikeys_key.geosearch_places.key_string
   value_wo_version = 1

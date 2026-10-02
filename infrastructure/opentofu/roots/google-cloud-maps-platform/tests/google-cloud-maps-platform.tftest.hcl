@@ -232,7 +232,7 @@ run "runtime_secret_delivery" {
     condition = (
       infisical_secret.google_places_api_key.workspace_id == module.infisical_project.id &&
       infisical_secret.google_places_api_key.env_slug == "production" &&
-      infisical_secret.google_places_api_key.folder_path == "/generated/geosearch/runtime" &&
+      infisical_secret.google_places_api_key.folder_path == "/generated/maps/runtime" &&
       infisical_secret.google_places_api_key.name == "GOOGLE_PLACES_API_KEY" &&
       infisical_secret.google_places_api_key.value_wo_version == 1
     )
