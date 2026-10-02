@@ -8,9 +8,7 @@
 			"buckets": {
 				"opentofu_state": "cataqui-backend-opentofu-state",
 				"maps_staging": "cataqui-maps-staging",
-				"maps_production": "cataqui-maps-production",
-				"geoimage_images_staging": "cataqui-geoimage-staging",
-				"geoimage_images_production": "cataqui-geoimage-production"
+				"maps_production": "cataqui-maps-production"
 			}
 		}
 	},
@@ -36,7 +34,7 @@
 	},
 	"infisical": {
 		"project": {
-			"name": "Cataquí Backend",
+			"name": "Cataqu\u00ed Backend",
 			"slug": "cataqui-backend-6xt3g"
 		},
 		"opentofu_identities": {

@@ -133,7 +133,7 @@ run "preserves_transport_and_network_baseline" {
   }
 }
 
-run "keeps_geoimage_and_geosearch_reachable_without_browser_challenges" {
+run "keeps_api_maps_and_webhooks_reachable_without_browser_challenges" {
   command = plan
 
   assert {
@@ -149,11 +149,11 @@ run "keeps_geoimage_and_geosearch_reachable_without_browser_challenges" {
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
       cloudflare_ruleset.custom.rules[6].ref == "skip_sbfm_for_non_browser_traffic" &&
       cloudflare_ruleset.custom.rules[6].action == "skip" &&
-      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"geoimage.cataqui.com\" \"staging.geoimage.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}" &&
+      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}" &&
       cloudflare_ruleset.custom.rules[6].action_parameters.phases == tolist(["http_request_sbfm"]) &&
       cloudflare_ruleset.custom.rules[6].action_parameters.products == tolist(["bic"])
     )
-    error_message = "Bot protections and the API, Geosearch, Geoimage, and Webhooks SBFM/BIC exception must match the live configuration."
+    error_message = "Bot protections and the API, Maps, and Webhooks SBFM/BIC exception must match the live configuration."
   }
 }
 

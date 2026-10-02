@@ -268,8 +268,6 @@ describe("infrastructure bootstrap reconciliation", () => {
 			opentofu_state: "cataqui-backend-opentofu-state",
 			maps_staging: "cataqui-maps-staging",
 			maps_production: "cataqui-maps-production",
-			geoimage_images_staging: "cataqui-geoimage-staging",
-			geoimage_images_production: "cataqui-geoimage-production",
 		});
 		expect(manifest.cloudflare.ai_gateways).toEqual({
 			derive_job_data_staging: "cataqui-derive-job-data-staging",
@@ -319,17 +317,6 @@ describe("infrastructure bootstrap reconciliation", () => {
 		});
 	});
 
-	it.each(["staging", "production"])("rejects an invalid %s image bucket name", (environment) => {
-		expect(() =>
-			validateManifest({
-				...manifest,
-				cloudflare: {
-					...manifest.cloudflare,
-					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`geoimage_images_${environment}`]: "INVALID BUCKET" } },
-				},
-			}),
-		).toThrow(`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`);
-	});
 	it.each(["staging", "production"])("rejects an invalid %s Maps bucket name", (environment) => {
 		expect(() =>
 			validateManifest({

@@ -129,12 +129,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl).toContain('folder_path = "/generated/api/runtime"');
 		expect(rootHcl).toContain('secret_name = "AI_GATEWAY_API_TOKEN"');
 		expect(rootHcl).toContain("folder_path      = each.value.folder_path");
-		for (const path of [
-			"/generated/api/deployment",
-			"/generated/geosearch/deployment",
-			"/generated/geoimage/deployment",
-			"/generated/webhooks/deployment",
-		]) {
+		for (const path of ["/generated/api/deployment", "/generated/webhooks/deployment"]) {
 			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));
 		}
 		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(3);

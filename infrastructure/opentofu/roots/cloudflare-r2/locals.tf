@@ -4,5 +4,4 @@ locals {
 
   cloudflare_account_id = regex("^[0-9a-f]{32}$", local.platforms.cloudflare.account_id)
   maps_bucket_name      = regex("^[a-z0-9]+(?:-[a-z0-9]+)*$", local.manifest.cloudflare.r2.buckets["maps_${var.environment}"])
-  geoimage_bucket_name  = regex("^[a-z0-9]+(?:-[a-z0-9]+)*$", local.manifest.cloudflare.r2.buckets["geoimage_images_${var.environment}"])
 }

@@ -39,7 +39,7 @@ Before releasing Maps changes to production, create a job through the normal sta
 
 Review every pending Prisma migration for compatibility before merging. CI does not automatically reject destructive SQL.
 
-The Maps rollout prepares images for newly created jobs only. Existing jobs are not backfilled automatically and require a separate backfill before deploying the new API to an environment containing those rows. Until their location image URLs are populated, those jobs cannot satisfy the API output contract.
+The Maps rollout prepares images for newly created jobs. The one-time prelaunch cleanup migration deletes existing jobs without a location image URL and cascades their posting requests. Accounts and contacts remain. This deliberately discards prelaunch job data; application rollback cannot restore those rows.
 
 Use expand and contract as separate releases when a schema change can break the currently deployed API:
 
@@ -55,6 +55,8 @@ Do not combine a column or table removal with the application change that stops 
 - Webhooks: failed candidate smoke or two consecutive rollout probe failures restores the previous version at 100%.
 - Maps: deployment failure, three consecutive failed health probes, or health verification timeout attempts to restore the previous version. Maps releases receive 100% of traffic immediately; a failed check can affect users before restoration. If the release applied a Durable Object lifecycle change, restoration to earlier versions is unavailable; inspect the deployment and recover forward.
 - First deployment: there is no previous version. The workflow stops and declares a first-deployment incident; it must not claim rollback succeeded.
+
+Geosearch and Geoimage Workers, domains, Durable Object namespaces, buckets, and deployment credentials have been retired. Native Android/iOS Maps keys and SDK services have also been retired. Do not restore a release that depends on those resources; recover forward with Maps.
 
 Rollback does not revert OpenTofu changes, database migrations, external provider state, or deleted resources. Old Cloudflare container images must remain available because retained Worker versions depend on them.
 

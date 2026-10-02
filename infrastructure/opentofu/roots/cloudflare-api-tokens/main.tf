@@ -74,7 +74,7 @@ resource "cloudflare_api_token" "ai_gateway_runtime" {
   }
 }
 
-resource "cloudflare_api_token" "worker_deployment" {
+resource "cloudflare_api_token" "application_deployment" {
   for_each = local.worker_deployment_tokens
 
   name   = "cataqui-${each.key}-workers-deployment-${var.environment}"
@@ -148,14 +148,14 @@ resource "infisical_secret" "ai_gateway_api_token" {
   }
 }
 
-resource "infisical_secret" "worker_deployment_cloudflare_api_token" {
+resource "infisical_secret" "application_deployment_cloudflare_api_token" {
   for_each = local.worker_deployment_tokens
 
   workspace_id     = local.infisical_project_id
   env_slug         = var.environment
   folder_path      = each.value.folder_path
   name             = "CLOUDFLARE_API_TOKEN"
-  value_wo         = cloudflare_api_token.worker_deployment[each.key].value
+  value_wo         = cloudflare_api_token.application_deployment[each.key].value
   value_wo_version = 1
 
   lifecycle {

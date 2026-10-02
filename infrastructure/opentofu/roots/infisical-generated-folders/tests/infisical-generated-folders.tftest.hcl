@@ -37,21 +37,12 @@ run "generated_folder_contract" {
       infisical_secret_folder.maps.folder_path == "/generated" &&
       infisical_secret_folder.maps.name == "maps" &&
       !infisical_secret_folder.maps.force_delete &&
-      infisical_secret_folder.geosearch.folder_path == "/generated" &&
-      infisical_secret_folder.geoimage.folder_path == "/generated" &&
-      infisical_secret_folder.geosearch.name == "geosearch" &&
-      infisical_secret_folder.geoimage.name == "geoimage" &&
-      !infisical_secret_folder.geosearch.force_delete &&
-      !infisical_secret_folder.geoimage.force_delete &&
       infisical_secret_folder.webhooks.folder_path == "/generated" &&
       infisical_secret_folder.webhooks.name == "webhooks" &&
       !infisical_secret_folder.webhooks.force_delete &&
       infisical_secret_folder.api_runtime.folder_path == "/generated/api" &&
       infisical_secret_folder.api_runtime.name == "runtime" &&
       !infisical_secret_folder.api_runtime.force_delete &&
-      infisical_secret_folder.geosearch_runtime.folder_path == "/generated/geosearch" &&
-      infisical_secret_folder.geosearch_runtime.name == "runtime" &&
-      !infisical_secret_folder.geosearch_runtime.force_delete &&
       infisical_secret_folder.webhooks_runtime.folder_path == "/generated/webhooks" &&
       infisical_secret_folder.webhooks_runtime.name == "runtime" &&
       !infisical_secret_folder.webhooks_runtime.force_delete &&
@@ -64,17 +55,11 @@ run "generated_folder_contract" {
       infisical_secret_folder.maps_deployment.folder_path == "/generated/maps" &&
       infisical_secret_folder.maps_deployment.name == "deployment" &&
       !infisical_secret_folder.maps_deployment.force_delete &&
-      infisical_secret_folder.geosearch_deployment.folder_path == "/generated/geosearch" &&
-      infisical_secret_folder.geoimage_deployment.folder_path == "/generated/geoimage" &&
-      infisical_secret_folder.geosearch_deployment.name == "deployment" &&
-      infisical_secret_folder.geoimage_deployment.name == "deployment" &&
-      !infisical_secret_folder.geosearch_deployment.force_delete &&
-      !infisical_secret_folder.geoimage_deployment.force_delete &&
       infisical_secret_folder.webhooks_deployment.folder_path == "/generated/webhooks" &&
       infisical_secret_folder.webhooks_deployment.name == "deployment" &&
       !infisical_secret_folder.webhooks_deployment.force_delete
     )
-    error_message = "API, Geosearch, Geoimage, and Webhooks must each have protected runtime and deployment folders."
+    error_message = "API, Maps, and Webhooks must each have protected runtime and deployment folders."
   }
 
   assert {
@@ -106,15 +91,10 @@ run "production_folder_environment" {
       infisical_secret_folder.maps_runtime.environment_slug == "production" &&
       infisical_secret_folder.maps.environment_slug == "production" &&
       infisical_secret_folder.maps_deployment.environment_slug == "production" &&
-      infisical_secret_folder.geosearch.environment_slug == "production" &&
-      infisical_secret_folder.geoimage.environment_slug == "production" &&
       infisical_secret_folder.webhooks.environment_slug == "production" &&
       infisical_secret_folder.api_runtime.environment_slug == "production" &&
-      infisical_secret_folder.geosearch_runtime.environment_slug == "production" &&
       infisical_secret_folder.webhooks_runtime.environment_slug == "production" &&
       infisical_secret_folder.deployment.environment_slug == "production" &&
-      infisical_secret_folder.geosearch_deployment.environment_slug == "production" &&
-      infisical_secret_folder.geoimage_deployment.environment_slug == "production" &&
       infisical_secret_folder.webhooks_deployment.environment_slug == "production"
     )
     error_message = "Every folder must use the selected Infisical environment."
