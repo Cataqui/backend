@@ -4,10 +4,10 @@ import {
 	InjectThrottlerOptions,
 	InjectThrottlerStorage,
 	ThrottlerGuard,
+	type ThrottlerLimitDetail,
 	type ThrottlerModuleOptions,
 	type ThrottlerStorage,
 } from "@nestjs/throttler";
-import type { ThrottlerLimitDetail } from "@nestjs/throttler/dist/throttler.guard.interface";
 import type { IAuthenticatedRequest } from "../../modules/auth/interfaces/authenticated-request.interface";
 import { RateLimitedError } from "../errors/rate-limited.error";
 

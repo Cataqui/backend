@@ -1,7 +1,6 @@
 import type { ExecutionContext } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
-import { ThrottlerModule } from "@nestjs/throttler";
-import type { ThrottlerLimitDetail } from "@nestjs/throttler/dist/throttler.guard.interface";
+import { type ThrottlerLimitDetail, ThrottlerModule } from "@nestjs/throttler";
 import { RateLimitedError } from "../errors/rate-limited.error";
 import { UserRateLimitGuard } from "./user-rate-limit.guard";
 

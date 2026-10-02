@@ -1,4 +1,4 @@
-import { EnvSchema } from "./env.validation";
+import { EnvSchema } from "./env.schema";
 
 const validEnvironmentSecrets = {
 	AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
