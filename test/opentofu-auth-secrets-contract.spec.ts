@@ -73,10 +73,7 @@ describe("OpenTofu auth secrets contract", () => {
 	});
 
 	it("should preserve the API and Webhooks runtime variable contracts", () => {
-		const environmentValidation = readFileSync(
-			join(repositoryRoot, "apps/api/src/core/config/env.validation.ts"),
-			"utf8",
-		);
+		const environmentValidation = readFileSync(join(repositoryRoot, "apps/api/src/core/config/env.schema.ts"), "utf8");
 		const wrangler = readFileSync(join(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8");
 		const webhooksWrangler = readFileSync(join(repositoryRoot, "apps/workers/webhooks/wrangler.jsonc"), "utf8");
 
