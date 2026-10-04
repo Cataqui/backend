@@ -10,6 +10,14 @@
 				"maps_staging": "cataqui-maps-staging",
 				"maps_production": "cataqui-maps-production"
 			}
+		},
+		"pages": {
+			"landing_staging": {
+				"name": "cataqui-landing-staging"
+			},
+			"landing_production": {
+				"name": "cataqui-landing-production"
+			}
 		}
 	},
 	"google_cloud": {
@@ -34,7 +42,7 @@
 	},
 	"infisical": {
 		"project": {
-			"name": "Cataqu\u00ed Backend",
+			"name": "Cataquí Backend",
 			"slug": "cataqui-backend-6xt3g"
 		},
 		"opentofu_identities": {
@@ -44,23 +52,17 @@
 		"manual_secrets": {
 			"maps_runtime": {
 				"path": "/generated/maps/runtime",
-				"secrets": [
-					"GEOAPIFY_API_KEY"
-				]
+				"secrets": ["GEOAPIFY_API_KEY"]
 			}
 		}
 	},
 	"github": {
 		"environments": {
 			"staging": {
-				"branches": [
-					"staging"
-				]
+				"branches": ["staging"]
 			},
 			"production": {
-				"branches": [
-					"main"
-				]
+				"branches": ["main"]
 			}
 		}
 	},

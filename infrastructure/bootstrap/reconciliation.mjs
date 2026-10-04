@@ -62,12 +62,21 @@ export function validatePlatforms(platforms) {
 
 export function validateManifest(manifest) {
 	_requireExactKeys(manifest, ["cloudflare", "google_cloud", "infisical", "github", "neon", "upstash"], "manifest");
-	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "r2"], "manifest.cloudflare");
+	_requireExactKeys(manifest.cloudflare, ["ai_gateways", "pages", "r2"], "manifest.cloudflare");
 	_requireExactKeys(
 		manifest.cloudflare.ai_gateways,
 		["derive_job_data_staging", "derive_job_data_production"],
 		"manifest.cloudflare.ai_gateways",
 	);
+	_requireExactKeys(manifest.cloudflare.pages, ["landing_staging", "landing_production"], "manifest.cloudflare.pages");
+	for (const environment of ENVIRONMENTS) {
+		const project = manifest.cloudflare.pages[`landing_${environment}`];
+		_requireExactKeys(project, ["name"], `manifest.cloudflare.pages.landing_${environment}`);
+		_requireString(project.name, `manifest.cloudflare.pages.landing_${environment}.name`, LOWERCASE_NAME_PATTERN);
+	}
+	if (manifest.cloudflare.pages.landing_staging.name === manifest.cloudflare.pages.landing_production.name) {
+		throw new Error("manifest.cloudflare.pages must identify two distinct landing projects.");
+	}
 	_requireExactKeys(manifest.cloudflare.r2, ["buckets"], "manifest.cloudflare.r2");
 	_requireExactKeys(
 		manifest.cloudflare.r2.buckets,

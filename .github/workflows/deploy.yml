@@ -59,6 +59,8 @@ jobs:
           const after = JSON.parse(readFileSync(path, "utf8"));
           delete before["cloudflare-r2"];
           delete after["cloudflare-r2"];
+          delete before["cloudflare-pages"];
+          delete after["cloudflare-pages"];
           process.exit(isDeepStrictEqual(before, after) ? 0 : 1);
           NODE
                     then deploy_api=true; deploy_maps=true; deploy_webhooks=true; fi ;;
@@ -151,6 +153,15 @@ jobs:
       - name: Apply Cloudflare API tokens
         uses: ./.github/actions/cloudflare-api-tokens
         with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Load Pages infrastructure credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Apply landing Pages configuration
+        uses: ./.github/actions/cloudflare-pages
+        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
+      - name: Clear Pages infrastructure credential
+        shell: bash
+        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
       - name: Load R2 infrastructure credentials
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }

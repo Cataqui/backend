@@ -35,6 +35,7 @@ run "staging_token_inventory" {
   assert {
     condition = toset(keys(cloudflare_api_token.infrastructure)) == toset([
       "cloudflare-ai-gateways",
+      "cloudflare-pages",
       "cloudflare-queues",
       "cloudflare-r2",
     ])
@@ -46,8 +47,8 @@ run "staging_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.application_deployment_cloudflare_api_token)
-    ) == 7
-    error_message = "Staging must deliver three infrastructure, one API runtime, and three application deployment tokens."
+    ) == 8
+    error_message = "Staging must deliver four infrastructure, one API runtime, and three application deployment tokens."
   }
 
   assert {
@@ -85,7 +86,7 @@ run "production_token_inventory" {
   }
 
   assert {
-    condition     = length(cloudflare_api_token.infrastructure) == 5
+    condition     = length(cloudflare_api_token.infrastructure) == 6
     error_message = "Production must create one token for each Cloudflare root."
   }
 
@@ -94,8 +95,8 @@ run "production_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.application_deployment_cloudflare_api_token)
-    ) == 9
-    error_message = "Production must deliver five infrastructure, one API runtime, and three application deployment tokens."
+    ) == 10
+    error_message = "Production must deliver six infrastructure, one API runtime, and three application deployment tokens."
   }
 
   assert {
@@ -160,6 +161,8 @@ run "least_privilege_permissions" {
   assert {
     condition = tolist(local.infrastructure_tokens["cloudflare-zone-configuration"].permissions) == tolist([
       "zone_read",
+      "dynamic_url_redirects_read",
+      "dynamic_url_redirects_write",
       "zone_settings_read",
       "zone_settings_write",
       "zone_waf_read",
@@ -305,5 +308,23 @@ run "r2_management_credential" {
       infisical_secret.infrastructure_cloudflare_api_token["cloudflare-r2"].folder_path == "/generated/opentofu/cloudflare-r2"
     )
     error_message = "R2 management must use exact account permissions and the dedicated environment-scoped credential path."
+  }
+}
+
+run "pages_management_credential" {
+  command = plan
+  variables { environment = "staging" }
+  assert {
+    condition = (
+      local.common_infrastructure_tokens["cloudflare-pages"].permissions == ["pages_read", "pages_write"] &&
+      local.common_infrastructure_tokens["cloudflare-pages"].scope == "account" &&
+      local.permission_groups.pages_read.name == "Pages Read" &&
+      local.permission_groups.pages_write.name == "Pages Write" &&
+      local.permission_groups.pages_read.scope == "com.cloudflare.api.account" &&
+      local.permission_groups.pages_write.scope == "com.cloudflare.api.account" &&
+      infisical_secret.infrastructure_cloudflare_api_token["cloudflare-pages"].folder_path == "/generated/opentofu/cloudflare-pages" &&
+      infisical_secret.infrastructure_cloudflare_api_token["cloudflare-pages"].env_slug == "staging"
+    )
+    error_message = "Pages tokens must remain account-scoped backend infrastructure credentials in the selected Infisical environment."
   }
 }

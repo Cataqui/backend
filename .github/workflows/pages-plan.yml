@@ -1,0 +1,56 @@
+name: Plan landing Pages infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to plan; use its matching backend branch.
+        type: choice
+        required: true
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate branch and environment
+        shell: bash
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          case "$INPUT_ENVIRONMENT:$GITHUB_REF" in
+            staging:refs/heads/staging | production:refs/heads/main) ;;
+            *) echo "Select staging on staging or production on main." >&2; exit 1 ;;
+          esac
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 24 }
+      - name: Load state backend credentials
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Load Pages infrastructure credential
+        uses: ./.github/actions/load-infisical-secrets
+        with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Plan Pages without applying
+        uses: ./.github/actions/cloudflare-pages
+        with: { environment: "${{ inputs.environment }}", operation: plan }
+      - name: Clear credentials
+        if: always()
+        shell: bash
+        run: |
+          for name in CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_STATE_ACCESS_KEY_ID R2_STATE_SECRET_ACCESS_KEY INFISICAL_AUTH_JWT; do
+            echo "$name=" >> "$GITHUB_ENV"
+          done

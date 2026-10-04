@@ -69,6 +69,7 @@ run "generated_folder_contract" {
       !infisical_secret_folder.opentofu.force_delete &&
       toset(keys(infisical_secret_folder.cloudflare_opentofu_root)) == toset([
         "cloudflare-ai-gateways",
+        "cloudflare-pages",
         "cloudflare-queues",
         "cloudflare-r2",
       ])
@@ -103,10 +104,10 @@ run "production_folder_environment" {
   assert {
     condition = (
       infisical_secret_folder.opentofu.environment_slug == "production" &&
-      length(infisical_secret_folder.cloudflare_opentofu_root) == 5 &&
+      length(infisical_secret_folder.cloudflare_opentofu_root) == 6 &&
       alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"])
     )
-    error_message = "Production must create one credential folder for each of its five Cloudflare roots."
+    error_message = "Production must create one credential folder for each of its six Cloudflare roots."
   }
 }
 

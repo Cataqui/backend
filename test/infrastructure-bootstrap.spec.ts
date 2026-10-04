@@ -261,6 +261,33 @@ describe("infrastructure bootstrap reconciliation", () => {
 		);
 	});
 
+	it("rejects missing, unknown, or malformed Pages project identities", () => {
+		for (const pages of [
+			{},
+			{ ...manifest.cloudflare.pages, unknown: {} },
+			{ ...manifest.cloudflare.pages, landing_staging: { name: "INVALID PROJECT" } },
+		]) {
+			expect(() => validateManifest({ ...manifest, cloudflare: { ...manifest.cloudflare, pages: pages } })).toThrow(
+				"manifest.cloudflare.pages",
+			);
+		}
+	});
+
+	it("rejects sharing a Pages project between staging and production", () => {
+		expect(() =>
+			validateManifest({
+				...manifest,
+				cloudflare: {
+					...manifest.cloudflare,
+					pages: {
+						landing_staging: manifest.cloudflare.pages.landing_staging,
+						landing_production: manifest.cloudflare.pages.landing_staging,
+					},
+				},
+			}),
+		).toThrow("two distinct landing projects");
+	});
+
 	it("accepts the committed stable bootstrap contract", () => {
 		expect(validatePlatforms(platformCoordinates)).toBe(platformCoordinates);
 		expect(validateManifest(manifest)).toBe(manifest);

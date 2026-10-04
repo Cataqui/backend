@@ -252,3 +252,18 @@ run "preserves_api_response_compression" {
     error_message = "API response compression must preserve its live expression and algorithm order."
   }
 }
+
+run "landing_redirect_preserves_path_and_query" {
+  command = plan
+  assert {
+    condition = (
+      cloudflare_ruleset.landing_redirect.phase == "http_request_dynamic_redirect" &&
+      cloudflare_ruleset.landing_redirect.rules[0].enabled &&
+      cloudflare_ruleset.landing_redirect.rules[0].expression == "http.host eq \"www.cataqui.com\"" &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.status_code == 301 &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.preserve_query_string &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.target_url.expression == "concat(\"https://cataqui.com\", http.request.uri.path)"
+    )
+    error_message = "The redirect must affect only www and preserve the visitor's path and query string."
+  }
+}
