@@ -259,7 +259,7 @@ run "landing_redirect_preserves_path_and_query" {
     condition = (
       cloudflare_ruleset.landing_redirect.phase == "http_request_dynamic_redirect" &&
       cloudflare_ruleset.landing_redirect.rules[0].enabled &&
-      cloudflare_ruleset.landing_redirect.rules[0].expression == "http.host eq \"www.cataqui.com\"" &&
+      cloudflare_ruleset.landing_redirect.rules[0].expression == "http.host eq \"www.cataqui.com\" and not starts_with(http.request.uri.path, \"/.well-known/\")" &&
       cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.status_code == 301 &&
       cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.preserve_query_string &&
       cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.target_url.expression == "concat(\"https://cataqui.com\", http.request.uri.path)"

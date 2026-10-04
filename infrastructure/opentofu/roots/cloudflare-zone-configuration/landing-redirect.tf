@@ -9,7 +9,7 @@ resource "cloudflare_ruleset" "landing_redirect" {
     action      = "redirect"
     description = "Redirect www.cataqui.com to cataqui.com"
     enabled     = true
-    expression  = "http.host eq \"www.cataqui.com\""
+    expression  = "http.host eq \"www.cataqui.com\" and not starts_with(http.request.uri.path, \"/.well-known/\")"
     ref         = "landing_www_to_apex"
     action_parameters = {
       from_value = {

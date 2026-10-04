@@ -7,7 +7,7 @@ The backend owns the Cloudflare Pages projects, build settings, domains, DNS, an
 | `staging` | `cataqui-landing-staging` | `staging.cataqui.com` |
 | `main` | `cataqui-landing-production` | `cataqui.com` |
 
-`www.cataqui.com` redirects permanently to `cataqui.com`, preserving paths and query strings. Other branch builds are disabled. Cloudflare may still list skipped preview events for pushes to the other branch.
+`www.cataqui.com` redirects permanently to `cataqui.com`, preserving paths and query strings. Certificate validation paths under `/.well-known/` remain unredirected. Other branch builds are disabled. Cloudflare may still list skipped preview events for pushes to the other branch.
 
 ## Deploy the website
 
