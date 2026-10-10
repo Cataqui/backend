@@ -217,6 +217,9 @@ importers:
       '@hono/standard-validator':
         specifier: ^0.4.0
         version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.1)
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
       hono:
         specifier: 'catalog:'
         version: 4.13.1
@@ -1828,6 +1831,10 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rolldown/binding-android-arm64@1.0.2':
     resolution: {integrity: sha512-ZS4D1JPGn/MYQN/SYDWftIE/nVsM8j/AFOYEzAoOE2O3NktQOZru+/vYXGbR/qtdLdIfGCP0lcoJiYVzsEz+iQ==}
@@ -5396,6 +5403,8 @@ snapshots:
       react: 19.2.6
     optionalDependencies:
       '@types/react': 19.2.18
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.2':
     optional: true

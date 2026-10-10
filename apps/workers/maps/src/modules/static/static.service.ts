@@ -1,3 +1,4 @@
+import type { LandmarkService } from "../../landmarks/landmark.service";
 import {
 	GenerateStaticMapsResultSchema,
 	type GenerateStaticMapsInput,
@@ -19,12 +20,19 @@ interface StaticGenerationState {
 }
 
 export class StaticService {
-	constructor(params: { repository: StaticRepository; environment: string; baseUrl: string }) {
+	constructor(params: {
+		repository: StaticRepository;
+		landmarks: LandmarkService;
+		environment: string;
+		baseUrl: string;
+	}) {
 		this._repository = params.repository;
+		this._landmarks = params.landmarks;
 		this._environment = params.environment;
 		this._baseUrl = params.baseUrl;
 	}
 	private readonly _repository: StaticRepository;
+	private readonly _landmarks: LandmarkService;
 	private readonly _environment: string;
 	private readonly _baseUrl: string;
 
@@ -144,7 +152,7 @@ export class StaticService {
 			generation: params.generation,
 			stage: "download",
 			operation: () =>
-				this._repository.generateImage({
+				this._landmarks.generateImage({
 					center: { latitude: params.input.latitude, longitude: params.input.longitude },
 					size: params.size,
 					signal: params.generation.controller.signal,

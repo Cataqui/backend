@@ -1,3 +1,6 @@
+import { LandmarkCategory } from "../../landmarks/landmark-category";
+import { LandmarkRepository } from "../../landmarks/landmark.repository";
+import { LandmarkService } from "../../landmarks/landmark.service";
 import { StaticService } from "./static.service";
 import { StaticRepository } from "./static.repository";
 import { MapsError } from "../../shared/maps.error";
@@ -31,7 +34,17 @@ beforeEach(async () => {
 	vi.spyOn(repository, "generateImage").mockResolvedValue(new Uint8Array([1]));
 	vi.spyOn(repository, "encode").mockResolvedValue(new Uint8Array([2]));
 	vi.spyOn(repository, "upload").mockResolvedValue(undefined);
-	service = new StaticService({ repository: repository, environment: "development", baseUrl: "https://maps.test" });
+	vi.spyOn(LandmarkRepository.prototype, "findPlaces").mockResolvedValue([]);
+	service = new StaticService({
+		repository: repository,
+		landmarks: new LandmarkService({
+			repository: () => repository,
+			landmarks: () => new LandmarkRepository({ config: { apiKey: "test" } }),
+			compositor: () => ({ renderPng: vi.fn() }),
+		}),
+		environment: "development",
+		baseUrl: "https://maps.test",
+	});
 });
 afterEach(() => {
 	vi.useRealTimers();
@@ -177,4 +190,49 @@ it.each([true, false])("returns stored maps without public delivery requests whe
 	await operation.settled;
 	expect(request).not.toHaveBeenCalled();
 	expect(repository.upload).toHaveBeenCalledTimes(exists ? 0 : 2);
+});
+
+it("does not encode or upload a map when landmark composition fails", async () => {
+	vi.mocked(LandmarkRepository.prototype.findPlaces).mockResolvedValue([
+		{
+			name: "Shopping",
+			category: LandmarkCategory.SHOPPING_MALL,
+			coordinates: { latitude: input.latitude, longitude: input.longitude },
+			notable: true,
+		},
+	]);
+	service = new StaticService({
+		repository: repository,
+		landmarks: new LandmarkService({
+			repository: () => repository,
+			landmarks: () => new LandmarkRepository({ config: { apiKey: "test" } }),
+			compositor: () => ({
+				renderPng: async () => {
+					throw new Error("private rendering failure");
+				},
+			}),
+		}),
+		environment: "development",
+		baseUrl: "https://maps.test",
+	});
+	const operation = service.startPreparation(input);
+	expect(await operation.result).toEqual({ kind: "failed", code: "TRANSFORMATION_UNAVAILABLE", retryable: false });
+	await operation.settled;
+	expect(repository.encode).not.toHaveBeenCalled();
+	expect(repository.upload).not.toHaveBeenCalled();
+});
+
+it("retries landmark provider failures within the existing map preparation budget", async () => {
+	vi.mocked(LandmarkRepository.prototype.findPlaces)
+		.mockRejectedValueOnce(
+			new MapsError({ errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE, retryable: true, retryAfterMs: 1000 }),
+		)
+		.mockResolvedValue([]);
+	const operation = service.startPreparation(input);
+	await vi.waitFor(() => expect(LandmarkRepository.prototype.findPlaces).toHaveBeenCalledOnce());
+	await vi.advanceTimersByTimeAsync(1000);
+	expect(await operation.result).toMatchObject({ kind: "ready" });
+	await operation.settled;
+	expect(LandmarkRepository.prototype.findPlaces).toHaveBeenCalledTimes(2);
+	expect(repository.upload).toHaveBeenCalledOnce();
 });

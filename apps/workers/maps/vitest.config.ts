@@ -7,7 +7,13 @@ export default defineConfig({
 			{
 				extends: true,
 				resolve: {
-					alias: { "cloudflare:workers": new URL("./test/cloudflare-workers.stub.ts", import.meta.url).pathname },
+					alias: [
+						{
+							find: "cloudflare:workers",
+							replacement: new URL("./test/cloudflare-workers.stub.ts", import.meta.url).pathname,
+						},
+						{ find: /^.*\.(wasm|ttf)$/, replacement: new URL("./test/binary-asset.stub.ts", import.meta.url).pathname },
+					],
 				},
 				test: { name: "unit", globals: true, include: ["src/**/*.spec.ts", "test/configuration-contract.spec.ts"] },
 			},

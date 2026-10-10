@@ -1,9 +1,10 @@
 // Change this revision when the map style or provider rendering changes.
 export const StaticStyle = {
-	version: "cataqui-light-zoom13-v12",
+	version: "cataqui-light-zoom13-v13-landmarks",
 	style: "osm-bright",
 	zoom: 13,
 	format: "png",
+	landmarks: { maxPerTallImage: 10, maxPerSquareImage: 5, tallImageVisibleFraction: 0.5 },
 	styleCustomization: [
 		// Land and vegetation.
 		"background:#f5f1f0",
