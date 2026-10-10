@@ -6,19 +6,13 @@ import {
 
 import {
   for_each = var.enable_imports ? toset(["enabled"]) : toset([])
-  to       = cloudflare_dns_record.framer_apex_primary
-  id       = "${local.cloudflare_zone_id}/771c4788c6ae6442bad55923e7cf8425"
+  to       = cloudflare_dns_record.landing_apex
+  id       = "${local.cloudflare_zone_id}/714433f6f4599d41a5246bbfb01c24a9"
 }
 
 import {
   for_each = var.enable_imports ? toset(["enabled"]) : toset([])
-  to       = cloudflare_dns_record.framer_apex_secondary
-  id       = "${local.cloudflare_zone_id}/3044984b4e7b338a810325fc97ba9231"
-}
-
-import {
-  for_each = var.enable_imports ? toset(["enabled"]) : toset([])
-  to       = cloudflare_dns_record.framer_www
+  to       = cloudflare_dns_record.landing_www
   id       = "${local.cloudflare_zone_id}/37a7a9eae1f4e6be3437458ab549463a"
 }
 
@@ -50,4 +44,10 @@ import {
   for_each = var.enable_imports ? toset(["enabled"]) : toset([])
   to       = cloudflare_dns_record.github_organization_verification
   id       = "${local.cloudflare_zone_id}/08007eb19d33058671c4c6772a02a8d9"
+}
+
+import {
+  for_each = var.enable_imports ? toset(["enabled"]) : toset([])
+  to       = cloudflare_dns_record.landing_staging
+  id       = "${local.cloudflare_zone_id}/71a130da03ab45d9fd23a14809678a49"
 }

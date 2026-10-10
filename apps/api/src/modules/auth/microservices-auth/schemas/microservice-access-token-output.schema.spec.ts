@@ -1,7 +1,7 @@
 import { MicroserviceAccessTokenOutputSchema } from "./microservice-access-token-output.schema";
 
 describe("MicroserviceAccessTokenOutputSchema", () => {
-	it("should accept the geosearch bearer-token response", () => {
+	it("should accept the maps bearer-token response", () => {
 		expect(
 			MicroserviceAccessTokenOutputSchema.safeParse({
 				accessToken: "header.payload.signature",

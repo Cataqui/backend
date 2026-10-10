@@ -7,8 +7,16 @@
 		"r2": {
 			"buckets": {
 				"opentofu_state": "cataqui-backend-opentofu-state",
-				"geoimage_images_staging": "cataqui-geoimage-staging",
-				"geoimage_images_production": "cataqui-geoimage-production"
+				"maps_staging": "cataqui-maps-staging",
+				"maps_production": "cataqui-maps-production"
+			}
+		},
+		"pages": {
+			"landing_staging": {
+				"name": "cataqui-landing-staging"
+			},
+			"landing_production": {
+				"name": "cataqui-landing-production"
 			}
 		}
 	},
@@ -41,9 +49,9 @@
 			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
 			"cataqui_backend_production": "cataqui-backend-opentofu-production"
 		},
-		"manual_folders": {
-			"geoimage_runtime": {
-				"path": "/manual/geoimage/runtime",
+		"manual_secrets": {
+			"maps_runtime": {
+				"path": "/generated/maps/runtime",
 				"secrets": ["GEOAPIFY_API_KEY"]
 			}
 		}

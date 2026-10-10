@@ -6,7 +6,7 @@ describe("FuzzyJobLocationOutputSchema", () => {
 			latitude: -23.55,
 			longitude: -46.63,
 			areaRadius: 2000,
-			image: { accessToken: "image-permission" },
+			imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 		};
 
 		expect(FuzzyJobLocationOutputSchema.parse(output)).toEqual(output);
@@ -18,7 +18,7 @@ describe("FuzzyJobLocationOutputSchema", () => {
 				latitude: -23.55,
 				longitude: -46.63,
 				areaRadius: 2000,
-				image: { accessToken: "image-permission" },
+				imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				[field]: "legacy",
 			}),
 		).toThrow();
@@ -45,7 +45,7 @@ describe("FuzzyJobLocationOutputSchema", () => {
 				latitude: -23,
 				longitude: -46,
 				areaRadius: 2000,
-				image: { accessToken: "image-permission" },
+				imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				[field]: value,
 			}).success,
 		).toBe(false);

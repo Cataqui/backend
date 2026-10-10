@@ -13,6 +13,7 @@ const row = {
 	contactMethod: "WHATSAPP",
 	fuzzyLatitude: new Prisma.Decimal(-23),
 	fuzzyLongitude: new Prisma.Decimal(-46),
+	locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 	payment: "R$ 100",
 	status: JobStatus.ACTIVE,
 	createdAt: new Date(),
@@ -25,7 +26,7 @@ describe("JobRepository", () => {
 		$transaction: vi.fn(),
 		job: { findMany: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() },
 		contact: { findFirst: vi.fn() },
-		jobPostRequest: { findUnique: vi.fn() },
+		jobPostRequest: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), createMany: vi.fn() },
 	};
 	let repository: JobRepository;
 	beforeEach(async () => {
@@ -54,6 +55,7 @@ describe("JobRepository", () => {
 				payment: true,
 				fuzzyLatitude: true,
 				fuzzyLongitude: true,
+				locationImageUrl: true,
 				status: true,
 				createdAt: true,
 				updatedAt: true,
@@ -76,6 +78,7 @@ describe("JobRepository", () => {
 				contact: { select: { contactMethod: true, identifier: true } },
 				fuzzyLatitude: true,
 				fuzzyLongitude: true,
+				locationImageUrl: true,
 			},
 		});
 	});
@@ -221,67 +224,121 @@ describe("JobRepository", () => {
 		});
 	});
 
-	it("creates the post, exact location, and idempotency record in one transaction", async () => {
-		const create = vi.fn().mockResolvedValue(row);
-		const createPostRequest = vi.fn().mockResolvedValue({ id: "request" });
-		const execute = vi.fn().mockResolvedValue(1);
-		prisma.$transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
-			callback({ job: { create: create }, jobPostRequest: { create: createPostRequest }, $executeRaw: execute }),
-		);
-		const result = await repository.createJob({
+	it("reserves coordinates without overwriting a concurrent posting request", async () => {
+		await repository.reservePostRequest({
 			posterUserId: "poster",
 			idempotencyKey: "key",
-			requestHash: "a".repeat(64),
-			contactId: row.contactId,
-			description: row.description,
-			payment: row.payment,
-			title: row.title,
-			descriptionSummary: row.descriptionSummary,
-			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
+			requestHash: "hash",
 			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
 		});
-		expect(result.id).toBe(row.id);
-		expect(create).toHaveBeenCalledWith({
+		expect(prisma.jobPostRequest.createMany).toHaveBeenCalledWith({
+			data: [
+				{
+					posterUserId: "poster",
+					idempotencyKey: "key",
+					requestHash: "hash",
+					fuzzyLatitude: -23.1,
+					fuzzyLongitude: -46.1,
+				},
+			],
+			skipDuplicates: true,
+		});
+	});
+	it("returns the winning reservation including its persisted coordinates", async () => {
+		const winner = { id: "request", fuzzyLatitude: -23.2, fuzzyLongitude: -46.2 };
+		prisma.jobPostRequest.findUniqueOrThrow.mockResolvedValue(winner);
+		expect(
+			await repository.reservePostRequest({
+				posterUserId: "poster",
+				idempotencyKey: "key",
+				requestHash: "hash",
+				fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
+			}),
+		).toBe(winner);
+	});
+	const createParams = {
+		posterUserId: "poster",
+		postRequestId: "request",
+		contactId: row.contactId,
+		description: row.description,
+		payment: row.payment,
+		title: row.title,
+		descriptionSummary: row.descriptionSummary,
+		location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
+		locationImageUrl: row.locationImageUrl,
+	};
+	function _transaction(completedJob: typeof row | null = null) {
+		const calls: string[] = [];
+		const tx = {
+			$queryRaw: vi.fn(async () => {
+				calls.push("lock");
+				return [];
+			}),
+			$executeRaw: vi.fn(async () => {
+				calls.push("exact-location");
+				return 1;
+			}),
+			job: {
+				create: vi.fn(async () => {
+					calls.push("job");
+					return row;
+				}),
+			},
+			jobPostRequest: {
+				findUniqueOrThrow: vi.fn(async () => {
+					calls.push("request");
+					return { job: completedJob, fuzzyLatitude: -23.1, fuzzyLongitude: -46.1 };
+				}),
+				update: vi.fn(async () => {
+					calls.push("complete");
+				}),
+			},
+		};
+		prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+			callback(tx),
+		);
+		return { tx: tx, calls: calls };
+	}
+	it("locks the reservation before atomically creating and completing the job", async () => {
+		const { calls } = _transaction();
+		await repository.createJob(createParams);
+		expect(calls).toEqual(["lock", "request", "job", "exact-location", "complete"]);
+	});
+	it("stores only prepared references and the reserved fuzzy location", async () => {
+		const { tx } = _transaction();
+		await repository.createJob(createParams);
+		expect(tx.job.create).toHaveBeenCalledWith({
 			data: expect.objectContaining({
-				payment: "R$ 100",
-				locationTitle: "Rua Pardal Branco, 32",
-				status: JobStatus.ACTIVE,
+				locationImageUrl: row.locationImageUrl,
 				fuzzyLatitude: -23.1,
+				fuzzyLongitude: -46.1,
+				status: JobStatus.ACTIVE,
 			}),
 			include: { contact: true },
 		});
-		expect(execute).toHaveBeenCalledOnce();
-		expect(createPostRequest).toHaveBeenCalledWith({
-			data: {
-				posterUserId: "poster",
-				idempotencyKey: "key",
-				requestHash: "a".repeat(64),
-				jobId: row.id,
-			},
+	});
+	it("completes the reserved posting key with the created job", async () => {
+		const { tx } = _transaction();
+		await repository.createJob(createParams);
+		expect(tx.jobPostRequest.update).toHaveBeenCalledExactlyOnceWith({
+			where: { id: "request" },
+			data: { jobId: row.id },
 		});
 	});
-
+	it("returns a concurrently completed job without inserting another", async () => {
+		const { tx } = _transaction(row);
+		await repository.createJob(createParams);
+		expect(tx.job.create).not.toHaveBeenCalled();
+	});
+	it("returns the existing winner after locking", async () => {
+		_transaction(row);
+		expect(await repository.createJob(createParams)).toBe(row);
+	});
 	it("persists null payment in the job transaction", async () => {
-		const create = vi.fn().mockResolvedValue({ ...row, payment: null });
-		prisma.$transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
-			callback({
-				job: { create: create },
-				jobPostRequest: { create: vi.fn() },
-				$executeRaw: vi.fn(),
-			}),
+		const { tx } = _transaction();
+		await repository.createJob({ ...createParams, payment: null });
+		expect(tx.job.create).toHaveBeenCalledWith(
+			expect.objectContaining({ data: expect.objectContaining({ payment: null }) }),
 		);
-		await repository.createJob({
-			posterUserId: "poster",
-			idempotencyKey: "key",
-			requestHash: "a".repeat(64),
-			contactId: row.contactId,
-			description: row.description,
-			payment: null,
-			title: row.title,
-			descriptionSummary: row.descriptionSummary,
-			location: { title: "Rua Pardal Branco, 32", latitude: -23, longitude: -46 },
-			fuzzyLocation: { latitude: -23.1, longitude: -46.1 },
-		});
-		expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payment: null }) }));
 	});
 });

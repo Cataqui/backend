@@ -9,6 +9,14 @@ These instructions apply to every application under `apps/` and supplement the r
 - `api/` owns the core NestJS API and orchestration of Cataquí product behavior, including jobs and the feed, together with its Prisma schema, migrations, routing Worker, container, and image.
 - `workers/` contains independently deployable Cloudflare Workers for services that can operate outside the core API. Each Worker owns its own runtime and external integrations.
 
+## Private RPC Entrypoints
+
+- Use named Worker entrypoints for private Service Binding APIs. Name an entrypoint for the application or domain capability it exposes, rather than its first operation.
+- Reuse an entrypoint for additional explicit, typed methods when its callers should have the same access to those operations. Do not create an entrypoint per method or feature by default.
+- Split entrypoints when callers need different permissions or restricted capabilities, such as administrative access versus ordinary application access. Adding a public RPC method expands the capabilities of every caller bound to that entrypoint; review that access when extending it.
+- Keep entrypoints thin: validate inputs and delegate to the owning services. Keep business behavior in feature services and keep public HTTP routes separate from private RPC APIs.
+- Add operations only for current requirements. A general entrypoint name does not justify exposing every internal method or introducing an untyped catch-all dispatcher.
+
 ## Documentation
 
 - Keep READMEs focused on general information needed to understand and operate an application: purpose, ownership, architecture, setup, local development, configuration, and operational guidance.

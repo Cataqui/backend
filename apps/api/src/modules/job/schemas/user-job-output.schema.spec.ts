@@ -9,7 +9,7 @@ const detail = {
 		latitude: -23,
 		longitude: -46,
 		areaRadius: 2000,
-		image: { accessToken: "image-permission" },
+		imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 	},
 	status: "ACTIVE",
 	createdAt: "2026-09-22T12:00:00Z",
@@ -26,7 +26,12 @@ describe("UserJobOutputSchema", () => {
 		expect(
 			UserJobOutputSchema.safeParse({
 				...detail,
-				location: { latitude: -23, longitude: -46, areaRadius: 2000, image: { accessToken: "image-permission" } },
+				location: {
+					latitude: -23,
+					longitude: -46,
+					areaRadius: 2000,
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
+				},
 			}).success,
 		).toBe(false);
 		expect(

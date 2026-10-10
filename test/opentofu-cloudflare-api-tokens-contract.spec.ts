@@ -60,6 +60,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	it("should create the exact environment-specific token inventory", () => {
 		for (const rootName of [
 			"cloudflare-ai-gateways",
+			"cloudflare-pages",
 			"cloudflare-queues",
 			"cloudflare-r2",
 			"cloudflare-zone-dns",
@@ -82,6 +83,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 			"AI Gateway Run",
 			"Workers R2 Storage Read",
 			"Workers R2 Storage Write",
+			"Pages Read",
+			"Pages Write",
 			"Queues Read",
 			"Queues Write",
 			"Workers Scripts Read",
@@ -94,6 +97,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 			"DNS Write",
 			"Workers Routes Read",
 			"Workers Routes Write",
+			"Dynamic URL Redirects Read",
+			"Dynamic URL Redirects Write",
 			"Zone Settings Read",
 			"Zone Settings Write",
 			"Zone WAF Read",
@@ -129,12 +134,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl).toContain('folder_path = "/generated/api/runtime"');
 		expect(rootHcl).toContain('secret_name = "AI_GATEWAY_API_TOKEN"');
 		expect(rootHcl).toContain("folder_path      = each.value.folder_path");
-		for (const path of [
-			"/generated/api/deployment",
-			"/generated/geosearch/deployment",
-			"/generated/geoimage/deployment",
-			"/generated/webhooks/deployment",
-		]) {
+		for (const path of ["/generated/api/deployment", "/generated/webhooks/deployment"]) {
 			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));
 		}
 		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(3);

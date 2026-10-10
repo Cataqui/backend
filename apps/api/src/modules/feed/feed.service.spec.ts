@@ -1,4 +1,3 @@
-import { MicroservicesAuthService } from "../auth/microservices-auth/microservices-auth.service";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { type Mock, vi } from "vitest";
 import { Prisma } from "../../../generated/prisma/client.js";
@@ -16,15 +15,12 @@ function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; 
 		payment: overrides.payment ?? "R$ 150",
 		fuzzyLatitude: overrides.fuzzyLatitude ?? new Prisma.Decimal("-23.550000"),
 		fuzzyLongitude: overrides.fuzzyLongitude ?? new Prisma.Decimal("-46.630000"),
+		locationImageUrl: overrides.locationImageUrl ?? "https://imagedelivery.net/test/map/format=webp,quality=80",
 	};
 }
 
 const mockRepository = {
 	getFeedItems: vi.fn() as Mock,
-};
-
-const imageAuth = {
-	createGeoimageAccessToken: vi.fn(async (_params: { latitude: number; longitude: number }) => "image-permission"),
 };
 
 const PAGE_SIZE = 20;
@@ -34,14 +30,7 @@ describe("FeedService", () => {
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [
-				{
-					provide: MicroservicesAuthService,
-					useValue: imageAuth,
-				},
-				FeedService,
-				{ provide: FeedRepository, useValue: mockRepository },
-			],
+			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }],
 		}).compile();
 
 		service = module.get<FeedService>(FeedService);
@@ -112,11 +101,9 @@ describe("FeedService", () => {
 			expect({
 				itemCount: result.data.length,
 				pagination: result.pagination,
-				permissionCount: imageAuth.createGeoimageAccessToken.mock.calls.length,
 			}).toEqual({
 				itemCount: PAGE_SIZE,
 				pagination: { hasMore: true, nextCursor: expect.any(String) },
-				permissionCount: PAGE_SIZE,
 			});
 		});
 
@@ -161,35 +148,16 @@ describe("FeedService", () => {
 					latitude: -23.55,
 					longitude: -46.63,
 					areaRadius: 2_000,
-					image: { accessToken: "image-permission" },
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 				},
 			});
 		});
 
-		it("signs the persisted fuzzy coordinates for each returned feed item", async () => {
-			imageAuth.createGeoimageAccessToken.mockResolvedValue("image-permission");
-			mockRepository.getFeedItems.mockResolvedValue([
-				_createMockFeedItemRaw({
-					id: "first",
-					createdAt: new Date(),
-					fuzzyLatitude: new Prisma.Decimal(-23.6),
-					fuzzyLongitude: new Prisma.Decimal(-46.7),
-				}),
-				_createMockFeedItemRaw({
-					id: "second",
-					createdAt: new Date(),
-					fuzzyLatitude: new Prisma.Decimal(-23.8),
-					fuzzyLongitude: new Prisma.Decimal(-46.9),
-				}),
-			]);
-			const output = await service.getFeed({});
-			expect({
-				signedCoordinates: imageAuth.createGeoimageAccessToken.mock.calls,
-				imageAccessTokens: output.data.map((item) => item.location.image.accessToken),
-			}).toEqual({
-				signedCoordinates: [[{ latitude: -23.6, longitude: -46.7 }], [{ latitude: -23.8, longitude: -46.9 }]],
-				imageAccessTokens: ["image-permission", "image-permission"],
-			});
+		it("returns stored ready URLs without generating or signing per feed item", async () => {
+			mockRepository.getFeedItems.mockResolvedValue([_createMockFeedItemRaw({ id: "ready", createdAt: new Date() })]);
+			expect((await service.getFeed({})).data[0]?.location.imageUrl).toEqual(
+				"https://imagedelivery.net/test/map/format=webp,quality=80",
+			);
 		});
 
 		it("should return data with pagination metadata", async () => {

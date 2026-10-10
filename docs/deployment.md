@@ -19,7 +19,7 @@ For a manual run, choose the intended scope in the Deploy workflow:
 
 - `infrastructure`: reconcile infrastructure without deploying applications.
 - `all`: deploy all applications.
-- An application scope: deploy only the selected application. Deploy the API before a dependent Worker when its required API behavior changes. A Geoimage-only deployment requires its configured API JWKS endpoint to already be healthy.
+- An application scope: deploy the selected application and its required dependencies. The API scope deploys Maps before the API; Webhooks follows the API when both are selected. Authenticated Maps place requests require its configured API JWKS endpoint to be healthy.
 
 Resolve any partial active rollout before starting another deployment.
 
@@ -30,14 +30,16 @@ For an environment still using the retired job-derivation queues, deploy the API
 Confirm infrastructure reconciliation and migration checks succeeded, and the real Neon `main` branch reports `prisma migrate status` clean. Confirm the deployment probes passed:
 
 - API liveness returns `204`; readiness and JWKS return `200`.
-- Geosearch and Geoimage health return `204`.
+- Maps health returns `204`.
 - Webhooks accepts the signed empty WhatsApp payload with `200` without internal forwarding.
 
-Before releasing Geoimage changes to production, verify a signed image request in staging, reuse from R2, and public CDN reuse with Authorization-bearing requests. CI health probes do not check image generation, storage, or CDN behavior. Obtain the location permission from an actual API response; keep it out of logs and URLs.
+Before releasing Maps changes to production, create a job through the normal staging flow and verify that its returned location image URL serves every variant used by the client as WebP. Repeat the image reads to verify stored-image delivery and public CDN reuse. Static images are public; place search and details require a Maps access token issued by the API. Keep access tokens out of logs and URLs. CI health probes do not check image preparation, storage, or public image delivery.
 
 ## Migration compatibility
 
 Review every pending Prisma migration for compatibility before merging. CI does not automatically reject destructive SQL.
+
+The Maps rollout prepares images for newly created jobs. The one-time prelaunch cleanup migration deletes existing jobs without a location image URL and cascades their posting requests. Accounts and contacts remain. This deliberately discards prelaunch job data; application rollback cannot restore those rows.
 
 Use expand and contract as separate releases when a schema change can break the currently deployed API:
 
@@ -50,9 +52,11 @@ Do not combine a column or table removal with the application change that stops 
 ## Automatic rollback triggers
 
 - API: deployment failure, a terminal Container rollout failure, rollout timeout, or three consecutive failed public probes restores the captured Worker version and its retained container target.
-- Geosearch or Webhooks: failed candidate smoke or two consecutive rollout probe failures restores the previous version at 100%.
-- Geoimage: deployment failure, three consecutive failed health probes, or health verification timeout attempts to restore the previous version. Geoimage releases receive 100% of traffic immediately; a failed check can affect users before restoration. If the release applied a Durable Object lifecycle change, restoration to earlier versions is unavailable; inspect the deployment and recover forward.
+- Webhooks: failed candidate smoke or two consecutive rollout probe failures restores the previous version at 100%.
+- Maps: deployment failure, three consecutive failed health probes, or health verification timeout attempts to restore the previous version. Maps releases receive 100% of traffic immediately; a failed check can affect users before restoration. If the release applied a Durable Object lifecycle change, restoration to earlier versions is unavailable; inspect the deployment and recover forward.
 - First deployment: there is no previous version. The workflow stops and declares a first-deployment incident; it must not claim rollback succeeded.
+
+Geosearch and Geoimage Workers, domains, Durable Object namespaces, buckets, and deployment credentials have been retired. Native Android/iOS Maps keys and SDK services have also been retired. Do not restore a release that depends on those resources; recover forward with Maps.
 
 Rollback does not revert OpenTofu changes, database migrations, external provider state, or deleted resources. Old Cloudflare container images must remain available because retained Worker versions depend on them.
 

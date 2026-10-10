@@ -144,16 +144,16 @@ Use the inbound boundary when trusted Cloudflare infrastructure needs to invoke 
 
 Use the outbound boundary when NestJS code running inside the container needs a Cloudflare binding or another destination that only the API Worker runtime can access.
 
-- Call `outboundCall({ host, body })` from NestJS. The host must be a typed key from the outbound manifest; never call a virtual outbound hostname with raw `fetch` from feature code.
-- The outbound manifest is the single declaration for each virtual host, its body schema, and its `execute` implementation. The container intercepts that host and runs the implementation in the API Worker runtime, where generated Worker bindings are available.
-- Do not import Worker environment bindings into NestJS modules, forward all Worker bindings into the container, or create feature-specific publisher wrappers around a one-line `outboundCall`.
+- Call `workerCall({ worker, method, input })` from NestJS to invoke another Worker. Worker names, methods, inputs, and results must be inferred from the Worker manifest; never call a virtual outbound hostname with raw `fetch` from feature code.
+- The Worker manifest owns each Worker's transport hostname and explicit method registry. Register each method with `defineWorkerMethod`, its input and result schemas, and a typed binding invocation. The container outbound handler validates the call envelope and dispatches only registered methods in the API Worker runtime.
+- Do not import Worker environment bindings into NestJS modules, forward all Worker bindings into the container, or create feature-specific publisher wrappers around a one-line `workerCall`.
 
 #### Choosing the Direction
 
 - User or public API request: use a normal public controller.
 - Another Worker needs an immediate application result: use `inboundCall` through its Service Binding.
 - Work must survive, retry, or run asynchronously: publish to a Queue mapped to an `inboundReceiver`.
-- Container code needs to publish to a Queue or use another Worker-only binding: use `outboundCall`.
+- Container code needs to call another Worker: use `workerCall`. Other Worker-only resources need an explicitly owned outbound adapter; do not present them as Worker methods.
 - Code is already inside the NestJS process: call the owning service directly through dependency injection.
 
 ### Package Manager Rules

@@ -1,5 +1,5 @@
 import { registerAs } from "@nestjs/config";
-import type { Env } from "../../core/config/env.validation";
+import type { Env } from "../../core/config/env.schema";
 
 export interface IAiConfig {
 	cloudflareAccountId: string;

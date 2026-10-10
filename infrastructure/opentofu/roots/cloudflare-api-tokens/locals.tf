@@ -7,6 +7,14 @@ locals {
   infisical_project_id  = module.infisical_project.id
 
   permission_groups = {
+    pages_read = {
+      name  = "Pages Read"
+      scope = "com.cloudflare.api.account"
+    }
+    pages_write = {
+      name  = "Pages Write"
+      scope = "com.cloudflare.api.account"
+    }
     ai_gateway_read = {
       name  = "AI Gateway Read"
       scope = "com.cloudflare.api.account"
@@ -79,6 +87,14 @@ locals {
       name  = "Workers Routes Write"
       scope = "com.cloudflare.api.account.zone"
     }
+    dynamic_url_redirects_read = {
+      name  = "Dynamic URL Redirects Read"
+      scope = "com.cloudflare.api.account.zone"
+    }
+    dynamic_url_redirects_write = {
+      name  = "Dynamic URL Redirects Write"
+      scope = "com.cloudflare.api.account.zone"
+    }
     zone_settings_read = {
       name  = "Zone Settings Read"
       scope = "com.cloudflare.api.account.zone"
@@ -122,6 +138,10 @@ locals {
   }
 
   common_infrastructure_tokens = {
+    cloudflare-pages = {
+      permissions = ["pages_read", "pages_write"]
+      scope       = "account"
+    }
     cloudflare-r2 = {
       permissions = ["r2_storage_read", "r2_storage_write"]
       scope       = "account"
@@ -144,6 +164,8 @@ locals {
     cloudflare-zone-configuration = {
       permissions = [
         "zone_read",
+        "dynamic_url_redirects_read",
+        "dynamic_url_redirects_write",
         "zone_settings_read",
         "zone_settings_write",
         "zone_waf_read",
@@ -185,15 +207,10 @@ locals {
       zone_permissions = ["zone_read", "workers_routes_read", "workers_routes_write"]
       folder_path      = "/generated/api/deployment"
     }
-    geosearch = {
+    maps = {
       account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
       zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
-      folder_path         = "/generated/geosearch/deployment"
-    }
-    geoimage = {
-      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
-      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
-      folder_path         = "/generated/geoimage/deployment"
+      folder_path         = "/generated/maps/deployment"
     }
     webhooks = {
       account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]

@@ -18,17 +18,6 @@ resource "infisical_secret_folder" "api" {
   depends_on = [infisical_secret_folder.generated]
 }
 
-resource "infisical_secret_folder" "geosearch" {
-  project_id       = local.infisical_project_id
-  environment_slug = var.environment
-  name             = "geosearch"
-  folder_path      = "/generated"
-  description      = "Generated values scoped to the Geosearch Worker."
-  force_delete     = false
-
-  depends_on = [infisical_secret_folder.generated]
-}
-
 resource "infisical_secret_folder" "webhooks" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
@@ -51,17 +40,6 @@ resource "infisical_secret_folder" "api_runtime" {
   depends_on = [infisical_secret_folder.api]
 }
 
-resource "infisical_secret_folder" "geosearch_runtime" {
-  project_id       = local.infisical_project_id
-  environment_slug = var.environment
-  name             = "runtime"
-  folder_path      = "/generated/geosearch"
-  description      = "Generated values consumed by the Geosearch Worker runtime."
-  force_delete     = false
-
-  depends_on = [infisical_secret_folder.geosearch]
-}
-
 resource "infisical_secret_folder" "webhooks_runtime" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
@@ -82,17 +60,6 @@ resource "infisical_secret_folder" "deployment" {
   force_delete     = false
 
   depends_on = [infisical_secret_folder.api]
-}
-
-resource "infisical_secret_folder" "geosearch_deployment" {
-  project_id       = local.infisical_project_id
-  environment_slug = var.environment
-  name             = "deployment"
-  folder_path      = "/generated/geosearch"
-  description      = "Generated privileged values consumed only by Geosearch deployment tooling."
-  force_delete     = false
-
-  depends_on = [infisical_secret_folder.geosearch]
 }
 
 resource "infisical_secret_folder" "webhooks_deployment" {
@@ -130,24 +97,35 @@ resource "infisical_secret_folder" "cloudflare_opentofu_root" {
   depends_on = [infisical_secret_folder.opentofu]
 }
 
-resource "infisical_secret_folder" "geoimage" {
+resource "infisical_secret_folder" "maps" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
-  name             = "geoimage"
+  name             = "maps"
   folder_path      = "/generated"
-  description      = "Generated values scoped to the Geoimage Worker."
+  description      = "Generated values scoped to the Maps Worker."
   force_delete     = false
 
   depends_on = [infisical_secret_folder.generated]
 }
 
-resource "infisical_secret_folder" "geoimage_deployment" {
+resource "infisical_secret_folder" "maps_deployment" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
   name             = "deployment"
-  folder_path      = "/generated/geoimage"
-  description      = "Generated privileged values consumed only by Geoimage deployment tooling."
+  folder_path      = "/generated/maps"
+  description      = "Generated privileged values consumed only by Maps deployment tooling."
   force_delete     = false
 
-  depends_on = [infisical_secret_folder.geoimage]
+  depends_on = [infisical_secret_folder.maps]
+}
+
+resource "infisical_secret_folder" "maps_runtime" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "runtime"
+  folder_path      = "/generated/maps"
+  description      = "Runtime credentials consumed by the Maps Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.maps]
 }

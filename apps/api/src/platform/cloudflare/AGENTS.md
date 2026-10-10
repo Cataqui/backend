@@ -18,8 +18,9 @@ These instructions apply to the API application's Cloudflare routing Worker and 
 
 ## Outbound Delivery
 
-- The API container outbound manifest is the single source for outbound virtual hosts, body schemas, and execution.
-- Declare each outbound once. Application code calls `outboundCall({ host, body })`; do not add raw fetches to virtual hosts or one-line publisher wrappers.
+- The Worker manifest owns outbound virtual hosts and each Worker's explicitly allowed methods, input/result schemas, and binding invocations.
+- Application code calls `workerCall({ worker, method, input })`. Derive the input and return types from the selected Worker and method; keep transport hostnames out of feature code. Do not add raw fetches to virtual hosts or one-line wrappers.
+- Validate the call envelope, selected method input, and binding result. Dispatch only the registered method callback; never use a caller-supplied string to invoke arbitrary binding properties.
 - Execution callbacks receive the API Worker environment type. Do not forward all Worker bindings into the container.
 
 ## Configuration and Verification

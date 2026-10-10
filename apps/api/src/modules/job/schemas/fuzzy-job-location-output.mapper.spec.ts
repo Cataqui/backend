@@ -3,7 +3,7 @@ import fc from "fast-check";
 import { Prisma } from "../../../../generated/prisma/client.js";
 import { toFuzzyJobLocationOutput } from "./fuzzy-job-location-output.mapper";
 
-it("converts numeric and decimal fuzzy coordinates while preserving the supplied image permission", () => {
+it("converts numeric and decimal fuzzy coordinates while preserving the supplied image URL", () => {
 	fc.assert(
 		fc.property(
 			fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true }),
@@ -11,14 +11,19 @@ it("converts numeric and decimal fuzzy coordinates while preserving the supplied
 			fc.boolean(),
 			fc.boolean(),
 			fc.uuid(),
-			(latitude, longitude, decimalLatitude, decimalLongitude, imageAccessToken) =>
+			(latitude, longitude, decimalLatitude, decimalLongitude, imageId) =>
 				isDeepStrictEqual(
 					toFuzzyJobLocationOutput({
 						fuzzyLatitude: decimalLatitude ? new Prisma.Decimal(latitude) : latitude,
 						fuzzyLongitude: decimalLongitude ? new Prisma.Decimal(longitude) : longitude,
-						imageAccessToken: imageAccessToken,
+						locationImageUrl: `https://imagedelivery.net/test/${imageId}/format=webp,quality=80`,
 					}),
-					{ latitude: latitude, longitude: longitude, areaRadius: 2000, image: { accessToken: imageAccessToken } },
+					{
+						latitude: latitude,
+						longitude: longitude,
+						areaRadius: 2000,
+						imageUrl: `https://imagedelivery.net/test/${imageId}/format=webp,quality=80`,
+					},
 				),
 		),
 	);
@@ -33,7 +38,11 @@ it.each([
 		toFuzzyJobLocationOutput({
 			fuzzyLatitude: coordinates.latitude,
 			fuzzyLongitude: coordinates.longitude,
-			imageAccessToken: "image-permission",
+			locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 		}),
-	).toEqual({ ...coordinates, areaRadius: 2000, image: { accessToken: "image-permission" } });
+	).toEqual({
+		...coordinates,
+		areaRadius: 2000,
+		imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
+	});
 });

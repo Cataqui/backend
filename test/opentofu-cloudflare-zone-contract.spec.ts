@@ -79,8 +79,8 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 		expect(configurationRoot.match(/\bimport\s*{/g)).toHaveLength(18);
 
 		for (const resourceId of [
-			"771c4788c6ae6442bad55923e7cf8425",
-			"3044984b4e7b338a810325fc97ba9231",
+			"714433f6f4599d41a5246bbfb01c24a9",
+			"71a130da03ab45d9fd23a14809678a49",
 			"37a7a9eae1f4e6be3437458ab549463a",
 			"bdd8f815b32367dcba6ae81ed6a6a70e",
 			"2147a67332a1b936d00b6d9044a5a608",
@@ -110,9 +110,9 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 		},
 	);
 
-	it("should protect every material resource block from destruction", () => {
+	it("should protect every retained DNS and zone resource", () => {
 		expect(dnsRoot.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(9);
-		expect(configurationRoot.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(18);
+		expect(configurationRoot.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(19);
 	});
 
 	it("should leave Email Routing and Cloudflare-owned resources outside state", () => {
@@ -160,6 +160,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"auth-secrets",
 			"cloudflare-ai-gateways",
 			"cloudflare-api-tokens",
+			"cloudflare-pages",
 			"cloudflare-queues",
 			"cloudflare-r2",
 			"cloudflare-zone-configuration",

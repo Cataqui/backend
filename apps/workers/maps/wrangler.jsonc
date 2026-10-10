@@ -1,0 +1,207 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"account_id": "1fca946385505503c59dd6a2a4eeb442",
+	"name": "cataqui-maps-development",
+	"main": "./src/app.ts",
+	"tsconfig": "./tsconfig.json",
+	"compatibility_date": "2026-10-02",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"vars": {
+		"ENVIRONMENT": "development",
+		"MICROSERVICES_AUTH_JWKS_URL": "http://localhost:3000/v1/auth/microservices/jwks",
+		"STATIC_BASE_URL": "http://localhost:8787"
+	},
+	"secrets": {
+		"required": ["GEOAPIFY_API_KEY", "GOOGLE_PLACES_API_KEY"]
+	},
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": false
+		}
+	},
+	"preview_urls": false,
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "GENERATION",
+				"class_name": "StaticMapGeneration"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["StaticMapGeneration"]
+		}
+	],
+	"cache": {
+		"enabled": true,
+		"cross_version_cache": true
+	},
+	"images": {
+		"binding": "IMAGES"
+	},
+	"ratelimits": [
+		{
+			"name": "PLACE_SEARCH_RATE_LIMITER",
+			"namespace_id": "20001",
+			"simple": {
+				"limit": 30,
+				"period": 60
+			}
+		},
+		{
+			"name": "PLACE_DETAILS_RATE_LIMITER",
+			"namespace_id": "20002",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "STATIC_IMAGES",
+			"bucket_name": "cataqui-maps-development"
+		}
+	],
+	"rules": [{ "type": "Data", "globs": ["**/*.ttf"], "fallthrough": true }],
+	"env": {
+		"staging": {
+			"name": "cataqui-maps-staging",
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{
+					"pattern": "staging.maps.cataqui.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"ENVIRONMENT": "staging",
+				"MICROSERVICES_AUTH_JWKS_URL": "https://staging.api.cataqui.com/v1/auth/microservices/jwks",
+				"STATIC_BASE_URL": "https://staging.maps.cataqui.com"
+			},
+			"secrets": {
+				"required": ["GEOAPIFY_API_KEY", "GOOGLE_PLACES_API_KEY"]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "GENERATION",
+						"class_name": "StaticMapGeneration"
+					}
+				]
+			},
+			"cache": {
+				"enabled": true,
+				"cross_version_cache": true
+			},
+			"images": {
+				"binding": "IMAGES"
+			},
+			"ratelimits": [
+				{
+					"name": "PLACE_SEARCH_RATE_LIMITER",
+					"namespace_id": "20001",
+					"simple": {
+						"limit": 30,
+						"period": 60
+					}
+				},
+				{
+					"name": "PLACE_DETAILS_RATE_LIMITER",
+					"namespace_id": "20002",
+					"simple": {
+						"limit": 10,
+						"period": 60
+					}
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "STATIC_IMAGES",
+					"bucket_name": "cataqui-maps-staging"
+				}
+			]
+		},
+		"production": {
+			"name": "cataqui-maps-production",
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{
+					"pattern": "maps.cataqui.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"ENVIRONMENT": "production",
+				"MICROSERVICES_AUTH_JWKS_URL": "https://api.cataqui.com/v1/auth/microservices/jwks",
+				"STATIC_BASE_URL": "https://maps.cataqui.com"
+			},
+			"secrets": {
+				"required": ["GEOAPIFY_API_KEY", "GOOGLE_PLACES_API_KEY"]
+			},
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "GENERATION",
+						"class_name": "StaticMapGeneration"
+					}
+				]
+			},
+			"cache": {
+				"enabled": true,
+				"cross_version_cache": true
+			},
+			"images": {
+				"binding": "IMAGES"
+			},
+			"ratelimits": [
+				{
+					"name": "PLACE_SEARCH_RATE_LIMITER",
+					"namespace_id": "20001",
+					"simple": {
+						"limit": 30,
+						"period": 60
+					}
+				},
+				{
+					"name": "PLACE_DETAILS_RATE_LIMITER",
+					"namespace_id": "20002",
+					"simple": {
+						"limit": 10,
+						"period": 60
+					}
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "STATIC_IMAGES",
+					"bucket_name": "cataqui-maps-production"
+				}
+			]
+		}
+	}
+}

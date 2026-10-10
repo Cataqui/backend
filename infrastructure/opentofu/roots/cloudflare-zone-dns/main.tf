@@ -1,39 +1,55 @@
-resource "cloudflare_dns_record" "framer_apex_primary" {
+resource "cloudflare_dns_record" "landing_apex" {
   zone_id = local.cataqui_zone_id
   name    = "cataqui.com"
-  type    = "A"
-  content = "31.43.160.6"
+  type    = "CNAME"
+  content = data.terraform_remote_state.pages_production.outputs.subdomain
   proxied = true
   ttl     = 1
 
   lifecycle {
     prevent_destroy = true
+    precondition {
+      condition = contains(
+        data.terraform_remote_state.pages_production.outputs.domains, "cataqui.com"
+      )
+      error_message = "Register the production domains in Pages before changing DNS."
+    }
   }
 }
 
-resource "cloudflare_dns_record" "framer_apex_secondary" {
-  zone_id = local.cataqui_zone_id
-  name    = "cataqui.com"
-  type    = "A"
-  content = "31.43.161.6"
-  proxied = true
-  ttl     = 1
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "cloudflare_dns_record" "framer_www" {
+resource "cloudflare_dns_record" "landing_www" {
   zone_id = local.cataqui_zone_id
   name    = "www.cataqui.com"
   type    = "CNAME"
-  content = "sites.framer.app"
+  content = data.terraform_remote_state.pages_production.outputs.subdomain
   proxied = true
   ttl     = 1
 
   lifecycle {
     prevent_destroy = true
+    precondition {
+      condition = contains(
+        data.terraform_remote_state.pages_production.outputs.domains, "www.cataqui.com"
+      )
+      error_message = "Register the production domains in Pages before changing DNS."
+    }
+  }
+}
+
+resource "cloudflare_dns_record" "landing_staging" {
+  zone_id = local.cataqui_zone_id
+  name    = "staging.cataqui.com"
+  type    = "CNAME"
+  content = data.terraform_remote_state.pages_staging.outputs.subdomain
+  proxied = true
+  ttl     = 1
+
+  lifecycle {
+    prevent_destroy = true
+    precondition {
+      condition     = contains(data.terraform_remote_state.pages_staging.outputs.domains, "staging.cataqui.com")
+      error_message = "Register the staging domain in its Pages project before changing DNS."
+    }
   }
 }
 

@@ -11,6 +11,7 @@ export interface FeedItemRaw {
 	payment: string | null;
 	fuzzyLatitude: Prisma.Decimal;
 	fuzzyLongitude: Prisma.Decimal;
+	locationImageUrl: string | null;
 }
 
 @Injectable()
@@ -21,7 +22,7 @@ export class FeedRepository {
 		const results = params.cursor
 			? await this._prisma.$queryRaw<FeedItemRaw[]>(Prisma.sql`
 				SELECT "id", "title", "created_at" AS "createdAt", "description_summary" AS "descriptionSummary",
-					"payment", "fuzzy_latitude" AS "fuzzyLatitude", "fuzzy_longitude" AS "fuzzyLongitude"
+					"location_image_url" AS "locationImageUrl", "payment", "fuzzy_latitude" AS "fuzzyLatitude", "fuzzy_longitude" AS "fuzzyLongitude"
 				FROM "public"."jobs"
 				WHERE "status" = ${JobStatus.ACTIVE}::"public"."JobStatus"
 					AND ("created_at", "id") < (${new Date(params.cursor.createdAt)}, ${params.cursor.jobId}::uuid)
@@ -40,6 +41,7 @@ export class FeedRepository {
 						payment: true,
 						fuzzyLatitude: true,
 						fuzzyLongitude: true,
+						locationImageUrl: true,
 					},
 				});
 		return results;

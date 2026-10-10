@@ -17,9 +17,8 @@ import {
 	assertInfisicalOrganizationScope,
 	assertInfisicalProjectContract,
 	classifyInfisicalOidcInspection,
-	getInfisicalManualSecretPermissions,
 	reconcileInfisicalFolderState,
-	reconcileInfisicalManualFolders,
+	reconcileInfisicalManualSecrets,
 	reconcileInfisicalSecretPlaceholder,
 	decideInfisicalProject,
 	explainInfisicalIdentityCreationFailure,
@@ -78,40 +77,6 @@ describe("infrastructure bootstrap reconciliation", () => {
 		);
 	});
 
-	it("creates manual runtime folders in both environments and reuses them without touching secrets", async () => {
-		const inventories = new Map<string, { name: string }[]>();
-		const created: string[] = [];
-		const ensureFolder = async ({ environment, path, name }: { environment: string; path: string; name: string }) => {
-			const key = `${environment}:${path}`;
-			await reconcileInfisicalFolderState({
-				name: name,
-				listFolders: async () => inventories.get(key) ?? [],
-				createFolder: async () => {
-					created.push(`${environment}:${path === "/" ? "" : path}/${name}`);
-					inventories.set(key, [...(inventories.get(key) ?? []), { name: name }]);
-				},
-			});
-		};
-		await reconcileInfisicalManualFolders({
-			manifest: manifest,
-			ensureFolder: ensureFolder,
-			ensureSecret: async () => {},
-		});
-		await reconcileInfisicalManualFolders({
-			manifest: manifest,
-			ensureFolder: ensureFolder,
-			ensureSecret: async () => {},
-		});
-		expect(created).toEqual([
-			"staging:/manual",
-			"staging:/manual/geoimage",
-			"staging:/manual/geoimage/runtime",
-			"production:/manual",
-			"production:/manual/geoimage",
-			"production:/manual/geoimage/runtime",
-		]);
-	});
-
 	it("fails closed on ambiguous or unavailable folder inventories before creation", async () => {
 		let created = false;
 		const createFolder = async () => {
@@ -160,20 +125,7 @@ describe("infrastructure bootstrap reconciliation", () => {
 		).rejects.toThrow("Creation rejected");
 	});
 
-	it.each(["staging", "production"])(
-		"limits manual secret permissions to exact read-only %s runtime access",
-		(environment) => {
-			expect(getInfisicalManualSecretPermissions({ manifest: manifest, environment: environment })).toEqual([
-				{
-					subject: "secrets",
-					action: ["describeSecret", "readValue"],
-					conditions: { environment: { $eq: environment }, secretPath: { $eq: "/manual/geoimage/runtime" } },
-				},
-			]);
-		},
-	);
-
-	it("creates only missing empty manual key entries in each environment after its folders", async () => {
+	it("creates only missing manual keys in the Terraform-owned Maps runtime folder", async () => {
 		const events: string[] = [];
 		const keys = new Map<string, { secretKey: string; secretValue: string }[]>();
 		const ensureSecret = async ({
@@ -195,19 +147,17 @@ describe("infrastructure bootstrap reconciliation", () => {
 				},
 			});
 		};
-		await reconcileInfisicalManualFolders({
+		await reconcileInfisicalManualSecrets({
 			manifest: manifest,
-			ensureFolder: async () => {},
 			ensureSecret: ensureSecret,
 		});
-		await reconcileInfisicalManualFolders({
+		await reconcileInfisicalManualSecrets({
 			manifest: manifest,
-			ensureFolder: async () => {},
 			ensureSecret: ensureSecret,
 		});
 		expect(events).toEqual([
-			"staging:/manual/geoimage/runtime:GEOAPIFY_API_KEY",
-			"production:/manual/geoimage/runtime:GEOAPIFY_API_KEY",
+			"staging:/generated/maps/runtime:GEOAPIFY_API_KEY",
+			"production:/generated/maps/runtime:GEOAPIFY_API_KEY",
 		]);
 	});
 
@@ -287,28 +237,55 @@ describe("infrastructure bootstrap reconciliation", () => {
 					...manifest,
 					infisical: {
 						...manifest.infisical,
-						manual_folders: { geoimage_runtime: { path: "/manual/geoimage/runtime", secrets: secrets } },
+						manual_secrets: { maps_runtime: { path: "/generated/maps/runtime", secrets: secrets } },
 					},
 				}),
-			).toThrow("manual_folders.geoimage_runtime.secrets");
+			).toThrow("manual_secrets.maps_runtime.secrets");
 		}
 	});
 
 	it("rejects missing or unsafe manual folder declarations", () => {
-		for (const path of ["/generated/geoimage/runtime", "/manual/../runtime", "/manual/geoimage/runtime/", ""]) {
+		for (const path of ["/generated/geoimage/runtime", "/manual/../runtime", "/generated/maps/runtime/", ""]) {
 			expect(() =>
 				validateManifest({
 					...manifest,
 					infisical: {
 						...manifest.infisical,
-						manual_folders: { geoimage_runtime: { path: path, secrets: ["GEOAPIFY_API_KEY"] } },
+						manual_secrets: { maps_runtime: { path: path, secrets: ["GEOAPIFY_API_KEY"] } },
 					},
 				}),
-			).toThrow("manual_folders.geoimage_runtime");
+			).toThrow("manual_secrets.maps_runtime");
 		}
-		expect(() => validateManifest({ ...manifest, infisical: { ...manifest.infisical, manual_folders: {} } })).toThrow(
-			"manual_folders",
+		expect(() => validateManifest({ ...manifest, infisical: { ...manifest.infisical, manual_secrets: {} } })).toThrow(
+			"manual_secrets",
 		);
+	});
+
+	it("rejects missing, unknown, or malformed Pages project identities", () => {
+		for (const pages of [
+			{},
+			{ ...manifest.cloudflare.pages, unknown: {} },
+			{ ...manifest.cloudflare.pages, landing_staging: { name: "INVALID PROJECT" } },
+		]) {
+			expect(() => validateManifest({ ...manifest, cloudflare: { ...manifest.cloudflare, pages: pages } })).toThrow(
+				"manifest.cloudflare.pages",
+			);
+		}
+	});
+
+	it("rejects sharing a Pages project between staging and production", () => {
+		expect(() =>
+			validateManifest({
+				...manifest,
+				cloudflare: {
+					...manifest.cloudflare,
+					pages: {
+						landing_staging: manifest.cloudflare.pages.landing_staging,
+						landing_production: manifest.cloudflare.pages.landing_staging,
+					},
+				},
+			}),
+		).toThrow("two distinct landing projects");
 	});
 
 	it("accepts the committed stable bootstrap contract", () => {
@@ -316,8 +293,8 @@ describe("infrastructure bootstrap reconciliation", () => {
 		expect(validateManifest(manifest)).toBe(manifest);
 		expect(manifest.cloudflare.r2.buckets).toEqual({
 			opentofu_state: "cataqui-backend-opentofu-state",
-			geoimage_images_staging: "cataqui-geoimage-staging",
-			geoimage_images_production: "cataqui-geoimage-production",
+			maps_staging: "cataqui-maps-staging",
+			maps_production: "cataqui-maps-production",
 		});
 		expect(manifest.cloudflare.ai_gateways).toEqual({
 			derive_job_data_staging: "cataqui-derive-job-data-staging",
@@ -367,16 +344,16 @@ describe("infrastructure bootstrap reconciliation", () => {
 		});
 	});
 
-	it.each(["staging", "production"])("rejects an invalid %s image bucket name", (environment) => {
+	it.each(["staging", "production"])("rejects an invalid %s Maps bucket name", (environment) => {
 		expect(() =>
 			validateManifest({
 				...manifest,
 				cloudflare: {
 					...manifest.cloudflare,
-					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`geoimage_images_${environment}`]: "INVALID BUCKET" } },
+					r2: { buckets: { ...manifest.cloudflare.r2.buckets, [`maps_${environment}`]: "INVALID BUCKET" } },
 				},
 			}),
-		).toThrow(`manifest.cloudflare.r2.buckets.geoimage_images_${environment}`);
+		).toThrow(`manifest.cloudflare.r2.buckets.maps_${environment}`);
 	});
 
 	it("rejects invalid and unexpected external platform values", () => {

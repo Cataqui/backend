@@ -9,7 +9,12 @@ export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
 	return applyDecorators(
 		SerializeOptions({ schema: responseSchema }),
 		ApiBearerAuth(),
-		ApiHeader({ name: "Idempotency-Key", required: true, description: "A UUID unique to this posting attempt." }),
+		ApiHeader({
+			name: "Idempotency-Key",
+			required: true,
+			description:
+				"A UUID unique to this submission. Reuse it for unchanged retries; use a new key after editing the form.",
+		}),
 		ApiOperation({
 			summary: "Post a job",
 			description:
@@ -42,7 +47,8 @@ export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
 		}),
 		ApiResponse({
 			status: HttpStatus.SERVICE_UNAVAILABLE,
-			description: "Job details could not be prepared. Try again.",
+			description:
+				"Job details or maps could not be prepared. Keep the form and retry unchanged content with the same Idempotency-Key.",
 			standardSchema: ErrorOutputSchema,
 		}),
 	);

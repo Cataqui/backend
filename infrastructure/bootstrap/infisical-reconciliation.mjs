@@ -135,27 +135,14 @@ export async function reconcileInfisicalFolderState({ name, listFolders, createF
 	}
 }
 
-export async function reconcileInfisicalManualFolders({ manifest, ensureFolder, ensureSecret }) {
+export async function reconcileInfisicalManualSecrets({ manifest, ensureSecret }) {
 	for (const environment of ENVIRONMENTS) {
-		for (const folder of Object.values(manifest.infisical.manual_folders)) {
-			let path = "/";
-			for (const name of folder.path.slice(1).split("/")) {
-				await ensureFolder({ environment: environment, path: path, name: name });
-				path = path === "/" ? `/${name}` : `${path}/${name}`;
-			}
-			for (const name of folder.secrets) {
-				await ensureSecret({ environment: environment, secretPath: folder.path, name: name });
+		for (const group of Object.values(manifest.infisical.manual_secrets)) {
+			for (const name of group.secrets) {
+				await ensureSecret({ environment: environment, secretPath: group.path, name: name });
 			}
 		}
 	}
-}
-
-export function getInfisicalManualSecretPermissions({ manifest, environment }) {
-	return Object.values(manifest.infisical.manual_folders).map((folder) => ({
-		subject: "secrets",
-		action: ["describeSecret", "readValue"],
-		conditions: { environment: { $eq: environment }, secretPath: { $eq: folder.path } },
-	}));
 }
 
 export async function reconcileInfisicalSecretPlaceholder({ name, listSecrets, createSecret }) {

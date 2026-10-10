@@ -46,11 +46,9 @@ describe("Google Cloud OpenTofu contract", () => {
 
 		expect(platforms.google_cloud).not.toHaveProperty("maps_platform");
 		expect(manifest.google_cloud).not.toHaveProperty("maps_platform");
-		expect(mapsRoot).toMatch(/mobile_applications\s*=\s*{/);
-		expect(mapsRoot).toContain('package_name = "com.cataqui.mobile.development"');
-		expect(mapsRoot).toContain('package_name = "com.cataqui.mobile"');
-		expect(mapsRoot).toContain('bundle_id = "com.cataqui.mobile.development"');
-		expect(mapsRoot).toContain('bundle_id = "com.cataqui.mobile"');
+		expect(mapsRoot).toMatch(/maps_platform_services\s*=\s*toset\(/);
+		expect(mapsRoot).toContain('"places.googleapis.com"');
+		expect(mapsRoot).not.toMatch(/mobile_applications|mobile_maps|maps-android-backend|maps-ios-backend/);
 	});
 
 	it.each([
@@ -144,33 +142,25 @@ describe("Google Cloud OpenTofu contract", () => {
 
 		expect(rootHcl).toMatch(/billing_project\s*=\s*local\.google_cloud_project_id/);
 		expect(rootHcl).toMatch(/user_project_override\s*=\s*true/);
-		for (const service of [
-			"apikeys.googleapis.com",
-			"maps-android-backend.googleapis.com",
-			"maps-ios-backend.googleapis.com",
-			"places.googleapis.com",
-		]) {
+		for (const service of ["apikeys.googleapis.com", "places.googleapis.com"]) {
 			expect(rootHcl).toContain(`"${service}"`);
 		}
-		expect(rootHcl.match(/resource "google_apikeys_key"/g)).toHaveLength(3);
+		expect(rootHcl.match(/resource "google_apikeys_key"/g)).toHaveLength(1);
 		expect(rootHcl).toMatch(/api_targets\s*{[\s\S]*service\s*=\s*"places\.googleapis\.com"/);
-		expect(rootHcl).toMatch(/android_key_restrictions\s*{[\s\S]*maps-android-backend\.googleapis\.com/);
-		expect(rootHcl).toMatch(/ios_key_restrictions\s*{[\s\S]*maps-ios-backend\.googleapis\.com/);
-		expect(rootHcl).toMatch(/lower\(replace\([\s\S]*sha1_fingerprints/);
 		expect(rootHcl).toMatch(/disable_on_destroy\s*=\s*false/);
-		expect(rootHcl.match(/deletion_policy\s*=\s*"PREVENT"/g)).toHaveLength(3);
-		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(3);
+		expect(rootHcl.match(/deletion_policy\s*=\s*"PREVENT"/g)).toHaveLength(1);
+		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(1);
 		expect(rootHcl).not.toMatch(/GOOGLE_MAPS_API_KEY|github_/i);
 	});
 
-	it("should deliver the Places key only through the Geosearch write-only field", () => {
+	it("should deliver the Places key only through the Maps write-only field", () => {
 		const rootHcl = _getRootHcl("google-cloud-maps-platform");
 
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-geosearch-places-\$\{var\.environment\}"/);
-		expect(rootHcl).toMatch(/display_name\s*=\s*"Cataqui Geosearch Places \$\{title\(var\.environment\)\}"/);
-		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/geosearch\/runtime"/);
+		expect(rootHcl).toMatch(/display_name\s*=\s*"Cataqui Maps Places \$\{title\(var\.environment\)\}"/);
+		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/maps\/runtime"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"GOOGLE_PLACES_API_KEY"/);
-		expect(rootHcl).toMatch(/value_wo\s*=\s*google_apikeys_key\.geosearch_places\.key_string/);
+		expect(rootHcl).toMatch(/value_wo\s*=\s*google_apikeys_key\.maps_places\.key_string/);
 		expect(rootHcl).toMatch(/value_wo_version\s*=\s*1/);
 		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(1);
 		expect(rootHcl).not.toMatch(/\n\s*value\s*=|\boutput\s+"/);

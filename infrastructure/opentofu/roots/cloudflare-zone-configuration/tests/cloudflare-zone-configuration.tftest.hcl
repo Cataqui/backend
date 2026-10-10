@@ -133,7 +133,7 @@ run "preserves_transport_and_network_baseline" {
   }
 }
 
-run "keeps_geoimage_and_geosearch_reachable_without_browser_challenges" {
+run "keeps_api_maps_and_webhooks_reachable_without_browser_challenges" {
   command = plan
 
   assert {
@@ -149,11 +149,11 @@ run "keeps_geoimage_and_geosearch_reachable_without_browser_challenges" {
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
       cloudflare_ruleset.custom.rules[6].ref == "skip_sbfm_for_non_browser_traffic" &&
       cloudflare_ruleset.custom.rules[6].action == "skip" &&
-      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"geosearch.cataqui.com\" \"staging.geosearch.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"geoimage.cataqui.com\" \"staging.geoimage.cataqui.com\"}" &&
+      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}" &&
       cloudflare_ruleset.custom.rules[6].action_parameters.phases == tolist(["http_request_sbfm"]) &&
       cloudflare_ruleset.custom.rules[6].action_parameters.products == tolist(["bic"])
     )
-    error_message = "Bot protections and the API, Geosearch, Geoimage, and Webhooks SBFM/BIC exception must match the live configuration."
+    error_message = "Bot protections and the API, Maps, and Webhooks SBFM/BIC exception must match the live configuration."
   }
 }
 
@@ -250,5 +250,20 @@ run "preserves_api_response_compression" {
       ] == ["zstd", "brotli", "gzip", "auto"]
     )
     error_message = "API response compression must preserve its live expression and algorithm order."
+  }
+}
+
+run "landing_redirect_preserves_path_and_query" {
+  command = plan
+  assert {
+    condition = (
+      cloudflare_ruleset.landing_redirect.phase == "http_request_dynamic_redirect" &&
+      cloudflare_ruleset.landing_redirect.rules[0].enabled &&
+      cloudflare_ruleset.landing_redirect.rules[0].expression == "http.host eq \"www.cataqui.com\" and not starts_with(http.request.uri.path, \"/.well-known/\")" &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.status_code == 301 &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.preserve_query_string &&
+      cloudflare_ruleset.landing_redirect.rules[0].action_parameters.from_value.target_url.expression == "concat(\"https://cataqui.com\", http.request.uri.path)"
+    )
+    error_message = "The redirect must affect only www and preserve the visitor's path and query string."
   }
 }

@@ -41,6 +41,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(23);
+		expect(Object.keys(ErrorCode)).toHaveLength(24);
 	});
 });

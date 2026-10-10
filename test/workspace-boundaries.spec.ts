@@ -3,13 +3,12 @@ import { execFileSync } from "node:child_process";
 import { dirname, extname, relative, resolve } from "node:path";
 
 const repositoryRoot = process.cwd();
-const applicationDirectories = [
-	"apps/api",
-	"apps/workers/webhooks",
-	"apps/workers/geosearch",
-	"apps/workers/geoimage",
+const applicationDirectories = ["apps/api", "apps/workers/webhooks", "apps/workers/maps"] as const;
+const sharedPackageDirectories = [
+	"packages/api-internal-ingress",
+	"packages/maps-contracts",
+	"packages/microservices-auth-schemas",
 ] as const;
-const sharedPackageDirectories = ["packages/api-internal-ingress", "packages/microservices-auth-schemas"] as const;
 const workspaceDirectories = [...applicationDirectories, ...sharedPackageDirectories] as const;
 
 function _readPackageJson(workspaceDirectory: (typeof workspaceDirectories)[number]): Record<string, unknown> {
@@ -80,24 +79,24 @@ describe("backend workspace boundaries", () => {
 		}
 	});
 
-	it("should resolve only the three compiled authentication scopes", () => {
+	it("should resolve only the compiled authentication scopes", () => {
 		const manifestPath = resolve(repositoryRoot, "packages/microservices-auth-schemas/package.json");
 		const manifest = _readPackageJson("packages/microservices-auth-schemas");
-		expect(Object.keys(manifest.exports as Record<string, unknown>)).toEqual(["./geoimage", "./geosearch", "./jwks"]);
+		expect(Object.keys(manifest.exports as Record<string, unknown>)).toEqual(["./maps", "./jwks"]);
 		const resolveImport = (specifier: string) =>
 			execFileSync(
 				process.execPath,
 				["--input-type=module", "-e", "console.log(import.meta.resolve(process.argv[1]))", specifier],
 				{ cwd: dirname(manifestPath), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
 			).trim();
-		for (const scope of ["geoimage", "geosearch", "jwks"]) {
+		for (const scope of ["maps", "jwks"]) {
 			const entrypoint = resolveImport(`@cataqui/microservices-auth-schemas/${scope}`);
 			expect(entrypoint).toBe(new URL(`file://${resolve(dirname(manifestPath), `dist/${scope}/index.js`)}`).href);
 			expect(existsSync(new URL(entrypoint))).toBe(true);
 		}
 		for (const specifier of [
 			"@cataqui/microservices-auth-schemas",
-			"@cataqui/microservices-auth-schemas/geoimage/geoimage-access-token.constants",
+			"@cataqui/microservices-auth-schemas/maps/maps-access-token.constants",
 			"@cataqui/microservices-auth-contracts",
 		]) {
 			expect(() => resolveImport(specifier)).toThrow();
@@ -130,10 +129,13 @@ describe("backend workspace boundaries", () => {
 		expect(workspaceDependencies).toEqual({
 			"@cataqui/api": [
 				["@cataqui/api-internal-ingress", "workspace:*"],
+				["@cataqui/maps-contracts", "workspace:*"],
 				["@cataqui/microservices-auth-schemas", "workspace:*"],
 			],
-			"@cataqui/geoimage-worker": [["@cataqui/microservices-auth-schemas", "workspace:*"]],
-			"@cataqui/geosearch-worker": [["@cataqui/microservices-auth-schemas", "workspace:*"]],
+			"@cataqui/maps-worker": [
+				["@cataqui/maps-contracts", "workspace:*"],
+				["@cataqui/microservices-auth-schemas", "workspace:*"],
+			],
 			"@cataqui/webhooks-worker": [["@cataqui/api-internal-ingress", "workspace:*"]],
 		});
 	});
@@ -146,11 +148,7 @@ describe("backend workspace boundaries", () => {
 			for (const filePath of _getTypeScriptFiles(absoluteWorkspaceDirectory)) {
 				const source = readFileSync(filePath, "utf8");
 				for (const importSpecifier of _getImportSpecifiers(source)) {
-					if (
-						/^(?:@cataqui\/(?:api|webhooks-worker|geosearch-worker|geoimage-worker)(?:\/|$)|apps\/)/.test(
-							importSpecifier,
-						)
-					) {
+					if (/^(?:@cataqui\/(?:api|webhooks-worker|maps-worker)(?:\/|$)|apps\/)/.test(importSpecifier)) {
 						violations.push(`${relative(repositoryRoot, filePath)} imports ${importSpecifier}`);
 						continue;
 					}
@@ -184,7 +182,7 @@ describe("backend workspace boundaries", () => {
 			_getTypeScriptFiles(resolve(repositoryRoot, applicationDirectory)).flatMap((filePath) =>
 				_getImportSpecifiers(readFileSync(filePath, "utf8"))
 					.filter((specifier) =>
-						/^@cataqui\/(?:api-internal-ingress|microservices-auth-schemas)(?:\/|$)/.test(specifier),
+						/^@cataqui\/(?:api-internal-ingress|microservices-auth-schemas|maps-contracts)(?:\/|$)/.test(specifier),
 					)
 					.filter((specifier) => !allowedImports.has(specifier))
 					.map((specifier) => `${relative(repositoryRoot, filePath)} imports ${specifier}`),

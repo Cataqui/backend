@@ -98,7 +98,7 @@ describe("Upstash Redis OpenTofu contract", () => {
 		const applicationConfiguration = [
 			readFileSync(resolve(repositoryRoot, "apps/api/src/core/config/upstash-redis.config.ts"), "utf8"),
 			readFileSync(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8"),
-			readFileSync(resolve(repositoryRoot, "apps/api/src/platform/cloudflare/containers/api/api-container.ts"), "utf8"),
+			readFileSync(resolve(repositoryRoot, "apps/api/src/platform/cloudflare/container/api-container.ts"), "utf8"),
 		].join("\n");
 
 		expect(applicationConfiguration).toContain("UPSTASH_REDIS_REST_URL");

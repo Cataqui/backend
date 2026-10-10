@@ -21,12 +21,12 @@ describe("MicroservicesAuthController", () => {
 	};
 	let controller: MicroservicesAuthController;
 	let microservicesAuthService: {
-		createGeosearchAccessToken: ReturnType<typeof vi.fn>;
+		createMapsAccessToken: ReturnType<typeof vi.fn>;
 		getPublicJwks: ReturnType<typeof vi.fn>;
 	};
 
 	beforeEach(async () => {
-		microservicesAuthService = { createGeosearchAccessToken: vi.fn(), getPublicJwks: vi.fn() };
+		microservicesAuthService = { createMapsAccessToken: vi.fn(), getPublicJwks: vi.fn() };
 		const module = await Test.createTestingModule({
 			controllers: [MicroservicesAuthController],
 			providers: [{ provide: MicroservicesAuthService, useValue: microservicesAuthService }],
@@ -38,16 +38,16 @@ describe("MicroservicesAuthController", () => {
 		controller = module.get(MicroservicesAuthController);
 	});
 
-	it("should expose the versioned geosearch token command", () => {
+	it("should expose the versioned maps token command", () => {
 		expect({
 			controllerPath: Reflect.getMetadata(PATH_METADATA, MicroservicesAuthController),
-			path: Reflect.getMetadata(PATH_METADATA, controller.createGeosearchAccessToken),
-			method: Reflect.getMetadata(METHOD_METADATA, controller.createGeosearchAccessToken),
-			version: Reflect.getMetadata(VERSION_METADATA, controller.createGeosearchAccessToken),
-			status: Reflect.getMetadata(HTTP_CODE_METADATA, controller.createGeosearchAccessToken),
+			path: Reflect.getMetadata(PATH_METADATA, controller.createMapsAccessToken),
+			method: Reflect.getMetadata(METHOD_METADATA, controller.createMapsAccessToken),
+			version: Reflect.getMetadata(VERSION_METADATA, controller.createMapsAccessToken),
+			status: Reflect.getMetadata(HTTP_CODE_METADATA, controller.createMapsAccessToken),
 		}).toEqual({
 			controllerPath: "auth/microservices",
-			path: "geosearch",
+			path: "maps",
 			method: RequestMethod.POST,
 			version: "1",
 			status: HttpStatus.OK,
@@ -102,27 +102,27 @@ describe("MicroservicesAuthController", () => {
 	});
 
 	it("should prevent the issued access token from being cached", () => {
-		expect(Reflect.getMetadata(HEADERS_METADATA, controller.createGeosearchAccessToken)).toContainEqual({
+		expect(Reflect.getMetadata(HEADERS_METADATA, controller.createMapsAccessToken)).toContainEqual({
 			name: "Cache-Control",
 			value: "no-store",
 		});
 	});
 
 	it("should require an access token without an application-level request budget", () => {
-		expect(Reflect.getMetadata(GUARDS_METADATA, controller.createGeosearchAccessToken)).toEqual([AccessTokenGuard]);
+		expect(Reflect.getMetadata(GUARDS_METADATA, controller.createMapsAccessToken)).toEqual([AccessTokenGuard]);
 	});
 
-	it("should issue the geosearch token for the authenticated user", async () => {
+	it("should issue the maps token for the authenticated user", async () => {
 		const accessToken = {
 			accessToken: "header.payload.signature",
 			expiresAt: "2026-08-22T15:10:00.000Z",
 			tokenType: "Bearer" as const,
 		};
-		microservicesAuthService.createGeosearchAccessToken.mockResolvedValue(accessToken);
+		microservicesAuthService.createMapsAccessToken.mockResolvedValue(accessToken);
 
-		const result = await controller.createGeosearchAccessToken(authSession);
+		const result = await controller.createMapsAccessToken(authSession);
 
-		expect({ result: result, params: microservicesAuthService.createGeosearchAccessToken.mock.calls[0]?.[0] }).toEqual({
+		expect({ result: result, params: microservicesAuthService.createMapsAccessToken.mock.calls[0]?.[0] }).toEqual({
 			result: accessToken,
 			params: { userId: authSession.userId },
 		});
