@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PlaceCategory } from "../place-category.enum";
+import { PlaceCategory } from "../place-category";
 
 export const PlaceSearchOutputSchema = z.strictObject({
 	suggestions: z.array(

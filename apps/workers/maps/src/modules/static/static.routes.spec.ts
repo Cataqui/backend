@@ -8,7 +8,13 @@ import { getStaticIdentity } from "./static-identity";
 const id = "a".repeat(64);
 const file = `${await getStaticIdentity({ assetId: id, size: { width: 480, height: 480 }, scale: 2, zoom: 13 })}.webp`;
 const path = `/static/${id}?size=480x480`;
-const env = {} as MapsWorkerEnv;
+const env = {
+	GOOGLE_PLACES_API_KEY: "test-google",
+	GEOAPIFY_API_KEY: "test-geoapify",
+	ENVIRONMENT: "development",
+	STATIC_BASE_URL: "http://localhost:8787",
+	MICROSERVICES_AUTH_JWKS_URL: "http://localhost:3000/v1/auth/microservices/jwks",
+} as MapsWorkerEnv;
 beforeEach(() => vi.resetAllMocks());
 
 it("serves a hash-only WebP URL without login or invoking generation", async () => {

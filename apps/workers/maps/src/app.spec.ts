@@ -31,6 +31,8 @@ function _createEnv(params?: {
 		},
 		ENVIRONMENT: "development",
 		GOOGLE_PLACES_API_KEY: "google-key",
+		GEOAPIFY_API_KEY: "geoapify-key",
+		STATIC_BASE_URL: "http://localhost:8787",
 		MICROSERVICES_AUTH_JWKS_URL: microservicesAuthJwksUrl,
 	} as never;
 }

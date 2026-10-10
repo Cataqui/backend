@@ -69,6 +69,7 @@
 			"bucket_name": "cataqui-maps-development"
 		}
 	],
+	"rules": [{ "type": "Data", "globs": ["**/*.ttf"], "fallthrough": true }],
 	"env": {
 		"staging": {
 			"name": "cataqui-maps-staging",

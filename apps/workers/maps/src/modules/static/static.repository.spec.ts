@@ -22,7 +22,7 @@ beforeEach(() => {
 		bucket: bucket,
 		images: { input: input, info: info },
 		generation: { getByName: vi.fn() },
-		apiKey: "test-key",
+		staticConfig: { geoapifyApiKey: "test-key", environment: "development", baseUrl: "https://maps.test" },
 	});
 	vi.stubGlobal(
 		"fetch",
@@ -154,6 +154,34 @@ describe("stored image reads", () => {
 });
 
 describe("provider image generation", () => {
+	it("hides native transit icons and labels while retaining street labels", async () => {
+		vi.mocked(fetch).mockResolvedValue(new Response(Png, { headers: { "Content-Type": "image/png" } }));
+		await repository.generateImage({
+			center: { latitude: -23.5505, longitude: -46.6333 },
+			size: { width: 480, height: 480 },
+		});
+		const url = new URL(String(vi.mocked(fetch).mock.calls[0]![0]));
+		const layers = url.searchParams.get("styleCustomization")?.split("|");
+		expect(layers).toEqual(
+			expect.arrayContaining([
+				"poi-railway:none",
+				"poi-level-1:none",
+				"poi-level-2:none",
+				"poi-level-3:none",
+				"highway-name-major:#626262",
+				"highway-name-minor:#737373",
+			]),
+		);
+	});
+	it("hides native airport icons and labels to avoid duplicating custom airport landmarks", async () => {
+		vi.mocked(fetch).mockResolvedValue(new Response(Png, { headers: { "Content-Type": "image/png" } }));
+		await repository.generateImage({
+			center: { latitude: -23.6261, longitude: -46.6565 },
+			size: { width: 480, height: 480 },
+		});
+		const url = new URL(String(vi.mocked(fetch).mock.calls[0]![0]));
+		expect(url.searchParams.get("styleCustomization")?.split("|")).toContain("airport-label-major:none");
+	});
 	it("requests the source-derived light basemap with distinct motorways and hidden boundaries", async () => {
 		const provider = vi
 			.fn<typeof fetch>()

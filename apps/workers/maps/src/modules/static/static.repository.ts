@@ -1,9 +1,9 @@
 import type { GenerateStaticMapsInput, GenerateStaticMapsResult } from "@cataqui/maps-contracts";
 import type { StaticGenerationDurableObject } from "./static-generation.durable-object";
-import { GeoapifyConfigSchema } from "./schemas/geoapify-config.schema";
+import type { StaticConfig } from "./schemas/static-config.schema";
 import { StaticStyle } from "./static-style";
-import { StaticOutputs, type StaticSize } from "./static-outputs";
-import { createGeoapifyHttpError } from "./geoapify-http.error";
+import { StaticOutputs } from "./static-outputs";
+import { createGeoapifyHttpError } from "../../shared/geoapify/geoapify-http.error";
 import { MapsErrorCode } from "../../shared/maps-error-code.enum";
 import { MapsError } from "../../shared/maps.error";
 import { StaticEncoding } from "./static-encoding";
@@ -20,7 +20,7 @@ export class StaticRepository {
 		private readonly _bindings: {
 			bucket: Pick<R2Bucket, "head" | "put" | "get">;
 			generation: Pick<DurableObjectNamespace<StaticGenerationDurableObject>, "getByName">;
-			apiKey: string;
+			staticConfig: StaticConfig;
 			images: Pick<ImagesBinding, "input" | "info">;
 		},
 	) {}
@@ -34,12 +34,12 @@ export class StaticRepository {
 
 	async generateImage(params: {
 		center: { latitude: number; longitude: number };
-		size: StaticSize;
-		signal?: AbortSignal;
+		size: { width: number; height: number };
+		signal?: AbortSignal | undefined;
 	}): Promise<Uint8Array> {
 		const url = new URL("https://maps.geoapify.com/v1/staticmap");
 		url.search = new URLSearchParams({
-			apiKey: GeoapifyConfigSchema.parse({ apiKey: this._bindings.apiKey }).apiKey,
+			apiKey: this._bindings.staticConfig.geoapifyApiKey,
 			center: `lonlat:${params.center.longitude},${params.center.latitude}`,
 			style: StaticStyle.style,
 			styleCustomization: StaticStyle.styleCustomization,

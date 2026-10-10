@@ -1,3 +1,4 @@
+import { createMapsConfig } from "../../shared/config/maps.config";
 import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 import { mapsAuthMiddleware } from "../../shared/auth/maps-auth.middleware";
@@ -7,8 +8,8 @@ import { createMapsErrorResponse } from "../../shared/maps-error.response";
 import { createMapsValidationHook } from "../../shared/maps-validation.hook";
 import { PlaceSearchOutputSchema } from "./schemas/place-search-output.schema";
 import { PlaceDetailsOutputSchema } from "./schemas/place-details-output.schema";
-import { PlacesRepository } from "./places.repository";
-import { PlacesService } from "./places.service";
+import { createPlacesService } from "./places.module";
+import type { PlacesService } from "./places.service";
 import { PlaceDetailsInputSchema } from "./schemas/place-details-input.schema";
 import { PlaceSearchInputSchema } from "./schemas/place-search-input.schema";
 import { PlaceSearchLanguageSchema } from "./schemas/place-search-language.schema";
@@ -45,7 +46,13 @@ export function createPlacesRoutes(params?: { service?: PlacesService }): Hono<I
 				});
 			}
 
-			const service = params?.service ?? _createPlacesService({ environment: context.env });
+			const service =
+				params?.service ??
+				createPlacesService({
+					placesConfig: createMapsConfig({ environment: context.env }).placesConfig,
+					searchRateLimiter: context.env.PLACE_SEARCH_RATE_LIMITER,
+					detailsRateLimiter: context.env.PLACE_DETAILS_RATE_LIMITER,
+				});
 
 			return context.json(
 				PlaceSearchOutputSchema.parse(
@@ -73,7 +80,13 @@ export function createPlacesRoutes(params?: { service?: PlacesService }): Hono<I
 		async (context) => {
 			const input = context.req.valid("json");
 
-			const service = params?.service ?? _createPlacesService({ environment: context.env });
+			const service =
+				params?.service ??
+				createPlacesService({
+					placesConfig: createMapsConfig({ environment: context.env }).placesConfig,
+					searchRateLimiter: context.env.PLACE_SEARCH_RATE_LIMITER,
+					detailsRateLimiter: context.env.PLACE_DETAILS_RATE_LIMITER,
+				});
 
 			return context.json(
 				PlaceDetailsOutputSchema.parse(
@@ -100,14 +113,4 @@ export function createPlacesRoutes(params?: { service?: PlacesService }): Hono<I
 	}
 
 	return placesRoutes;
-}
-
-function _createPlacesService(params: { environment: MapsWorkerEnv }): PlacesService {
-	return new PlacesService({
-		repository: new PlacesRepository({
-			apiKey: params.environment.GOOGLE_PLACES_API_KEY,
-			searchRateLimiter: params.environment.PLACE_SEARCH_RATE_LIMITER,
-			detailsRateLimiter: params.environment.PLACE_DETAILS_RATE_LIMITER,
-		}),
-	});
 }

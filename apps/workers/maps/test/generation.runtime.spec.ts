@@ -1,8 +1,10 @@
+import { PlacesRepository } from "../src/modules/places/places.repository";
 import { exports } from "cloudflare:workers";
 import { StaticRepository } from "../src/modules/static/static.repository";
 
 afterEach(() => vi.restoreAllMocks());
 it("generates the complete 2x map set through private Worker and Durable Object RPC", async () => {
+	vi.spyOn(PlacesRepository.prototype, "searchPlacesInArea").mockResolvedValue([]);
 	vi.spyOn(StaticRepository.prototype, "findImage").mockResolvedValue(false);
 	vi.spyOn(StaticRepository.prototype, "generateImage").mockResolvedValue(new Uint8Array([1]));
 	vi.spyOn(StaticRepository.prototype, "upload").mockResolvedValue(undefined);

@@ -1,3 +1,5 @@
+import { PlaceAreaSearchOutputSchema } from "./place-area-search-output.schema";
+import { PlaceCategory } from "../place-category";
 import { PlaceDetailsInputSchema } from "./place-details-input.schema";
 import { PlaceDetailsOutputSchema } from "./place-details-output.schema";
 import { PlaceSearchInputSchema } from "./place-search-input.schema";
@@ -79,5 +81,59 @@ describe("Places schemas", () => {
 		{ latitude: 0, longitude: 180.1 },
 	])("should reject coordinates outside geographic bounds", (coordinates) => {
 		expect(PlaceDetailsOutputSchema.safeParse(coordinates).success).toBe(false);
+	});
+});
+
+it.each([
+	PlaceCategory.ATTRACTION,
+	PlaceCategory.ZOO,
+	PlaceCategory.MUSEUM,
+	PlaceCategory.SUPERMARKET,
+	PlaceCategory.STORE,
+])("accepts shared place category %s in the public search contract", (category) => {
+	expect(
+		PlaceSearchOutputSchema.parse({
+			suggestions: [
+				{
+					placeId: "place-id",
+					fullText: "Known place",
+					primaryText: "Known place",
+					secondaryText: null,
+					category: category,
+				},
+			],
+			attribution: { text: "Google Maps" },
+		}).suggestions[0]?.category,
+	).toBe(category);
+});
+
+describe("PlaceAreaSearchOutputSchema", () => {
+	const place = {
+		name: "Carrefour",
+		category: PlaceCategory.SUPERMARKET,
+		coordinates: { latitude: -23.55, longitude: -46.63 },
+		notable: false,
+	};
+
+	it("accepts an empty area search", () => {
+		expect(PlaceAreaSearchOutputSchema.parse([])).toEqual([]);
+	});
+
+	it("accepts normalized places with and without a brand", () => {
+		const output = [place, { ...place, brand: "Carrefour" }];
+		expect(PlaceAreaSearchOutputSchema.parse(output)).toEqual(output);
+	});
+
+	it.each([
+		{ ...place, name: "" },
+		{ ...place, category: "PROVIDER_CATEGORY" },
+		{ ...place, notable: "yes" },
+		{ ...place, brand: 123 },
+		{ ...place, coordinates: { latitude: 91, longitude: 0 } },
+		{ ...place, coordinates: { latitude: 0, longitude: -181 } },
+		{ ...place, coordinates: { latitude: 0, longitude: 0, provider: "Geoapify" } },
+		{ ...place, datasource: {} },
+	])("rejects invalid or provider-specific area-search output %j", (invalidPlace) => {
+		expect(PlaceAreaSearchOutputSchema.safeParse([invalidPlace]).success).toBe(false);
 	});
 });

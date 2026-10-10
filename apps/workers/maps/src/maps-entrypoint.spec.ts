@@ -16,7 +16,16 @@ it("delegates the private entrypoint with only coordinates", async () => {
 		code: "PROVIDER_TIMEOUT",
 		retryable: true,
 	});
-	const entrypoint = new MapsEntrypoint({} as ExecutionContext, { ENVIRONMENT: "development" } as MapsWorkerEnv);
+	const entrypoint = new MapsEntrypoint(
+		{} as ExecutionContext,
+		{
+			ENVIRONMENT: "development",
+			GOOGLE_PLACES_API_KEY: "test-google",
+			GEOAPIFY_API_KEY: "test-geoapify",
+			STATIC_BASE_URL: "http://localhost:8787",
+			MICROSERVICES_AUTH_JWKS_URL: "http://localhost:3000/v1/auth/microservices/jwks",
+		} as MapsWorkerEnv,
+	);
 	expect(await entrypoint.generateStaticMaps({ latitude: 0, longitude: 0 })).toEqual({
 		kind: "failed",
 		code: "PROVIDER_TIMEOUT",

@@ -217,6 +217,12 @@ importers:
       '@hono/standard-validator':
         specifier: ^0.4.0
         version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.1)
+      '@mateo/icons':
+        specifier: github:Ventairy/mateo#main&path:/packages/typescript/mateo-icons
+        version: https://codeload.github.com/Ventairy/mateo/tar.gz/73f3bb02e7364b31df78f7d392fcce90bfe90de9#path:/packages/typescript/mateo-icons
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
       hono:
         specifier: 'catalog:'
         version: 4.13.1
@@ -1345,6 +1351,11 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/73f3bb02e7364b31df78f7d392fcce90bfe90de9#path:/packages/typescript/mateo-icons':
+    resolution: {gitHosted: true, integrity: sha512-DE7R1qWTDjv8pzRilCWn5swXDQ8S5uE7hLyEc36u0rvGdFrPyacjNUP0okXYPSgvc2KI7SiTDRoHetoLbXLp8w==, tarball: https://codeload.github.com/Ventairy/mateo/tar.gz/73f3bb02e7364b31df78f7d392fcce90bfe90de9}
+    version: 0.0.0
+    engines: {node: ^24.15.0}
+
   '@microsoft/tsdoc@0.17.0':
     resolution: {integrity: sha512-p68VexhnH7ojf3U27RdryUDqnKJgKaWUbCL96vJR7N0mqDuhKG5OIECk3sCPPdynxjk+yoVhRkScqtv5KQjzsw==}
 
@@ -1828,6 +1839,10 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rolldown/binding-android-arm64@1.0.2':
     resolution: {integrity: sha512-ZS4D1JPGn/MYQN/SYDWftIE/nVsM8j/AFOYEzAoOE2O3NktQOZru+/vYXGbR/qtdLdIfGCP0lcoJiYVzsEz+iQ==}
@@ -4998,6 +5013,8 @@ snapshots:
       - encoding
       - supports-color
 
+  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/73f3bb02e7364b31df78f7d392fcce90bfe90de9#path:/packages/typescript/mateo-icons': {}
+
   '@microsoft/tsdoc@0.17.0': {}
 
   '@napi-rs/keyring-darwin-arm64@1.3.0':
@@ -5396,6 +5413,8 @@ snapshots:
       react: 19.2.6
     optionalDependencies:
       '@types/react': 19.2.18
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.2':
     optional: true
@@ -7347,7 +7366,7 @@ snapshots:
   vite@8.0.14(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.9)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.33.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       postcss: 8.5.26
       rolldown: 1.0.2
       tinyglobby: 0.2.17

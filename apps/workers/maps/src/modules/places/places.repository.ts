@@ -1,28 +1,102 @@
+import type { PlacesConfig } from "./schemas/places-config.schema";
+import { createGeoapifyHttpError } from "../../shared/geoapify/geoapify-http.error";
+import { MapsErrorCode } from "../../shared/maps-error-code.enum";
+import { MapsError } from "../../shared/maps.error";
+import {
+	getGeoapifyPlaceCategories,
+	parseGeoapifyPlaceCategory,
+	parseGooglePlacesCategory,
+	PlaceCategory,
+} from "./place-category";
+import type { PlaceAreaSearchOutput } from "./schemas/place-area-search-output.schema";
+import { GeoapifyPlaceOutputSchema } from "./schemas/geoapify-place-output.schema";
+import { GeoapifyPlacesOutputSchema } from "./schemas/geoapify-places-output.schema";
+
 import type { z } from "zod";
-import type { PlaceDetailsOutput } from "./schemas/place-details-output.schema";
-import type { PlaceSearchOutput } from "./schemas/place-search-output.schema";
 import { GooglePlacesAutocompleteOutputSchema } from "./schemas/google-places-autocomplete-output.schema";
 import { GooglePlacesDetailsOutputSchema } from "./schemas/google-places-details-output.schema";
-import { parseGooglePlacesCategory } from "./google-places-category.parser";
+import type { PlaceDetailsOutput } from "./schemas/place-details-output.schema";
+import type { PlaceSearchOutput } from "./schemas/place-search-output.schema";
 
 export class PlacesRepository {
 	constructor(params: {
-		apiKey: string;
+		placesConfig: PlacesConfig;
 		searchRateLimiter: RateLimit;
 		detailsRateLimiter: RateLimit;
 		fetchImplementation?: typeof fetch;
 	}) {
-		this._apiKey = params.apiKey;
+		this._placesConfig = params.placesConfig;
 		this._searchRateLimiter = params.searchRateLimiter;
 		this._detailsRateLimiter = params.detailsRateLimiter;
 		this._fetchImplementation = params.fetchImplementation;
 	}
 
-	private readonly _apiKey: string;
+	private readonly _placesConfig: PlacesConfig;
 	private readonly _searchRateLimiter: RateLimit;
 	private readonly _detailsRateLimiter: RateLimit;
 	private readonly _fetchImplementation: typeof fetch | undefined;
 	readonly attribution = { text: "Google Maps" } as const;
+
+	async searchPlacesInArea(params: {
+		bounds: { north: number; south: number; east: number; west: number };
+		categories: readonly PlaceCategory[];
+		limit: number;
+		signal?: AbortSignal | undefined;
+	}): Promise<PlaceAreaSearchOutput> {
+		const url = new URL("https://api.geoapify.com/v2/places");
+
+		url.search = new URLSearchParams({
+			categories: getGeoapifyPlaceCategories({ categories: params.categories }).join(","),
+			filter: `rect:${params.bounds.west},${params.bounds.north},${params.bounds.east},${params.bounds.south}`,
+			limit: String(params.limit),
+			apiKey: this._placesConfig.geoapifyApiKey,
+		}).toString();
+
+		let response: Response;
+
+		try {
+			response = await (this._fetchImplementation ?? fetch)(url, {
+				signal: AbortSignal.any([AbortSignal.timeout(10_000), ...(params.signal ? [params.signal] : [])]),
+				redirect: "manual",
+			});
+		} catch (error) {
+			if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
+				throw new MapsError({ errorCode: MapsErrorCode.PROVIDER_TIMEOUT, retryable: true });
+			}
+			throw new MapsError({ errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE, retryable: true });
+		}
+		if (!response.ok) {
+			await response.body?.cancel().catch(() => undefined);
+			throw createGeoapifyHttpError({ response: response });
+		}
+
+		const body = GeoapifyPlacesOutputSchema.safeParse(await response.json().catch(() => null));
+		if (!body.success) throw new MapsError({ errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE, retryable: false });
+
+		return body.data.features.flatMap((feature): PlaceAreaSearchOutput => {
+			const place = GeoapifyPlaceOutputSchema.safeParse(feature);
+			if (!place.success) return [];
+
+			const properties = place.data.properties;
+			const raw = properties.datasource?.raw;
+			const category = parseGeoapifyPlaceCategory({ categories: properties.categories });
+			// OpenStreetMap separates alternative values with semicolons; the first one is the primary name.
+			const name = [raw?.short_name, raw?.name]
+				.map((value) => value?.split(";")[0]?.trim())
+				.find((value) => value !== undefined && value.length > 0);
+			if (category === PlaceCategory.OTHER || name === undefined || name.length === 0) return [];
+
+			return [
+				{
+					name: name,
+					category: category,
+					coordinates: { latitude: properties.lat, longitude: properties.lon },
+					notable: raw?.wikidata !== undefined,
+					...(raw?.brand === undefined ? {} : { brand: raw.brand }),
+				},
+			];
+		});
+	}
 
 	async consumeSearchRateLimit(params: { key: string }): Promise<boolean> {
 		const result = await this._searchRateLimiter.limit({ key: params.key });
@@ -47,7 +121,7 @@ export class PlacesRepository {
 			request: new Request(providerUrl, {
 				redirect: "manual",
 				headers: {
-					"X-Goog-Api-Key": this._apiKey,
+					"X-Goog-Api-Key": this._placesConfig.googlePlacesApiKey,
 					"X-Goog-FieldMask": "location",
 				},
 				signal: AbortSignal.timeout(5_000),
@@ -84,7 +158,7 @@ export class PlacesRepository {
 				redirect: "manual",
 				headers: {
 					"Content-Type": "application/json",
-					"X-Goog-Api-Key": this._apiKey,
+					"X-Goog-Api-Key": this._placesConfig.googlePlacesApiKey,
 					"X-Goog-FieldMask":
 						"suggestions.placePrediction.placeId,suggestions.placePrediction.text.text," +
 						"suggestions.placePrediction.structuredFormat.mainText.text," +

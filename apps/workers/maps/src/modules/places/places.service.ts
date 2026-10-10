@@ -1,3 +1,5 @@
+import type { PlaceAreaSearchOutput } from "./schemas/place-area-search-output.schema";
+import type { PlaceCategory } from "./place-category";
 import type { PlacesRepository } from "./places.repository";
 import { PlaceDetailsRateLimitedError } from "./errors/place-details-rate-limited.error";
 import { PlaceNotFoundError } from "./errors/place-not-found.error";
@@ -15,6 +17,25 @@ export class PlacesService {
 	}
 
 	private readonly _repository: PlacesRepository;
+
+	async searchPlacesInArea(params: {
+		bounds: { north: number; south: number; east: number; west: number };
+		categories: readonly PlaceCategory[];
+		limit: number;
+		signal?: AbortSignal | undefined;
+	}): Promise<PlaceAreaSearchOutput> {
+		return this._repository.searchPlacesInArea({
+			bounds: {
+				north: params.bounds.north,
+				south: params.bounds.south,
+				east: params.bounds.east,
+				west: params.bounds.west,
+			},
+			categories: params.categories,
+			limit: params.limit,
+			signal: params.signal,
+		});
+	}
 
 	async getPlaceDetails(params: { input: PlaceDetailsInput; rateLimitKey: string }): Promise<PlaceDetailsOutput> {
 		const allowed = await this._repository.consumeDetailsRateLimit({

@@ -1,5 +1,5 @@
-import { MapsError } from "../../shared/maps.error";
-import { MapsErrorCode } from "../../shared/maps-error-code.enum";
+import { MapsError } from "../maps.error";
+import { MapsErrorCode } from "../maps-error-code.enum";
 
 export function createGeoapifyHttpError(params: { response: Response }): MapsError {
 	const status = params.response.status;

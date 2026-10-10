@@ -1,3 +1,4 @@
+import { PlaceCategory } from "./place-category";
 import { PlacesRepository } from "./places.repository";
 import { PlacesService } from "./places.service";
 import { PlaceDetailsRateLimitedError } from "./errors/place-details-rate-limited.error";
@@ -16,14 +17,16 @@ describe("PlacesService", () => {
 		detailsRateLimiter = { limit: vi.fn<RateLimit["limit"]>().mockResolvedValue({ success: true }) };
 		searchRateLimiter = { limit: vi.fn<RateLimit["limit"]>().mockResolvedValue({ success: true }) };
 		repository = new PlacesRepository({
-			apiKey: "provider-key",
+			placesConfig: { googlePlacesApiKey: "provider-key", geoapifyApiKey: "test-geoapify" },
 			searchRateLimiter: searchRateLimiter,
 			detailsRateLimiter: detailsRateLimiter,
 			fetchImplementation: vi.fn(),
 		});
 		vi.spyOn(repository, "getPlaceDetails");
 		vi.spyOn(repository, "searchPlaces");
-		service = new PlacesService({ repository: repository });
+		service = new PlacesService({
+			repository: repository,
+		});
 	});
 
 	it("should return an attributed blank search without consuming rate-limit capacity", async () => {
@@ -101,4 +104,26 @@ describe("PlacesService", () => {
 			}),
 		).rejects.toBeInstanceOf(errorClass);
 	});
+});
+
+it("gets places in bounds through its owned provider boundary", async () => {
+	const repository = new PlacesRepository({
+		placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-geoapify" },
+		searchRateLimiter: { limit: vi.fn() },
+		detailsRateLimiter: { limit: vi.fn() },
+	});
+	const lookup = vi.spyOn(repository, "searchPlacesInArea").mockResolvedValue([]);
+	const service = new PlacesService({ repository: repository });
+	const signal = new AbortController().signal;
+	const params = {
+		bounds: { north: -23.5, south: -23.6, east: -46.6, west: -46.7 },
+		categories: [PlaceCategory.AIRPORT],
+		limit: 60,
+		signal: signal,
+	};
+	await expect(service.searchPlacesInArea(params)).resolves.toEqual([]);
+	expect(lookup).toHaveBeenCalledExactlyOnceWith(params);
+	const failure = new Error("provider unavailable");
+	lookup.mockRejectedValue(failure);
+	await expect(service.searchPlacesInArea(params)).rejects.toBe(failure);
 });

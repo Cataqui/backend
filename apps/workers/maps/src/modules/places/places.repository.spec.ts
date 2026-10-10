@@ -1,3 +1,5 @@
+import { MapsErrorCode } from "../../shared/maps-error-code.enum";
+import { PlaceCategory } from "./place-category";
 import { PlacesRepository } from "./places.repository";
 
 describe("PlacesRepository", () => {
@@ -7,7 +9,7 @@ describe("PlacesRepository", () => {
 	beforeEach(() => {
 		fetchImplementation = vi.fn<typeof fetch>();
 		repository = new PlacesRepository({
-			apiKey: "google-places-key",
+			placesConfig: { googlePlacesApiKey: "google-places-key", geoapifyApiKey: "test-geoapify" },
 			searchRateLimiter: { limit: vi.fn<RateLimit["limit"]>().mockResolvedValue({ success: true }) },
 			detailsRateLimiter: { limit: vi.fn<RateLimit["limit"]>().mockResolvedValue({ success: true }) },
 			fetchImplementation: fetchImplementation,
@@ -143,6 +145,29 @@ describe("PlacesRepository", () => {
 			kind: "SUCCESS",
 			output: { suggestions: [], attribution: { text: "Google Maps" } },
 		});
+	});
+
+	it("returns the ZOO category for Google zoo search suggestions", async () => {
+		fetchImplementation.mockResolvedValue(
+			Response.json({
+				suggestions: [
+					{
+						placePrediction: {
+							placeId: "zoo-id",
+							text: { text: "Jardim Zoológico de São Paulo" },
+							structuredFormat: { mainText: { text: "Jardim Zoológico de São Paulo" } },
+							types: ["tourist_attraction", "zoo"],
+						},
+					},
+				],
+			}),
+		);
+		const result = await repository.searchPlaces({
+			languageCode: "pt-BR",
+			query: "Zoológico",
+			sessionToken: "session",
+		});
+		expect(result.kind === "SUCCESS" ? result.output.suggestions[0]?.category : undefined).toBe(PlaceCategory.ZOO);
 	});
 
 	it("should preserve nullable secondary text", async () => {
@@ -314,5 +339,381 @@ describe("PlacesRepository", () => {
 				sessionToken: "session",
 			}),
 		).resolves.toEqual({ kind: "UNAVAILABLE" });
+	});
+});
+
+describe("places in bounds", () => {
+	const _bounds = { north: -23.5, south: -23.6, east: -46.6, west: -46.7 };
+
+	function _feature(properties: Record<string, unknown> & { datasource?: { raw?: Record<string, unknown> } }) {
+		return {
+			type: "Feature",
+			properties: {
+				lat: -23.55,
+				lon: -46.65,
+				...properties,
+				datasource: { raw: { name: properties["name"], ...properties.datasource?.raw } },
+			},
+		};
+	}
+
+	async function _findWith(features: unknown[]) {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>().mockImplementation(async (input) => {
+				const categories = new URL(String(input)).searchParams.get("categories");
+				return Response.json({ features: categories?.startsWith("airport") ? features : [] });
+			}),
+		);
+		return new PlacesRepository({
+			placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+			searchRateLimiter: { limit: vi.fn() },
+			detailsRateLimiter: { limit: vi.fn() },
+		}).searchPlacesInArea({
+			bounds: _bounds,
+			categories: [PlaceCategory.AIRPORT],
+			limit: 60,
+		});
+	}
+
+	async function _placeFromProvider(params: { feature: unknown }) {
+		const [place] = await _findWith([params.feature]);
+		return place;
+	}
+
+	afterEach(() => vi.unstubAllGlobals());
+
+	describe("Geoapify place lookup", () => {
+		it("loads a cathedral from the dedicated worship query with its notability signal", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn<typeof fetch>().mockImplementation(async (input) => {
+					const categories = new URL(String(input)).searchParams.get("categories");
+					return Response.json({
+						features: categories?.startsWith("religion.place_of_worship")
+							? [
+									_feature({
+										name: "Catedral da Sé",
+										categories: ["tourism.sights", "tourism.sights.place_of_worship.cathedral"],
+										datasource: { raw: { wikidata: "Q1" } },
+									}),
+								]
+							: [],
+					});
+				}),
+			);
+			const places = await new PlacesRepository({
+				placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+				searchRateLimiter: { limit: vi.fn() },
+				detailsRateLimiter: { limit: vi.fn() },
+			}).searchPlacesInArea({
+				bounds: _bounds,
+				categories: [PlaceCategory.PLACE_OF_WORSHIP],
+				limit: 60,
+			});
+			expect(places).toEqual([
+				{
+					name: "Catedral da Sé",
+					category: PlaceCategory.PLACE_OF_WORSHIP,
+					coordinates: { latitude: -23.55, longitude: -46.65 },
+					notable: true,
+				},
+			]);
+		});
+
+		it("requests caller-selected categories and limit inside the supplied bounds", async () => {
+			const provider = vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ features: [] }));
+			vi.stubGlobal("fetch", provider);
+			await new PlacesRepository({
+				placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+				searchRateLimiter: { limit: vi.fn() },
+				detailsRateLimiter: { limit: vi.fn() },
+			}).searchPlacesInArea({
+				bounds: _bounds,
+				categories: [PlaceCategory.AIRPORT, PlaceCategory.TRAIN_STATION],
+				limit: 42,
+			});
+			expect(provider).toHaveBeenCalledOnce();
+			const request = Object.fromEntries(new URL(String(provider.mock.calls[0]![0])).searchParams);
+			expect(request).toEqual({
+				categories: "airport,public_transport.subway,public_transport.train",
+				filter: "rect:-46.7,-23.5,-46.6,-23.6",
+				limit: "42",
+				apiKey: "test-key",
+			});
+		});
+
+		it("returns normalized landmarks and skips invalid provider features", async () => {
+			const places = await _findWith([
+				_feature({ name: "Aeroporto de Congonhas", categories: ["airport"], datasource: { raw: { wikidata: "Q1" } } }),
+				_feature({ name: "Sem coordenadas", categories: ["sport.stadium"], lat: "invalid" }),
+			]);
+			expect(places).toEqual([
+				{
+					name: "Aeroporto de Congonhas",
+					category: PlaceCategory.AIRPORT,
+					coordinates: { latitude: -23.55, longitude: -46.65 },
+					notable: true,
+				},
+			]);
+		});
+
+		it("reports a provider error status as an unavailable provider", async () => {
+			vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response("busy", { status: 503 })));
+			await expect(
+				new PlacesRepository({
+					placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+					searchRateLimiter: { limit: vi.fn() },
+					detailsRateLimiter: { limit: vi.fn() },
+				}).searchPlacesInArea({
+					bounds: _bounds,
+					categories: [PlaceCategory.AIRPORT],
+					limit: 60,
+				}),
+			).rejects.toMatchObject({
+				errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE,
+			});
+		});
+
+		it("reports a response without features as an unavailable provider", async () => {
+			vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response("not json")));
+			await expect(
+				new PlacesRepository({
+					placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+					searchRateLimiter: { limit: vi.fn() },
+					detailsRateLimiter: { limit: vi.fn() },
+				}).searchPlacesInArea({
+					bounds: _bounds,
+					categories: [PlaceCategory.AIRPORT],
+					limit: 60,
+				}),
+			).rejects.toMatchObject({
+				errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE,
+			});
+		});
+
+		it("reports a timed-out request as a provider timeout", async () => {
+			vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new DOMException("slow", "TimeoutError")));
+			await expect(
+				new PlacesRepository({
+					placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+					searchRateLimiter: { limit: vi.fn() },
+					detailsRateLimiter: { limit: vi.fn() },
+				}).searchPlacesInArea({
+					bounds: _bounds,
+					categories: [PlaceCategory.AIRPORT],
+					limit: 60,
+				}),
+			).rejects.toMatchObject({
+				errorCode: MapsErrorCode.PROVIDER_TIMEOUT,
+			});
+		});
+
+		it("reports a network failure as an unavailable provider", async () => {
+			vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new TypeError("offline")));
+			await expect(
+				new PlacesRepository({
+					placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+					searchRateLimiter: { limit: vi.fn() },
+					detailsRateLimiter: { limit: vi.fn() },
+				}).searchPlacesInArea({
+					bounds: _bounds,
+					categories: [PlaceCategory.AIRPORT],
+					limit: 60,
+				}),
+			).rejects.toMatchObject({
+				errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE,
+			});
+		});
+	});
+
+	it("cancels landmark lookups with the shared map-generation deadline", async () => {
+		const controller = new AbortController();
+		const provider = vi.fn<typeof fetch>().mockImplementation(async (_, init) => {
+			expect(init?.signal?.aborted).toBe(true);
+			throw new DOMException("cancelled", "AbortError");
+		});
+		vi.stubGlobal("fetch", provider);
+		controller.abort();
+		await expect(
+			new PlacesRepository({
+				placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+				searchRateLimiter: { limit: vi.fn() },
+				detailsRateLimiter: { limit: vi.fn() },
+			}).searchPlacesInArea({
+				bounds: _bounds,
+				categories: [PlaceCategory.AIRPORT],
+				limit: 60,
+
+				signal: controller.signal,
+			}),
+		).rejects.toMatchObject({ errorCode: MapsErrorCode.PROVIDER_TIMEOUT, retryable: true });
+	});
+
+	it.each([
+		[429, true],
+		[503, true],
+		[401, false],
+	] as const)("uses Maps retry policy for landmark provider status %s", async (status, retryable) => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn<typeof fetch>()
+				.mockImplementation(async () => new Response(null, { status: status, headers: { "Retry-After": "5" } })),
+		);
+		await expect(
+			new PlacesRepository({
+				placesConfig: { googlePlacesApiKey: "test-google", geoapifyApiKey: "test-key" },
+				searchRateLimiter: { limit: vi.fn() },
+				detailsRateLimiter: { limit: vi.fn() },
+			}).searchPlacesInArea({
+				bounds: _bounds,
+				categories: [PlaceCategory.AIRPORT],
+				limit: 60,
+			}),
+		).rejects.toMatchObject({
+			errorCode: MapsErrorCode.PROVIDER_UNAVAILABLE,
+			retryable: retryable,
+			retryAfterMs: retryable ? 5000 : undefined,
+		});
+	});
+
+	describe("provider feature normalization", () => {
+		it.each([undefined, "", "   "])("preserves the native OSM name when short_name is %j", async (shortName) => {
+			expect(
+				(
+					await _placeFromProvider({
+						feature: _feature({
+							name: "Cologne Cathedral",
+							categories: ["religion.place_of_worship"],
+							datasource: { raw: { name: "Kölner Dom", short_name: shortName } },
+						}),
+					})
+				)?.name,
+			).toBe("Kölner Dom");
+		});
+
+		it("omits a localized provider name when both original OSM names are missing", async () => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({
+						name: "Cologne Cathedral",
+						categories: ["religion.place_of_worship"],
+						datasource: { raw: { name: undefined } },
+					}),
+				}),
+			).toBeUndefined();
+		});
+
+		it("normalizes the primary short name, coordinates and Wikidata signal", async () => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({
+						name: "Aeroporto de São Paulo/Congonhas - Deputado Freitas Nobre",
+						categories: ["airport", "airport.international"],
+						datasource: { raw: { short_name: " Aeroporto de Congonhas ;Congonhas", wikidata: "Q1130578" } },
+					}),
+				}),
+			).toEqual({
+				name: "Aeroporto de Congonhas",
+				category: PlaceCategory.AIRPORT,
+				coordinates: { latitude: -23.55, longitude: -46.65 },
+				notable: true,
+			});
+		});
+
+		it("retains a brand without treating it as Wikidata notability", async () => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({
+						name: "Carrefour",
+						categories: ["commercial", "commercial.supermarket"],
+						datasource: { raw: { brand: "Carrefour" } },
+					}),
+				}),
+			).toEqual({
+				name: "Carrefour",
+				category: PlaceCategory.SUPERMARKET,
+				coordinates: { latitude: -23.55, longitude: -46.65 },
+				notable: false,
+				brand: "Carrefour",
+			});
+		});
+
+		it.each([
+			[" Estação AACD-Servidor;AACD – Servidor ", "Estação AACD-Servidor"],
+			[1, "1"],
+		] as const)("uses the primary original OSM name from %j", async (name, expected) => {
+			expect(
+				(await _placeFromProvider({ feature: _feature({ name: name, categories: ["public_transport.train"] }) }))?.name,
+			).toBe(expected);
+		});
+
+		it("normalizes numeric OpenStreetMap tags and ignores unsupported tag values", async () => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({
+						name: "Aeroporto",
+						categories: ["airport"],
+						datasource: { raw: { short_name: 1, wikidata: 2, brand: 3, tourism: true, historic: {} } },
+					}),
+				}),
+			).toEqual({
+				name: "1",
+				category: PlaceCategory.AIRPORT,
+				coordinates: { latitude: -23.55, longitude: -46.65 },
+				notable: true,
+				brand: "3",
+			});
+		});
+
+		it.each([
+			[["tourism.attraction", "entertainment.museum"], PlaceCategory.ATTRACTION],
+			[["tourism.attraction", "entertainment.zoo"], PlaceCategory.ATTRACTION],
+			[["commercial.supermarket"], PlaceCategory.SUPERMARKET],
+			[["commercial.department_store"], PlaceCategory.STORE],
+			[["tourism.sights", "tourism.sights.place_of_worship.cathedral"], PlaceCategory.PLACE_OF_WORSHIP],
+		] as const)("uses the first supported leaf category for provider tags %j", async (categories, expected) => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({ name: "Known place", categories: categories, datasource: { raw: { wikidata: "Q1" } } }),
+				}),
+			).toMatchObject({ category: expected, notable: true });
+		});
+
+		it.each([
+			{ categories: ["sport.stadium"] },
+			{ name: " ", categories: ["sport.stadium"] },
+			{ name: false, categories: ["sport.stadium"] },
+			{ name: "Banco", categories: ["service.financial"] },
+			{ name: "Sem coordenadas", categories: ["sport.stadium"], lat: "invalid" },
+			{ name: "Latitude inválida", categories: ["sport.stadium"], lat: 91 },
+			{ name: "Longitude inválida", categories: ["sport.stadium"], lon: -181 },
+			{
+				name: "Nome alternativo vazio",
+				categories: ["sport.stadium"],
+				datasource: { raw: { name: undefined, short_name: "" } },
+			},
+		])("drops unnamed, uncategorized or malformed features %j", async (properties) => {
+			expect(await _placeFromProvider({ feature: _feature(properties) })).toBeUndefined();
+		});
+
+		it.each([
+			{ tourism: "viewpoint" },
+			{ tourism: "artwork" },
+			{ historic: "memorial" },
+			{ historic: "monument" },
+		] as const)("normalizes attractions with tags %j without adding a special classification", async (raw) => {
+			expect(
+				await _placeFromProvider({
+					feature: _feature({ name: "Attraction", categories: ["tourism.attraction"], datasource: { raw: raw } }),
+				}),
+			).toEqual({
+				name: "Attraction",
+				category: PlaceCategory.ATTRACTION,
+				coordinates: { latitude: -23.55, longitude: -46.65 },
+				notable: false,
+			});
+		});
 	});
 });

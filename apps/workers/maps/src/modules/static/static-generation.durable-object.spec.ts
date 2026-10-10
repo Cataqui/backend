@@ -1,3 +1,4 @@
+import { PlacesRepository } from "../places/places.repository";
 import { StaticGenerationDurableObject } from "./static-generation.durable-object";
 import { StaticRepository } from "./static.repository";
 import { MapsError } from "../../shared/maps.error";
@@ -41,6 +42,7 @@ function _coordinator() {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	vi.spyOn(PlacesRepository.prototype, "searchPlacesInArea").mockResolvedValue([]);
 	vi.mocked(StaticRepository.prototype.findImage).mockResolvedValue(false);
 	vi.mocked(StaticRepository.prototype.upload).mockResolvedValue(undefined);
 	vi.mocked(StaticRepository.prototype.encode).mockResolvedValue(new Uint8Array([2]));

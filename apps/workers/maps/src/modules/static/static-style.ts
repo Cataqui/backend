@@ -1,9 +1,10 @@
 // Change this revision when the map style or provider rendering changes.
 export const StaticStyle = {
-	version: "cataqui-light-zoom13-v12",
+	version: "cataqui-light-zoom13-v23-landmarks",
 	style: "osm-bright",
 	zoom: 13,
 	format: "png",
+	landmarks: { maxPerTallImage: 10, maxPerSquareImage: 5, tallImageVisibleFraction: 0.5 },
 	styleCustomization: [
 		// Land and vegetation.
 		"background:#f5f1f0",
@@ -73,7 +74,7 @@ export const StaticStyle = {
 		"bridge-link-casing:#d3d7e4;2",
 		"bridge-motorway-link:#b4c0d0;2",
 		"bridge-motorway-link-casing:#b4c0d0;2",
-		// Match hidden administrative boundaries and POIs; transit remains visible.
+		// Hide administrative boundaries and native POIs; landmarks supply reference pins.
 		"boundary-land-level-4:none",
 		"boundary-land-level-2:none",
 		"boundary-land-disputed:none",
@@ -81,6 +82,9 @@ export const StaticStyle = {
 		"poi-level-1:none",
 		"poi-level-2:none",
 		"poi-level-3:none",
+		"poi-railway:none",
+		// Custom landmark pins supply airport icons and names; preserve airport geometry.
+		"airport-label-major:none",
 		// Geographic labels retain native fonts, halos and zoom-dependent sizing.
 		"place-city:#000000",
 		"place-city-capital:#000000",
@@ -90,7 +94,6 @@ export const StaticStyle = {
 		"highway-name-major:#626262",
 		"highway-name-minor:#737373",
 		"highway-name-path:#737373",
-		"poi-railway:#686868",
 		"waterway-name:#0494dc",
 		"water-name-lakeline:#0494dc",
 		"water-name-ocean:#0494dc",

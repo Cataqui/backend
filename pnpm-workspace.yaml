@@ -16,6 +16,7 @@ catalog:
   wrangler: ^4.145.0
   zod: ^4.4.3
 allowBuilds:
+  "@mateo/icons@git+https://github.com/Ventairy/mateo.git": true
   "@nestjs/core": false
   "@prisma/engines": true
   "@scarf/scarf": false
