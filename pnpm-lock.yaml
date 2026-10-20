@@ -358,7 +358,7 @@ importers:
         version: link:../../packages/workerhole
       '@mateo/palette':
         specifier: 'catalog:'
-        version: https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-palette
+        version: https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-palette
       blake3-wasm:
         specifier: 2.1.5
         version: 2.1.5
@@ -676,10 +676,10 @@ importers:
     dependencies:
       '@mateo/icons':
         specifier: 'catalog:'
-        version: https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-icons
+        version: https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-icons
       '@mateo/palette':
         specifier: 'catalog:'
-        version: https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-palette
+        version: https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-palette
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -2031,13 +2031,13 @@ packages:
   '@mapbox/vector-tile@3.0.0':
     resolution: {integrity: sha512-Qf10S1uIHMk20ri/IVBnpS+esUEkVaR5Hftmz88jTInrpmWgPGJfPe3LVjjlE77trLx8tH6qjTG7uWH9hIq/0Q==}
 
-  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-icons':
-    resolution: {gitHosted: true, integrity: sha512-xnec7qMeeHt9K9d9Md17kNQn+xynFg9iB2qnUiDgEIJyEho1rvjA6CZVbbMq+PKPoZ65kEEsyrmF+xyFGRJuDQ==, path: /packages/typescript/mateo-icons, tarball: https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc}
+  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-icons':
+    resolution: {gitHosted: true, integrity: sha512-vt7oSfRM/0xuukEYdlu2rm8JIYMRHakV6VYkrQMvF8HxYKzrXbsnSOsGNqZf0rsNH8eLZ7YSRvHJEkemepTKNQ==, path: /packages/typescript/mateo-icons, tarball: https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e}
     version: 0.0.0
     engines: {node: ^24.15.0}
 
-  '@mateo/palette@https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-palette':
-    resolution: {gitHosted: true, integrity: sha512-xnec7qMeeHt9K9d9Md17kNQn+xynFg9iB2qnUiDgEIJyEho1rvjA6CZVbbMq+PKPoZ65kEEsyrmF+xyFGRJuDQ==, path: /packages/typescript/mateo-palette, tarball: https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc}
+  '@mateo/palette@https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-palette':
+    resolution: {gitHosted: true, integrity: sha512-vt7oSfRM/0xuukEYdlu2rm8JIYMRHakV6VYkrQMvF8HxYKzrXbsnSOsGNqZf0rsNH8eLZ7YSRvHJEkemepTKNQ==, path: /packages/typescript/mateo-palette, tarball: https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e}
     version: 0.0.0
     engines: {node: ^24.15.0}
 
@@ -6475,9 +6475,9 @@ snapshots:
       '@types/geojson': 7946.0.16
       pbf: 5.1.2
 
-  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-icons': {}
+  '@mateo/icons@https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-icons': {}
 
-  '@mateo/palette@https://codeload.github.com/Ventairy/mateo/tar.gz/7fdd692b3aaef51ea0561ef53f3612461f63e7cc#path:/packages/typescript/mateo-palette':
+  '@mateo/palette@https://codeload.github.com/Ventairy/mateo/tar.gz/9bcd4aebd3bbc2077e7c65729d18b0b981241d4e#path:/packages/typescript/mateo-palette':
     dependencies:
       culori: 4.0.2
 
@@ -9308,6 +9308,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20260930.2
     optionalDependencies:
+      '@cloudflare/workers-types': 5.20260930.2
       fsevents: 2.3.3
     transitivePeerDependencies:
       - '@types/node'
