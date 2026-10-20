@@ -1,42 +1,53 @@
-import { HttpException, HttpStatus } from "@nestjs/common";
+import { type ArgumentsHost, HttpException, HttpStatus } from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import * as td from "testdouble";
 import { ErrorCode } from "../error-code.enum";
 import { RequestValidationError } from "../request-validation.error";
 import { HttpExceptionFilter } from "./http-exception.filter";
 
-function createMockHost(exception: unknown, requestId?: string) {
-	const statusMock = vi.fn();
-	const sendMock = vi.fn();
-	const response = { status: statusMock.mockReturnValue({ send: sendMock }) };
-	const request = {
+afterEach(() => td.reset());
+
+function _createMockHost(params: { exception: unknown; requestId?: string }): {
+	statusMock: FastifyReply["status"];
+	sendMock: FastifyReply["send"];
+	response: FastifyReply;
+	request: FastifyRequest;
+} {
+	const response = td.object<FastifyReply>();
+	const statusMock = response.status;
+	const sendMock = response.send;
+	td.when(response.status(td.matchers.anything())).thenReturn(response);
+	const request = Object.assign(td.object<FastifyRequest>(), {
 		method: "GET",
 		url: "/v1/test",
-		headers: requestId ? { "x-request-id": requestId } : {},
-	};
-
-	const host = {
-		switchToHttp: () => ({
-			getResponse: () => response,
-			getRequest: () => request,
-		}),
-	};
+		headers: params.requestId ? { "x-request-id": params.requestId } : {},
+	});
+	const httpHost = td.object<ReturnType<ArgumentsHost["switchToHttp"]>>();
+	td.when(httpHost.getResponse<FastifyReply>()).thenReturn(response);
+	td.when(httpHost.getRequest<FastifyRequest>()).thenReturn(request);
+	const host = td.object<ArgumentsHost>();
+	td.when(host.switchToHttp()).thenReturn(httpHost);
 
 	const filter = new HttpExceptionFilter();
-	filter.catch(exception, host as never);
+	filter.catch(params.exception, host);
 
-	return { statusMock, sendMock, response, request };
+	return { statusMock: statusMock, sendMock: sendMock, response: response, request: request };
 }
 
 describe("HttpExceptionFilter", () => {
-	it("should handle DomainError subclass with camelCase and metadata", () => {
+	it("should handle AppError subclass with camelCase and metadata", () => {
 		class TestNotFoundError extends HttpException {
 			constructor(message: string) {
-				super({ errorCode: ErrorCode.NOT_FOUND, message }, HttpStatus.NOT_FOUND);
+				super({ errorCode: ErrorCode.NOT_FOUND, message: message }, HttpStatus.NOT_FOUND);
 			}
 		}
 
-		const { sendMock, statusMock } = createMockHost(new TestNotFoundError("Resource not found"));
+		const { sendMock, statusMock } = _createMockHost({ exception: new TestNotFoundError("Resource not found") });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toEqual({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toEqual({
 			httpStatus: HttpStatus.NOT_FOUND,
 			body: {
 				errorCode: ErrorCode.NOT_FOUND,
@@ -52,9 +63,12 @@ describe("HttpExceptionFilter", () => {
 	it("should handle HttpException with string response", () => {
 		const exception = new HttpException("Something went wrong", HttpStatus.BAD_REQUEST);
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toEqual({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toEqual({
 			httpStatus: HttpStatus.BAD_REQUEST,
 			body: {
 				errorCode: ErrorCode.INVALID_REQUEST,
@@ -73,9 +87,12 @@ describe("HttpExceptionFilter", () => {
 			HttpStatus.BAD_REQUEST,
 		);
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.BAD_REQUEST,
 			body: {
 				errorCode: ErrorCode.INVALID_REQUEST,
@@ -92,9 +109,12 @@ describe("HttpExceptionFilter", () => {
 			],
 		});
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.BAD_REQUEST,
 			body: {
 				errorCode: ErrorCode.VALIDATION_ERROR,
@@ -117,9 +137,9 @@ describe("HttpExceptionFilter", () => {
 			HttpStatus.BAD_REQUEST,
 		);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		expect(sendMock.mock.calls[0]?.[0]).toEqual({
+		expect(td.explain(sendMock).calls[0]?.args[0]).toEqual({
 			errorCode: ErrorCode.VALIDATION_ERROR,
 			message: "The request contains invalid fields.",
 			status: HttpStatus.BAD_REQUEST,
@@ -135,9 +155,12 @@ describe("HttpExceptionFilter", () => {
 			HttpStatus.FORBIDDEN,
 		);
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.FORBIDDEN,
 			body: {
 				errorCode: ErrorCode.CORS_BLOCKED,
@@ -153,9 +176,12 @@ describe("HttpExceptionFilter", () => {
 			HttpStatus.BAD_REQUEST,
 		);
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.BAD_REQUEST,
 			body: {
 				errorCode: ErrorCode.INVALID_REQUEST,
@@ -176,9 +202,9 @@ describe("HttpExceptionFilter", () => {
 			HttpStatus.BAD_REQUEST,
 		);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body).toMatchObject({
 			errorCode: ErrorCode.INVALID_REQUEST,
 			message:
@@ -187,27 +213,36 @@ describe("HttpExceptionFilter", () => {
 	});
 
 	it("should handle non-HttpException Error", () => {
-		const { sendMock, statusMock } = createMockHost(new Error("unexpected failure"));
+		const { sendMock, statusMock } = _createMockHost({ exception: new Error("unexpected failure") });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
 		});
 	});
 
 	it("should handle unknown throwable (not an Error)", () => {
-		const { sendMock, statusMock } = createMockHost("string error");
+		const { sendMock, statusMock } = _createMockHost({ exception: "string error" });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
 		});
 	});
 
 	it("should handle null throwable", () => {
-		const { sendMock, statusMock } = createMockHost(null);
+		const { sendMock, statusMock } = _createMockHost({ exception: null });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
 		});
@@ -216,18 +251,21 @@ describe("HttpExceptionFilter", () => {
 	it("should handle object response without errorCode key", () => {
 		const exception = new HttpException({ message: "some error" }, HttpStatus.BAD_REQUEST);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body).toMatchObject({ errorCode: ErrorCode.INVALID_REQUEST, message: "some error" });
 	});
 
 	it("should handle HttpException with numeric response (non-string, non-object)", () => {
 		const exception = new HttpException(123 as never, HttpStatus.INTERNAL_SERVER_ERROR);
 
-		const { sendMock, statusMock } = createMockHost(exception);
+		const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-		expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+		expect({
+			httpStatus: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toMatchObject({
 			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
 			body: { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" },
 		});
@@ -236,9 +274,9 @@ describe("HttpExceptionFilter", () => {
 	it("should handle object message that is neither string nor array", () => {
 		const exception = new HttpException({ message: { key: "value" } } as never, HttpStatus.BAD_REQUEST);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body).toMatchObject({
 			errorCode: ErrorCode.INVALID_REQUEST,
 			message: "An unexpected error occurred",
@@ -248,27 +286,27 @@ describe("HttpExceptionFilter", () => {
 	it("should pass through X-Request-ID header value", () => {
 		const exception = new HttpException("Something went wrong", HttpStatus.BAD_REQUEST);
 
-		const { sendMock } = createMockHost(exception, "custom-request-id-from-header");
+		const { sendMock } = _createMockHost({ exception: exception, requestId: "custom-request-id-from-header" });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body).toHaveProperty("requestId", "custom-request-id-from-header");
 	});
 
 	it("should generate a UUID requestId when no X-Request-ID header", () => {
 		const exception = new HttpException("Something went wrong", HttpStatus.BAD_REQUEST);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body["requestId"] as string).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
 	it("should format timestamp as ISO 8601", () => {
 		const exception = new HttpException("Something went wrong", HttpStatus.BAD_REQUEST);
 
-		const { sendMock } = createMockHost(exception);
+		const { sendMock } = _createMockHost({ exception: exception });
 
-		const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+		const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 		expect(body["timestamp"] as string).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 	});
 
@@ -276,9 +314,12 @@ describe("HttpExceptionFilter", () => {
 		it("should return PAYLOAD_TOO_LARGE for string response with 413 status", () => {
 			const exception = new HttpException("Request body is too large", HttpStatus.PAYLOAD_TOO_LARGE);
 
-			const { sendMock, statusMock } = createMockHost(exception);
+			const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: td.explain(statusMock).calls[0]?.args[0],
+				body: td.explain(sendMock).calls[0]?.args[0],
+			}).toMatchObject({
 				httpStatus: HttpStatus.PAYLOAD_TOO_LARGE,
 				body: {
 					errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
@@ -291,18 +332,21 @@ describe("HttpExceptionFilter", () => {
 		it("should return PAYLOAD_TOO_LARGE for object response without errorCode with 413 status", () => {
 			const exception = new HttpException({ message: "body too big" }, HttpStatus.PAYLOAD_TOO_LARGE);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({ errorCode: ErrorCode.PAYLOAD_TOO_LARGE, message: "body too big" });
 		});
 
 		it("should return URI_TOO_LONG for string response with 414 status", () => {
 			const exception = new HttpException("Request URL is too long", HttpStatus.URI_TOO_LONG);
 
-			const { sendMock, statusMock } = createMockHost(exception);
+			const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: td.explain(statusMock).calls[0]?.args[0],
+				body: td.explain(sendMock).calls[0]?.args[0],
+			}).toMatchObject({
 				httpStatus: HttpStatus.URI_TOO_LONG,
 				body: {
 					errorCode: ErrorCode.URI_TOO_LONG,
@@ -315,18 +359,21 @@ describe("HttpExceptionFilter", () => {
 		it("should return URI_TOO_LONG for object response without errorCode with 414 status", () => {
 			const exception = new HttpException({ message: "url too long" }, HttpStatus.URI_TOO_LONG);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({ errorCode: ErrorCode.URI_TOO_LONG, message: "url too long" });
 		});
 
 		it("should return REQUEST_HEADER_FIELDS_TOO_LARGE for string response with 431 status", () => {
 			const exception = new HttpException("Request header fields too large", 431);
 
-			const { sendMock, statusMock } = createMockHost(exception);
+			const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: td.explain(statusMock).calls[0]?.args[0],
+				body: td.explain(sendMock).calls[0]?.args[0],
+			}).toMatchObject({
 				httpStatus: 431,
 				body: {
 					errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -339,9 +386,9 @@ describe("HttpExceptionFilter", () => {
 		it("should return REQUEST_HEADER_FIELDS_TOO_LARGE for object response without errorCode with 431 status", () => {
 			const exception = new HttpException({ message: "headers too big" }, 431);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({
 				errorCode: ErrorCode.REQUEST_HEADER_FIELDS_TOO_LARGE,
 				message: "headers too big",
@@ -354,9 +401,9 @@ describe("HttpExceptionFilter", () => {
 				HttpStatus.PAYLOAD_TOO_LARGE,
 			);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({
 				errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
 				message: "custom body too large",
@@ -368,9 +415,12 @@ describe("HttpExceptionFilter", () => {
 		it("should return UNSUPPORTED_MEDIA_TYPE for a string response with 415 status", () => {
 			const exception = new HttpException("Unsupported Media Type", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-			const { sendMock, statusMock } = createMockHost(exception);
+			const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: td.explain(statusMock).calls[0]?.args[0],
+				body: td.explain(sendMock).calls[0]?.args[0],
+			}).toMatchObject({
 				httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
 				body: {
 					errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE,
@@ -384,9 +434,9 @@ describe("HttpExceptionFilter", () => {
 		it("should return UNSUPPORTED_MEDIA_TYPE for an object response with 415 status", () => {
 			const exception = new HttpException({ message: "Unsupported Media Type" }, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			expect(sendMock.mock.calls[0]?.[0]).toMatchObject({
+			expect(td.explain(sendMock).calls[0]?.args[0]).toMatchObject({
 				errorCode: ErrorCode.UNSUPPORTED_MEDIA_TYPE,
 				message:
 					"Request body media type is unsupported. Send Content-Type: application/json for a JSON body, or omit Content-Type when the request has no body.",
@@ -402,9 +452,12 @@ describe("HttpExceptionFilter", () => {
 				HttpStatus.NOT_FOUND,
 			);
 
-			const { sendMock, statusMock } = createMockHost(exception);
+			const { sendMock, statusMock } = _createMockHost({ exception: exception });
 
-			expect({ httpStatus: statusMock.mock.calls[0]?.[0], body: sendMock.mock.calls[0]?.[0] }).toMatchObject({
+			expect({
+				httpStatus: td.explain(statusMock).calls[0]?.args[0],
+				body: td.explain(sendMock).calls[0]?.args[0],
+			}).toMatchObject({
 				httpStatus: HttpStatus.NOT_FOUND,
 				body: {
 					errorCode: ErrorCode.ROUTE_NOT_FOUND,
@@ -417,18 +470,18 @@ describe("HttpExceptionFilter", () => {
 		it("should return NOT_FOUND for NotFoundException without Cannot prefix", () => {
 			const exception = new HttpException({ message: "Custom not found", statusCode: 404 }, HttpStatus.NOT_FOUND);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({ errorCode: ErrorCode.NOT_FOUND, message: "Custom not found" });
 		});
 
 		it("should return ROUTE_NOT_FOUND with string response starting with Cannot", () => {
 			const exception = new HttpException("Cannot GET /v1/unknown", HttpStatus.NOT_FOUND);
 
-			const { sendMock } = createMockHost(exception);
+			const { sendMock } = _createMockHost({ exception: exception });
 
-			const body = sendMock.mock.calls[0]![0] as Record<string, unknown>;
+			const body = td.explain(sendMock).calls[0]!.args[0] as Record<string, unknown>;
 			expect(body).toMatchObject({
 				errorCode: ErrorCode.ROUTE_NOT_FOUND,
 				message: "The requested endpoint was not found.",
@@ -436,3 +489,27 @@ describe("HttpExceptionFilter", () => {
 		});
 	});
 });
+
+it.each(["UNREGISTERED_FAILURE", "", 123, null])(
+	"sanitizes unrecognized error code %s without failing error serialization",
+	(errorCode) => {
+		const { statusMock, sendMock } = _createMockHost({
+			exception: new HttpException({ errorCode: errorCode, message: "private provider details" }, 503),
+		});
+
+		expect({
+			status: td.explain(statusMock).calls[0]?.args[0],
+			body: td.explain(sendMock).calls[0]?.args[0],
+		}).toEqual({
+			status: 503,
+			body: {
+				errorCode: ErrorCode.INTERNAL_ERROR,
+				message: "An unexpected error occurred",
+				status: 503,
+				requestId: expect.any(String),
+				timestamp: expect.any(String),
+				endpoint: "/v1/test",
+			},
+		});
+	},
+);

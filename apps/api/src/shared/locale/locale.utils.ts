@@ -24,6 +24,6 @@ function resolveLocalizedString(params: {
 }
 
 export const LocaleUtils = {
-	formatBcp47LocaleTag,
-	resolveLocalizedString,
+	formatBcp47LocaleTag: formatBcp47LocaleTag,
+	resolveLocalizedString: resolveLocalizedString,
 } as const;

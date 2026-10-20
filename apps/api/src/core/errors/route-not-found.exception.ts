@@ -1,8 +1,8 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "./domain-error";
+import { AppError } from "./app-error";
 import { ErrorCode } from "./error-code.enum";
 
-export class RouteNotFoundException extends DomainError {
+export class RouteNotFoundException extends AppError {
 	constructor() {
 		super(
 			ErrorCode.ROUTE_NOT_FOUND,

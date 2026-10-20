@@ -60,6 +60,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	it("should create the exact environment-specific token inventory", () => {
 		for (const rootName of [
 			"cloudflare-ai-gateways",
+			"cloudflare-hyperdrive",
 			"cloudflare-pages",
 			"cloudflare-queues",
 			"cloudflare-r2",
@@ -83,6 +84,8 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 			"AI Gateway Run",
 			"Workers R2 Storage Read",
 			"Workers R2 Storage Write",
+			"Workers R2 Storage Bucket Item Read",
+			"Workers R2 Storage Bucket Item Write",
 			"Pages Read",
 			"Pages Write",
 			"Queues Read",
@@ -128,28 +131,51 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 	});
 
 	it("should deliver only write-only Infisical copies to exact destinations", () => {
-		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(3);
+		expect(rootHcl.match(/resource "infisical_secret"/g)).toHaveLength(5);
 		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/opentofu\/\$\{each\.key\}"/);
 		expect(rootHcl).toContain('name             = "CLOUDFLARE_API_TOKEN"');
 		expect(rootHcl).toContain('folder_path = "/generated/api/runtime"');
 		expect(rootHcl).toContain('secret_name = "AI_GATEWAY_API_TOKEN"');
 		expect(rootHcl).toContain("folder_path      = each.value.folder_path");
-		for (const path of ["/generated/api/deployment", "/generated/webhooks/deployment"]) {
+		for (const path of [
+			"/generated/api/deployment",
+			"/generated/maps/deployment",
+			"/generated/mapshot/deployment",
+			"/generated/auth/deployment",
+		]) {
 			expect(rootHcl).toMatch(new RegExp(`folder_path\\s*=\\s*"${path}"`));
 		}
-		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(3);
-		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(3);
+		expect(rootHcl.match(/value_wo\s*=/g)).toHaveLength(5);
+		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(5);
 		expect(rootHcl).not.toMatch(/^\s*value\s*=/m);
 		expect(rootHcl).not.toMatch(/\boutput\s+"/);
 	});
 
 	it("should protect tokens and their destination secrets without expiration or IP conditions", () => {
-		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(6);
+		expect(rootHcl.match(/prevent_destroy\s*=\s*true/g)).toHaveLength(9);
 		expect(rootHcl).not.toMatch(/\b(?:request_ip|expires_on|not_before)\s*=/);
 		expect(rootHcl).not.toMatch(/^\s*condition\s*=\s*{/m);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-opentofu-\$\{each\.key\}-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-workers-deployment-\$\{var\.environment\}"/);
+	});
+
+	it("scopes Mapshot map-update and deployment credentials to individual buckets", () => {
+		expect(rootHcl).toMatch(/mapshot_r2_tokens\s*=\s*merge\(/);
+		expect(rootHcl).toMatch(/scope\s*=\s*"com\.cloudflare\.edge\.r2\.bucket"/);
+		expect(rootHcl).toMatch(
+			/"com\.cloudflare\.edge\.r2\.bucket\.\$\{local\.cloudflare_account_id\}_default_\$\{each\.value\.bucket\}"/,
+		);
+		expect(rootHcl).not.toContain("promotion-staging");
+		expect(rootHcl).toMatch(/value_wo\s*=\s*cloudflare_api_token\.mapshot_r2\[each\.key\]\.id/);
+		expect(rootHcl).toMatch(/value_wo\s*=\s*sha256\(cloudflare_api_token\.mapshot_r2\[each\.key\]\.value\)/);
+		expect(rootHcl).not.toContain("MAPSHOT_STAGING_R2");
+		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/mapshot\/map-update"/);
+		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/mapshot\/deployment"/);
+		expect(rootHcl).toMatch(
+			/copy_source_bucket\s*=\s*var\.environment == "production" \? local\.manifest\.cloudflare\.r2\.buckets\.mapshot_staging : null/,
+		);
+		expect(rootHcl).not.toContain("com.cloudflare.edge.r2.bucket.*");
 	});
 
 	it("should keep the bootstrap issuer and backend credentials external", () => {

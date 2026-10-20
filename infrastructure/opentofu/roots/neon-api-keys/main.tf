@@ -20,3 +20,12 @@ resource "infisical_secret" "neon_project_api_key" {
     prevent_destroy = true
   }
 }
+
+resource "infisical_secret" "auth_neon_project_api_key" {
+  workspace_id     = local.infisical_project_id
+  env_slug         = var.environment
+  folder_path      = "/generated/auth/deployment"
+  name             = "NEON_PROJECT_API_KEY"
+  value_wo         = neon_org_api_key.project_access.key
+  value_wo_version = local.project_api_key_version
+}

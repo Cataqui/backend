@@ -15,7 +15,8 @@ locals {
     }
   }
 
-  database = local.database_by_environment[var.environment]
+  auth_database_name = local.manifest.upstash.redis.databases["cataqui_auth_${var.environment}"].name
+  database           = local.database_by_environment[var.environment]
 
   redis_rest_host = endswith(upstash_redis_database.api.endpoint, ".upstash.io") ? upstash_redis_database.api.endpoint : "${upstash_redis_database.api.endpoint}.upstash.io"
   redis_rest_url  = "https://${local.redis_rest_host}"

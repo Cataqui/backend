@@ -1,0 +1,60 @@
+name: Resolve deployment
+description: Select the environment, affected applications and authorized map promotion.
+inputs:
+  scope:
+    description: Requested application scope or automatic
+    required: true
+outputs:
+  environment:
+    description: Resolved environment.
+    value: ${{ steps.targets.outputs.environment }}
+  deploy-api:
+    description: Resolved deploy-api.
+    value: ${{ steps.targets.outputs.deploy-api }}
+  deploy-maps:
+    description: Resolved deploy-maps.
+    value: ${{ steps.targets.outputs.deploy-maps }}
+  deploy-mapshot:
+    description: Resolved deploy-mapshot.
+    value: ${{ steps.targets.outputs.deploy-mapshot == 'true' || steps.promotion.outputs.promote-mapshot == 'true' }}
+  promote-mapshot:
+    description: Resolved promote-mapshot.
+    value: ${{ steps.promotion.outputs.promote-mapshot }}
+  deploy-auth:
+    description: Resolved deploy-auth.
+    value: ${{ steps.targets.outputs.deploy-auth }}
+runs:
+  using: composite
+  steps:
+    - name: Get deployment targets
+      id: targets
+      shell: ruby {0}
+      env:
+        DEPLOYMENT_SCOPE: ${{ inputs.scope }}
+        BEFORE_SHA: ${{ github.event.before }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "get-deployment-targets.rb")
+    - name: Get authorized Mapshot promotion
+      id: promotion
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ steps.targets.outputs.environment }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        require "json"
+        require "open3"
+        promote_mapshot = false
+        if ENV.fetch("INPUT_ENVIRONMENT") == "production" && ENV.fetch("GITHUB_EVENT_NAME") == "push"
+          repository = ENV.fetch("GITHUB_REPOSITORY")
+          sha = ENV.fetch("GITHUB_SHA")
+          response, status = Open3.capture2("gh", "api", "repos/#{repository}/commits/#{sha}/pulls?per_page=100")
+          exit status.exitstatus unless status.success?
+          prs = JSON.parse(response.force_encoding("UTF-8"))
+          abort "GitHub returned invalid pull requests." unless prs.is_a?(Array)
+          promote_mapshot = prs.any? do |pr|
+            !pr["merged_at"].nil? && pr["merge_commit_sha"] == sha &&
+              pr.dig("base", "ref") == "main" && pr.dig("head", "ref") == "staging" &&
+              pr.dig("base", "repo", "full_name") == repository &&
+              pr.dig("head", "repo", "full_name") == repository
+          end
+        end
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |output| output.puts "promote-mapshot=#{promote_mapshot}" }

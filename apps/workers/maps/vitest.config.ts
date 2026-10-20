@@ -1,27 +1,33 @@
-import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
-import { WorkspaceCoverage } from "../../../vitest.shared";
+import { WorkspaceCoverage } from "../../../vitest.shared.ts";
 export default defineConfig({
+	oxc: { decorator: { legacy: true, emitDecoratorMetadata: true } },
 	test: {
 		projects: [
 			{
 				extends: true,
 				resolve: {
-					alias: { "cloudflare:workers": new URL("./test/cloudflare-workers.stub.ts", import.meta.url).pathname },
+					alias: [
+						{ find: /^#maps\/(.+)$/, replacement: new URL("./src/$1.ts", import.meta.url).pathname },
+						{
+							find: "cloudflare:workers",
+							replacement: new URL("./test/cloudflare-workers.stub.ts", import.meta.url).pathname,
+						},
+					],
 				},
-				test: { name: "unit", globals: true, include: ["src/**/*.spec.ts", "test/configuration-contract.spec.ts"] },
-			},
-			{
-				extends: true,
-				plugins: [
-					cloudflareTest({
-						wrangler: { configPath: "./wrangler.jsonc", environment: "staging" },
-						miniflare: { bindings: { GEOAPIFY_API_KEY: "test", GOOGLE_PLACES_API_KEY: "test" } },
-					}),
-				],
-				test: { name: "runtime", globals: true, include: ["test/*.runtime.spec.ts"] },
+				test: {
+					name: "unit",
+					globals: true,
+					setupFiles: [new URL("./node_modules/reflect-metadata/Reflect.js", import.meta.url).pathname],
+					include: ["src/**/*.spec.ts", "test/configuration-contract.spec.ts", "test/worker-binding-types.spec.ts"],
+				},
 			},
 		],
-		coverage: { ...WorkspaceCoverage, provider: "istanbul", include: ["src/**/*.ts"], exclude: ["src/**/*.d.ts"] },
+		coverage: {
+			...WorkspaceCoverage,
+			provider: "istanbul",
+			include: ["src/**/*.ts"],
+			exclude: ["src/**/*.d.ts"],
+		},
 	},
 });

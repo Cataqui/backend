@@ -1,0 +1,48 @@
+{
+	"name": "@cataqui/workerhole",
+	"version": "1.0.0",
+	"description": "Typed portals between Cloudflare Workers and their container applications.",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"workerd": "./dist/index.worker.js",
+			"node": "./dist/index.node.js",
+			"default": "./dist/index.js"
+		},
+		"./worker": {
+			"types": "./dist/worker.d.ts",
+			"workerd": "./dist/worker.js"
+		}
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts src/index.node.ts src/index.worker.ts src/worker.ts --tsconfig tsconfig.build.json --format esm --dts --sourcemap --target es2023 --platform neutral --out-dir dist --deps.never-bundle cloudflare:workers --deps.never-bundle node:http",
+		"typecheck": "pnpm cf:types && tsc --noEmit && tsc --noEmit -p tsconfig.consumer.json && tsc --noEmit -p tsconfig.runtime.json",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist test/dist .cloudflare .wrangler",
+		"test:runtime": "ruby test/check-runtime.rb",
+		"cf:types": "cf workers types --mode development --include-runtime=false"
+	},
+	"dependencies": {
+		"capnweb": "0.12.0",
+		"ws": "8.20.0"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@types/node": "catalog:",
+		"@types/ws": "8.18.1",
+		"@vitest/coverage-v8": "catalog:",
+		"cf": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:",
+		"testdouble": "catalog:"
+	}
+}

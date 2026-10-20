@@ -1,0 +1,12 @@
+model Profile {
+  id              String           @id @db.Uuid
+  name            String           @db.VarChar(320)
+  creationHash    String           @map("creation_hash") @db.Char(64)
+  contacts        Contact[]
+  jobs            Job[]
+  jobPostRequests JobPostRequest[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}

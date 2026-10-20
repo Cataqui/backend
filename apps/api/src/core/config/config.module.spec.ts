@@ -26,7 +26,7 @@ describe("ConfigModule", () => {
 	});
 
 	it("should preserve HOST loaded only from .env when the environment schema does not declare it", async () => {
-		writeFileSync(path.join(environmentDirectory, ".env"), "HOST=127.0.0.1\nPORT=8081\n");
+		writeFileSync(path.join(process.cwd(), ".env"), "HOST=127.0.0.1\nPORT=8081\n");
 		const { ConfigModule } = await import("./config.module");
 		const module = await Test.createTestingModule({ imports: [ConfigModule] }).compile();
 		const config = module.get(ConfigService);
@@ -41,8 +41,78 @@ describe("ConfigModule", () => {
 		expect(loadedValues).toEqual({ host: "127.0.0.1", listenHost: "127.0.0.1", port: 8081 });
 	});
 
+	it("provides the API runtime environment loaded from its own .env", async () => {
+		vi.stubEnv("ENVIRONMENT", undefined);
+		writeFileSync(path.join(process.cwd(), ".env"), "ENVIRONMENT=staging\n");
+		const { ConfigModule } = await import("./config.module");
+		const { runtimeConfig } = await import("./runtime.config");
+		const module = await Test.createTestingModule({ imports: [ConfigModule] }).compile();
+		expect(module.get(runtimeConfig.KEY)).toEqual({ environment: "staging" });
+		await module.close();
+	});
+
+	it("loads the API database from its own file without loading repository-root secrets", async () => {
+		vi.stubEnv("DATABASE_APP_POOLER_URL", undefined);
+		vi.stubEnv("META_APP_SECRET", undefined);
+		writeFileSync(
+			path.join(environmentDirectory, ".env"),
+			"DATABASE_APP_POOLER_URL=postgresql://root:root@localhost:5432/wrong\nMETA_APP_SECRET=root-secret\n",
+		);
+		writeFileSync(
+			path.join(process.cwd(), ".env"),
+			"DATABASE_APP_POOLER_URL=postgresql://api:api@localhost:5432/cataqui\n",
+		);
+		const { ConfigModule } = await import("./config.module");
+		const module = await Test.createTestingModule({ imports: [ConfigModule] }).compile();
+		const loadedValues = {
+			database: module.get(ConfigService).get<string>("DATABASE_APP_POOLER_URL"),
+			metaSecret: process.env["META_APP_SECRET"],
+		};
+		await module.close();
+
+		expect(loadedValues).toEqual({
+			database: "postgresql://api:api@localhost:5432/cataqui",
+			metaSecret: undefined,
+		});
+	});
+
+	it("preserves injected runtime values over the API local file", async () => {
+		vi.stubEnv("DATABASE_APP_POOLER_URL", "postgresql://runtime:runtime@localhost:5432/runtime");
+		writeFileSync(
+			path.join(process.cwd(), ".env"),
+			"DATABASE_APP_POOLER_URL=postgresql://local:local@localhost:5432/local\n",
+		);
+		const { ConfigModule } = await import("./config.module");
+		const module = await Test.createTestingModule({ imports: [ConfigModule] }).compile();
+		const database = module.get(ConfigService).get<string>("DATABASE_APP_POOLER_URL");
+		await module.close();
+
+		expect(database).toBe("postgresql://runtime:runtime@localhost:5432/runtime");
+	});
+
+	it("should share one runtime configuration between injection and namespaced lookup", async () => {
+		writeFileSync(path.join(process.cwd(), ".env"), "");
+		const { ConfigModule } = await import("./config.module");
+		const { runtimeConfig } = await import("./runtime.config");
+		const module = await Test.createTestingModule({
+			imports: [ConfigModule],
+			providers: [
+				{
+					provide: "runtimeConsumer",
+					useFactory: (runtime: ReturnType<typeof runtimeConfig>) => runtime,
+					inject: [runtimeConfig.KEY],
+				},
+			],
+		}).compile();
+		const runtime = module.get("runtimeConsumer");
+		const namespacedRuntime = module.get(ConfigService).get("runtime");
+		await module.close();
+
+		expect(runtime).toBe(namespacedRuntime);
+	});
+
 	it("should default PORT when neither .env nor the process environment defines it", async () => {
-		writeFileSync(path.join(environmentDirectory, ".env"), "");
+		writeFileSync(path.join(process.cwd(), ".env"), "");
 		const { ConfigModule } = await import("./config.module");
 		const module = await Test.createTestingModule({ imports: [ConfigModule] }).compile();
 		const loadedValues = {
@@ -56,11 +126,9 @@ describe("ConfigModule", () => {
 	});
 
 	it("should reject invalid environment fields with paths while excluding submitted secret values", async () => {
-		writeFileSync(path.join(environmentDirectory, ".env"), "");
+		writeFileSync(path.join(process.cwd(), ".env"), "");
 		vi.stubEnv("DATABASE_APP_POOLER_URL", "invalid-database-url-secret");
 		vi.stubEnv("UPSTASH_REDIS_REST_URL", "invalid-redis-url-secret");
-		vi.stubEnv("AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL", "invalid-hmac-secret");
-		vi.stubEnv("MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64", "invalid-private-key-secret!");
 		const { ConfigModule } = await import("./config.module");
 		const failure: unknown = await Test.createTestingModule({ imports: [ConfigModule] })
 			.compile()
@@ -71,21 +139,13 @@ describe("ConfigModule", () => {
 		expect({
 			databasePath: failure.message.includes("DATABASE_APP_POOLER_URL: Invalid URL"),
 			redisPath: failure.message.includes("UPSTASH_REDIS_REST_URL: UPSTASH_REDIS_REST_URL must be a valid URL"),
-			hmacPath: failure.message.includes("AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL:"),
-			privateKeyPath: failure.message.includes("MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64:"),
 			databaseValue: failure.message.includes("invalid-database-url-secret"),
 			redisValue: failure.message.includes("invalid-redis-url-secret"),
-			hmacValue: failure.message.includes("invalid-hmac-secret"),
-			privateKeyValue: failure.message.includes("invalid-private-key-secret!"),
 		}).toEqual({
 			databasePath: true,
 			redisPath: true,
-			hmacPath: true,
-			privateKeyPath: true,
 			databaseValue: false,
 			redisValue: false,
-			hmacValue: false,
-			privateKeyValue: false,
 		});
 	});
 });

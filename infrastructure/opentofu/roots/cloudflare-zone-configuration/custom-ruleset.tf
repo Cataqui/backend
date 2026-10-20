@@ -17,7 +17,7 @@ resource "cloudflare_ruleset" "custom" {
       action      = "block"
       description = "Block malformed WhatsApp deliveries before Worker body processing"
       enabled     = true
-      expression  = "(http.host in {\"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/whatsapp\" and (not any(http.request.headers[\"content-type\"][*] wildcard \"*application/json*\") or not any(http.request.headers[\"x-hub-signature-256\"][*] matches \"^sha256=[0-9a-fA-F]{64}$\")))"
+      expression  = "(http.host in {\"auth.cataqui.com\" \"staging.auth.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/webhooks/whatsapp\" and (not any(http.request.headers[\"content-type\"][*] wildcard \"*application/json*\") or not any(http.request.headers[\"x-hub-signature-256\"][*] matches \"^sha256=[0-9a-fA-F]{64}$\")))"
       ref         = "block_malformed_whatsapp_delivery"
     },
     {
@@ -76,7 +76,7 @@ resource "cloudflare_ruleset" "custom" {
       }
       description = "Keep APIs and webhooks free of browser-only checks"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}"
+      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"auth.cataqui.com\" \"staging.auth.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}"
       logging = {
         enabled = true
       }

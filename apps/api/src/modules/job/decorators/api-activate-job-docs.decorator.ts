@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { ErrorOutputSchema } from "../../../core/errors/error-output";
-import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
+import { createSuccessResponseSchema } from "@cataqui/response";
 import { PublicJobOutputSchema } from "../schemas/public-job-output.schema";
 
 export function ApiActivateJobDocs(): MethodDecorator & ClassDecorator {
@@ -13,16 +13,15 @@ export function ApiActivateJobDocs(): MethodDecorator & ClassDecorator {
 			description: "The poster can return an archived job to the feed. Repeating this request returns the active job.",
 		}),
 		ApiResponse({ status: HttpStatus.OK, description: "Job active.", standardSchema: responseSchema }),
-		ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid job ID.", standardSchema: ErrorOutputSchema }),
 		ApiResponse({
-			status: HttpStatus.UNAUTHORIZED,
-			description: "A valid bearer access token is required.",
-			standardSchema: ErrorOutputSchema,
+			status: "default",
+			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.NOT_FOUND,
 			description: "The job does not exist or does not belong to this poster.",
-			standardSchema: ErrorOutputSchema,
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 	);
 }

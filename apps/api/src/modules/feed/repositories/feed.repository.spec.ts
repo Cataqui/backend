@@ -1,10 +1,11 @@
 import { Test } from "@nestjs/testing";
-import { Prisma } from "../../../../generated/prisma/client.js";
+import * as td from "testdouble";
+import { Prisma } from "../../../../generated/prisma/client";
 import { PrismaService } from "../../../core/prisma/prisma.service";
 import { decodeFeedPaginationCursor, encodeFeedPaginationCursor } from "../utils/cursor.utils";
-import { FeedRepository } from "./feed.repository";
+import { type FeedItemRaw, FeedRepository } from "./feed.repository";
 
-const job = {
+const job: FeedItemRaw = {
 	id: "12345678-1234-4234-8234-1234567890ab",
 	title: "Auxiliar",
 	createdAt: new Date("2026-09-22T12:00:00Z"),
@@ -15,21 +16,32 @@ const job = {
 	locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 };
 
+afterEach(() => td.reset());
+
 describe("FeedRepository", () => {
-	const prisma = { $queryRaw: vi.fn(), job: { findMany: vi.fn() } };
+	let prisma: PrismaService;
 	let repository: FeedRepository;
 	beforeEach(async () => {
-		vi.resetAllMocks();
+		prisma = td.object<PrismaService>();
 		const module = await Test.createTestingModule({
 			providers: [FeedRepository, { provide: PrismaService, useValue: prisma }],
 		}).compile();
 		repository = module.get(FeedRepository);
 	});
 
-	it("queries active jobs with payment text and coordinates", async () => {
-		prisma.job.findMany.mockResolvedValue([job]);
+	it("returns active jobs with payment text and coordinates", async () => {
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([
+			job,
+		]);
 		expect(await repository.getFeedItems({ limit: 20 })).toEqual([job]);
-		expect(prisma.job.findMany).toHaveBeenCalledWith({
+	});
+
+	it("selects payment text and coordinates while ordering active jobs newest first", async () => {
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([
+			job,
+		]);
+		await repository.getFeedItems({ limit: 20 });
+		expect(td.explain(prisma.job.findMany).calls[0]?.args[0]).toEqual({
 			where: { status: "ACTIVE" },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: 20,
@@ -46,8 +58,8 @@ describe("FeedRepository", () => {
 		});
 	});
 
-	it("uses a parameterized cursor query and returns payment text", async () => {
-		prisma.$queryRaw.mockResolvedValue([job]);
+	it("returns payment text from a cursor feed page", async () => {
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([job]);
 		const cursor = decodeFeedPaginationCursor({
 			cursor: encodeFeedPaginationCursor({
 				createdAt: "2026-09-22T13:00:00Z",
@@ -55,18 +67,57 @@ describe("FeedRepository", () => {
 			}),
 		});
 		expect(await repository.getFeedItems({ cursor: cursor, limit: 20 })).toEqual([job]);
-		const sql: Prisma.Sql = prisma.$queryRaw.mock.calls[0]![0];
+	});
+
+	it("selects payment text in the cursor feed query", async () => {
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([job]);
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
+				createdAt: "2026-09-22T13:00:00Z",
+				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			}),
+		});
+		await repository.getFeedItems({ cursor: cursor, limit: 20 });
+		const sql: Prisma.Sql = td.explain(prisma.$queryRaw).calls[0]!.args[0];
 		expect(sql.text).toContain('"payment"');
+	});
+
+	it("binds the active status in the cursor feed query", async () => {
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([job]);
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
+				createdAt: "2026-09-22T13:00:00Z",
+				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			}),
+		});
+		await repository.getFeedItems({ cursor: cursor, limit: 20 });
+		const sql: Prisma.Sql = td.explain(prisma.$queryRaw).calls[0]!.args[0];
+
 		expect(sql.values).toContain("ACTIVE");
+	});
+
+	it("binds the requested limit in the cursor feed query", async () => {
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([job]);
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
+				createdAt: "2026-09-22T13:00:00Z",
+				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			}),
+		});
+		await repository.getFeedItems({ cursor: cursor, limit: 20 });
+		const sql: Prisma.Sql = td.explain(prisma.$queryRaw).calls[0]!.args[0];
+
 		expect(sql.values).toContain(20);
 	});
 
-	it("excludes archived jobs from both the first and subsequent feed pages", async () => {
-		prisma.job.findMany.mockResolvedValue([]);
+	it("excludes archived jobs from the first feed page", async () => {
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([]);
 		await repository.getFeedItems({ limit: 20 });
-		expect(prisma.job.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: "ACTIVE" } }));
+		expect(td.explain(prisma.job.findMany).calls[0]?.args[0]).toEqual(
+			expect.objectContaining({ where: { status: "ACTIVE" } }),
+		);
 
-		prisma.$queryRaw.mockResolvedValue([]);
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([]);
 		await repository.getFeedItems({
 			cursor: decodeFeedPaginationCursor({
 				cursor: encodeFeedPaginationCursor({
@@ -76,16 +127,68 @@ describe("FeedRepository", () => {
 			}),
 			limit: 20,
 		});
-		const sql: Prisma.Sql = prisma.$queryRaw.mock.calls[0]![0];
+	});
+
+	it("filters status in the subsequent feed page SQL", async () => {
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([]);
+		await repository.getFeedItems({ limit: 20 });
+
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([]);
+		await repository.getFeedItems({
+			cursor: decodeFeedPaginationCursor({
+				cursor: encodeFeedPaginationCursor({
+					createdAt: "2026-09-22T13:00:00Z",
+					jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				}),
+			}),
+			limit: 20,
+		});
+		const sql: Prisma.Sql = td.explain(prisma.$queryRaw).calls[0]!.args[0];
 		expect(sql.text).toContain('"status" = ');
+	});
+
+	it("binds the active status for subsequent feed pages", async () => {
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([]);
+		await repository.getFeedItems({ limit: 20 });
+
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([]);
+		await repository.getFeedItems({
+			cursor: decodeFeedPaginationCursor({
+				cursor: encodeFeedPaginationCursor({
+					createdAt: "2026-09-22T13:00:00Z",
+					jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				}),
+			}),
+			limit: 20,
+		});
+		const sql: Prisma.Sql = td.explain(prisma.$queryRaw).calls[0]!.args[0];
+
 		expect(sql.values).toContain("ACTIVE");
 	});
 
-	it("returns null payment from both feed query paths", async () => {
+	it("returns null payment from the first feed query", async () => {
 		const unpaidJob = { ...job, payment: null };
-		prisma.job.findMany.mockResolvedValue([unpaidJob]);
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([
+			unpaidJob,
+		]);
 		expect(await repository.getFeedItems({ limit: 20 })).toEqual([unpaidJob]);
-		prisma.$queryRaw.mockResolvedValue([unpaidJob]);
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([unpaidJob]);
+		const cursor = decodeFeedPaginationCursor({
+			cursor: encodeFeedPaginationCursor({
+				createdAt: "2026-09-22T13:00:00Z",
+				jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			}),
+		});
+		await repository.getFeedItems({ cursor: cursor, limit: 20 });
+	});
+
+	it("returns null payment from a cursor feed query", async () => {
+		const unpaidJob = { ...job, payment: null };
+		td.when(prisma.job.findMany<{ select: Record<keyof FeedItemRaw, true> }>(td.matchers.anything())).thenResolve([
+			unpaidJob,
+		]);
+		await repository.getFeedItems({ limit: 20 });
+		td.when(prisma.$queryRaw<FeedItemRaw[]>(td.matchers.anything())).thenResolve([unpaidJob]);
 		const cursor = decodeFeedPaginationCursor({
 			cursor: encodeFeedPaginationCursor({
 				createdAt: "2026-09-22T13:00:00Z",

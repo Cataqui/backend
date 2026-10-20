@@ -75,7 +75,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "es-MX",
 		});
 
@@ -89,7 +89,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "fr-FR",
 		});
 
@@ -103,7 +103,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "fr-FR",
 		});
 
@@ -114,7 +114,7 @@ describe("resolveLocalizedString", () => {
 		const translations: Array<{ locale: string; string: string }> = [];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "fr-FR",
 		});
 
@@ -128,7 +128,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: LocaleConstants.DEFAULT_LOCALE,
 		});
 
@@ -142,7 +142,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "fr-FR",
 		});
 
@@ -156,7 +156,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "es-MX",
 		});
 
@@ -170,7 +170,7 @@ describe("resolveLocalizedString", () => {
 		];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "pt-BR",
 		});
 
@@ -181,7 +181,7 @@ describe("resolveLocalizedString", () => {
 		const translations = [{ locale: "EN-US", string: "Moving Help" }];
 
 		const result = LocaleUtils.resolveLocalizedString({
-			translations,
+			translations: translations,
 			targetLocale: "fr-FR",
 		});
 

@@ -112,49 +112,10 @@ Always optimize for:
 
 ### Container Communication Model
 
-Treat **inbound** and **outbound** as directions relative to the API container:
-
 ```txt
-Public client → API Worker → API container       public HTTP request
-Trusted Worker or Queue → inbound → API container
-API container → outbound → Cloudflare binding or external destination
+Public client → Authenticated API Worker → API container    public HTTP
+API container RPC → API Worker RPC → Service Binding   Worker capability
 ```
-
-These names describe a trust and runtime boundary, not a business feature.
-
-#### Public HTTP Requests
-
-- Public clients call the API Worker, which selects an API container and forwards the request through the container's public request boundary.
-- Public NestJS controllers expose versioned user-facing routes normally.
-- Public requests must never reach `/internal` routes. The container boundary rejects the entire internal prefix before forwarding a request to NestJS.
-- Do not use an inbound receiver merely to call another service inside the same NestJS process; use normal dependency injection for in-process calls.
-
-#### Inbound Calls — Work Entering the Container
-
-Use the inbound boundary when trusted Cloudflare infrastructure needs to invoke application behavior inside the API container.
-
-- For a synchronous call from another Worker, call `inboundCall({ worker, receiver, body })`. The `worker` is the caller's private API Worker Service Binding, and the call uses the API Worker's named RPC entrypoint. Never construct a synthetic URL, public HTTP request, or shared-secret header for Worker-to-Worker delivery.
-- For asynchronous work, publish to the Queue normally. The Queue manifest maps the Queue name to a typed `inboundReceiver`; the API Worker owns batching, acknowledgement, retry, and dead-letter behavior before delivering the validated message through the same inbound container boundary.
-- The inbound manifest is the authoritative source for receiver names, input schemas, and the shared internal path prefix. A receiver name passed anywhere must be inferred from this manifest, never repeated as an unrelated string type.
-- `@InboundReceiver("receiver-name")` owns the complete `internal/inbound/receiver-name` route. `@InboundController()` marks the controller boundary but does not contribute a route prefix.
-- NestJS receives inbound work only through controllers marked with `@InboundController()` and methods marked with `@InboundReceiver(...)`. Their files use the `*.inbound.controller.ts` pattern.
-- Inbound controllers may orchestrate application services, but Cloudflare Workers and manifests must not contain NestJS business logic.
-
-#### Outbound Calls — Work Leaving the Container
-
-Use the outbound boundary when NestJS code running inside the container needs a Cloudflare binding or another destination that only the API Worker runtime can access.
-
-- Call `workerCall({ worker, method, input })` from NestJS to invoke another Worker. Worker names, methods, inputs, and results must be inferred from the Worker manifest; never call a virtual outbound hostname with raw `fetch` from feature code.
-- The Worker manifest owns each Worker's transport hostname and explicit method registry. Register each method with `defineWorkerMethod`, its input and result schemas, and a typed binding invocation. The container outbound handler validates the call envelope and dispatches only registered methods in the API Worker runtime.
-- Do not import Worker environment bindings into NestJS modules, forward all Worker bindings into the container, or create feature-specific publisher wrappers around a one-line `workerCall`.
-
-#### Choosing the Direction
-
-- User or public API request: use a normal public controller.
-- Another Worker needs an immediate application result: use `inboundCall` through its Service Binding.
-- Work must survive, retry, or run asynchronously: publish to a Queue mapped to an `inboundReceiver`.
-- Container code needs to call another Worker: use `workerCall`. Other Worker-only resources need an explicitly owned outbound adapter; do not present them as Worker methods.
-- Code is already inside the NestJS process: call the owning service directly through dependency injection.
 
 ### Package Manager Rules
 
@@ -246,12 +207,6 @@ For API contracts:
 - Generate Swagger schemas from the same Zod contract through Nest Swagger's Standard Schema support and `zod-openapi`; do not duplicate fields with manual property decorators.
 - Do not use class identity or `instanceof` to distinguish response outcomes. Use discriminated unions or explicit internal result contracts.
 
-### Contract Validation Boundary
-
-Request Zod schemas must validate every rule that can be decided exclusively from the request itself. This includes field formats, conditional required fields, relationships between request fields, and other self-contained input invariants. Use Zod features such as `refine`, `superRefine`, and discriminated unions instead of repeating those checks in services.
-
-Services validate rules that require shared or external context, including current database state, lifecycle state, another service, or a provider response. Do not move a rule into a service when the request schema has all the information needed to decide it. Output schemas only define and serialize the public contract; they do not contain business rules.
-
 ### Cursor Pagination
 
 Infinite feeds must use cursor pagination, not offset pagination.
@@ -274,35 +229,11 @@ GET /v1/resources?page=10
 
 ### Layering
 
-Controllers:
+Follow the repository-root Layer Responsibilities for repositories, services, ingress validation, and output contracts.
 
-- parse inputs
-- call application services
-- return schema-inferred plain objects
-- contain no business logic
-- never call Prisma directly
-
-Services:
-
-- orchestrate business logic
-- validate rules that depend on database state, lifecycle state, other services, or providers
-- coordinate repositories/providers
-- never access Prisma directly — all data access must go through repositories
-
-Repositories:
-
-- contain database access
-- hide Prisma details from controllers
-- expose intention-revealing methods
-- are the only layer that calls Prisma directly
-
-Schemas and output conversion:
-
-- define request/response shape
-- validate every request rule that can be decided exclusively from the request through Zod
-- map database/provider representations to explicit public output objects
-- rely on the response serializer for final transport validation and transformation
-- must remain simple
+- Only repositories call Prisma directly; NestJS controllers and services access database operations through repositories.
+- NestJS controllers return schema-inferred plain objects and use the configured response serializer for final transport validation and transformation.
+- Use Zod refinements and discriminated unions for self-contained request invariants, as required by the root input-schema rules.
 
 ### Private Members
 
@@ -541,61 +472,9 @@ type IErrorCode = ...;
 type ErrorCode = ...;
 ```
 
-### Inline Single-Use Values and Logic
+### Inline Single-Use Logic
 
-Choose the narrowest scope that matches actual reuse:
-
-- If a value is used once, keep it inline at its consumer.
-- If a value is used more than once within one function or method, use a function-local variable instead of extracting it to a module or exported constant.
-- Use a module or exported constant only when the value is shared across consumers or represents independently important domain configuration.
-
-Bad — the function-local variable still adds indirection for a single use:
-
-```ts
-function requestPage(): Promise<Response> {
-	const pageSize = 20;
-	return client.get({ limit: pageSize });
-}
-```
-
-Good — the single-use value stays at its consumer:
-
-```ts
-function requestPage(): Promise<Response> {
-	return client.get({ limit: 20 });
-}
-```
-
-Good — a value repeated only inside one function remains local:
-
-```ts
-function generateCode(): string {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	return alphabet.charAt(randomInt(alphabet.length));
-}
-```
-
-Apply the same rule to functions and methods. Do not extract a helper that has only one caller when its logic is short, readable, and naturally belongs to that caller. Inline the logic so a reader does not need to jump between declarations to understand one operation.
-
-Bad — the constant adds indirection without reuse:
-
-```ts
-const DERIVE_JOB_DATA_MAX_TOKENS = 10_000;
-
-await aiService.generateObject({
-	maxTokens: DERIVE_JOB_DATA_MAX_TOKENS,
-});
-```
-
-Good — the value is clear at its only call site:
-
-```ts
-await aiService.generateObject({
-	maxTokens: 10_000,
-});
-```
-
-Extract a value beyond its function only when it is reused across consumers or represents an independently important domain concept. Test the behavior at the consumer instead of creating and testing a constant solely for a single call site.
+Do not extract a helper that has only one caller when its logic is short, readable, and naturally belongs to that caller. Inline the logic so a reader does not need to jump between declarations to understand one operation.
 
 Bad — the helper is called once and only adds navigation:
 
@@ -644,8 +523,6 @@ Create named constants for shared or independently domain-critical:
 - cache keys
 
 Small one-off test descriptions, local validation messages, and obvious Swagger prose do not need constants unless repeated or domain-critical.
-
-Do not create a constants file for values used in only one place. Inline the value where it is used. Constants files and `*Constants` objects are for values referenced from multiple locations.
 
 ### Constant File Structure
 
@@ -874,7 +751,7 @@ Trust and safety must be treated as core product infrastructure, not a later fea
 
 - Cloudflare owns volumetric and IP-oriented protection. Do not add a global NestJS IP rate limiter.
 - Use the Redis-backed `@RateLimit` only on authenticated operations where repeated use can create material cost or harm.
-- `@RateLimit` must require the access token before running `UserRateLimitGuard`, which tracks `session.userId` and shares the limit across that user's devices, sessions, and containers. Do not pair `@RateLimit` with a separate `@AccessTokenRequired()` decorator. Never key an application limit by IP address, session ID, or access-token hash.
+- Authentication is enforced globally before `@RateLimit` runs `AccountRateLimitGuard`, which tracks `session.accountId` across all devices, sessions, and containers. Never key an application limit by IP address, session ID, or access-token hash.
 - If Redis cannot enforce a protected operation's limit, fail closed before the expensive or harmful operation runs.
 
 ---
@@ -1068,7 +945,7 @@ Each public controller endpoint must have a dedicated docs decorator or clearly 
 
 Keep an endpoint's docs decorator and its tests in the module of the controller that uses it. Name the decorator for that controller's resource, even when the endpoint uses a service or response schema owned by another module. Keep those schemas in their owning modules.
 
-Container-only inbound controllers must not be exposed in public Swagger. Their contracts are owned by the inbound manifest and its Zod input schemas. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
+Private container RPC operations are not public HTTP endpoints and do not appear in Swagger. Keep their contracts and authoritative schemas in the application-owned `workerhole/` workspace, organized by the owning API capability. Hono webhook routes document provider-facing behavior beside their route module rather than through NestJS Swagger.
 
 Swagger docs must explain:
 
@@ -1119,7 +996,7 @@ Do not put real Neon URLs, passwords, tokens, or production secrets in documenta
 
 ### Adding a New Environment Variable
 
-First identify the runtime that owns the value. Production delivery remains isolated by runtime; the shared local `.env` may contain development values for NestJS and both Workers.
+First identify the runtime that owns the value. API local configuration belongs in `apps/api/.env`, shared only by the API Worker, its NestJS container, and API tooling. Other applications own separate files. Production delivery remains isolated by runtime.
 
 For a value consumed by NestJS inside the API container:
 
@@ -1132,17 +1009,11 @@ For a value consumed by NestJS inside the API container:
 7. Explicitly allowlist and forward it from the API container boundary into NestJS.
 8. Follow the GitHub automation guidance for Infisical profiles and deployment delivery.
 
-For a value consumed only by the Webhooks Worker:
-
-1. Declare it in the Webhooks Worker's Wrangler configuration through the appropriate non-secret variable or secret-delivery path.
-2. Add safe local and documented development values.
-3. Regenerate the Webhooks Worker's environment type with `pnpm cf:types`; never edit generated bindings manually.
-4. Follow the GitHub automation guidance for the isolated Webhooks runtime delivery path.
-5. Do not add it to NestJS environment validation, Nest config, API container forwarding, or the API runtime profile unless NestJS independently consumes the same value.
+Values consumed by the Auth Worker belong to its runtime validation and secret delivery. Do not forward Auth provider credentials or session secrets into the API container.
 
 Worker-only bindings and configuration—such as Queues, Durable Objects, container pool sizing, and sleep settings—stay in the owning Wrangler configuration and generated Worker environment type. Do not forward them into the NestJS process.
 
-`ApiContainer.envVars` is a security allowlist. Keep every forwarded value explicit; never spread or automatically forward `Cloudflare.Env`, because it also contains Worker-only bindings and secrets that the application does not need.
+The API container startup environment is a security allowlist. Keep every forwarded value explicit; never spread or automatically forward `Cloudflare.Env`, because it also contains Worker-only bindings and secrets that the application does not need.
 
 Tooling-only credentials remain scoped to their consumer. For example, `DATABASE_OWNER_DIRECT_URL` belongs in local migration tooling and the isolated database-migration profile; it must never be added to Cloudflare bindings, container forwarding, Worker development variables, or application configuration.
 

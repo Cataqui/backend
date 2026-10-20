@@ -1,9 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { Prisma } from "../../../../generated/prisma/client.js";
+import { Prisma } from "../../../../generated/prisma/client";
 import { RequestUtils } from "../../../shared/utils/request.utils";
-import { ErrorCode } from "../../errors/error-code.enum.js";
-import { toErrorOutput } from "../../errors/error-output.js";
+import { ErrorCode } from "../../errors/error-code.enum";
+import { ApiErrorResponseOutputSchema } from "../../errors/api-error-response-output.schema";
 
 const PRISMA_ERROR_MAP: Record<
 	string,
@@ -76,7 +76,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 		const errorCode = mapping?.code ?? ErrorCode.INTERNAL_ERROR;
 		const userMessage = mapping?.message ?? "An unexpected database error occurred.";
 
-		const body = toErrorOutput({
+		const body = ApiErrorResponseOutputSchema.parse({
 			errorCode: errorCode,
 			message: userMessage,
 			status: status,

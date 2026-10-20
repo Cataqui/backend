@@ -1,0 +1,12 @@
+{
+	"extends": "../../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": ["ESNext"],
+		"types": ["@cloudflare/workers-types", "node", "vitest/globals"],
+		"noEmit": true,
+		"resolveJsonModule": true,
+		"allowImportingTsExtensions": true
+	},
+	"files": ["./.cloudflare/types/index.d.ts"],
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "cloudflare.config.ts", "wrangler.config.ts"]
+}

@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/Cataqui/backend/actions/workflows/ci.yml"><img src="https://github.com/Cataqui/backend/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <img src="https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white" alt="Node.js 24" />
-  <img src="https://img.shields.io/badge/pnpm-11.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 11.4" />
+  <img src="https://img.shields.io/badge/pnpm-11.28-F69220?logo=pnpm&logoColor=white" alt="pnpm 11.28" />
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white" alt="TypeScript 6" />
 </p>
 
@@ -32,7 +32,7 @@ Every backend decision should reinforce fast discovery, low friction, local rele
 
 ## Start here
 
-You can verify a fresh checkout without cloud credentials or a running database:
+Install the [base tools](#prerequisites), then verify a fresh checkout without cloud credentials or a running database:
 
 ```sh
 git clone https://github.com/Cataqui/backend.git
@@ -54,25 +54,30 @@ flowchart LR
 
     Client -->|authenticated search or public image read| Maps[Maps Worker]
     Maps --> Places[Google Places]
-    ApiWorker -->|private generation RPC| Maps
-    Maps -->|source PNG| Geoapify[Geoapify]
-    Maps -->|WebP encoding| Images[Images binding]
-    Maps -->|finished WebP| R2[(Private R2 maps)]
+    ApiWorker -->|private preparation RPC| Maps
+    Maps -->|private rendering RPC| Mapshot[Mapshot Worker]
+    Mapshot -->|container boundary| Renderer[Mapshot Node + Rust containers]
+    Mapshot -->|reusable raw source data| R2[(Private R2 map sources)]
+    Maps -->|finished images| Cache[Edge and client caches]
 
-    Providers[External providers] -->|signed webhooks| Webhooks[Webhooks Worker]
-    Webhooks -->|private Service Binding| ApiWorker
+    Providers[External providers] -->|signed webhooks| Auth[Auth Worker]
+    Client -->|login and sessions| Auth
+    ApiWorker -->|resolve session| Auth
+    Maps -->|resolve session| Auth
+    Auth --> Hyperdrive[Hyperdrive]
+    Hyperdrive --> AuthDb[(Neon auth database)]
+    Auth --> AuthRedis[(Auth Redis)]
 
     Api --> Postgres[(Neon Postgres)]
     Api --> Redis[(Upstash Redis)]
     Api -->|typed outbound call| ApiWorker
-    ApiWorker --> Queue[Cloudflare Queue + DLQ]
-    Queue -->|typed inbound receiver| ApiWorker
 
-    Wrangler[Wrangler delivery] -. deploys .-> ApiWorker
-    Wrangler -. deploys .-> Maps
-    Wrangler -. deploys .-> Webhooks
+    Cloudflare[Cloudflare CLI delivery] -. deploys .-> ApiWorker
+    Cloudflare -. deploys .-> Maps
+    Cloudflare -. deploys .-> Mapshot
+    Cloudflare -. deploys .-> Auth
 
-    Infra[OpenTofu backing resources] -. provisions .-> Queue
+    Infra[OpenTofu backing resources] -. provisions .-> R2
     Infra -. provisions .-> Postgres
     Infra -. provisions .-> Redis
 ```
@@ -80,11 +85,11 @@ flowchart LR
 The important boundaries are:
 
 - **Core product API requests** enter through the API Worker, which selects and forwards to the NestJS container. Public traffic never reaches internal routes.
-- **Narrow public ingress** enters directly through Maps or Webhooks, where edge authentication and provider-specific validation belong.
-- **Maps is one Worker** with `places` and `static` feature modules. Static owns generation, rendering, storage, and delivery; authentication and error handling are shared across the Worker.
-- **Immediate private work** crosses named Worker Service Bindings and typed inbound receivers—never synthetic internal URLs or shared-secret headers.
-- **Durable asynchronous work** uses Cloudflare Queues, with retry and dead-letter behavior owned by the API Worker.
-- **Container-to-Cloudflare work** uses a typed outbound manifest instead of importing Worker bindings into NestJS feature code.
+- **Narrow public ingress** enters directly through Maps or Auth, where edge authentication and provider-specific validation belong.
+- **Maps is one Worker** with place search and static-image delivery capabilities.
+- **Mapshot generates static map images** with Node orchestration and a native Rust renderer, and owns source preparation and private storage. Its private Worker and containers share a coordinated release; Maps owns the product-facing URLs and image caches
+- **Immediate private work** crosses named Worker RPC Service Bindings—never synthetic internal URLs or shared-secret headers.
+- **Internal communication** uses Cloudflare's typed Service Bindings between Workers and `@cataqui/workerhole` between Workers and their Node containers. Applications expose their owned contracts through compiled public exports.
 - **Durable product state** belongs in PostgreSQL; shared ephemeral coordination belongs in Redis.
 
 ### Technology at a glance
@@ -92,10 +97,10 @@ The important boundaries are:
 | Concern | Technology |
 | --- | --- |
 | Core API | NestJS, Fastify, Zod, Prisma |
-| Edge services | Cloudflare Workers, Hono, Containers, Queues |
+| Edge services | Cloudflare Workers, Hono, Containers |
 | Data | PostgreSQL on Neon, Upstash Redis |
 | Infrastructure | OpenTofu, Cloudflare, Google Cloud, Infisical |
-| Tooling | Node.js 24, TypeScript 6, pnpm, Biome, Vitest, Wrangler |
+| Tooling | Node.js 24, TypeScript 6, pnpm, Ruby, Bundler, Biome, Vitest, Cloudflare CLI, Wrangler |
 
 ## Quick start
 
@@ -103,15 +108,20 @@ The important boundaries are:
 
 ### Prerequisites
 
-- [Node.js 24](https://nodejs.org/) and the repository-pinned **pnpm 11.4.0**
-- [Git](https://git-scm.com/)
-- Access to the Cataquí development database and service credentials
-- [OpenTofu](https://opentofu.org/) when changing infrastructure or running the complete `pnpm check` gate
-- [Wrangler](https://developers.cloudflare.com/workers/wrangler/) for Worker development; it is installed with the repository dependencies
-- [Docker](https://www.docker.com/) only when exercising the API Worker/Container boundary
+For every project, install [Git](https://git-scm.com/), [Node.js 24](https://nodejs.org/) (24.15.0 or newer within 24.x), and **pnpm 11.28.0**. Then add only the tools needed for your work:
+
+| Project or workflow | Additional tools to install |
+| --- | --- |
+| NestJS API development and tests, shared packages, or Maps/Auth Worker development in isolation | Base tools only |
+| Repository automation and root checks | [Ruby](https://www.ruby-lang.org/en/documentation/installation/) at the version in `.ruby-version`, then `bundle install` for locked gems |
+| Mapshot development, builds, tests, or typechecking; API Worker + Container development | [Docker](https://www.docker.com/) with its daemon running; Mapshot also uses Ruby for local command orchestration |
+| Infrastructure development, `pnpm check:opentofu`, or the full `pnpm check` gate | Ruby and [OpenTofu 1.12.6](https://opentofu.org/docs/intro/install/) |
+| Privileged infrastructure bootstrap only | OpenTofu plus [GitHub CLI](https://cli.github.com/), [Google Cloud CLI](https://cloud.google.com/sdk/docs/install), and [Infisical CLI](https://infisical.com/docs/cli/overview); follow the [bootstrap runbook](docs/infrastructure-bootstrap.md) |
+
+The focused `pnpm test:api`, `pnpm test:maps`, and `pnpm test:auth` commands need only the base tools. Root `pnpm test`, `pnpm test:cov`, `pnpm typecheck`, and `pnpm build` include Mapshot and require Ruby and Docker. `pnpm check` additionally requires OpenTofu and the locked Ruby gems.
 
 > [!IMPORTANT]
-> [`.env.example`](.env.example) defines the required configuration, but its placeholders do not form a runnable local environment. Ask a maintainer for development-scoped values. Never commit `.env` or reuse staging/production credentials locally.
+> Each application's `.env.example` defines its local configuration, but its placeholders do not form a runnable environment. Ask a maintainer for development-scoped values. Never commit `.env` or reuse staging/production credentials locally.
 
 ### Run the NestJS API
 
@@ -119,15 +129,15 @@ The important boundaries are:
 git clone https://github.com/Cataqui/backend.git
 cd backend
 pnpm install --frozen-lockfile
-cp .env.example .env
-# Fill .env with development-scoped values.
+cp apps/api/.env.example apps/api/.env
+# Fill apps/api/.env with development-scoped API values.
 pnpm --filter @cataqui/api prisma:generate
 pnpm --filter @cataqui/api start:dev
 ```
 
 When startup succeeds:
 
-- API status: <http://localhost:3000/>
+- API status (authenticated through the Worker): `/`
 - Readiness: <http://localhost:3000/v1/health>
 - Liveness: <http://localhost:3000/v1/health/live>
 - Swagger UI: <http://localhost:3000/docs>
@@ -140,36 +150,28 @@ Start only the processes required by the boundary under test:
 
 | Flow | Start | Required dependency |
 | --- | --- | --- |
-| Core API feature without Worker bindings | Direct NestJS API | Provisioned PostgreSQL and Redis |
-| Job creation with map generation | API Worker + Container and Maps Worker | Docker, root `.env`, and Maps provider credentials and bindings |
-| API edge, Queue, outbound call, or Container behavior | API Worker + Container | Docker and root `.env` |
-| Authenticated address search | Direct NestJS API, then Maps Worker | API JWKS at `localhost:3000`, a development access token, and Google Places credentials |
-| Provider webhook delivery | Webhooks Worker + API Worker/Container | A local multi-Worker graph; direct NestJS alone is insufficient |
+| Core API behavior in isolation | API tests | Mocked database, Redis, and authenticated ingress |
+| Job creation with map URLs and image delivery | Auth Worker, API Worker + Container, Maps Worker, and Mapshot Worker + Container | Docker, each application's local environment, and prepared Mapshot source data |
+| API edge, outbound call, or Container behavior | Auth Worker and API Worker + Container | Docker and the API/Auth local environments |
+| Authenticated address search | Auth Worker and Maps Worker | A development access token and Google Places credentials |
+| WhatsApp login | Auth Worker | Dedicated Auth database, Redis, and signed Meta callbacks |
 
-Use the owning workspace so Wrangler configuration and root `.env` paths resolve correctly:
+API and Mapshot keep their Node application in `src/` and Cloudflare code in a separate `worker/` workspace. Each runtime owns its dependencies and tests; each pair shares a release.
+
+Copy the `.env.example` beside each application to `.env` and fill only that application's values. Run `pnpm build:contracts` before starting Workers, then use the owning workspace so Cloudflare configuration and local environment paths resolve correctly:
 
 ```sh
 # API Worker + Container boundary
-pnpm --filter @cataqui/api cf:dev
+pnpm --filter @cataqui/api-worker cf:dev
 
 # Authenticated address search
 pnpm --filter @cataqui/maps-worker cf:dev
 
 # Provider webhook ingress
-pnpm --filter @cataqui/webhooks-worker cf:dev
+pnpm --filter @cataqui/auth-worker cf:dev
 ```
 
-Use the API Swagger documentation for session sign-in and Maps token issuance during local development. The configured development receiver completes the out-of-band WhatsApp proof. There is no seeded identity or development authentication bypass.
-
-For local webhook-to-API delivery, run the API Worker and Webhooks Worker in separate terminals. Each workspace script loads the root `.env`, and Wrangler connects the matching local service names across development sessions. The explicit API port avoids a collision; send the signed webhook to the URL reported by the Webhooks process.
-
-```sh
-# Terminal 1 — private API Worker target
-pnpm --filter @cataqui/api cf:dev --port 8788
-
-# Terminal 2 — public webhook ingress
-pnpm --filter @cataqui/webhooks-worker cf:dev
-```
+Use Auth OpenAPI for WhatsApp login and session operations. API and Maps accept the same opaque access token. Each app loads its own local environment; Auth's database and Redis credentials are independent of API's. API clients enter through the API Worker; a direct NestJS process is useful for health checks and isolated tests.
 
 The repository does not provide local PostgreSQL/Redis containers or seed data. A maintainer-provided development environment must already be provisioned and migrated. Do not run a development migration against a shared database unless the change requires it and the target has been explicitly confirmed.
 
@@ -186,10 +188,12 @@ The root scripts build shared packages before dependent consumers where required
 | Goal | Command |
 | --- | --- |
 | Install exactly the locked dependency graph | `pnpm install --frozen-lockfile` |
+| Install locked automation gems | `bundle install` |
 | Check formatting and linting without modifying files | `pnpm lint:check` |
 | Format and apply safe Biome fixes | `pnpm format` |
 | Type-check every workspace and generated Worker binding | `pnpm typecheck` |
 | Run all tests | `pnpm test` |
+| Run bootstrap automation tests without provider credentials | `pnpm ruby:test` |
 | Run all four-metric 90% coverage gates | `pnpm test:cov` |
 | Build packages, API, and Worker dry runs | `pnpm build` |
 | Validate OpenTofu formatting, initialization, configuration, and tests | `pnpm check:opentofu` |
@@ -200,14 +204,15 @@ Focused application tests:
 ```sh
 pnpm test:api
 pnpm test:maps
-pnpm test:webhooks
+pnpm test:mapshot
+pnpm test:auth
 ```
 
 Focused package tests:
 
 ```sh
-pnpm --filter @cataqui/api-internal-ingress test
-pnpm --filter @cataqui/microservices-auth-schemas test
+pnpm --filter @cataqui/workerhole test
+pnpm --filter @cataqui/response test
 ```
 
 > [!CAUTION]
@@ -215,7 +220,7 @@ pnpm --filter @cataqui/microservices-auth-schemas test
 
 ### Database changes
 
-The Prisma schema is split by domain under [`apps/api/prisma/schema`](apps/api/prisma/schema). The application uses separate database roles: a least-privilege pooled URL at runtime and a privileged direct URL for migrations.
+API and Auth each own their Prisma schema and migrations under their own `prisma/schema` directory. The application uses separate database roles: a least-privilege pooled URL at runtime and a privileged direct URL for migrations.
 
 ```sh
 # Validate and regenerate the Prisma client
@@ -234,14 +239,24 @@ pnpm --filter @cataqui/api prisma:studio
 
 ## Configuration and secrets
 
-The root [`.env.example`](.env.example) is the authoritative inventory of local values. Wrangler configuration supplies additional non-secret environment values and binding topology.
+Each application owns a local `.env` and a committed `.env.example`. API and Mapshot keep theirs at the application root for their Worker/container ecosystem. Standalone Workers keep theirs beside their Cloudflare configuration. The repository root has no application environment file.
+
+| Application | Local environment example |
+| --- | --- |
+| API | [`apps/api/.env.example`](apps/api/.env.example) |
+| Auth | [`apps/workers/auth/.env.example`](apps/workers/auth/.env.example) |
+| Maps | [`apps/workers/maps/.env.example`](apps/workers/maps/.env.example) |
+| Mapshot | [`apps/mapshot/.env.example`](apps/mapshot/.env.example); no local runtime secrets currently required |
+
+`cloudflare.config.ts` owns runtime settings and binding topology. `cf` handles normal development, builds, deployment, and binding type generation; Wrangler remains for specific inspection and SDK operations. Infisical remains the central source for environment-scoped runtime, migration, and release credentials. Each consumer receives its own profile. Native Cloudflare type generation uses declared bindings and secret names, so it does not need local secret files.
 
 | Consumer | Configuration groups |
 | --- | --- |
-| Core API | Application runtime, CORS, pooled database access, Cloudflare AI Gateway, Redis, and authentication keys |
+| Core API | Application runtime, CORS, pooled product database access, Cloudflare AI Gateway, and rate-limit Redis |
 | Prisma CLI | Privileged direct database URL used only for migration and inspection |
-| Maps Worker | Google Places and Geoapify keys; JWKS URL, Cloudflare Images, private R2 storage, and generation coordination bindings come from Wrangler |
-| Webhooks Worker | Meta signature/verification secrets and NOTP provider configuration |
+| Maps Worker | Google Places key and static-map URL signing key; private Auth and Mapshot Service Bindings come from Cloudflare configuration |
+| Mapshot | Private R2 source data, renderer Containers, and runtime settings come from Cloudflare configuration; release credentials are environment-scoped |
+| Auth Worker | Own local environment: Hyperdrive database connection, dedicated Redis, refresh HMAC and Meta verification secrets |
 
 Keep development, staging, and production credentials separate. Secrets belong in the configured secret-management boundary, never source control, shell history, logs, command arguments, OpenTofu outputs, or saved plans. Stable non-secret provider coordinates live in [`infrastructure/platforms.json`](infrastructure/platforms.json); repository-owned resource identities live in [`infrastructure/manifest.json`](infrastructure/manifest.json).
 

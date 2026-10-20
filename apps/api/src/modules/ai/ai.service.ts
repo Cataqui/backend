@@ -8,26 +8,9 @@ import {
 	Output,
 } from "ai";
 import { createUnified } from "ai-gateway-provider/providers/unified";
+import { runtimeConfig } from "../../core/config/runtime.config";
 import { AiTask } from "./ai-task.enum";
-import { aiConfig, type IAiConfig } from "./ai.config";
-
-function _getGatewayLoggingHeaders(params: { environment: IAiConfig["environment"] }): Record<string, string> {
-	switch (params.environment) {
-		case "development":
-		case "staging":
-			return {
-				"cf-aig-collect-log": "true",
-				"cf-aig-collect-log-payload": "true",
-			};
-		case "production":
-			return {
-				"cf-aig-collect-log": "true",
-				"cf-aig-collect-log-payload": "false",
-			};
-		case "test":
-			return { "cf-aig-collect-log": "false" };
-	}
-}
+import { aiConfig } from "./ai.config";
 
 @Injectable()
 export class AiService {
@@ -36,6 +19,8 @@ export class AiService {
 	constructor(
 		@Inject(aiConfig.KEY)
 		config: ConfigType<typeof aiConfig>,
+		@Inject(runtimeConfig.KEY)
+		runtime: ConfigType<typeof runtimeConfig>,
 	) {
 		this._unifiedProvider = createUnified({
 			baseURL: `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/v1`,
@@ -43,7 +28,8 @@ export class AiService {
 				Authorization: `Bearer ${config.aiGatewayApiToken}`,
 				"cf-aig-gateway-id": config.deriveJobDataAiGatewayId,
 				"cf-aig-skip-cache": "true",
-				..._getGatewayLoggingHeaders({ environment: config.environment }),
+				"cf-aig-collect-log": "true",
+				"cf-aig-collect-log-payload": runtime.environment === "production" ? "false" : "true",
 			},
 			supportsStructuredOutputs: true,
 		});

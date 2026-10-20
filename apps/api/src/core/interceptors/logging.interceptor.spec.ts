@@ -1,32 +1,36 @@
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { of } from "rxjs";
+import * as td from "testdouble";
 import { LoggingInterceptor } from "./logging.interceptor";
+
+afterEach(() => td.reset());
 
 describe("LoggingInterceptor", () => {
 	let interceptor: LoggingInterceptor;
 	let mockExecutionContext: ExecutionContext;
-	let mockRequest: { method: string; url: string };
-	let mockResponse: { statusCode: number };
+	let mockRequest: FastifyRequest;
+	let mockResponse: FastifyReply;
 
 	beforeEach(() => {
 		interceptor = new LoggingInterceptor();
-		mockRequest = { method: "GET", url: "/v1/posts" };
-		mockResponse = { statusCode: 200 };
 
-		mockExecutionContext = {
-			switchToHttp: () => ({
-				getRequest: () => mockRequest,
-				getResponse: () => mockResponse,
-			}),
-		} as never;
+		mockExecutionContext = td.object<ExecutionContext>();
+		mockRequest = td.object<FastifyRequest>();
+		mockResponse = td.object<FastifyReply>();
+		const http = td.object<ReturnType<ExecutionContext["switchToHttp"]>>();
+		td.when(mockExecutionContext.switchToHttp()).thenReturn(http);
+		td.when(http.getRequest<FastifyRequest>()).thenReturn(mockRequest);
+		td.when(http.getResponse<FastifyReply>()).thenReturn(mockResponse);
 	});
 
 	it("should log request details on successful response", () => {
+		Object.assign(mockRequest, { method: "GET", url: "/v1/posts" });
+		mockResponse.statusCode = 200;
 		const logger = interceptor["_logger"];
 		const loggerSpy = vi.spyOn(logger, "log");
-		const mockCallHandler: CallHandler = {
-			handle: () => of(undefined),
-		};
+		const mockCallHandler = td.object<CallHandler<unknown>>();
+		td.when(mockCallHandler.handle()).thenReturn(of(undefined));
 
 		interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe();
 
@@ -40,11 +44,12 @@ describe("LoggingInterceptor", () => {
 	});
 
 	it("should include duration in log message", () => {
+		Object.assign(mockRequest, { method: "GET", url: "/v1/posts" });
+		mockResponse.statusCode = 200;
 		const logger = interceptor["_logger"];
 		const loggerSpy = vi.spyOn(logger, "log");
-		const mockCallHandler: CallHandler = {
-			handle: () => of(undefined),
-		};
+		const mockCallHandler = td.object<CallHandler<unknown>>();
+		td.when(mockCallHandler.handle()).thenReturn(of(undefined));
 
 		interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe();
 
@@ -53,10 +58,15 @@ describe("LoggingInterceptor", () => {
 	});
 
 	it("should exclude query values from request logs", () => {
+		Object.assign(mockRequest, { method: "GET", url: "/v1/posts" });
+		mockResponse.statusCode = 200;
 		const loggerSpy = vi.spyOn(interceptor["_logger"], "log");
-		mockRequest.url = "/v1/feed?cursor=secret-token";
+		Object.assign(mockRequest, { url: "/v1/feed?cursor=secret-token" });
 
-		interceptor.intercept(mockExecutionContext, { handle: () => of(undefined) }).subscribe();
+		const handler = td.object<CallHandler<unknown>>();
+		td.when(handler.handle()).thenReturn(of(undefined));
+
+		interceptor.intercept(mockExecutionContext, handler).subscribe();
 
 		const logMessage = String(loggerSpy.mock.calls[0]?.[0]);
 		expect({
@@ -69,27 +79,28 @@ describe("LoggingInterceptor", () => {
 	});
 
 	it("should return observable from next.handle", () => {
-		const mockCallHandler: CallHandler = {
-			handle: () => of("result"),
-		};
+		Object.assign(mockRequest, { method: "GET", url: "/v1/posts" });
+		mockResponse.statusCode = 200;
+		const mockCallHandler = td.object<CallHandler<unknown>>();
+		td.when(mockCallHandler.handle()).thenReturn(of("result"));
 
 		const result$ = interceptor.intercept(mockExecutionContext, mockCallHandler);
 
-		let emitted: unknown;
-		result$.subscribe({ next: (val) => (emitted = val) });
-		expect(emitted).toBe("result");
+		const next = td.func<(value: unknown) => void>();
+		result$.subscribe({ next: next });
+		td.verify(next("result"));
 	});
 
 	it("should log different HTTP methods correctly", () => {
+		Object.assign(mockRequest, { method: "GET", url: "/v1/posts" });
+		mockResponse.statusCode = 200;
 		const logger = interceptor["_logger"];
 		const loggerSpy = vi.spyOn(logger, "log");
-		mockRequest.method = "POST";
-		mockRequest.url = "/v1/reports";
+		Object.assign(mockRequest, { method: "POST", url: "/v1/reports" });
 		mockResponse.statusCode = 201;
 
-		const mockCallHandler: CallHandler = {
-			handle: () => of(undefined),
-		};
+		const mockCallHandler = td.object<CallHandler<unknown>>();
+		td.when(mockCallHandler.handle()).thenReturn(of(undefined));
 
 		interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe();
 

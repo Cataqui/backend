@@ -1,4 +1,4 @@
-import { ContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client";
 import { SavedContactOutputSchema } from "./saved-contact-output.schema";
 
 describe("SavedContactOutputSchema", () => {

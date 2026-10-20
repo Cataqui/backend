@@ -1,5 +1,10 @@
 {
 	"extends": "../tsconfig.json",
-	"files": ["./maps-worker-env.d.ts"],
-	"include": ["./src/**/*.ts", "./test/**/*.ts", "./vitest.config.ts"]
+	"compilerOptions": {
+		"resolveJsonModule": true,
+		"types": ["@cloudflare/workers-types", "vitest/globals", "node"],
+		"emitDecoratorMetadata": true
+	},
+	"files": ["./.cloudflare/types/index.d.ts"],
+	"include": ["./src/**/*.ts", "./test/**/*.ts", "./vitest.config.ts", "./cloudflare.config.ts", "./wrangler.config.ts"]
 }

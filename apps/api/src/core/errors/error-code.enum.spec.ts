@@ -20,11 +20,10 @@ describe("ErrorCode", () => {
 			"PAYLOAD_TOO_LARGE",
 			"URI_TOO_LONG",
 			"REQUEST_HEADER_FIELDS_TOO_LARGE",
-			"NOTP_INTENT_CREATION_COLLISION",
-			"NOTP_INTENT_NOT_FOUND",
-			"AUTH_SESSION_UNAVAILABLE",
 			"ACCESS_TOKEN_REQUIRED",
-			"INVALID_REFRESH_TOKEN",
+			"PROFILE_REQUIRED",
+			"PROFILE_CREATION_CONFLICT",
+			"PROFILE_NOT_FOUND",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -41,6 +40,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(24);
+		expect(Object.keys(ErrorCode)).toHaveLength(23);
 	});
 });

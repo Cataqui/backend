@@ -1,27 +1,30 @@
+import * as td from "testdouble";
 import type { FastifyRequest } from "fastify";
 import { InvalidLocaleException } from "../../core/errors/invalid-locale.exception";
 import { RequestUtils } from "./request.utils";
 
-function createMockRequest(headers: Record<string, string | undefined>, url = "/v1/test"): FastifyRequest {
-	return { headers, url } as FastifyRequest;
+afterEach(() => td.reset());
+
+function _createMockRequest(params: { headers: Record<string, string | undefined>; url?: string }): FastifyRequest {
+	return Object.assign(td.object<FastifyRequest>(), { headers: params.headers, url: params.url ?? "/v1/test" });
 }
 
 describe("RequestUtils", () => {
 	describe("resolveRequestId", () => {
 		it("should return X-Request-ID header value when present", () => {
-			const request = createMockRequest({ "x-request-id": "custom-request-id" });
+			const request = _createMockRequest({ headers: { "x-request-id": "custom-request-id" } });
 			const result = RequestUtils.resolveRequestId(request);
 			expect(result).toBe("custom-request-id");
 		});
 
 		it("should generate a UUID when no X-Request-ID header is present", () => {
-			const request = createMockRequest({});
+			const request = _createMockRequest({ headers: {} });
 			const result = RequestUtils.resolveRequestId(request);
 			expect(result).toMatch(/^[0-9a-f-]{36}$/);
 		});
 
 		it("should generate a UUID when X-Request-ID is an empty string", () => {
-			const request = createMockRequest({ "x-request-id": "" });
+			const request = _createMockRequest({ headers: { "x-request-id": "" } });
 			const result = RequestUtils.resolveRequestId(request);
 			expect(result).toMatch(/^[0-9a-f-]{36}$/);
 		});
@@ -29,19 +32,34 @@ describe("RequestUtils", () => {
 
 	describe("resolveEndpoint", () => {
 		it("should return request.url", () => {
-			const request = createMockRequest({}, "/v1/posts/abc123");
+			const request = _createMockRequest({ headers: {}, url: "/v1/posts/abc123" });
 			const result = RequestUtils.resolveEndpoint(request);
 			expect(result).toBe("/v1/posts/abc123");
 		});
 
 		it("should remove query values from the resolved endpoint", () => {
-			const request = createMockRequest({}, "/v1/feed?cursor=secret-token");
+			const request = _createMockRequest({ headers: {}, url: "/v1/feed?cursor=secret-token" });
 			const result = RequestUtils.resolveEndpoint(request);
 			expect(result).toBe("/v1/feed");
 		});
 	});
 
 	describe("resolveRequestLocale", () => {
+		it.each([
+			["en-US", "en-US"],
+			["pt-BR", "pt-BR"],
+			["en", "en"],
+			["es-MX", "es-MX"],
+			["zh-Hans", "zh-HANS"],
+			["de-DE", "de-DE"],
+		])("accepts the locale tag '%s'", (tag, expected) => {
+			expect(RequestUtils.resolveRequestLocale(tag)).toBe(expected);
+		});
+
+		it.each(["!!!bad", "1234", "en_US", "en_US_LONG"])("rejects the invalid locale tag '%s'", (tag) => {
+			expect(() => RequestUtils.resolveRequestLocale(tag)).toThrow(InvalidLocaleException);
+		});
+
 		it("should return the first locale from Accept-Language", () => {
 			const result = RequestUtils.resolveRequestLocale("es-MX,es;q=0.9,en;q=0.8");
 			expect(result).toBe("es-MX");

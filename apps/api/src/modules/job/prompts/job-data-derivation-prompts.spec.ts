@@ -2,10 +2,15 @@ import { JobDerivedDataSchema } from "../schemas/job-derived-data.schema";
 import { JobDataDerivationPrompts } from "./job-data-derivation-prompts";
 
 describe("JobDataDerivationPrompts", () => {
-	it("requires the payment field while allowing null when compensation is unclear", () => {
+	it("requires the payment field in derived job data", () => {
 		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
 
 		expect(prompt).toContain("Payment is a required field");
+	});
+
+	it("allows null payment when compensation is unclear", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain("compensation is absent, unclear, explicitly negotiable");
 	});
 
@@ -81,35 +86,91 @@ describe("JobDataDerivationPrompts", () => {
 		expect(prompt).toContain('{"title":"Help carrying furniture","description_summary":');
 	});
 
-	it("keeps pay amounts and units without inventing a currency or including payout timing", () => {
+	it("preserves daily payment units in derivation examples", () => {
 		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
 		expect(prompt).toContain('"payment":"150 por dia"');
+	});
+
+	it("preserves hourly payment units in derivation examples", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain('"payment":"120 por hora"');
+	});
+
+	it("preserves a stated payment currency symbol", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain('"payment":"$140,00"');
+	});
+
+	it("preserves alternative payment amounts", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain('"payment":"R$150 ou R$140"');
+	});
+
+	it("forbids inventing payment amounts, currencies, units, or conversions", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain("Never add a currency, unit, amount, or conversion");
 	});
 
-	it("distinguishes explicit in-kind compensation from incidental benefits and numeric distractors", () => {
+	it("preserves explicit in-kind compensation", () => {
 		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
 		expect(prompt).toContain('"payment":"Cesta básica"');
+	});
+
+	it("preserves category-base compensation", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain('"payment":"Salário base da categoria"');
+	});
+
+	it("excludes unrelated numeric details from payment", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain("Do not mistake dates, hours, addresses, phone numbers, vacancy counts, ages");
 	});
 
-	it("uses null when pay is absent, unclear, or explicitly negotiable", () => {
+	it("includes null payment examples", () => {
 		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
 		expect(prompt).toContain('"payment":null');
+	});
+
+	it("treats explicitly negotiable payment as unspecified", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain("Pagamento a combinar.");
+	});
+
+	it("treats unknown payment as unspecified", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).toContain("ainda não sei quanto.");
+	});
+
+	it("does not replace absent payment with Portuguese negotiability text", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).not.toContain('"payment":"A combinar"');
+	});
+
+	it("does not replace absent payment with English negotiability text", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+
 		expect(prompt).not.toContain('"payment":"Negotiable"');
 	});
 
-	it("keeps all few-shot results on the three-field output contract", () => {
+	it("includes more than ten derivation result examples", () => {
 		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
 		const results = [...prompt.matchAll(/<result>(.*?)<\/result>/g)];
 		expect(results.length).toBeGreaterThan(10);
+	});
+
+	it("keeps every derivation result example on the three-field output contract", () => {
+		const prompt = JobDataDerivationPrompts.buildSystemPrompt();
+		const results = [...prompt.matchAll(/<result>(.*?)<\/result>/g)];
+
 		for (const result of results) {
 			expect(JobDerivedDataSchema.safeParse(JSON.parse(result[1]!)).success).toBe(true);
 		}

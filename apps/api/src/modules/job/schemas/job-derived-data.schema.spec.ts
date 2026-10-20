@@ -66,10 +66,13 @@ describe("JobDataDerivationSchema", () => {
 		expect(result.success).toBe(false);
 	});
 
-	it("accepts null payment and trims whitespace-only payment to an empty string for service normalization", () => {
+	it("accepts null payment", () => {
 		expect(
 			JobDerivedDataSchema.parse({ title: "Role", description_summary: "Summary", payment: null }).payment,
 		).toBeNull();
+	});
+
+	it("trims whitespace-only payment to an empty string for service normalization", () => {
 		expect(JobDerivedDataSchema.parse({ title: "Role", description_summary: "Summary", payment: "   " }).payment).toBe(
 			"",
 		);

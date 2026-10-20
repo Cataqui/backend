@@ -135,3 +135,21 @@ run "reject_unsupported_environment" {
 
   expect_failures = [var.environment]
 }
+
+run "auth_storage_isolation" {
+  command = plan
+  variables { environment = "production" }
+  assert {
+    condition = (
+      upstash_redis_database.auth.database_name == "cataqui-auth-production" &&
+      upstash_redis_database.auth.primary_region == "sa-east-1" &&
+      upstash_redis_database.auth.tls &&
+      !upstash_redis_database.auth.eviction &&
+      length(upstash_redis_database.auth.read_regions) == 0 &&
+      infisical_secret.auth_redis_rest_url.folder_path == "/generated/auth/runtime" &&
+      infisical_secret.auth_redis_rest_token.folder_path == "/generated/auth/runtime" &&
+      infisical_secret.upstash_redis_rest_token.folder_path == "/generated/api/runtime"
+    )
+    error_message = "Auth and API must have independent Redis databases, credentials, and no session eviction."
+  }
+}

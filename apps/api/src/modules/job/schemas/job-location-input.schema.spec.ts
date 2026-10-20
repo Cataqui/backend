@@ -1,7 +1,10 @@
 import fc from "fast-check";
+import type { z } from "zod";
 import { JobLocationInputSchema } from "./job-location-input.schema";
 
-function _buildLocationInput(params: { title?: string; latitude?: number; longitude?: number } = {}) {
+function _buildLocationInput(
+	params: { title?: string; latitude?: number; longitude?: number } = {},
+): z.input<typeof JobLocationInputSchema> {
 	return {
 		title: params.title ?? "Rua Pardal Branco, 32",
 		latitude: params.latitude ?? -23.55052,

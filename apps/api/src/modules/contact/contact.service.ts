@@ -10,19 +10,21 @@ export class ContactService {
 	constructor(private readonly _contactRepository: ContactRepository) {}
 
 	async getOrAddContact(params: {
-		userId: string;
+		ownerProfileId: string;
 		contact: z.infer<typeof ContactInputSchema>;
 	}): Promise<z.infer<typeof SavedContactOutputSchema>> {
 		const contact = await this._contactRepository.upsertContact({
-			userId: params.userId,
+			ownerProfileId: params.ownerProfileId,
 			contactMethod: params.contact.method,
 			identifier: params.contact.identifier,
 		});
 		return { contactId: contact.id, method: contact.contactMethod, identifier: contact.identifier };
 	}
 
-	async getContacts(params: { userId: string }): Promise<z.infer<typeof SavedContactsOutputSchema>> {
-		const contacts = await this._contactRepository.findContactsByUserId({ userId: params.userId });
+	async getContacts(params: { ownerProfileId: string }): Promise<z.infer<typeof SavedContactsOutputSchema>> {
+		const contacts = await this._contactRepository.findContactsByOwnerProfileId({
+			ownerProfileId: params.ownerProfileId,
+		});
 		return contacts.map((contact) => ({
 			contactId: contact.id,
 			method: contact.contactMethod,

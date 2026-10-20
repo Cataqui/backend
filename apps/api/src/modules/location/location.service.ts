@@ -27,10 +27,14 @@ export class LocationService {
 				Math.sin(bearingRadians) * Math.sin(angularDistance) * Math.cos(latitudeRadians),
 				Math.cos(angularDistance) - Math.sin(latitudeRadians) * Math.sin(fuzzyLatitudeRadians),
 			);
+		const fuzzyLongitude = Number(((fuzzyLongitudeRadians * 180) / Math.PI).toFixed(6));
 
 		return {
 			latitude: Number(((fuzzyLatitudeRadians * 180) / Math.PI).toFixed(6)),
-			longitude: Number(((fuzzyLongitudeRadians * 180) / Math.PI).toFixed(6)),
+			longitude:
+				fuzzyLongitude < -180 || fuzzyLongitude > 180
+					? Number((((fuzzyLongitude + 540) % 360) - 180).toFixed(6))
+					: fuzzyLongitude,
 		};
 	}
 }

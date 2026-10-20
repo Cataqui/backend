@@ -1,3 +1,4 @@
+import { runtimeConfig } from "../src/core/config/runtime.config";
 import { Controller, Get, Version } from "@nestjs/common";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
@@ -19,7 +20,10 @@ class PrismaFilterOrderTestController {
 
 describe("Prisma exception filter order (e2e)", () => {
 	it("should route a known Prisma error through the Prisma-specific filter", async () => {
-		const module = await Test.createTestingModule({ controllers: [PrismaFilterOrderTestController] }).compile();
+		const module = await Test.createTestingModule({
+			controllers: [PrismaFilterOrderTestController],
+			providers: [{ provide: runtimeConfig.KEY, useValue: { environment: "development" } }],
+		}).compile();
 		const app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 		await configureApp(app);
 		await app.init();

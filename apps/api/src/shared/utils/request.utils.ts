@@ -17,16 +17,15 @@ function resolveEndpoint(request: FastifyRequest): string {
 function resolveRequestLocale(acceptLanguage: string | undefined): string {
 	if (!acceptLanguage) return LocaleConstants.DEFAULT_LOCALE;
 
-	const locales = acceptLanguage.split(",").map((part) => (part.split(";")[0] ?? "").trim());
-	const primary = locales[0] ?? "";
+	const primary = acceptLanguage.split(",").map((part) => (part.split(";")[0] ?? "").trim())[0] ?? "";
 
-	if (primary.length > 0 && !LocaleConstants.LOCALE_TAG_REGEX.test(primary)) throw new InvalidLocaleException(primary);
+	if (primary.length > 0 && !/^[a-z]{2}(-[a-z0-9]{2,8})?$/i.test(primary)) throw new InvalidLocaleException(primary);
 
 	return LocaleUtils.formatBcp47LocaleTag(primary) || LocaleConstants.DEFAULT_LOCALE;
 }
 
 export const RequestUtils = {
-	resolveRequestId,
-	resolveEndpoint,
-	resolveRequestLocale,
+	resolveRequestId: resolveRequestId,
+	resolveEndpoint: resolveEndpoint,
+	resolveRequestLocale: resolveRequestLocale,
 } as const;

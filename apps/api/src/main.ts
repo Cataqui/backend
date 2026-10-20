@@ -1,4 +1,4 @@
-void import("./bootstrap.js")
+void import("./bootstrap")
 	.then(({ bootstrap }) => bootstrap())
 	.catch((error: unknown) => {
 		const errorName = error instanceof Error ? error.name : "UnknownError";
@@ -10,7 +10,7 @@ void import("./bootstrap.js")
 				event: "api.application.start.failed",
 				level: "fatal",
 				timestamp: new Date().toISOString(),
-				environment: process.env["NODE_ENV"] ?? "unknown",
+				environment: process.env["ENVIRONMENT"] ?? "unknown",
 				errorName: errorName,
 				errorMessage: errorMessage,
 				...(errorStack === undefined ? {} : { errorStack: errorStack }),

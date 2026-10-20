@@ -9,136 +9,106 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Deploy and monitor API
+    - name: Load API deployment credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: api-deployment
+        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+    - name: Load API runtime
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: api-runtime
+        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+    - name: Build the API RPC contracts and their dependencies
       shell: bash
-      working-directory: ${{ github.workspace }}/apps/api
+      run: pnpm --filter '@cataqui/api...' --if-present run build:contracts
+    - name: Build API Worker for the deployment environment
+      shell: ruby {0}
+      working-directory: apps/api/worker
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: exec "pnpm", "exec", "cf", "build", "--mode", ENV.fetch("INPUT_ENVIRONMENT")
+    - name: Get current Worker version
+      id: current-worker-version
+      shell: ruby {0}
+      working-directory: apps/api/worker
       env:
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        set -euo pipefail
-        case "$INPUT_ENVIRONMENT" in staging | production) ;; *) exit 1 ;; esac
-        umask 077
-        secrets_file="$RUNNER_TEMP/cataqui-api-secrets.json"
-        deployment_file="$RUNNER_TEMP/cataqui-api-deployments.json"
-        deploy_log="$RUNNER_TEMP/cataqui-api-deploy.log"
-        container_log="$RUNNER_TEMP/cataqui-api-containers.log"
-        cleanup() { rm -f -- "$secrets_file" "$deployment_file" "$deploy_log" "$container_log"; }
-        trap cleanup EXIT
-
-        node - "$secrets_file" <<'NODE'
-        const { writeFileSync } = require("node:fs");
-        const names = [
-          "CLOUDFLARE_ACCOUNT_ID", "DATABASE_APP_POOLER_URL", "AI_GATEWAY_API_TOKEN",
-          "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN",
-          "AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL", "MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64",
-        ];
-        const values = Object.fromEntries(names.map((name) => [name, process.env[name]]));
-        writeFileSync(process.argv[2], JSON.stringify(values), { mode: 0o600 });
-        NODE
-
-        pnpm exec wrangler deployments list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json >"$deployment_file" 2>/dev/null || true
-        previous_version="$(node - "$deployment_file" <<'NODE'
-        const { readFileSync } = require("node:fs");
-        try {
-          const value = JSON.parse(readFileSync(process.argv[2], "utf8"));
-          const deployments = Array.isArray(value) ? value : value.deployments ?? value.result ?? [];
-          const versions = deployments[0]?.versions ?? deployments[0]?.strategy?.versions ?? [];
-          const stable = versions.find((item) => Number(item.percentage ?? item.traffic ?? 100) === 100) ?? versions[0];
-          process.stdout.write(stable?.version_id ?? stable?.id ?? "");
-        } catch {}
-        NODE
-        )"
-
-        rollback() {
-          if [[ -z "$previous_version" ]]; then
-            echo "API health failed during its first deployment; no prior Worker version exists to restore." >&2
-            return 1
-          fi
-          pnpm exec wrangler rollback "$previous_version" --config wrangler.jsonc \
-            --env "$INPUT_ENVIRONMENT" --message "Automatic rollback after failed $GITHUB_SHA" --yes \
-            >"$deploy_log" 2>&1 || { echo "Automatic API rollback failed." >&2; return 1; }
-          for attempt in $(seq 1 20); do
-            if probe_api; then return 0; fi
-            sleep 15
-          done
-          echo "API rollback completed but health did not recover." >&2
-          return 1
-        }
-
-        base_url="https://api.cataqui.com"
-        [[ "$INPUT_ENVIRONMENT" == staging ]] && base_url="https://staging.api.cataqui.com"
-        worker_name="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].name // .name' wrangler.jsonc)"
-        container_class="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].containers[0].class_name' wrangler.jsonc)"
-        max_instances="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].containers[0].max_instances' wrangler.jsonc)"
-        container_rollout=gradual
-        [[ "$max_instances" == 1 ]] && container_rollout=immediate
-        container_app_name="$(printf '%s-%s-%s' "$worker_name" "$container_class" "$INPUT_ENVIRONMENT" | tr '[:upper:] ' '[:lower:]-')"
-        probe_api() {
-          [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health/live" || true)" == 204 ]] &&
-          [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)" == 200 ]] &&
-          [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/feed" || true)" == 200 ]] &&
-          [[ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/v1/auth/microservices/jwks" || true)" == 200 ]]
-        }
-
-        if ! pnpm exec wrangler deploy --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
-          --strict --containers-rollout "$container_rollout" --tag "$GITHUB_SHA" --message "Deploy $GITHUB_SHA" \
-          --secrets-file "$secrets_file" >"$deploy_log" 2>&1; then
-          node "$GITHUB_WORKSPACE/.github/actions/summarize-wrangler-failure.mjs" "$deploy_log" API
-          rollback || true
-          exit 1
-        fi
-
-        failures=0
-        successes=0
-        maximum_attempts=80
-        startup_attempts=40
-        if [[ "$INPUT_ENVIRONMENT" == staging ]]; then
-          maximum_attempts=40
-          startup_attempts=20
-        fi
-        for attempt in $(seq 1 "$maximum_attempts"); do
-          rollout_state=progressing
-          if pnpm exec wrangler containers list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json \
-            >"$container_log" 2>&1; then
-            if ! rollout_state="$(node - "$container_log" "$container_app_name" <<'NODE'
-              const { readFileSync } = require("node:fs");
-              const value = JSON.parse(readFileSync(process.argv[2], "utf8"));
-              const applications = Array.isArray(value) ? value : value.result ?? value.applications ?? [];
-              const matches = applications.filter((application) => application.name === process.argv[3]);
-              if (matches.length !== 1) process.exit(1);
-              const state = matches[0].state;
-              if (state === "degraded" || state === "failed" || state === "error") process.stdout.write("failed");
-              else if (state === "active" || state === "ready") process.stdout.write("completed");
-              else if (state === "provisioning") process.stdout.write("progressing");
-              else process.exit(1);
-        NODE
-            )"; then
-              echo "Unable to identify the API Container rollout state." >&2
-              rollback || true
-              exit 1
-            fi
-            if [[ "$rollout_state" == failed ]]; then
-              echo "Container rollout entered a terminal failure state." >&2
-              rollback || true
-              exit 1
-            fi
-          fi
-          if probe_api; then
-            failures=0
-            if [[ "$rollout_state" == completed ]]; then successes=$((successes + 1)); else successes=0; fi
-            [[ "$successes" -ge 5 ]] && exit 0
-          else
-            successes=0
-            if [[ "$attempt" -le "$startup_attempts" ]]; then
-              failures=0
-              sleep 15
-              continue
-            fi
-            failures=$((failures + 1))
-            if [[ "$failures" -ge 3 ]]; then echo "API failed three consecutive health probes." >&2; rollback || true; exit 1; fi
-          fi
-          sleep 15
-        done
-        echo "API rollout timed out before five consecutive readiness successes." >&2
-        rollback || true
-        exit 1
+        require "open3"
+        require "rbconfig"
+        require "json"
+        previous_versions, status = Open3.capture2(
+          RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/get-current-worker-deployment.rb")
+        )
+        exit(status.exitstatus || 1) unless status.success?
+        versions = JSON.parse(previous_versions)
+        abort "Resolve the partial API rollout before starting another deployment." if versions.length > 1
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "versions=#{JSON.generate(versions)}" }
+    - name: Get current container config
+      id: current-container-config
+      shell: ruby {0}
+      working-directory: apps/api/worker
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "json"
+        containers = Dir.glob(".cloudflare/output/v0/containers/*/container.config.json")
+        abort "Expected the API's sole Container application." unless containers.length == 1
+        container = JSON.parse(File.read(containers.first, encoding: "UTF-8"))
+        rollout = container.fetch("maxInstances") == 1 ? "immediate" : "gradual"
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |file|
+          file.puts "name=#{container.fetch('name')}"
+          file.puts "rollout=#{rollout}"
+        end
+    - name: Deploy API Worker and Container
+      id: deploy
+      shell: ruby {0}
+      working-directory: apps/api/worker
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_RUNTIME_PROFILE: api-runtime
+        CONTAINERS_ROLLOUT: ${{ steps.current-container-config.outputs.rollout }}
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/deploy-worker.rb")
+    - name: Monitor container rollout and API health
+      id: container-rollout
+      shell: ruby {0}
+      working-directory: apps/api/worker
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        CONTAINER_APP_NAME: ${{ steps.current-container-config.outputs.name }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "monitor-container-rollout.rb")
+    - name: Restore previous Worker version and check API health
+      if: failure() && steps.current-worker-version.outcome == 'success' && steps.current-container-config.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.container-rollout.outcome == 'failure')
+      shell: ruby {0}
+      working-directory: apps/api/worker
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        PREVIOUS_VERSIONS: ${{ steps.current-worker-version.outputs.versions }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "restore-worker-version.rb")
+    - name: Remove API deployment logs
+      if: always()
+      shell: ruby {0}
+      run: |
+        %w[cataqui-api-deploy.log cataqui-api-containers.log].each do |name|
+          begin
+            File.delete(File.join(ENV.fetch("RUNNER_TEMP"), name))
+          rescue Errno::ENOENT
+            # A failed deployment may not have created either log.
+          end
+        end
+    - name: Clear API credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        require "json"
+        profiles = JSON.parse(File.read(".github/actions/load-infisical-secrets/profiles.json", encoding: "UTF-8"))
+        names = %w[api-deployment api-runtime].flat_map do |name|
+          profile = profiles.fetch(name)
+          profile.fetch("required_secrets") + profile.fetch("environment_aliases").keys
+        end
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          names.uniq.each { |name| file.puts "#{name}=" }
+        end

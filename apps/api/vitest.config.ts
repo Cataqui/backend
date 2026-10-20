@@ -1,7 +1,6 @@
-import { generateKeyPairSync } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
-import { WorkspaceCoverage } from "../../vitest.shared";
+import { WorkspaceCoverage } from "../../vitest.shared.ts";
 
 export default defineConfig({
 	test: {
@@ -9,13 +8,7 @@ export default defineConfig({
 		include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
 		env: {
 			NODE_ENV: "test",
-			AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL: Buffer.alloc(32, 1).toString("base64url"),
-			MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64: generateKeyPairSync("ec", {
-				namedCurve: "prime256v1",
-				privateKeyEncoding: { format: "der", type: "pkcs8" },
-				publicKeyEncoding: { format: "der", type: "spki" },
-			}).privateKey.toString("base64"),
-			WHATSAPP_NOTP_RECEIVER: "+15556625497",
+			ENVIRONMENT: "development",
 			DATABASE_APP_POOLER_URL: "postgresql://test:test@localhost:5432/test?schema=public",
 			CORS_ORIGINS: "http://localhost:3000",
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",

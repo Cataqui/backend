@@ -44,21 +44,27 @@ describe("Upstash Redis OpenTofu contract", () => {
 		expect(backend).not.toMatch(/(?:access_key|secret_key|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)\s*=/);
 	});
 
-	it("should create protected paid databases matching the API placement and cost profile", () => {
+	it("should create independent protected API and Auth databases in South America", () => {
 		const rootHcl = _getRootHcl();
 		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
 
 		expect(manifest.upstash.redis.databases).toEqual({
 			cataqui_api_staging: { name: "cataqui-api-staging" },
 			cataqui_api_production: { name: "cataqui-api-production" },
+			cataqui_auth_staging: { name: "cataqui-auth-staging" },
+			cataqui_auth_production: { name: "cataqui-auth-production" },
 		});
 		expect(rootHcl).toContain("name           = local.manifest.upstash.redis.databases.cataqui_api_staging.name");
 		expect(rootHcl).toContain("name           = local.manifest.upstash.redis.databases.cataqui_api_production.name");
+		expect(rootHcl).toContain('resource "upstash_redis_database" "auth"');
+		expect(rootHcl).toMatch(
+			/local\.manifest\.upstash\.redis\.databases\["cataqui_auth_\$\{var\.environment\}"\]\.name/,
+		);
 		expect(rootHcl).toMatch(/region\s*=\s*"global"/);
 		expect(rootHcl).toMatch(/primary_region\s*=\s*"sa-east-1"/);
 		expect(rootHcl).toMatch(/read_regions\s*=\s*\[\]/);
 		expect(rootHcl).toMatch(/tls\s*=\s*true/);
-		expect(rootHcl).toMatch(/eviction\s*=\s*false/);
+		expect(rootHcl.match(/eviction\s*=\s*false/g)).toHaveLength(2);
 		expect(rootHcl).toMatch(/auto_scale\s*=\s*false/);
 		expect(rootHcl).toMatch(/prod_pack\s*=\s*false/);
 		expect(rootHcl).toMatch(/prevent_destroy\s*=\s*true/);
@@ -66,14 +72,16 @@ describe("Upstash Redis OpenTofu contract", () => {
 		expect(rootHcl).not.toMatch(/ip_allowlist|\bmultizone\s*=|\bconsistent\s*=/);
 	});
 
-	it("should publish only the API runtime contract through write-only Infisical fields", () => {
+	it("should publish separate API and Auth runtime credentials through write-only Infisical fields", () => {
 		const rootHcl = _getRootHcl();
 
 		expect(rootHcl).toMatch(/name\s*=\s*"UPSTASH_REDIS_REST_URL"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"UPSTASH_REDIS_REST_TOKEN"/);
 		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/api\/runtime"/g)).toHaveLength(2);
-		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(2);
+		expect(rootHcl.match(/folder_path\s*=\s*"\/generated\/auth\/runtime"/g)).toHaveLength(2);
+		expect(rootHcl.match(/value_wo_version\s*=\s*1/g)).toHaveLength(4);
 		expect(rootHcl).toMatch(/value_wo\s*=\s*upstash_redis_database\.api\.rest_token/);
+		expect(rootHcl).toMatch(/value_wo\s*=\s*upstash_redis_database\.auth\.rest_token/);
 		expect(rootHcl).not.toMatch(/read_only_rest_token|\n\s*value\s*=/);
 	});
 
@@ -97,8 +105,8 @@ describe("Upstash Redis OpenTofu contract", () => {
 	it("should match the existing application runtime variables", () => {
 		const applicationConfiguration = [
 			readFileSync(resolve(repositoryRoot, "apps/api/src/core/config/upstash-redis.config.ts"), "utf8"),
-			readFileSync(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8"),
-			readFileSync(resolve(repositoryRoot, "apps/api/src/platform/cloudflare/container/api-container.ts"), "utf8"),
+			readFileSync(resolve(repositoryRoot, "apps/api/worker/cloudflare.config.ts"), "utf8"),
+			readFileSync(resolve(repositoryRoot, "apps/api/worker/src/container.ts"), "utf8"),
 		].join("\n");
 
 		expect(applicationConfiguration).toContain("UPSTASH_REDIS_REST_URL");

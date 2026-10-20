@@ -1,0 +1,148 @@
+name: Mapshot release
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true }
+      revision: { type: string, required: true }
+      refresh: { type: boolean, default: false }
+      promote: { type: boolean, default: false }
+permissions:
+  contents: read
+concurrency:
+  group: mapshot-release
+  cancel-in-progress: false
+  queue: max
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      revision: ${{ steps.refs.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: '${{ inputs.revision }}', persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - id: refs
+        shell: ruby {0}
+        env:
+          REQUESTED_ENVIRONMENT: ${{ inputs.environment }}
+          REQUESTED_REVISION: ${{ inputs.revision }}
+        run: |
+          abort "Unsupported release environment." unless %w[staging production].include?(ENV.fetch("REQUESTED_ENVIRONMENT"))
+          revision = ENV.fetch("REQUESTED_REVISION")
+          abort "Release revision must be a full commit SHA." unless revision.match?(/\A[a-f0-9]{40}\z/)
+          File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "revision=#{revision}" }
+  release-transfer:
+    permissions:
+      contents: read
+      id-token: write
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - run: pnpm build:packages
+      - uses: ./.github/actions/deploy-mapshot
+        with:
+          environment: ${{ inputs.environment }}
+          revision: ${{ needs.resolve.outputs.revision }}
+          operation: transfer
+          refresh: ${{ inputs.refresh }}
+          promote: ${{ inputs.promote }}
+  release-verify:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [resolve, release-transfer]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - run: pnpm build:packages
+      - uses: ./.github/actions/deploy-mapshot
+        with:
+          environment: ${{ inputs.environment }}
+          revision: ${{ needs.resolve.outputs.revision }}
+          operation: verify
+          refresh: ${{ inputs.refresh }}
+          promote: ${{ inputs.promote }}
+  release-prepare:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [resolve, release-verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - run: pnpm build:packages
+      - uses: ./.github/actions/deploy-mapshot
+        with:
+          environment: ${{ inputs.environment }}
+          revision: ${{ needs.resolve.outputs.revision }}
+          operation: prepare
+          refresh: ${{ inputs.refresh }}
+          promote: ${{ inputs.promote }}
+  release-deploy:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [resolve, release-prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - run: pnpm build:packages
+      - uses: ./.github/actions/deploy-mapshot
+        with:
+          environment: ${{ inputs.environment }}
+          revision: ${{ needs.resolve.outputs.revision }}
+          operation: deploy
+          refresh: ${{ inputs.refresh }}
+          promote: ${{ inputs.promote }}
+  recover:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [resolve, release-deploy]
+    if: always() && needs.resolve.result == 'success' && (needs.release-deploy.result == 'failure' || needs.release-deploy.result == 'cancelled')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: '${{ needs.resolve.outputs.revision }}', persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - run: pnpm build:packages
+      - uses: ./.github/actions/deploy-mapshot
+        with:
+          environment: ${{ inputs.environment }}
+          revision: ${{ needs.resolve.outputs.revision }}
+          operation: recover

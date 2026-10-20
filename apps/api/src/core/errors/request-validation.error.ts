@@ -1,12 +1,11 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import type { z } from "zod";
-import type { ValidationViolationSchema } from "../validation/validation-violation.schema";
+import type { ValidationViolation } from "@cataqui/response";
 import { ErrorCode } from "./error-code.enum";
 
 export class RequestValidationError extends HttpException {
 	public override readonly errorCode = ErrorCode.VALIDATION_ERROR;
 
-	constructor(params: { violations: z.infer<typeof ValidationViolationSchema>[] }) {
+	constructor(params: { violations: ValidationViolation[] }) {
 		super(
 			{
 				errorCode: ErrorCode.VALIDATION_ERROR,

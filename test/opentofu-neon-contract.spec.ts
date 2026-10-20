@@ -6,7 +6,13 @@ const repositoryRoot = process.cwd();
 const infrastructureDirectory = resolve(repositoryRoot, "infrastructure");
 const rootsDirectory = resolve(infrastructureDirectory, "opentofu/roots");
 
-const rootNames = ["infisical-generated-folders", "neon-projects", "neon-api-keys", "neon-database-access"] as const;
+const rootNames = [
+	"infisical-generated-folders",
+	"neon-projects",
+	"neon-api-keys",
+	"neon-database-access",
+	"cloudflare-hyperdrive",
+] as const;
 
 function _readInfrastructureFile(path: string): string {
 	return readFileSync(resolve(infrastructureDirectory, path), "utf8");
@@ -32,6 +38,7 @@ describe("Neon OpenTofu contract", () => {
 		});
 		expect(manifest.neon.databases).toEqual({
 			cataqui: { name: "cataqui", owner_role: "db_owner", runtime_role: "db_user" },
+			auth: { name: "auth", owner_role: "auth_owner", runtime_role: "auth_user" },
 		});
 		expect(manifest.neon.api_keys).toEqual({
 			account_bootstrap: { name: "cataqui-backend-opentofu-bootstrap" },
@@ -58,6 +65,7 @@ describe("Neon OpenTofu contract", () => {
 		["neon-projects", ['version = "= 0.19.21"', 'version = "= 0.15.0"']],
 		["neon-api-keys", ['version = "= 0.19.21"', 'version = "= 0.15.0"']],
 		["neon-database-access", ['version = "= 0.19.21"', 'version = "= 1.27.0"', 'version = "= 3.9.0"']],
+		["cloudflare-hyperdrive", ['version = "= 5.23.0"', 'version = "= 0.19.21"']],
 	] as const)("should pin OpenTofu and providers for %s", (rootName, providerVersions) => {
 		const versions = _readInfrastructureFile(`opentofu/roots/${rootName}/versions.tf`);
 		const lockfile = _readInfrastructureFile(`opentofu/roots/${rootName}/.terraform.lock.hcl`);
@@ -94,16 +102,18 @@ describe("Neon OpenTofu contract", () => {
 			.map((fileName) => readFileSync(resolve(rootsDirectory, "cloudflare-ai-gateways", fileName), "utf8"))
 			.join("\n");
 
-		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(12);
+		expect(folderRoot.match(/resource "infisical_secret_folder"/g)).toHaveLength(15);
 		expect(folderRoot).toMatch(/name\s*=\s*"generated"/);
 		expect(folderRoot).toMatch(/name\s*=\s*"api"/);
-		expect(folderRoot).toMatch(/name\s*=\s*"webhooks"/);
-		expect(folderRoot.match(/name\s*=\s*"deployment"/g)).toHaveLength(3);
+		expect(folderRoot).toMatch(/name\s*=\s*"auth"/);
+		expect(folderRoot).toMatch(/name\s*=\s*"mapshot"/);
+		expect(folderRoot.match(/name\s*=\s*"deployment"/g)).toHaveLength(4);
 		expect(folderRoot).toMatch(/name\s*=\s*"opentofu"/);
 		expect(folderRoot.match(/name\s*=\s*"runtime"/g)).toHaveLength(3);
 		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/api"/);
-		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/webhooks"/);
-		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(12);
+		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/auth"/);
+		expect(folderRoot).toMatch(/folder_path\s*=\s*"\/generated\/mapshot"/);
+		expect(folderRoot.match(/force_delete\s*=\s*false/g)).toHaveLength(15);
 		expect([gatewayRoot, aiGatewayRoot].join("\n")).not.toMatch(/resource "infisical_secret_folder"/);
 	});
 
@@ -141,7 +151,10 @@ describe("Neon OpenTofu contract", () => {
 		expect(rootHcl).toMatch(
 			/resource "infisical_secret" "neon_project_id"[\s\S]*name\s*=\s*"NEON_PROJECT_ID"[\s\S]*value\s*=\s*neon_project\.cataqui\.id[\s\S]*prevent_destroy\s*=\s*true/,
 		);
-		expect(rootHcl.match(/\n\s*value\s*=/g)).toHaveLength(1);
+		expect(rootHcl).toMatch(
+			/resource "infisical_secret" "auth_neon_project_id"[\s\S]*name\s*=\s*"NEON_PROJECT_ID"[\s\S]*value\s*=\s*neon_project\.cataqui\.id/,
+		);
+		expect(rootHcl.match(/\n\s*value\s*=/g)).toHaveLength(2);
 	});
 
 	it("should generate protected project-scoped Neon API keys into Infisical write-only", () => {
@@ -180,13 +193,64 @@ describe("Neon OpenTofu contract", () => {
 		const prismaConfiguration = readFileSync(resolve(repositoryRoot, "apps/api/prisma.config.ts"), "utf8");
 		const runtimeConfiguration = [
 			readFileSync(resolve(repositoryRoot, "apps/api/src/core/config/database.config.ts"), "utf8"),
-			readFileSync(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8"),
-			readFileSync(resolve(repositoryRoot, "apps/api/src/platform/cloudflare/container/api-container.ts"), "utf8"),
+			readFileSync(resolve(repositoryRoot, "apps/api/worker/cloudflare.config.ts"), "utf8"),
+			readFileSync(resolve(repositoryRoot, "apps/api/worker/src/container.ts"), "utf8"),
 		].join("\n");
 
 		expect(prismaConfiguration).toContain("DATABASE_OWNER_DIRECT_URL");
 		expect(runtimeConfiguration).toContain("DATABASE_APP_POOLER_URL");
 		expect(runtimeConfiguration).not.toContain("DATABASE_OWNER_DIRECT_URL");
+	});
+
+	it("should isolate Auth database access from API runtime access", () => {
+		const authAccess = _readInfrastructureFile("opentofu/roots/neon-database-access/auth.tf");
+		const authPrismaConfiguration = readFileSync(resolve(repositoryRoot, "apps/workers/auth/prisma.config.ts"), "utf8");
+
+		expect(authAccess).toMatch(
+			/resource "postgresql_database" "auth"[\s\S]*?owner\s*=\s*postgresql_role\.auth_owner\.name/,
+		);
+		expect(authAccess).toMatch(/resource "postgresql_role" "auth_user"[\s\S]*?inherit\s*=\s*false/);
+		for (const forbiddenPrivilege of [
+			"superuser",
+			"create_database",
+			"create_role",
+			"replication",
+			"bypass_row_level_security",
+		]) {
+			expect(authAccess.match(new RegExp(`${forbiddenPrivilege}\\s*=\\s*false`, "g"))).toHaveLength(2);
+		}
+		for (const grant of ["auth_public_database", "api_public_database", "auth_public_schema"]) {
+			expect(authAccess).toMatch(
+				new RegExp(`resource "postgresql_grant" "${grant}"[^}]*role\\s*=\\s*"public"[^}]*privileges\\s*=\\s*\\[\\]`),
+			);
+		}
+		expect(authAccess).toMatch(
+			/resource "postgresql_grant" "auth_database"[^}]*database\s*=\s*postgresql_database\.auth\.name[^}]*role\s*=\s*postgresql_role\.auth_user\.name[^}]*privileges\s*=\s*\["CONNECT"\]/,
+		);
+		expect(authAccess).toMatch(
+			/folder_path\s*=\s*"\/generated\/auth\/deployment"[\s\S]*?name\s*=\s*"DATABASE_OWNER_DIRECT_URL"/,
+		);
+		expect(authAccess).toMatch(
+			/folder_path\s*=\s*"\/generated\/opentofu\/cloudflare-hyperdrive"[\s\S]*?name\s*=\s*"DATABASE_PASSWORD"[\s\S]*?value_wo\s*=\s*ephemeral\.random_password\.auth_user\.result/,
+		);
+		expect(authAccess).not.toContain("DATABASE_APP_POOLER_URL");
+		expect(authPrismaConfiguration).toContain("DATABASE_OWNER_DIRECT_URL");
+	});
+
+	it("should connect Auth Hyperdrive to the restricted direct origin without caching authentication reads", () => {
+		const rootHcl = _getRootHcl("cloudflare-hyperdrive");
+
+		expect(rootHcl).toMatch(/resource "cloudflare_hyperdrive_config" "auth"/);
+		expect(rootHcl).toMatch(/database\s*=\s*local\.manifest\.neon\.databases\.auth\.name/);
+		expect(rootHcl).toMatch(/user\s*=\s*local\.manifest\.neon\.databases\.auth\.runtime_role/);
+		expect(rootHcl).toMatch(/password\s*=\s*var\.database_password/);
+		expect(rootHcl).toMatch(/variable "database_password"\s*{[^}]*sensitive\s*=\s*true/);
+		expect(rootHcl).toContain('!strcontains(var.database_host, "-pooler.")');
+		expect(rootHcl).toMatch(/caching\s*=\s*{\s*disabled\s*=\s*true\s*}/);
+		expect(rootHcl).toMatch(
+			/folder_path\s*=\s*"\/generated\/auth\/deployment"[^}]*name\s*=\s*"HYPERDRIVE_ID"[^}]*value\s*=\s*cloudflare_hyperdrive_config\.auth\.id/,
+		);
+		expect(rootHcl).not.toMatch(/\boutput\s+"/);
 	});
 
 	it("should prohibit committed credentials and secret outputs", () => {
