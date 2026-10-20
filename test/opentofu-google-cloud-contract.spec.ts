@@ -156,7 +156,7 @@ describe("Google Cloud OpenTofu contract", () => {
 	it("should deliver the Places key only through the Maps write-only field", () => {
 		const rootHcl = _getRootHcl("google-cloud-maps-platform");
 
-		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-maps-places-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-geosearch-places-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/display_name\s*=\s*"Cataqui Maps Places \$\{title\(var\.environment\)\}"/);
 		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/maps\/runtime"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"GOOGLE_PLACES_API_KEY"/);
