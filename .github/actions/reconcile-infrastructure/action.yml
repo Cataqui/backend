@@ -1,6 +1,12 @@
 name: Reconcile deployment infrastructure
 description: Apply environment infrastructure in dependency order with its owned secret profiles.
 inputs:
+  google-workload-identity-provider:
+    description: Google workload identity provider supplied by the workflow.
+    required: true
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment: { description: Target environment, required: true }
 runs:
   using: composite
@@ -10,7 +16,7 @@ runs:
       with: { tofu_version: 1.12.6, tofu_wrapper: false }
     - name: Load bootstrap credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply generated folders
       uses: ./.github/actions/infisical-generated-folders
       with: { environment: "${{ inputs.environment }}", operation: apply }
@@ -19,7 +25,7 @@ runs:
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Pages infrastructure credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply landing Pages configuration
       uses: ./.github/actions/cloudflare-pages
       with: { environment: "${{ inputs.environment }}", operation: apply }
@@ -28,7 +34,7 @@ runs:
       run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
     - name: Load R2 infrastructure credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply private R2 image storage
       uses: ./.github/actions/cloudflare-r2
       with: { environment: "${{ inputs.environment }}", operation: apply }
@@ -40,28 +46,28 @@ runs:
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon project credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: neon-projects, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: neon-projects, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon projects
       uses: ./.github/actions/neon-projects
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon API-key credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: neon-api-keys, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: neon-api-keys, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Load Neon project context
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: neon-project-context, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: neon-project-context, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon project API keys
       uses: ./.github/actions/neon-api-keys
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon database-access credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: neon-database-access, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: neon-database-access, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon database access
       uses: ./.github/actions/neon-database-access
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Hyperdrive infrastructure credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: cloudflare-hyperdrive, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-hyperdrive, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Auth database connection pool
       uses: ./.github/actions/cloudflare-hyperdrive
       with: { environment: "${{ inputs.environment }}", operation: apply }
@@ -82,19 +88,19 @@ runs:
         end
     - name: Load Upstash credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: upstash-redis, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: upstash-redis, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Upstash
       uses: ./.github/actions/upstash-redis
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Load AI Gateway credentials
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: "${{ inputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply AI Gateway
       uses: ./.github/actions/cloudflare-ai-gateways
       with: { environment: "${{ inputs.environment }}", operation: apply }
     - name: Authenticate Google Cloud
       uses: ./.github/actions/authenticate-google-cloud
-      with: { environment: "${{ inputs.environment }}", workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
+      with: { environment: "${{ inputs.environment }}", workload-identity-provider: "${{ inputs.google-workload-identity-provider }}" }
     - name: Apply Google Maps Platform
       uses: ./.github/actions/google-cloud-maps-platform
       with: { environment: "${{ inputs.environment }}", operation: apply }
@@ -102,7 +108,7 @@ runs:
     - name: Load production DNS credentials
       if: inputs.environment == 'production'
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: production, profile: cloudflare-zone-dns, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: production, profile: cloudflare-zone-dns, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply production DNS
       if: inputs.environment == 'production'
       uses: ./.github/actions/cloudflare-zone-dns
@@ -110,7 +116,7 @@ runs:
     - name: Load production zone credentials
       if: inputs.environment == 'production'
       uses: ./.github/actions/load-infisical-secrets
-      with: { environment: production, profile: cloudflare-zone-configuration, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      with: { environment: production, profile: cloudflare-zone-configuration, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply production zone configuration
       if: inputs.environment == 'production'
       uses: ./.github/actions/cloudflare-zone-configuration

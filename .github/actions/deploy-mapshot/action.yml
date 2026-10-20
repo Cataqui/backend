@@ -1,6 +1,9 @@
 name: Deploy Mapshot
 description: Execute one GitHub-owned preparation or verified deployment phase.
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Target environment.
     required: true
@@ -32,14 +35,14 @@ runs:
       with:
         environment: ${{ inputs.environment }}
         profile: mapshot-deployment
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Load staging map update credentials
       uses: ./.github/actions/load-infisical-secrets
       if: inputs.environment == 'staging' && inputs.refresh == 'true'
       with:
         environment: staging
         profile: mapshot-map-update
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Read the Cloudflare account
       shell: ruby {0}
       run: |

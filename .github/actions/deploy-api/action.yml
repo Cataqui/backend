@@ -2,6 +2,9 @@ name: Deploy API container safely
 description: Deploy the API Worker and Container, monitor health, and roll back its Worker version on failure.
 
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Deployment environment; staging or production.
     required: true
@@ -14,13 +17,13 @@ runs:
       with:
         environment: ${{ inputs.environment }}
         profile: api-deployment
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Load API runtime
       uses: ./.github/actions/load-infisical-secrets
       with:
         environment: ${{ inputs.environment }}
         profile: api-runtime
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Build the API RPC contracts and their dependencies
       shell: bash
       run: pnpm --filter '@cataqui/api...' --if-present run build:contracts
