@@ -1,6 +1,6 @@
 # Next deployment: Auth and Profile v1
 
-Owner: Cataquí backend maintainers. Updated: 2026-10-19. This procedure has not been run.
+Owner: Cataquí backend maintainers. Updated: 2026-10-20. This procedure has not been run.
 
 This release replaces the unlaunched API authentication tables and User model with a separate Auth service and API Profiles. Both applications have fresh migration baselines. Existing development accounts, sessions, profiles, contacts, and jobs are disposable for this cutover. No data migration or old client compatibility is provided.
 
@@ -8,9 +8,22 @@ Complete this procedure for staging first, verify it, then repeat for production
 
 ## Before application delivery
 
-1. Keep the application deployment approval pending while preparing the environment. This commit must not run application migrations against the old API schema. Run the infrastructure-only scope before allowing the first application deployment.
+1. Pause automatic delivery for the cutover by merging with `[skip ci]` in the merge commit message. The configured environments have no reviewer gate; do not rely on a pending approval. Run the infrastructure-only scope manually before the first application deployment. Manual dispatch validates the exact revision despite the push skip marker. This commit must not run application migrations against the old API schema.
 2. Confirm the exact commit passes CI and that the maintainer operating the cutover has access to the selected Neon project, Infisical environment, Cloudflare account, and protected OpenTofu state. Stop if the environment contains data that must be retained; make a coordinated backup and agree on a migration before continuing.
-3. Ensure the selected Meta application secret is available to its maintainer. Supply it to the new Auth runtime path after infrastructure succeeds. Leave existing Infisical folders in place during reconciliation; no manual state commands or folder renames are required.
+3. Ensure the selected Meta application secret is available to its maintainer. Supply it to the new Auth runtime path after infrastructure succeeds. Leave existing Infisical folders in place during reconciliation. Retire the protected Webhooks deployment-token ownership as described below before reconciliation; no folder renames are required.
+
+## Retire old deployment-token ownership once
+
+Before the first infrastructure apply in each environment, initialize only the `cloudflare-api-tokens` root against that environment's backend using its matching bootstrap credentials. Confirm the selected backend key and list resource addresses only. The old `webhooks` instances have `prevent_destroy`; OpenTofu cannot remove them automatically, and a `removed` block cannot target a keyed instance.
+
+Run these exact address-scoped operations in the initialized root, first with `-dry-run`, then without it:
+
+```sh
+tofu state rm -dry-run 'cloudflare_api_token.application_deployment["webhooks"]' 'infisical_secret.application_deployment_cloudflare_api_token["webhooks"]'
+tofu state rm 'cloudflare_api_token.application_deployment["webhooks"]' 'infisical_secret.application_deployment_cloudflare_api_token["webhooks"]'
+```
+
+This forgets ownership without revoking the existing token or deleting its Infisical copy. Retain them until the callbacks and clients have switched, then perform the explicit cleanup below. Auth receives a new independently scoped deployment token. Never remove the API, Maps, Mapshot, infrastructure, or Auth token addresses. Repeat only for the environment currently being cut over.
 
 ## Provision infrastructure
 
@@ -113,10 +126,11 @@ Clients must use Auth for login and session operations, and send the same opaque
 Complete this checklist separately for staging and production, only after the checks above pass and callbacks and clients use Auth successfully. Keep the old credentials and Worker until those consumers have switched. Record the environment, deployed commit, operator, and completion date for each cleanup; an incomplete cleanup remains a cutover follow-up.
 
 - [ ] Remove the obsolete `cataqui-webhooks-<environment>` Worker and its old custom domain in Cloudflare. Confirm the selected environment before deletion. No application in this revision calls it.
-- [ ] In the selected Infisical environment, delete only `AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL` from `/generated/api/runtime`. Preserve `/generated/api/runtime` and its current API secrets. Auth's replacement with the same name lives in `/generated/auth/runtime` and must remain.
+- [ ] In the selected Infisical environment, delete only `AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL` and `MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64` from `/generated/api/runtime`. Preserve `/generated/api/runtime` and its current API secrets. Auth's replacement with the same name lives in `/generated/auth/runtime` and must remain.
 - [ ] Delete the old `WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN` and copied `META_APP_SECRET` entries from `/generated/webhooks/runtime`. First confirm Meta uses the Auth callback and verification token and that signed webhook delivery succeeds. Preserve both entries in `/generated/auth/runtime`; removing the old Meta secret copy does not mean rotating or revoking the Meta application's secret.
+- [ ] Revoke the obsolete Cloudflare API token named `cataqui-webhooks-workers-deployment-<environment>`, then delete its `CLOUDFLARE_API_TOKEN` copy from `/generated/webhooks/deployment`. Confirm no deployment still uses it. Preserve all current application and infrastructure tokens.
 - [ ] Review any remaining entries in `/generated/webhooks/runtime` and `/generated/webhooks/deployment` for active consumers. Resolve any remaining credential ownership before deleting those entries, then remove the empty runtime, deployment, and parent `/generated/webhooks` folders. Do not remove folders or credentials belonging to current applications.
-- [ ] Confirm the retired Worker/domain, obsolete secret entries, and Webhooks folders are absent, and repeat the Auth, API, Maps, and signed WhatsApp login checks above. If cleanup fails, record the exact remaining resource without secret values and keep the follow-up open.
+- [ ] Confirm the retired Worker/domain and deployment token, obsolete secret entries, and Webhooks folders are absent, and repeat the Auth, API, Maps, and signed WhatsApp login checks above. If cleanup fails, record the exact remaining resource without secret values and keep the follow-up open.
 
 The `removed` blocks in `infrastructure/opentofu/roots/auth-secrets/removed.tf` and `infrastructure/opentofu/roots/infisical-generated-folders/removed.tf` use `destroy = false`: infrastructure reconciliation forgets the old resources but leaves them in Infisical. It does not perform the cleanup above. Once a resource has been forgotten, changing the block to `destroy = true` cannot delete it; perform the explicit Infisical cleanup instead.
 

@@ -48,6 +48,9 @@ jobs:
       - name: Type-check every workspace
         run: pnpm typecheck
 
+      - name: Set up Mapshot font tooling
+        uses: ./.github/actions/setup-mapshot-fonts
+
       - name: Run coverage gates
         run: pnpm test:cov
 

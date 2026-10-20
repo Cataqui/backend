@@ -12,3 +12,9 @@ removed {
     destroy = false
   }
 }
+removed {
+  from = infisical_secret.microservices_auth_jwt_private_key_v1
+  lifecycle {
+    destroy = false
+  }
+}

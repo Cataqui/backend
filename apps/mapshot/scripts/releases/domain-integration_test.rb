@@ -89,6 +89,14 @@ class MapshotDomainIntegrationTest < Minitest::Test
     @_root = compiled.fetch(:root)
     @_fixture = Marshal.load(Marshal.dump(compiled.fetch(:value)))
     @_identities = JSON.parse(File.read(File.join(__dir__, "../../build/data/fixtures/source-identities.json")))
+    # Compression bytes may differ across zlib platforms. Fingerprint the actual
+    # prepared source; fixed content identity vectors have their own unit tests.
+    source = @_fixture.fetch("source")
+    @_fingerprint = Digest::SHA256.hexdigest(JSON.generate({
+      "archive" => source.fetch("release").fetch("pmtiles").fetch("digest"),
+      "references" => source.fetch("release").fetch("references").fetch("id"),
+      "indexes" => source.fetch("prepared").fetch("sha256")
+    }))
     @_domain = Cataqui::Mapshot::DomainTools.new(environment: "staging", application_root: @_root)
   end
 
@@ -103,7 +111,7 @@ class MapshotDomainIntegrationTest < Minitest::Test
     storage = Storage.new(objects: objects)
     repository = Cataqui::Mapshot::PromotionInventoryService.new(source: storage, destination: storage, domain: @_domain)
 
-    reference = repository.build(id: @_identities.fetch("integrationExpected").fetch("fingerprint"), source: source, timeout: 30)
+    reference = repository.build(id: @_fingerprint, source: source, timeout: 30)
     root = _metadata(storage: storage, reference: reference, kind: "promotion-manifest")
     assets = root.fetch("pages").flat_map do |page|
       _metadata(storage: storage, reference: page, kind: "promotion-page").fetch("assets")
@@ -112,7 +120,7 @@ class MapshotDomainIntegrationTest < Minitest::Test
     assert_equal objects.keys.reject { |key| key.start_with?("source/promotions/") }.sort, (assets.map { |asset| asset.fetch("key") })
     refute_includes storage.reads, archive.fetch("objectKey")
     refute_includes storage.reads, source.fetch("release").fetch("references").fetch("catalogueKey")
-    assert_equal reference, repository.build(id: @_identities.fetch("integrationExpected").fetch("fingerprint"), source: source, timeout: 30)
+    assert_equal reference, repository.build(id: @_fingerprint, source: source, timeout: 30)
   end
 
   def test_release_data_cli_uses_real_composition_and_preserves_the_source_fingerprint
@@ -121,7 +129,7 @@ class MapshotDomainIntegrationTest < Minitest::Test
     assert result.fetch(:status).success?, result.fetch(:errors)
     assert_empty result.fetch(:stdout)
     assert_empty result.fetch(:errors)
-    assert_equal @_identities.fetch("integrationExpected").fetch("fingerprint"), result.fetch(:value)
+    assert_equal @_fingerprint, result.fetch(:value)
     assert_equal 0o600, result.fetch(:mode)
   end
 

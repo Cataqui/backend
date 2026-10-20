@@ -7,7 +7,8 @@ resource "google_project_service" "maps_platform" {
 }
 
 resource "google_apikeys_key" "maps_places" {
-  name            = "cataqui-maps-places-${var.environment}"
+  # The provider name is immutable; retain the existing key identity.
+  name            = "cataqui-geosearch-places-${var.environment}"
   display_name    = "Cataqui Maps Places ${title(var.environment)}"
   project         = local.google_cloud_project_id
   deletion_policy = "PREVENT"

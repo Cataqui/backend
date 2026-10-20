@@ -41,9 +41,6 @@
 	"expected": {
 		"fingerprint": "75e7fd1ff68c4d15f8dff128fa61a047c4ba14f32834c6afa7b2ceaa199b52b3"
 	},
-	"integrationExpected": {
-		"fingerprint": "16767dab41857e5adaaa6b5369eaf5fceae2ec7d3950f3d095527ef257c58aa5"
-	},
 	"release": {
 		"schemaVersion": 1,
 		"pmtiles": {
