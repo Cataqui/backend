@@ -339,13 +339,13 @@ class InfrastructureBootstrapRuntimeTest < Minitest::Test
     PTY.spawn(RbConfig.ruby, "-e", code) do |reader, _writer, pid|
       reader.set_encoding(Encoding::UTF_8)
       begin
-        output << reader.read
-      rescue Errno::EIO
-        # A closed pseudo-terminal reports EIO on macOS/Linux.
+        loop { output << reader.readpartial(4096) }
+      rescue EOFError, Errno::EIO
+        # Preserve received output before the platform-specific terminal close.
       end
       Process.wait(pid)
     end
-    assert_operator output.scan("Waiting for CLI").length, :>=, 2
+    assert_operator output.scan("Waiting for CLI").length, :>=, 2, output
     assert_includes output, "CLI finished"
   end
 end
