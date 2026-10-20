@@ -133,7 +133,7 @@ run "preserves_transport_and_network_baseline" {
   }
 }
 
-run "keeps_api_maps_and_webhooks_reachable_without_browser_challenges" {
+run "keeps_api_maps_and_auth_reachable_without_browser_challenges" {
   command = plan
 
   assert {
@@ -149,7 +149,7 @@ run "keeps_api_maps_and_webhooks_reachable_without_browser_challenges" {
       !cloudflare_bot_management.cataqui.sbfm_static_resource_protection &&
       cloudflare_ruleset.custom.rules[6].ref == "skip_sbfm_for_non_browser_traffic" &&
       cloudflare_ruleset.custom.rules[6].action == "skip" &&
-      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}" &&
+      cloudflare_ruleset.custom.rules[6].expression == "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"auth.cataqui.com\" \"staging.auth.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}" &&
       cloudflare_ruleset.custom.rules[6].action_parameters.phases == tolist(["http_request_sbfm"]) &&
       cloudflare_ruleset.custom.rules[6].action_parameters.products == tolist(["bic"])
     )
@@ -204,7 +204,7 @@ run "preserves_managed_waf_and_rate_limits" {
       cloudflare_ruleset.managed_waf.rules[0].action == "execute" &&
       cloudflare_ruleset.managed_waf.rules[0].action_parameters.id == "efb7b8c949ac4650a09736fc376e9aee" &&
       cloudflare_ruleset.managed_waf.rules[0].ref == "execute_cloudflare_managed_ruleset" &&
-      strcontains(cloudflare_ruleset.managed_waf.rules[0].expression, "/whatsapp")
+      strcontains(cloudflare_ruleset.managed_waf.rules[0].expression, "/webhooks/whatsapp")
     )
     error_message = "The managed WAF and authenticated WhatsApp exception must remain intact."
   }

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "../../../generated/prisma/client.js";
+import { PrismaClient } from "../../../generated/prisma/client";
 import { type IDatabaseConfig, databaseConfig } from "../config/database.config";
 
 @Injectable()
@@ -17,7 +17,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 			connectionTimeoutMillis: _databaseConfig.connectionTimeoutMs,
 		});
 
-		super({ adapter });
+		super({ adapter: adapter });
 	}
 
 	async onModuleInit(): Promise<void> {

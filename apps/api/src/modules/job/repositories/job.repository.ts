@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { type ContactMethod, JobStatus, Prisma } from "../../../../generated/prisma/client.js";
+import { type ContactMethod, JobStatus, Prisma } from "../../../../generated/prisma/client";
 import { PrismaService } from "../../../core/prisma/prisma.service";
-import type { UserJobsCursor } from "../schemas/user-jobs-cursor.schema";
+import type { ProfileJobsCursor } from "../schemas/profile-jobs-cursor.schema";
 
 const _publicJobOutputSelection = {
 	id: true,
@@ -20,7 +20,7 @@ const _publicJobOutputSelection = {
 
 export type PublicJobRaw = Prisma.JobGetPayload<{ select: typeof _publicJobOutputSelection }>;
 
-const _userJobSummaryOutputSelection = {
+const _profileJobSummaryOutputSelection = {
 	id: true,
 	title: true,
 	descriptionSummary: true,
@@ -33,9 +33,9 @@ const _userJobSummaryOutputSelection = {
 	updatedAt: true,
 } satisfies Prisma.JobSelect;
 
-export type UserJobSummaryRaw = Prisma.JobGetPayload<{ select: typeof _userJobSummaryOutputSelection }>;
+export type ProfileJobSummaryRaw = Prisma.JobGetPayload<{ select: typeof _profileJobSummaryOutputSelection }>;
 
-const _userJobOutputSelection = {
+const _profileJobOutputSelection = {
 	id: true,
 	description: true,
 	contact: { select: { contactMethod: true, identifier: true } },
@@ -48,7 +48,7 @@ const _userJobOutputSelection = {
 	updatedAt: true,
 } satisfies Prisma.JobSelect;
 
-export type UserJobRaw = Prisma.JobGetPayload<{ select: typeof _userJobOutputSelection }>;
+export type ProfileJobRaw = Prisma.JobGetPayload<{ select: typeof _profileJobOutputSelection }>;
 
 type PublicJobDatabaseRow = Omit<PublicJobRaw, "contact"> & {
 	contactId: string | null;
@@ -59,14 +59,14 @@ type PublicJobDatabaseRow = Omit<PublicJobRaw, "contact"> & {
 export class JobRepository {
 	constructor(private readonly _prisma: PrismaService) {}
 
-	async findUserJobs(params: {
-		posterUserId: string;
-		cursor?: UserJobsCursor | undefined;
+	async findProfileJobs(params: {
+		posterProfileId: string;
+		cursor?: ProfileJobsCursor | undefined;
 		limit: number;
-	}): Promise<UserJobSummaryRaw[]> {
+	}): Promise<ProfileJobSummaryRaw[]> {
 		return this._prisma.job.findMany({
 			where: {
-				posterUserId: params.posterUserId,
+				posterProfileId: params.posterProfileId,
 				...(params.cursor === undefined
 					? {}
 					: {
@@ -78,25 +78,25 @@ export class JobRepository {
 			},
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: params.limit,
-			select: _userJobSummaryOutputSelection,
+			select: _profileJobSummaryOutputSelection,
 		});
 	}
 
-	async findUserJobById(params: { jobId: string; posterUserId: string }): Promise<UserJobRaw | null> {
+	async findProfileJobById(params: { jobId: string; posterProfileId: string }): Promise<ProfileJobRaw | null> {
 		return this._prisma.job.findFirst({
-			where: { id: params.jobId, posterUserId: params.posterUserId },
-			select: _userJobOutputSelection,
+			where: { id: params.jobId, posterProfileId: params.posterProfileId },
+			select: _profileJobOutputSelection,
 		});
 	}
 
 	async findByIdempotencyKey(params: {
-		posterUserId: string;
+		posterProfileId: string;
 		idempotencyKey: string;
 	}): Promise<Prisma.JobPostRequestGetPayload<{ include: { job: { include: { contact: true } } } }> | null> {
 		return this._prisma.jobPostRequest.findUnique({
 			where: {
-				posterUserId_idempotencyKey: {
-					posterUserId: params.posterUserId,
+				posterProfileId_idempotencyKey: {
+					posterProfileId: params.posterProfileId,
 					idempotencyKey: params.idempotencyKey,
 				},
 			},
@@ -105,15 +105,15 @@ export class JobRepository {
 	}
 
 	async reservePostRequest(params: {
-		posterUserId: string;
+		posterProfileId: string;
 		idempotencyKey: string;
 		requestHash: string;
 		fuzzyLocation: { latitude: number; longitude: number };
-	}) {
+	}): Promise<Prisma.JobPostRequestGetPayload<{ include: { job: { include: { contact: true } } } }>> {
 		await this._prisma.jobPostRequest.createMany({
 			data: [
 				{
-					posterUserId: params.posterUserId,
+					posterProfileId: params.posterProfileId,
 					idempotencyKey: params.idempotencyKey,
 					requestHash: params.requestHash,
 					fuzzyLatitude: params.fuzzyLocation.latitude,
@@ -124,14 +124,17 @@ export class JobRepository {
 		});
 		return this._prisma.jobPostRequest.findUniqueOrThrow({
 			where: {
-				posterUserId_idempotencyKey: { posterUserId: params.posterUserId, idempotencyKey: params.idempotencyKey },
+				posterProfileId_idempotencyKey: {
+					posterProfileId: params.posterProfileId,
+					idempotencyKey: params.idempotencyKey,
+				},
 			},
 			include: { job: { include: { contact: true } } },
 		});
 	}
 
 	async createJob(params: {
-		posterUserId: string;
+		posterProfileId: string;
 		postRequestId: string;
 		locationImageUrl: string;
 		contactId: string;
@@ -150,7 +153,7 @@ export class JobRepository {
 			if (request.job !== null) return request.job;
 			const job = await tx.job.create({
 				data: {
-					posterUserId: params.posterUserId,
+					posterProfileId: params.posterProfileId,
 					contactId: params.contactId,
 					description: params.description,
 					payment: params.payment,
@@ -174,24 +177,24 @@ export class JobRepository {
 		});
 	}
 
-	async archiveOwnedJob(params: { jobId: string; posterUserId: string }): Promise<PublicJobRaw | null> {
+	async archiveOwnedJob(params: { jobId: string; posterProfileId: string }): Promise<PublicJobRaw | null> {
 		await this._prisma.job.updateMany({
-			where: { id: params.jobId, posterUserId: params.posterUserId, status: JobStatus.ACTIVE },
+			where: { id: params.jobId, posterProfileId: params.posterProfileId, status: JobStatus.ACTIVE },
 			data: { status: JobStatus.ARCHIVED },
 		});
 		return this._prisma.job.findFirst({
-			where: { id: params.jobId, posterUserId: params.posterUserId },
+			where: { id: params.jobId, posterProfileId: params.posterProfileId },
 			select: _publicJobOutputSelection,
 		});
 	}
 
-	async activateOwnedJob(params: { jobId: string; posterUserId: string }): Promise<PublicJobRaw | null> {
+	async activateOwnedJob(params: { jobId: string; posterProfileId: string }): Promise<PublicJobRaw | null> {
 		await this._prisma.job.updateMany({
-			where: { id: params.jobId, posterUserId: params.posterUserId, status: JobStatus.ARCHIVED },
+			where: { id: params.jobId, posterProfileId: params.posterProfileId, status: JobStatus.ARCHIVED },
 			data: { status: JobStatus.ACTIVE },
 		});
 		return this._prisma.job.findFirst({
-			where: { id: params.jobId, posterUserId: params.posterUserId },
+			where: { id: params.jobId, posterProfileId: params.posterProfileId },
 			select: _publicJobOutputSelection,
 		});
 	}

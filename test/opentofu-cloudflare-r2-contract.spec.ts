@@ -8,14 +8,23 @@ function _readInfrastructureFile(path: string): string {
 	return readFileSync(resolve(infrastructureDirectory, path), "utf8");
 }
 
-describe("Maps R2 infrastructure contract", () => {
+describe("Mapshot R2 infrastructure contract", () => {
 	it("protects bucket deletion and keeps storage private without object locks or public domains", () => {
 		const main = _readInfrastructureFile("opentofu/roots/cloudflare-r2/main.tf");
-		expect(main).toMatch(/resource "cloudflare_r2_bucket" "maps" {[\s\S]*?lifecycle {\s*prevent_destroy = true/);
+		expect(main).toMatch(/resource "cloudflare_r2_bucket" "mapshot" {[\s\S]*?lifecycle {\s*prevent_destroy = true/);
 		expect(main).toMatch(/resource "cloudflare_r2_managed_domain"[\s\S]*?enabled\s*=\s*false/);
 		expect(main).not.toMatch(
 			/cloudflare_r2_(custom_domain|bucket_lock|bucket_cors)|delete_objects_transition|storage_class_transitions/,
 		);
+	});
+
+	it("configures separate Mapshot source buckets", () => {
+		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
+		expect(manifest.cloudflare.r2.buckets).toEqual({
+			opentofu_state: "cataqui-backend-opentofu-state",
+			mapshot_staging: "cataqui-mapshot-staging",
+			mapshot_production: "cataqui-mapshot-production",
+		});
 	});
 
 	it("pins the existing toolchain and uses the shared account and manifest identities", () => {
@@ -23,7 +32,7 @@ describe("Maps R2 infrastructure contract", () => {
 		expect(versions).toContain('required_version = "= 1.12.6"');
 		expect(versions).toContain('version = "= 5.23.0"');
 		const locals = _readInfrastructureFile("opentofu/roots/cloudflare-r2/locals.tf");
-		expect(locals).toMatch(/local\.manifest\.cloudflare\.r2\.buckets\["maps_\$\{var\.environment\}"\]/);
+		expect(locals).toMatch(/local\.manifest\.cloudflare\.r2\.buckets\["mapshot_\$\{var\.environment\}"\]/);
 		expect(locals).toContain("local.platforms.cloudflare.account_id");
 	});
 

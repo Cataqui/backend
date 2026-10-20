@@ -1,0 +1,5 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "rootDir": ".", "allowImportingTsExtensions": true },
+	"include": ["test/fixture-*.ts", "cloudflare.config.ts", "wrangler.config.ts", ".cloudflare/types/index.d.ts"]
+}

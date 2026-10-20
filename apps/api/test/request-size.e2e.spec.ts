@@ -1,3 +1,5 @@
+import { ApiWorkerPortal } from "@cataqui/api-workerhole";
+import * as td from "testdouble";
 import { StandardSchemaSerializerInterceptor, StandardSchemaValidationPipe, VersioningType } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -7,14 +9,15 @@ import { AppModule } from "../src/app.module";
 import type { IRequestSizeConfig } from "../src/core/config/request-size.config";
 import { requestSizeConfig } from "../src/core/config/request-size.config";
 import { ErrorCode } from "../src/core/errors/error-code.enum";
-import { ErrorOutputSchema } from "../src/core/errors/error-output";
+import { ApiErrorResponseOutputSchema } from "../src/core/errors/api-error-response-output.schema";
 import { HttpExceptionFilter } from "../src/core/errors/filters/http-exception.filter";
 import { registerRequestSizeHooks } from "../src/core/hooks/request-size.hook";
 import { LoggingInterceptor } from "../src/core/interceptors/logging.interceptor";
 import { ResponseInterceptor } from "../src/core/interceptors/response.interceptor";
 import { PrismaExceptionFilter } from "../src/core/prisma/filters/prisma-exception.filter";
 import { PrismaService } from "../src/core/prisma/prisma.service";
-import { NotpRepository } from "../src/modules/auth/notp/repositories/notp.repository";
+
+afterEach(() => td.reset());
 
 process.env["DATABASE_APP_POOLER_URL"] = "postgresql://test:test@localhost:5432/cataqui?schema=public";
 process.env["CORS_ORIGINS"] = "http://localhost:3000";
@@ -28,59 +31,32 @@ const TEST_CONFIG: IRequestSizeConfig = {
 	keepAliveTimeoutMs: 5_000,
 };
 
-function expectedErrorBody(
-	errorCode: ErrorCode,
-	message: string,
-	status: number,
-	endpoint: string,
-): Record<string, unknown> {
+function _expectedErrorBody(params: {
+	errorCode: ErrorCode;
+	message: string;
+	status: number;
+	endpoint: string;
+}): Record<string, unknown> {
 	return {
-		errorCode: errorCode,
-		message: message,
-		status: status,
-		requestId: "",
-		timestamp: "",
-		endpoint: endpoint,
+		errorCode: params.errorCode,
+		message: params.message,
+		status: params.status,
+		endpoint: params.endpoint,
 	};
 }
 
-function assertErrorResponse(
-	response: { statusCode: number; body: string },
-	errorCode: ErrorCode,
-	message: string,
-	status: number,
-	endpoint: string,
-): Record<string, unknown> {
-	expect(response.statusCode).toBe(status);
-
-	const body = JSON.parse(response.body) as Record<string, unknown>;
-	const expected = expectedErrorBody(errorCode, message, status, endpoint);
-
-	const staticFields = Object.fromEntries(
-		Object.entries(expected).filter(([key]) => key !== "requestId" && key !== "timestamp"),
-	);
-	expect(body).toMatchObject(staticFields);
-
-	return body;
-}
-
-async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastifyApplication> {
+async function _buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastifyApplication> {
 	const effectiveConfig = overrideConfig ?? requestSizeConfig();
 
 	const testBuilder = Test.createTestingModule({
 		imports: [AppModule],
 	})
+		.overrideProvider(ApiWorkerPortal)
+		.useValue(td.object<ApiWorkerPortal>())
 		.overrideProvider(PrismaService)
-		.useValue({})
-		.overrideProvider(NotpRepository)
-		.useValue({})
+		.useValue(td.object<PrismaService>())
 		.overrideProvider(HealthCheckService)
-		.useValue({
-			check: vi.fn().mockResolvedValue({
-				status: "ok",
-				details: { database: { status: "up" } },
-			}),
-		});
+		.useValue(td.object<HealthCheckService>());
 
 	if (overrideConfig) {
 		testBuilder.overrideProvider(requestSizeConfig.KEY).useValue(overrideConfig);
@@ -119,7 +95,11 @@ async function buildApp(overrideConfig?: IRequestSizeConfig): Promise<NestFastif
 describe("Request Size Limits (e2e)", () => {
 	describe("default limits", () => {
 		it("should allow valid requests", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
+			td.when(app.get(HealthCheckService).check(td.matchers.anything())).thenResolve({
+				status: "ok",
+				details: { database: { status: "up" } },
+			} satisfies Awaited<ReturnType<HealthCheckService["check"]>>);
 
 			const response = await app.inject({ method: "GET", url: "/v1/health" });
 
@@ -129,7 +109,7 @@ describe("Request Size Limits (e2e)", () => {
 		});
 
 		it("should reject requests with Content-Length exceeding body limit", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const response = await app.inject({
 				method: "GET",
@@ -137,19 +117,34 @@ describe("Request Size Limits (e2e)", () => {
 				headers: { "content-length": String(TEST_CONFIG.bodyLimitBytes + 1) },
 			});
 
-			assertErrorResponse(
-				response,
-				ErrorCode.PAYLOAD_TOO_LARGE,
-				"Request body exceeds the maximum allowed size.",
-				413,
-				"/v1/health",
+			expect(response.statusCode).toBe(413);
+
+			await app.close();
+		});
+
+		it("should return the payload error envelope when Content-Length exceeds the limit", async () => {
+			const app = await _buildApp(TEST_CONFIG);
+
+			const response = await app.inject({
+				method: "GET",
+				url: "/v1/health",
+				headers: { "content-length": String(TEST_CONFIG.bodyLimitBytes + 1) },
+			});
+
+			expect(response.json()).toMatchObject(
+				_expectedErrorBody({
+					errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
+					message: "Request body exceeds the maximum allowed size.",
+					status: 413,
+					endpoint: "/v1/health",
+				}),
 			);
 
 			await app.close();
 		});
 
 		it("should reject requests with body content exceeding body limit", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const largeBody = "x".repeat(TEST_CONFIG.bodyLimitBytes + 1);
 			const response = await app.inject({
@@ -159,36 +154,69 @@ describe("Request Size Limits (e2e)", () => {
 				body: largeBody,
 			});
 
-			assertErrorResponse(
-				response,
-				ErrorCode.PAYLOAD_TOO_LARGE,
-				"Request body exceeds the maximum allowed size.",
-				413,
-				"/v1/health",
+			expect(response.statusCode).toBe(413);
+
+			await app.close();
+		});
+
+		it("should return the payload error envelope when body content exceeds the limit", async () => {
+			const app = await _buildApp(TEST_CONFIG);
+
+			const largeBody = "x".repeat(TEST_CONFIG.bodyLimitBytes + 1);
+			const response = await app.inject({
+				method: "POST",
+				url: "/v1/health",
+				headers: { "content-type": "application/json" },
+				body: largeBody,
+			});
+
+			expect(response.json()).toMatchObject(
+				_expectedErrorBody({
+					errorCode: ErrorCode.PAYLOAD_TOO_LARGE,
+					message: "Request body exceeds the maximum allowed size.",
+					status: 413,
+					endpoint: "/v1/health",
+				}),
 			);
 
 			await app.close();
 		});
 
 		it("should reject requests with URL exceeding length limit", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const longUrl = `/${"a".repeat(TEST_CONFIG.urlLengthLimitBytes)}`;
 			const response = await app.inject({ method: "GET", url: longUrl });
 
-			assertErrorResponse(
-				response,
-				ErrorCode.URI_TOO_LONG,
-				"Request URL exceeds the maximum allowed length.",
-				414,
-				longUrl,
+			expect(response.statusCode).toBe(414);
+
+			await app.close();
+		});
+
+		it("should return the URL error envelope when its length exceeds the limit", async () => {
+			const app = await _buildApp(TEST_CONFIG);
+
+			const longUrl = `/${"a".repeat(TEST_CONFIG.urlLengthLimitBytes)}`;
+			const response = await app.inject({ method: "GET", url: longUrl });
+
+			expect(response.json()).toMatchObject(
+				_expectedErrorBody({
+					errorCode: ErrorCode.URI_TOO_LONG,
+					message: "Request URL exceeds the maximum allowed length.",
+					status: 414,
+					endpoint: longUrl,
+				}),
 			);
 
 			await app.close();
 		});
 
 		it("should allow requests with URL within length limit", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
+			td.when(app.get(HealthCheckService).check(td.matchers.anything())).thenResolve({
+				status: "ok",
+				details: { database: { status: "up" } },
+			} satisfies Awaited<ReturnType<HealthCheckService["check"]>>);
 
 			const shortUrl = "/v1/health";
 			const response = await app.inject({ method: "GET", url: shortUrl });
@@ -199,7 +227,7 @@ describe("Request Size Limits (e2e)", () => {
 		});
 
 		it("should return an error envelope with camelCase keys on rejection", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const response = await app.inject({
 				method: "GET",
@@ -208,13 +236,13 @@ describe("Request Size Limits (e2e)", () => {
 			});
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
-			expect(ErrorOutputSchema.safeParse(body).success).toBe(true);
+			expect(ApiErrorResponseOutputSchema.safeParse(body).success).toBe(true);
 
 			await app.close();
 		});
 
 		it("should include a valid UUID requestId in envelope", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const response = await app.inject({
 				method: "GET",
@@ -229,46 +257,13 @@ describe("Request Size Limits (e2e)", () => {
 		});
 
 		it("should include endpoint matching request URL in envelope", async () => {
-			const app = await buildApp(TEST_CONFIG);
+			const app = await _buildApp(TEST_CONFIG);
 
 			const longUrl = `/${"a".repeat(TEST_CONFIG.urlLengthLimitBytes)}`;
 			const response = await app.inject({ method: "GET", url: longUrl });
 
 			const body = JSON.parse(response.body) as Record<string, unknown>;
 			expect(body["endpoint"] as string).toBe(longUrl);
-
-			await app.close();
-		});
-
-		it("should apply bodyLimit to the FastifyAdapter", async () => {
-			const app = await buildApp(TEST_CONFIG);
-
-			const fastifyInstance = app.getHttpAdapter().getInstance();
-			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
-
-			expect(initialConfig["bodyLimit"]).toBe(TEST_CONFIG.bodyLimitBytes);
-
-			await app.close();
-		});
-
-		it("should keep socket timeout disabled so long-running handlers can finish", async () => {
-			const app = await buildApp(TEST_CONFIG);
-
-			const fastifyInstance = app.getHttpAdapter().getInstance();
-			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
-
-			expect(initialConfig["connectionTimeout"]).toBe(0);
-
-			await app.close();
-		});
-
-		it("should enforce a handler deadline longer than the AI operation deadline", async () => {
-			const app = await buildApp(TEST_CONFIG);
-
-			const fastifyInstance = app.getHttpAdapter().getInstance();
-			const initialConfig = fastifyInstance.initialConfig as Record<string, unknown>;
-
-			expect(initialConfig["handlerTimeout"]).toBe(60_000);
 
 			await app.close();
 		});

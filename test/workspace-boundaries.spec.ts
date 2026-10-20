@@ -1,14 +1,25 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, globSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, extname, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, extname, relative, resolve, sep } from "node:path";
+import ts from "typescript";
 
 const repositoryRoot = process.cwd();
-const applicationDirectories = ["apps/api", "apps/workers/webhooks", "apps/workers/maps"] as const;
-const sharedPackageDirectories = [
-	"packages/api-internal-ingress",
-	"packages/maps-contracts",
-	"packages/microservices-auth-schemas",
-] as const;
+const applicationDirectories = globSync("apps/**/package.json", {
+	cwd: repositoryRoot,
+	exclude: [
+		"**/node_modules/**",
+		"**/dist/**",
+		"**/generated/**",
+		"**/coverage/**",
+		"**/target/**",
+		"**/.cloudflare/**",
+		"**/.worker-build/**",
+	],
+}).map((manifest) => dirname(manifest));
+const sharedPackageDirectories = readdirSync(resolve(repositoryRoot, "packages"))
+	.filter((directory) => existsSync(resolve(repositoryRoot, "packages", directory, "package.json")))
+	.map((directory) => `packages/${directory}`);
 const workspaceDirectories = [...applicationDirectories, ...sharedPackageDirectories] as const;
 
 function _readPackageJson(workspaceDirectory: (typeof workspaceDirectories)[number]): Record<string, unknown> {
@@ -18,25 +29,93 @@ function _readPackageJson(workspaceDirectory: (typeof workspaceDirectories)[numb
 	>;
 }
 
-function _getTypeScriptFiles(directory: string): string[] {
+function _getSourceFiles(directory: string): string[] {
 	return readdirSync(directory).flatMap((entryName) => {
 		const entryPath = resolve(directory, entryName);
 		if (statSync(entryPath).isDirectory()) {
-			if (["coverage", "dist", "node_modules"].includes(entryName)) return [];
-			return _getTypeScriptFiles(entryPath);
+			if (
+				[
+					"coverage",
+					"dist",
+					"generated",
+					"target",
+					"node_modules",
+					".wrangler",
+					".cloudflare",
+					".worker-build",
+				].includes(entryName) ||
+				applicationDirectories.some((workspace) => resolve(repositoryRoot, workspace) === entryPath)
+			)
+				return [];
+			return _getSourceFiles(entryPath);
 		}
 
-		return [".cts", ".mts", ".ts", ".tsx"].includes(extname(entryName)) ? [entryPath] : [];
+		return [".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"].includes(extname(entryName))
+			? [entryPath]
+			: [];
 	});
 }
 
-function _getImportSpecifiers(source: string): string[] {
-	return [...source.matchAll(/(?:from\s+|import\s*\()(["'])([^"']+)\1/g)].flatMap((match) =>
-		match[2] === undefined ? [] : [match[2]],
+function _getImportSpecifiers(params: { source: string }): string[] {
+	return ts.preProcessFile(params.source, true, true).importedFiles.map((reference) => reference.fileName);
+}
+
+function _supportsNodeImport(target: unknown): boolean {
+	if (typeof target === "string") return true;
+	if (target === null || typeof target !== "object") return false;
+	return Object.entries(target).some(
+		([condition, value]) => ["node", "import", "default"].includes(condition) && _supportsNodeImport(value),
 	);
 }
 
 describe("backend workspace boundaries", () => {
+	it("enforces the install policy through pnpm's active configuration", () => {
+		const config = JSON.parse(
+			execFileSync("pnpm", ["config", "list", "--json"], { cwd: repositoryRoot, encoding: "utf8" }),
+		) as Record<string, unknown>;
+
+		expect({
+			shamefullyHoist: config.shamefullyHoist,
+			strictPeerDependencies: config.strictPeerDependencies,
+			autoInstallPeers: config.autoInstallPeers,
+			sideEffectsCache: config.sideEffectsCache,
+			lockfile: config.lockfile,
+			preferFrozenLockfile: config.preferFrozenLockfile,
+			ignoreScripts: config.ignoreScripts,
+		}).toEqual({
+			shamefullyHoist: false,
+			strictPeerDependencies: true,
+			autoInstallPeers: true,
+			sideEffectsCache: true,
+			lockfile: true,
+			preferFrozenLockfile: true,
+			ignoreScripts: false,
+		});
+	});
+
+	it("checks JavaScript tooling alongside TypeScript source for workspace imports", () => {
+		const directory = mkdtempSync(resolve(tmpdir(), "cataqui-workspace-boundaries-"));
+		const filePath = resolve(directory, "generate.mjs");
+		try {
+			writeFileSync(filePath, 'import "../outside";');
+			expect(_getSourceFiles(directory)).toEqual([filePath]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it.each([
+		{ syntax: "CommonJS require", source: 'const outside = require("../outside");' },
+		{ syntax: "side-effect import", source: 'import "../outside";' },
+		{ syntax: "template-literal dynamic import", source: "await import(`../outside`);" },
+		{ syntax: "import assignment", source: 'import outside = require("../outside");' },
+		{ syntax: "type import", source: 'type Outside = import("../outside").Thing;' },
+		{ syntax: "named import", source: 'import { Thing } from "../outside";' },
+		{ syntax: "re-export", source: 'export { Thing } from "../outside";' },
+	])("detects workspace boundaries in a $syntax", ({ source }) => {
+		expect(_getImportSpecifiers({ source: source })).toEqual(["../outside"]);
+	});
+
 	it("should keep the skill registry and installations only at the repository root", () => {
 		const rootSkillRegistry = JSON.parse(readFileSync(resolve(repositoryRoot, "skills-lock.json"), "utf8")) as {
 			skills: Record<string, unknown>;
@@ -52,8 +131,8 @@ describe("backend workspace boundaries", () => {
 		].filter((skillPath) => existsSync(resolve(repositoryRoot, skillPath)));
 
 		expect({
-			rootSkillDirectories,
-			scopedSkillPaths,
+			rootSkillDirectories: rootSkillDirectories,
+			scopedSkillPaths: scopedSkillPaths,
 		}).toEqual({
 			rootSkillDirectories: [...Object.keys(rootSkillRegistry.skills), "unit-test-writer"].sort(),
 			scopedSkillPaths: [],
@@ -64,7 +143,7 @@ describe("backend workspace boundaries", () => {
 		const workspaceSource = readFileSync(resolve(repositoryRoot, "pnpm-workspace.yaml"), "utf8");
 
 		expect(workspaceSource).toMatch(
-			/^packages:\n {2}- 'apps\/api'\n {2}- 'apps\/workers\/\*'\n {2}- 'packages\/\*'\ninjectWorkspacePackages: true$/m,
+			/^packages:\n {2}- '\.github\/actions\/deploy-mapshot'\n {2}- 'apps\/api'\n {2}- 'apps\/mapshot'\n {2}- 'apps\/\*\/worker'\n {2}- 'apps\/\*\/workerhole'\n {2}- 'apps\/workers\/\*'\n {2}- 'packages\/\*'\n(?! {2}-)/m,
 		);
 	});
 
@@ -79,26 +158,48 @@ describe("backend workspace boundaries", () => {
 		}
 	});
 
-	it("should resolve only the compiled authentication scopes", () => {
-		const manifestPath = resolve(repositoryRoot, "packages/microservices-auth-schemas/package.json");
-		const manifest = _readPackageJson("packages/microservices-auth-schemas");
-		expect(Object.keys(manifest.exports as Record<string, unknown>)).toEqual(["./maps", "./jwks"]);
-		const resolveImport = (specifier: string) =>
+	it.each(sharedPackageDirectories)(
+		"loads every compiled public entrypoint of %s in Node without a loader",
+		(directory) => {
+			const manifest = _readPackageJson(directory);
+			const entrypoints = Object.entries((manifest.exports ?? {}) as Record<string, unknown>)
+				.filter(([, target]) => _supportsNodeImport(target))
+				.map(([entrypoint]) => entrypoint)
+				.filter((entrypoint) => entrypoint !== "./package.json")
+				.map((entrypoint) => (entrypoint === "." ? String(manifest.name) : `${manifest.name}${entrypoint.slice(1)}`));
+
+			expect(() =>
+				execFileSync(
+					process.execPath,
+					[
+						"--input-type=module",
+						"-e",
+						"await Promise.all(process.argv.slice(1).map((specifier) => import(specifier)))",
+						...entrypoints,
+					],
+					{ cwd: resolve(repositoryRoot, directory), stdio: "pipe" },
+				),
+			).not.toThrow();
+		},
+	);
+
+	it("resolves the centralized places vocabulary through its compiled public export", () => {
+		const packageDirectory = resolve(repositoryRoot, "packages/places");
+		const resolveImport = (specifier: string): string =>
 			execFileSync(
 				process.execPath,
 				["--input-type=module", "-e", "console.log(import.meta.resolve(process.argv[1]))", specifier],
-				{ cwd: dirname(manifestPath), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+				{ cwd: packageDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
 			).trim();
-		for (const scope of ["maps", "jwks"]) {
-			const entrypoint = resolveImport(`@cataqui/microservices-auth-schemas/${scope}`);
-			expect(entrypoint).toBe(new URL(`file://${resolve(dirname(manifestPath), `dist/${scope}/index.js`)}`).href);
+		for (const [specifier, file] of [
+			["@cataqui/places", "index.js"],
+			["@cataqui/places/style", "style.js"],
+		] as const) {
+			const entrypoint = resolveImport(specifier);
+			expect(entrypoint).toBe(new URL(`file://${resolve(packageDirectory, "dist", file)}`).href);
 			expect(existsSync(new URL(entrypoint))).toBe(true);
 		}
-		for (const specifier of [
-			"@cataqui/microservices-auth-schemas",
-			"@cataqui/microservices-auth-schemas/maps/maps-access-token.constants",
-			"@cataqui/microservices-auth-contracts",
-		]) {
+		for (const specifier of ["@cataqui/places/google", "@cataqui/places/protomaps"]) {
 			expect(() => resolveImport(specifier)).toThrow();
 		}
 	});
@@ -106,9 +207,26 @@ describe("backend workspace boundaries", () => {
 	it("should keep shared package runtime dependencies neutral", () => {
 		for (const packageDirectory of sharedPackageDirectories) {
 			const packageJson = _readPackageJson(packageDirectory);
-			expect(Object.keys((packageJson.dependencies ?? {}) as Record<string, string>), packageDirectory).toEqual([
-				"zod",
-			]);
+			const dependencies = Object.keys((packageJson.dependencies ?? {}) as Record<string, string>);
+			// Runtime integrations intentionally own platform-specific adapters through conditional exports.
+			if (packageDirectory === "packages/workerhole") {
+				expect(dependencies.sort()).toEqual(["capnweb", "ws"]);
+				continue;
+			}
+
+			for (const dependency of dependencies) expect(["zod", "@mateo/icons", "@mateo/palette"]).toContain(dependency);
+		}
+	});
+
+	it("keeps a shared package only when multiple applications consume it", () => {
+		for (const packageDirectory of sharedPackageDirectories) {
+			const manifest = _readPackageJson(packageDirectory);
+			const consumers = applicationDirectories.filter((applicationDirectory) => {
+				const application = _readPackageJson(applicationDirectory);
+				const dependencies = (application.dependencies ?? {}) as Record<string, unknown>;
+				return Object.hasOwn(dependencies, String(manifest.name));
+			});
+			expect(consumers.length, packageDirectory).toBeGreaterThanOrEqual(2);
 		}
 	});
 
@@ -128,27 +246,94 @@ describe("backend workspace boundaries", () => {
 
 		expect(workspaceDependencies).toEqual({
 			"@cataqui/api": [
-				["@cataqui/api-internal-ingress", "workspace:*"],
-				["@cataqui/maps-contracts", "workspace:*"],
-				["@cataqui/microservices-auth-schemas", "workspace:*"],
+				["@cataqui/api-workerhole", "workspace:*"],
+				["@cataqui/auth-schemas", "workspace:*"],
+				["@cataqui/response", "workspace:*"],
+				["@cataqui/workerhole", "workspace:*"],
 			],
 			"@cataqui/maps-worker": [
-				["@cataqui/maps-contracts", "workspace:*"],
-				["@cataqui/microservices-auth-schemas", "workspace:*"],
+				["@cataqui/async", "workspace:*"],
+				["@cataqui/places", "workspace:*"],
+				["@cataqui/response", "workspace:*"],
 			],
-			"@cataqui/webhooks-worker": [["@cataqui/api-internal-ingress", "workspace:*"]],
+			"@cataqui/mapshot": [
+				["@cataqui/async", "workspace:*"],
+				["@cataqui/mapshot-workerhole", "workspace:*"],
+				["@cataqui/places", "workspace:*"],
+				["@cataqui/workerhole", "workspace:*"],
+			],
+			"@cataqui/api-worker": [
+				["@cataqui/api-workerhole", "workspace:*"],
+				["@cataqui/async", "workspace:*"],
+				["@cataqui/auth-schemas", "workspace:*"],
+				["@cataqui/response", "workspace:*"],
+				["@cataqui/workerhole", "workspace:*"],
+			],
+			"@cataqui/mapshot-worker": [
+				["@cataqui/async", "workspace:*"],
+				["@cataqui/mapshot-workerhole", "workspace:*"],
+				["@cataqui/response", "workspace:*"],
+				["@cataqui/workerhole", "workspace:*"],
+			],
+			"@cataqui/auth-worker": [
+				["@cataqui/auth-schemas", "workspace:*"],
+				["@cataqui/response", "workspace:*"],
+			],
+			"@cataqui/api-workerhole": [["@cataqui/workerhole", "workspace:*"]],
+			"@cataqui/mapshot-workerhole": [["@cataqui/workerhole", "workspace:*"]],
 		});
 	});
 
 	it("should prohibit application imports and relative imports across workspace boundaries", () => {
 		const violations: string[] = [];
+		const applications = applicationDirectories.map((directory) => ({
+			name: String(_readPackageJson(directory).name),
+			directory: directory,
+			owner: applicationDirectories
+				.filter((ancestor) => directory === ancestor || directory.startsWith(`${ancestor}/`))
+				.sort((first, second) => first.length - second.length)[0],
+		}));
 
 		for (const workspaceDirectory of workspaceDirectories) {
 			const absoluteWorkspaceDirectory = resolve(repositoryRoot, workspaceDirectory);
-			for (const filePath of _getTypeScriptFiles(absoluteWorkspaceDirectory)) {
+			const owningApplication = applications.find((application) => application.directory === workspaceDirectory);
+			for (const filePath of _getSourceFiles(absoluteWorkspaceDirectory)) {
 				const source = readFileSync(filePath, "utf8");
-				for (const importSpecifier of _getImportSpecifiers(source)) {
-					if (/^(?:@cataqui\/(?:api|webhooks-worker|maps-worker)(?:\/|$)|apps\/)/.test(importSpecifier)) {
+				for (const importSpecifier of _getImportSpecifiers({ source: source })) {
+					const referencesWorkerDefinition =
+						filePath.endsWith("/cloudflare.config.ts") && importSpecifier.endsWith("/cloudflare.config.ts");
+					if (referencesWorkerDefinition) {
+						const syntax = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true);
+						const declarations = syntax.statements
+							.filter(ts.isImportDeclaration)
+							.filter(
+								(declaration) =>
+									ts.isStringLiteral(declaration.moduleSpecifier) &&
+									declaration.moduleSpecifier.text === importSpecifier,
+							);
+						const importsOnlyWorkerDefinition =
+							declarations.length === 1 &&
+							declarations.every((declaration) => {
+								const clause = declaration.importClause;
+								const names = clause?.namedBindings;
+								return (
+									clause?.name === undefined &&
+									names !== undefined &&
+									ts.isNamedImports(names) &&
+									names.elements.length === 1 &&
+									names.elements.every((element) => (element.propertyName ?? element.name).text === "worker")
+								);
+							});
+						if (importsOnlyWorkerDefinition) continue;
+					}
+					const importedApplication = applications.find(
+						(application) => importSpecifier === application.name || importSpecifier.startsWith(`${application.name}/`),
+					);
+					const crossesApplicationBoundary =
+						importedApplication !== undefined && importedApplication.owner !== owningApplication?.owner;
+					const importsApplicationRuntime =
+						importedApplication !== undefined && !importedApplication.directory.endsWith("/workerhole");
+					if (crossesApplicationBoundary || importsApplicationRuntime || importSpecifier.startsWith("apps/")) {
 						violations.push(`${relative(repositoryRoot, filePath)} imports ${importSpecifier}`);
 						continue;
 					}
@@ -156,10 +341,7 @@ describe("backend workspace boundaries", () => {
 					if (!importSpecifier.startsWith(".") || filePath.endsWith("vitest.config.ts")) continue;
 					const importedPath = resolve(dirname(filePath), importSpecifier);
 					const relativeImportedPath = relative(absoluteWorkspaceDirectory, importedPath);
-					if (
-						relativeImportedPath === ".." ||
-						relativeImportedPath.startsWith(`..${process.platform === "win32" ? "\\\\" : "/"}`)
-					) {
+					if (relativeImportedPath === ".." || relativeImportedPath.startsWith(`..${sep}`)) {
 						violations.push(`${relative(repositoryRoot, filePath)} imports ${importSpecifier}`);
 					}
 				}
@@ -171,19 +353,17 @@ describe("backend workspace boundaries", () => {
 
 	it("should consume shared packages only through declared public exports", () => {
 		const allowedImports = new Set(
-			sharedPackageDirectories.flatMap((directory) => {
+			workspaceDirectories.flatMap((directory) => {
 				const manifest = _readPackageJson(directory);
-				return Object.keys(manifest.exports as Record<string, unknown>).map((entrypoint) =>
+				return Object.keys((manifest.exports ?? {}) as Record<string, unknown>).map((entrypoint) =>
 					entrypoint === "." ? String(manifest.name) : `${manifest.name}${entrypoint.slice(1)}`,
 				);
 			}),
 		);
 		const violations = applicationDirectories.flatMap((applicationDirectory) =>
-			_getTypeScriptFiles(resolve(repositoryRoot, applicationDirectory)).flatMap((filePath) =>
-				_getImportSpecifiers(readFileSync(filePath, "utf8"))
-					.filter((specifier) =>
-						/^@cataqui\/(?:api-internal-ingress|microservices-auth-schemas|maps-contracts)(?:\/|$)/.test(specifier),
-					)
+			_getSourceFiles(resolve(repositoryRoot, applicationDirectory)).flatMap((filePath) =>
+				_getImportSpecifiers({ source: readFileSync(filePath, "utf8") })
+					.filter((specifier) => specifier.startsWith("@cataqui/"))
 					.filter((specifier) => !allowedImports.has(specifier))
 					.map((specifier) => `${relative(repositoryRoot, filePath)} imports ${specifier}`),
 			),

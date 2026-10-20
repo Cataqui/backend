@@ -1,14 +1,14 @@
 import type { z } from "zod";
 import { GetJobInputSchema } from "./get-job-input.schema";
 
-async function validate(value: unknown): Promise<Array<{ property: string }>> {
+function _getJobInputValidationErrors(value: unknown): Array<{ property: string }> {
 	const result = GetJobInputSchema.safeParse(value);
 	return result.success ? [] : result.error.issues.map((issue) => ({ property: String(issue.path[0] ?? "") }));
 }
 
 describe("GetJobInputSchema", () => {
 	describe("jobId validation", () => {
-		function createInput(
+		function _createJobInput(
 			overrides: Partial<z.infer<typeof GetJobInputSchema>> = {},
 		): z.infer<typeof GetJobInputSchema> {
 			const defaults: z.infer<typeof GetJobInputSchema> = {
@@ -17,29 +17,43 @@ describe("GetJobInputSchema", () => {
 			return Object.assign({}, defaults, overrides);
 		}
 
-		it("should accept a valid UUID", async () => {
-			const dto = createInput();
+		it("should accept a valid UUID", () => {
+			const dto = _createJobInput();
 
-			const errors = await validate(dto);
+			const errors = _getJobInputValidationErrors(dto);
 
 			expect(errors).toHaveLength(0);
 		});
 
-		it("should reject a non-UUID string", async () => {
-			const dto = createInput({ jobId: "not-a-uuid" });
+		it("should reject a non-UUID job identifier", () => {
+			const dto = _createJobInput({ jobId: "not-a-uuid" });
 
-			const errors = await validate(dto);
+			const errors = _getJobInputValidationErrors(dto);
 
 			expect(errors).toHaveLength(1);
+		});
+
+		it("should identify jobId when a non-UUID value is rejected", () => {
+			const dto = _createJobInput({ jobId: "not-a-uuid" });
+
+			const errors = _getJobInputValidationErrors(dto);
+
 			expect(errors[0]?.property).toBe("jobId");
 		});
 
-		it("should reject an empty string", async () => {
-			const dto = createInput({ jobId: "" });
+		it("should reject an empty job identifier", () => {
+			const dto = _createJobInput({ jobId: "" });
 
-			const errors = await validate(dto);
+			const errors = _getJobInputValidationErrors(dto);
 
 			expect(errors).toHaveLength(1);
+		});
+
+		it("should identify jobId when an empty value is rejected", () => {
+			const dto = _createJobInput({ jobId: "" });
+
+			const errors = _getJobInputValidationErrors(dto);
+
 			expect(errors[0]?.property).toBe("jobId");
 		});
 	});

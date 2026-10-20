@@ -2,28 +2,28 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("job ownership storage", () => {
-	it("should relate jobs to the user that created them", () => {
+	it("should relate jobs to the profile that created them", () => {
 		const jobSchema = readFileSync(resolve(process.cwd(), "prisma/schema/job.prisma"), "utf8");
 
 		expect(jobSchema).toMatch(
-			/poster\s+User\?\s+@relation\(fields: \[posterUserId\], references: \[id\], onDelete: SetNull\)/u,
+			/poster\s+Profile\?\s+@relation\(fields: \[posterProfileId\], references: \[id\], onDelete: SetNull\)/u,
 		);
 	});
 
 	it("should index the job owner used by authenticated write queries", () => {
 		const jobSchema = readFileSync(resolve(process.cwd(), "prisma/schema/job.prisma"), "utf8");
 
-		expect(jobSchema).toContain("@@index([posterUserId])");
+		expect(jobSchema).toContain("@@index([posterProfileId])");
 	});
 
-	it("should add the nullable job-owner foreign key in the forward ownership migration", () => {
+	it("should add the nullable job-owner foreign key in the v1 schema", () => {
 		const migration = readFileSync(
-			resolve(process.cwd(), "prisma/schema/migrations/20260810170000_align_auth_and_job_ownership/migration.sql"),
+			resolve(process.cwd(), "prisma/schema/migrations/00000000000000_init/migration.sql"),
 			"utf8",
 		);
 
 		expect(migration).toContain(
-			'ALTER TABLE "jobs" ADD CONSTRAINT "jobs_poster_user_id_fkey" FOREIGN KEY ("poster_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;',
+			'ALTER TABLE "jobs" ADD CONSTRAINT "jobs_poster_profile_id_fkey" FOREIGN KEY ("poster_profile_id") REFERENCES "profiles"("id") ON DELETE SET NULL ON UPDATE CASCADE;',
 		);
 	});
 });

@@ -7,7 +7,9 @@ These instructions apply to every application under `apps/` and supplement the r
 `apps/` owns Cataquí's backend applications and their application-specific code, configuration, dependencies, tests, and documentation.
 
 - `api/` owns the core NestJS API and orchestration of Cataquí product behavior, including jobs and the feed, together with its Prisma schema, migrations, routing Worker, container, and image.
+- `mapshot/` owns static map image generation, source data and storage, its Node.js containers and private Worker/controller, and its independent build, tests, and deployment.
 - `workers/` contains independently deployable Cloudflare Workers for services that can operate outside the core API. Each Worker owns its own runtime and external integrations.
+- `workers/auth/` owns authentication and its own persistence. Core product profiles and contacts remain in API.
 
 ## Private RPC Entrypoints
 

@@ -114,3 +114,35 @@ run "reject_unsupported_environment" {
 
   expect_failures = [var.environment]
 }
+
+run "auth_database_boundary" {
+  command = plan
+  variables { environment = "production" }
+  assert {
+    condition = (
+      postgresql_database.auth.name == "auth" &&
+      postgresql_database.auth.owner == "auth_owner" &&
+      postgresql_role.auth_user.name == "auth_user" &&
+      !postgresql_role.auth_user.inherit &&
+      !postgresql_role.auth_user.superuser &&
+      !postgresql_role.auth_user.create_database &&
+      !postgresql_role.auth_user.create_role &&
+      !postgresql_role.auth_user.bypass_row_level_security &&
+      length(postgresql_grant.auth_public_database.privileges) == 0 &&
+      length(postgresql_grant.api_public_database.privileges) == 0 &&
+      postgresql_grant.auth_database.privileges == toset(["CONNECT"]) &&
+      postgresql_grant.auth_schema.privileges == toset(["USAGE"]) &&
+      postgresql_default_privileges.auth_objects["table"].owner == "auth_owner" &&
+      postgresql_default_privileges.auth_objects["table"].role == "auth_user"
+    )
+    error_message = "Auth must have its own database and isolated migration/runtime roles without PUBLIC cross-database access."
+  }
+  assert {
+    condition = (
+      infisical_secret.auth_owner_direct_url.folder_path == "/generated/auth/deployment" &&
+      infisical_secret.hyperdrive_origin_password.folder_path == "/generated/opentofu/cloudflare-hyperdrive" &&
+      infisical_secret.hyperdrive_origin_password.name == "DATABASE_PASSWORD"
+    )
+    error_message = "Auth migration and Hyperdrive origin credentials must stay outside runtime secrets."
+  }
+}

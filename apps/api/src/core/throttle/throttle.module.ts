@@ -1,7 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { UserRateLimitGuard } from "../guards/user-rate-limit.guard";
+import { AccountRateLimitGuard } from "../guards/account-rate-limit.guard";
 import { RedisModule } from "../redis/redis.module";
 import { RedisService } from "../redis/redis.service";
 import { RateLimitConstants } from "./rate-limit.constants";
@@ -30,7 +30,7 @@ import { RedisThrottlerStorage } from "./redis-throttler.storage";
 			}),
 		}),
 	],
-	providers: [UserRateLimitGuard],
-	exports: [UserRateLimitGuard],
+	providers: [AccountRateLimitGuard],
+	exports: [AccountRateLimitGuard],
 })
 export class ThrottleModule {}

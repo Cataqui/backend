@@ -1,17 +1,29 @@
 # Build outputs (rebuilt inside Docker)
-dist/
-generated/
-coverage/
-.wrangler/
+**/dist/
+**/generated/
+!apps/mapshot/generated/
+apps/mapshot/generated/*
+!apps/mapshot/generated/source-indexes/
+!apps/mapshot/generated/source-indexes/**
+**/coverage/
+apps/mapshot/renderer/target/
+**/.wrangler/
+**/.cloudflare/
+**/.worker-build/
 
 # Dependencies (rebuilt inside Docker)
-node_modules/
+**/node_modules/
+vendor/bundle/
+.bundle/
+apps/mapshot/.venv/
 
 # Environment & secrets
-.env
-.env.*
-!.env.example
-.infisical-secrets
+**/.env
+**/.dev.vars
+**/.dev.vars.*
+**/.env.*
+!**/.env.example
+**/.infisical-secrets
 
 # Git
 .git/
@@ -25,6 +37,8 @@ node_modules/
 skills-lock.json
 
 # Testing
+.vitest-attachments/
+**/.vitest-attachments/
 test/
 vitest.config.ts
 **/*.spec.ts
@@ -39,7 +53,12 @@ docker-compose.yml
 .github/
 infrastructure/
 commitlint.config.mjs
-LICENSE
 .editorconfig
 .prettierrc
 eslint.config.mjs
+
+# Mapshot's check stages execute its source tests inside Docker.
+!apps/mapshot/test/
+!apps/mapshot/test/**
+!apps/mapshot/**/*.spec.ts
+!apps/mapshot/vitest.config.ts

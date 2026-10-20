@@ -5,6 +5,7 @@ import type { FastifyReply } from "fastify";
 import type { z } from "zod";
 import { PrismaService } from "../../core/prisma/prisma.service";
 import { SkipEnvelope } from "../../shared/decorators/skip-envelope.decorator";
+import { Public } from "../authentication/decorators/public.decorator";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
 import { RedisHealthIndicator } from "./redis-health.indicator";
@@ -23,6 +24,7 @@ export class HealthController {
 		private readonly _redisHealth: RedisHealthIndicator,
 	) {}
 
+	@Public()
 	@Get("live")
 	@Version("1")
 	@SkipEnvelope()
@@ -35,6 +37,7 @@ export class HealthController {
 	})
 	liveness(): void {}
 
+	@Public()
 	@Get()
 	@Version("1")
 	@SkipEnvelope()
@@ -55,8 +58,8 @@ export class HealthController {
 
 		try {
 			const result = await this._health.check([
-				() => this._prismaHealth.pingCheck("database", this._prisma),
-				() => this._redisHealth.pingCheck(),
+				(): ReturnType<PrismaHealthIndicator["pingCheck"]> => this._prismaHealth.pingCheck("database", this._prisma),
+				(): ReturnType<RedisHealthIndicator["pingCheck"]> => this._redisHealth.pingCheck(),
 			]);
 
 			healthStatus = result.status as HealthCheckStatus;

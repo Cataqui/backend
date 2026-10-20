@@ -1,0 +1,51 @@
+name: Update staging map
+run-name: Mapshot source ${{ github.run_id }}
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  resolve:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      revision: ${{ steps.staging.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - id: staging
+        shell: ruby {0}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          require "open3"
+          revision, status = Open3.capture2("gh", "api", "repos/#{ENV.fetch("GITHUB_REPOSITORY")}/git/ref/heads/staging", "--jq", ".object.sha")
+          exit(status.exitstatus || 1) unless status.success?
+          revision = revision.strip
+          abort "Staging reference must resolve to a full commit SHA." unless revision.match?(/\A[a-f0-9]{40}\z/)
+          File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "revision=#{revision}" }
+  update:
+    permissions:
+      contents: read
+      id-token: write
+    needs: resolve
+    uses: ./.github/workflows/mapshot-release.yml
+    with:
+      environment: staging
+      revision: ${{ needs.resolve.outputs.revision }}
+      refresh: true
+  dispatch:
+    permissions:
+      contents: read
+      actions: write
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run mapshot-source-update.yml --repo "$GITHUB_REPOSITORY" --ref staging

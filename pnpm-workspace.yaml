@@ -1,21 +1,49 @@
 packages:
+  - '.github/actions/deploy-mapshot'
   - 'apps/api'
+  - 'apps/mapshot'
+  - 'apps/*/worker'
+  - 'apps/*/workerhole'
   - 'apps/workers/*'
   - 'packages/*'
+shamefullyHoist: false
+strictPeerDependencies: true
+autoInstallPeers: true
+sideEffectsCache: true
+lockfile: true
+preferFrozenLockfile: true
+ignoreScripts: false
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
 catalog:
+  '@hono/tsyringe': 1.0.1
+  tsyringe: 4.10.0
+  reflect-metadata: 0.2.2
+  '@cloudflare/config': 0.27.0
+  cf: 1.0.0-beta.19
+  '@mateo/icons': 'github:Ventairy/mateo#main&path:/packages/typescript/mateo-icons'
+  '@mateo/palette': 'github:Ventairy/mateo#main&path:/packages/typescript/mateo-palette'
+  '@rspack/core': ^2.2.0
   '@cloudflare/workers-types': ^5.20260930.2
-  '@vitest/coverage-v8': ^4.1.10
+  '@types/node': ^24.13.3
+  '@prisma/client': ^7.10.1
+  prisma: ^7.10.1
+  dotenv: ^17.4.2
+  '@upstash/redis': ^1.38.2
+  '@vitest/coverage-v8': ^4.1.11
   fast-check: ^4.9.0
-  hono: ^4.13.1
-  jose: ^6.2.9
+  hono: ^4.13.7
+  pmtiles: 4.4.1
+  testdouble: ^4.0.0
+  tsdown: ^0.23.0
   typescript: ^6.0.3
-  vitest: ^4.1.10
+  vitest: ^4.1.11
   wrangler: ^4.145.0
   zod: ^4.4.3
+  hono-openapi: 1.3.5
 allowBuilds:
+  "@mateo/palette@git+https://github.com/Ventairy/mateo.git": true
   "@mateo/icons@git+https://github.com/Ventairy/mateo.git": true
   "@nestjs/core": false
   "@prisma/engines": true
@@ -24,22 +52,31 @@ allowBuilds:
   prisma: true
   sharp: true
   workerd: true
+minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
-  - neon@4.4.0
-  - '@cloudflare/workerd-darwin-64@1.20260930.2'
-  - '@cloudflare/workerd-darwin-arm64@1.20260930.2'
-  - '@cloudflare/workerd-linux-64@1.20260930.2'
-  - '@cloudflare/workerd-linux-arm64@1.20260930.2'
-  - '@cloudflare/workerd-windows-64@1.20260930.2'
-  - miniflare@5.20260930.0-alpha
-  - workerd@1.20260930.2
-  - wrangler@4.145.0
-  - '@cloudflare/workers-types@5.20260930.2'
-  - '@cloudflare/vitest-plugin@1.3.4'
-# Some upstream ranges still resolve vulnerable transitive versions.
-# Keep these centralized pins until their upstream dependency ranges include the patched releases.
+  # The pinned native-config beta and its matching runtime were explicitly selected.
+  - 'cf@1.0.0-beta.19'
+  - '@cloudflare/runtime-types@0.1.13'
+  - 'miniflare@5.20261019.0-beta'
+  - 'workerd@1.20261019.1'
+  - '@cloudflare/workerd-darwin-64@1.20261019.1'
+  - '@cloudflare/workerd-darwin-arm64@1.20261019.1'
+  - '@cloudflare/workerd-linux-64@1.20261019.1'
+  - '@cloudflare/workerd-linux-arm64@1.20261019.1'
+  - '@cloudflare/workerd-windows-64@1.20261019.1'
+# Some upstream minimums still permit vulnerable transitive versions.
+# Keep patched versions pinned until their parents require the fixed releases.
 overrides:
-  brace-expansion: 5.0.9
-  'fast-uri@<4': 3.1.5
-  'js-yaml@<5': 4.3.1
-  undici: 6.28.0
+  brace-expansion: 5.0.12
+  'fast-uri@<4': 3.1.8
+  'js-yaml@<5': 4.3.2
+  # These vendors pin earlier patch releases. Remove each override when its parent adopts the fix.
+  'neon@4.4.0>diff': 5.2.2
+  'neon@4.4.0>@hono/node-server': 2.0.10
+  'miniflare@5.20260930.0-alpha>sharp': 0.35.5
+  # Remove when Magicast requires the patched source-map-js release itself.
+  'magicast@0.5.5>source-map-js': 1.2.2
+# hono-openapi omits QUERY from its method allowlist, including in upstream main.
+# Keep Maps' OpenAPI 3.2 operations discoverable; remove when upstream supports QUERY.
+patchedDependencies:
+  hono-openapi@1.3.5: patches/hono-openapi@1.3.5.patch

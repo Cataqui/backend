@@ -3,11 +3,14 @@
 import { HealthCheckService, TerminusModule } from "@nestjs/terminus";
 import { Test } from "@nestjs/testing";
 import type { FastifyReply } from "fastify";
+import * as td from "testdouble";
 import { PrismaService } from "../../core/prisma/prisma.service";
 import { HealthCheckStatus } from "./enums/health-check-status.enum";
 import { HealthIndicatorStatus } from "./enums/health-indicator-status.enum";
 import { HealthController } from "./health.controller";
 import { RedisHealthIndicator } from "./redis-health.indicator";
+
+afterEach(() => td.reset());
 
 describe("HealthController", () => {
 	let controller: HealthController;
@@ -15,10 +18,10 @@ describe("HealthController", () => {
 	let mockReply: FastifyReply;
 
 	beforeEach(async () => {
-		mockReply = {
-			status: vi.fn().mockReturnThis(),
-			header: vi.fn().mockReturnThis(),
-		} as unknown as FastifyReply;
+		mockReply = td.object<FastifyReply>();
+		td.when(mockReply.status(td.matchers.anything())).thenReturn(mockReply);
+		td.when(mockReply.header(td.matchers.anything(), td.matchers.anything())).thenReturn(mockReply);
+		healthCheckService = td.object<HealthCheckService>();
 
 		const module = await Test.createTestingModule({
 			imports: [TerminusModule],
@@ -26,27 +29,26 @@ describe("HealthController", () => {
 			providers: [
 				{
 					provide: RedisHealthIndicator,
-					useValue: { pingCheck: vi.fn() },
+					useValue: td.object<RedisHealthIndicator>(),
 				},
 				{
 					provide: PrismaService,
-					useValue: {
-						$connect: vi.fn(),
-						$disconnect: vi.fn(),
-					},
+					useValue: td.object<PrismaService>(),
 				},
 			],
-		}).compile();
+		})
+			.overrideProvider(HealthCheckService)
+			.useValue(healthCheckService)
+			.compile();
 
 		controller = module.get(HealthController);
-		healthCheckService = module.get(HealthCheckService);
 	});
 
 	it("should return healthy output when all dependencies are up", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 			status: "ok",
 			details: { database: { status: "up" } },
-		} as never);
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
 		const result = await controller.check(mockReply);
 
@@ -54,146 +56,228 @@ describe("HealthController", () => {
 	});
 
 	it("should register both database and Redis readiness checks", async () => {
-		const check = vi.spyOn(healthCheckService, "check").mockResolvedValue({
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 			status: "ok",
 			details: {
 				database: { status: "up" },
 				redis: { status: "up" },
 			},
-		} as never);
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
 		await controller.check(mockReply);
 
-		expect(check.mock.calls[0]?.[0]).toHaveLength(2);
+		expect(td.explain(healthCheckService.check).calls[0]?.args[0]).toHaveLength(2);
 	});
 
 	it("should not check dependencies for process liveness", () => {
-		const check = vi.spyOn(healthCheckService, "check");
-
 		controller.liveness();
 
-		expect(check).not.toHaveBeenCalled();
+		td.verify(healthCheckService.check(td.matchers.anything()), { times: 0 });
 	});
 
 	describe("when a dependency is down", () => {
-		beforeEach(() => {
-			vi.spyOn(healthCheckService, "check").mockResolvedValue({
+		it("should return error status", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 				status: "error",
 				details: { database: { status: "down", message: "Can't connect to database" } },
-			} as never);
-		});
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
-		it("should return error status", async () => {
 			const result = await controller.check(mockReply);
 			expect(result.status).toBe(HealthCheckStatus.ERROR);
 		});
 
 		it("should return down status for database indicator", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+				status: "error",
+				details: { database: { status: "down", message: "Can't connect to database" } },
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
 			const result = await controller.check(mockReply);
 			expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
 		});
 
 		it("should return generic database connection failed message", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+				status: "error",
+				details: { database: { status: "down", message: "Can't connect to database" } },
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
 			const result = await controller.check(mockReply);
 			expect(result.details["database"]?.message).toBe("Database connection failed");
 		});
 
 		it("should set response status to 503", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+				status: "error",
+				details: { database: { status: "down", message: "Can't connect to database" } },
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
 			await controller.check(mockReply);
-			expect(mockReply.status).toHaveBeenCalledWith(503);
+			expect(td.explain(mockReply.status).calls[0]?.args).toEqual([503]);
 		});
 	});
 
 	describe("when health check throws unexpectedly", () => {
-		beforeEach(() => {
-			vi.spyOn(healthCheckService, "check").mockRejectedValue(new Error("Unexpected error"));
-		});
-
 		it("should return error status", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenReject(new Error("Unexpected error"));
+
 			const result = await controller.check(mockReply);
 			expect(result.status).toBe(HealthCheckStatus.ERROR);
 		});
 
 		it("should return down status for error detail", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenReject(new Error("Unexpected error"));
+
 			const result = await controller.check(mockReply);
 			expect(result.details["error"]?.status).toBe(HealthIndicatorStatus.DOWN);
 		});
 
 		it("should return a generic dependency health failure message", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenReject(new Error("Unexpected error"));
+
 			const result = await controller.check(mockReply);
 			expect(result.details["error"]?.message).toBe("Dependency health check failed");
 		});
 
 		it("should set response status to 503", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenReject(new Error("Unexpected error"));
+
 			await controller.check(mockReply);
-			expect(mockReply.status).toHaveBeenCalledWith(503);
+			expect(td.explain(mockReply.status).calls[0]?.args).toEqual([503]);
 		});
 	});
 
-	it("should map multiple dependencies in details", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
+	it("should preserve every dependency in health details", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 			status: "error",
 			details: {
 				database: { status: "up" },
 				redis: { status: "down" },
 				cache: { status: "up" },
 			},
-		} as never);
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
 		const result = await controller.check(mockReply);
 
 		expect(Object.keys(result.details)).toHaveLength(3);
+	});
+
+	it("should preserve a healthy database status among multiple dependencies", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+			status: "error",
+			details: {
+				database: { status: "up" },
+				redis: { status: "down" },
+				cache: { status: "up" },
+			},
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
+		const result = await controller.check(mockReply);
+
 		expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.UP);
+	});
+
+	it("should preserve a failed Redis status among multiple dependencies", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+			status: "error",
+			details: {
+				database: { status: "up" },
+				redis: { status: "down" },
+				cache: { status: "up" },
+			},
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
+		const result = await controller.check(mockReply);
+
 		expect(result.details["redis"]?.status).toBe(HealthIndicatorStatus.DOWN);
+	});
+
+	it("should preserve a healthy cache status among multiple dependencies", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+			status: "error",
+			details: {
+				database: { status: "up" },
+				redis: { status: "down" },
+				cache: { status: "up" },
+			},
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
+		const result = await controller.check(mockReply);
+
 		expect(result.details["cache"]?.status).toBe(HealthIndicatorStatus.UP);
 	});
 
 	it("should set cache-control header", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 			status: "ok",
 			details: { database: { status: "up" } },
-		} as never);
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
 		await controller.check(mockReply);
 
-		expect(mockReply.header).toHaveBeenCalledWith("Cache-Control", "no-cache, no-store, must-revalidate");
+		expect(td.explain(mockReply.header).calls[0]?.args).toEqual([
+			"Cache-Control",
+			"no-cache, no-store, must-revalidate",
+		]);
 	});
 
 	describe("when details is empty and fallback to error field is used", () => {
-		beforeEach(() => {
-			vi.spyOn(healthCheckService, "check").mockResolvedValue({
+		it("should return error status", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 				status: "error",
 				info: {},
 				error: { database: { status: "down", message: "Timeout" } },
 				details: {},
-			} as never);
-		});
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
-		it("should return error status", async () => {
 			const result = await controller.check(mockReply);
 			expect(result.status).toBe(HealthCheckStatus.ERROR);
 		});
 
 		it("should return down status for database indicator", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+				status: "error",
+				info: {},
+				error: { database: { status: "down", message: "Timeout" } },
+				details: {},
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
 			const result = await controller.check(mockReply);
 			expect(result.details["database"]?.status).toBe(HealthIndicatorStatus.DOWN);
 		});
 
 		it("should return generic database connection failed message", async () => {
+			td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+				status: "error",
+				info: {},
+				error: { database: { status: "down", message: "Timeout" } },
+				details: {},
+			} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
 			const result = await controller.check(mockReply);
 			expect(result.details["database"]?.message).toBe("Database connection failed");
 		});
 	});
 
-	it("should handle empty details with no error field", async () => {
-		vi.spyOn(healthCheckService, "check").mockResolvedValue({
+	it("should report an error when health details and the error field are absent", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
 			status: "error",
 			details: {},
-		} as never);
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
 
 		const result = await controller.check(mockReply);
 
 		expect(result.status).toBe(HealthCheckStatus.ERROR);
+	});
+
+	it("should return empty health details when the error field is absent", async () => {
+		td.when(healthCheckService.check(td.matchers.anything())).thenResolve({
+			status: "error",
+			details: {},
+		} satisfies Partial<Awaited<ReturnType<HealthCheckService["check"]>>>);
+
+		const result = await controller.check(mockReply);
+
 		expect(result.details).toEqual({});
 	});
 });

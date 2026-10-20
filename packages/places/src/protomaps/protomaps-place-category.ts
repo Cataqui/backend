@@ -1,0 +1,32 @@
+import type { PlaceCategory } from "../place-category";
+
+/** Protomaps kinds currently recognized as Cataquí place categories. */
+export const ProtomapsPlaceTypesByCategory = {
+	AIRPORT: ["aerodrome"],
+	TRAIN_STATION: ["station"],
+	BUS_STATION: ["bus_station"],
+	POLICE_STATION: ["police"],
+	FIRE_STATION: ["fire_station"],
+	PHARMACY: ["pharmacy"],
+	GAS_STATION: ["fuel"],
+	SHOPPING_MALL: ["mall"],
+	STADIUM: ["stadium"],
+	HOSPITAL: ["hospital"],
+	EDUCATION: ["university", "college", "school"],
+	MUSEUM: ["museum"],
+	ZOO: ["zoo"],
+	PLACE_OF_WORSHIP: ["place_of_worship"],
+	PARK: ["park", "national_park", "garden", "nature_reserve", "recreation_ground", "village_green"],
+	SUPERMARKET: ["supermarket", "grocery"],
+	LIBRARY: ["library"],
+	GOVERNMENT_OFFICE: ["townhall", "government", "courthouse"],
+	THEATER: ["theatre"],
+	ATTRACTION: ["attraction", "monument", "artwork"],
+	STORE: ["marketplace"],
+	COMMUNITY_CENTER: ["community_centre"],
+	PEDESTRIAN_AREA: ["pedestrian"],
+	FERRY_TERMINAL: ["ferry_terminal"],
+	CLINIC: ["clinic"],
+	BUILDING: ["public_building", "building"],
+	BRIDGE: ["bridge"],
+} as const satisfies Partial<Record<PlaceCategory, readonly string[]>>;

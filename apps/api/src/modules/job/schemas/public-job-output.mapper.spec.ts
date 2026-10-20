@@ -1,4 +1,4 @@
-import { Prisma, JobStatus } from "../../../../generated/prisma/client.js";
+import { Prisma, JobStatus } from "../../../../generated/prisma/client";
 import { toPublicJobOutput } from "./public-job-output.mapper";
 
 describe("toPublicJobOutput", () => {

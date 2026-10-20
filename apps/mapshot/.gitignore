@@ -1,0 +1,11 @@
+# Generated release packaging
+/.source-indexes.Dockerfile
+/generated/engine-source.json
+/generated/engine-notices/
+/renderer/target/
+
+# Local Python build dependencies
+/.venv/
+
+# Python build-script bytecode
+/build/engine/__pycache__/

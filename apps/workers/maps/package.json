@@ -6,37 +6,48 @@
 	"license": "BUSL-1.1",
 	"type": "module",
 	"scripts": {
-		"build": "wrangler deploy --dry-run --config wrangler.jsonc --outdir dist",
-		"build:staging": "wrangler deploy --dry-run --config wrangler.jsonc --env staging --outdir dist/staging",
-		"build:production": "wrangler deploy --dry-run --config wrangler.jsonc --env production --outdir dist/production",
-		"cf:deploy:staging": "wrangler deploy --config wrangler.jsonc --env staging",
-		"cf:deploy:production": "wrangler deploy --config wrangler.jsonc --env production",
-		"cf:dev": "wrangler dev --config wrangler.jsonc --env-file \"$PWD/../../../.env\" --local",
-		"cf:types": "wrangler types maps-worker-env.d.ts --config wrangler.jsonc --env-interface MapsWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
-		"cf:types:check": "wrangler types maps-worker-env.d.ts --check --config wrangler.jsonc --env-interface MapsWorkerEnv --include-runtime false --env-file \"$PWD/../../../.env.example\"",
-		"clean": "node -e \"for (const target of ['coverage','dist']) require('node:fs').rmSync(target,{recursive:true,force:true})\"",
+		"build": "cf build --mode development",
+		"build:staging": "cf build --mode staging",
+		"build:production": "cf build --mode production",
+		"cf:deploy:staging": "cf deploy --mode staging --provision=false",
+		"cf:deploy:production": "cf deploy --mode production --provision=false",
+		"cf:dev": "node --env-file=.env node_modules/cf/bin/cf dev --mode development",
+		"cf:types": "cf workers types --include-runtime=false",
+		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist generated .cloudflare .worker-build",
 		"test": "vitest run",
 		"test:cov": "vitest run --coverage",
 		"test:watch": "vitest",
-		"typecheck": "tsc --noEmit && pnpm cf:types:check"
+		"typecheck": "pnpm cf:types && tsc --noEmit",
+		"compile": "tsc -p tsconfig.build.json",
+		"test:runtime": "bundle exec ruby test/check-worker-runtime.rb"
 	},
 	"dependencies": {
-		"@cataqui/maps-contracts": "workspace:*",
-		"@cataqui/microservices-auth-schemas": "workspace:*",
+		"@cataqui/async": "workspace:*",
+		"@cataqui/response": "workspace:*",
+		"@cataqui/places": "workspace:*",
 		"@hono/standard-validator": "^0.4.0",
-		"@mateo/icons": "github:Ventairy/mateo#main&path:/packages/typescript/mateo-icons",
-		"@mateo/palette": "github:Ventairy/mateo#main&path:/packages/typescript/mateo-palette",
-		"@resvg/resvg-wasm": "2.6.2",
+		"@hono/tsyringe": "catalog:",
 		"hono": "catalog:",
-		"jose": "catalog:",
+		"hono-openapi": "catalog:",
+		"reflect-metadata": "catalog:",
+		"tsyringe": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "1.3.4",
+		"@cloudflare/config": "catalog:",
 		"@cloudflare/workers-types": "catalog:",
-		"@vitest/coverage-istanbul": "4.1.10",
+		"@types/node": "catalog:",
+		"@vitest/coverage-istanbul": "4.1.11",
+		"cf": "catalog:",
+		"testdouble": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
 		"wrangler": "catalog:"
+	},
+	"imports": {
+		"#maps/*": {
+			"types": "./src/*.ts",
+			"default": "./.worker-build/src/*.js"
+		}
 	}
 }

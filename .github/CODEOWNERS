@@ -3,6 +3,8 @@
 /.github/renovate.json @Cataqui/security
 /.github/actions/ @Cataqui/ci-cd
 /.github/workflows/ @Cataqui/ci-cd
-/apps/api/wrangler.jsonc @Cataqui/backend
-/apps/workers/*/wrangler.jsonc @Cataqui/backend
+/apps/api/worker/ @Cataqui/backend
+/apps/mapshot/worker/ @Cataqui/backend
 /packages/ @Cataqui/backend
+/apps/workers/*/cloudflare.config.ts @Cataqui/backend
+/apps/workers/*/wrangler.config.ts @Cataqui/backend

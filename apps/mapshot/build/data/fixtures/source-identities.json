@@ -1,0 +1,89 @@
+{
+	"candidate": {
+		"release": {
+			"schemaVersion": 1,
+			"pmtiles": {
+				"id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"objectKey": "source/import/attempts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1/archive.pmtiles",
+				"bytes": 1000,
+				"etag": "a-etag",
+				"digest": {
+					"algorithm": "blake3",
+					"value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"verified": true
+				},
+				"minZoom": 0,
+				"maxZoom": 15,
+				"coverage": "complete-planet"
+			},
+			"references": {
+				"id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+				"catalogueKey": "source/import/attempts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1/references/catalogue.json"
+			}
+		},
+		"prepared": {
+			"manifestKey": "source/indexes/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/manifest.json",
+			"sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+			"bytes": 100,
+			"archiveId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		}
+	},
+	"importJob": {
+		"id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"archive": {
+			"key": "20261016.pmtiles",
+			"bytes": 1000,
+			"blake3": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"version": "4.15.2",
+			"observedAt": 100
+		}
+	},
+	"expected": {
+		"fingerprint": "75e7fd1ff68c4d15f8dff128fa61a047c4ba14f32834c6afa7b2ceaa199b52b3"
+	},
+	"integrationExpected": {
+		"fingerprint": "16767dab41857e5adaaa6b5369eaf5fceae2ec7d3950f3d095527ef257c58aa5"
+	},
+	"release": {
+		"schemaVersion": 1,
+		"pmtiles": {
+			"id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"objectKey": "source/planet.pmtiles",
+			"bytes": 127,
+			"etag": "archive-etag",
+			"digest": {
+				"algorithm": "blake3",
+				"value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				"verified": true
+			},
+			"minZoom": 0,
+			"maxZoom": 15,
+			"coverage": "complete-planet"
+		},
+		"references": {
+			"id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			"catalogueKey": "source/references/landmarks.pmtiles"
+		}
+	},
+	"unicodeRelease": {
+		"schemaVersion": 1,
+		"pmtiles": {
+			"id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"objectKey": "source/街/😀.pmtiles",
+			"bytes": 127,
+			"etag": "café 😀     \t",
+			"digest": {
+				"algorithm": "blake3",
+				"value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				"verified": true
+			},
+			"minZoom": 0,
+			"maxZoom": 15,
+			"coverage": "complete-planet"
+		},
+		"references": {
+			"id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			"catalogueKey": "source/references/landmarks.pmtiles"
+		}
+	}
+}

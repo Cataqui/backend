@@ -20,24 +20,26 @@ jobs:
     concurrency:
       group: deploy-${{ inputs.environment }}
       cancel-in-progress: false
+      queue: max
     permissions:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
       - name: Validate branch and environment
-        shell: bash
+        shell: ruby {0}
         env:
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          set -euo pipefail
-          case "$INPUT_ENVIRONMENT:$GITHUB_REF" in
-            staging:refs/heads/staging | production:refs/heads/main) ;;
-            *) echo "Select staging on staging or production on main." >&2; exit 1 ;;
-          esac
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { persist-credentials: false }
+          expected = { "staging" => "refs/heads/staging", "production" => "refs/heads/main" }
+          abort "Select staging on staging or production on main." unless expected.fetch(ENV.fetch("INPUT_ENVIRONMENT"), nil) == ENV.fetch("GITHUB_REF")
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: 24 }
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with: { tofu_version: 1.12.6, tofu_wrapper: false }
       - name: Load state backend credentials
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
@@ -49,8 +51,10 @@ jobs:
         with: { environment: "${{ inputs.environment }}", operation: plan }
       - name: Clear credentials
         if: always()
-        shell: bash
+        shell: ruby {0}
         run: |
-          for name in CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_STATE_ACCESS_KEY_ID R2_STATE_SECRET_ACCESS_KEY INFISICAL_AUTH_JWT; do
-            echo "$name=" >> "$GITHUB_ENV"
-          done
+          File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+            %w[CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_STATE_ACCESS_KEY_ID R2_STATE_SECRET_ACCESS_KEY INFISICAL_AUTH_JWT].each do |name|
+              file.puts "#{name}="
+            end
+          end

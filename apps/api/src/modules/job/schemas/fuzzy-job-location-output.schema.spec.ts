@@ -24,11 +24,16 @@ describe("FuzzyJobLocationOutputSchema", () => {
 		).toThrow();
 	});
 	it.each([undefined, {}, { accessToken: "" }, { accessToken: "token", privateField: "secret" }])(
-		"rejects an absent or invalid image permission %j",
+		"rejects obsolete image permission fields %j",
 		(image) => {
 			expect(
-				FuzzyJobLocationOutputSchema.safeParse({ latitude: -23, longitude: -46, areaRadius: 2000, image: image })
-					.success,
+				FuzzyJobLocationOutputSchema.safeParse({
+					latitude: -23,
+					longitude: -46,
+					areaRadius: 2000,
+					imageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
+					image: image,
+				}).success,
 			).toBe(false);
 		},
 	);

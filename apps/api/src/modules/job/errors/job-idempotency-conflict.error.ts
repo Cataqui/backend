@@ -1,8 +1,8 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "../../../core/errors/domain-error";
+import { AppError } from "../../../core/errors/app-error";
 import { ErrorCode } from "../../../core/errors/error-code.enum";
 
-export class JobIdempotencyConflictError extends DomainError {
+export class JobIdempotencyConflictError extends AppError {
 	constructor() {
 		super(
 			ErrorCode.JOB_IDEMPOTENCY_CONFLICT,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client";
 
 export const JobContactReferenceOutputSchema = z
 	.object({

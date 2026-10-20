@@ -10,10 +10,13 @@ describe("GetJobContactInputSchema", () => {
 		).toBe(true);
 	});
 
-	it("rejects invalid or missing job and contact IDs", () => {
+	it("rejects an invalid job ID", () => {
 		expect(
 			GetJobContactInputSchema.safeParse({ jobId: "bad", contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }).success,
 		).toBe(false);
+	});
+
+	it("rejects a missing contact ID", () => {
 		expect(GetJobContactInputSchema.safeParse({ jobId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }).success).toBe(false);
 	});
 });

@@ -1,0 +1,15 @@
+# Preserve transitive and build dependencies; limit platform-only crates to the shipped Linux target.
+accepted = ["Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "Unicode-3.0", "Zlib"]
+targets = ["x86_64-unknown-linux-gnu"]
+ignore-dev-dependencies = true
+private = { ignore = true }
+
+# libwebp-sys 0.14.4 declares MIT but has no wrapper license text; the report flags that gap.
+# Its bundled libwebp notices and other supplemental notices are copied in the Dockerfile.
+
+# libm's canonical license uses a filename cargo-about does not detect automatically.
+[libm.clarify]
+license = "MIT"
+[[libm.clarify.files]]
+path = "LICENSE.txt"
+checksum = "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7"

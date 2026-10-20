@@ -1,6 +1,6 @@
 import { Test, type TestingModule } from "@nestjs/testing";
-import { type Mock, vi } from "vitest";
-import { Prisma } from "../../../generated/prisma/client.js";
+import * as td from "testdouble";
+import { Prisma } from "../../../generated/prisma/client";
 import { InvalidCursorError } from "../../core/errors/invalid-cursor.error";
 import { FeedService } from "./feed.service";
 import { type FeedItemRaw, FeedRepository } from "./repositories/feed.repository";
@@ -19,39 +19,42 @@ function _createMockFeedItemRaw(overrides: Partial<FeedItemRaw> & { id: string; 
 	};
 }
 
-const mockRepository = {
-	getFeedItems: vi.fn() as Mock,
-};
+afterEach(() => td.reset());
 
 const PAGE_SIZE = 20;
 
 describe("FeedService", () => {
+	let mockRepository: FeedRepository;
 	let service: FeedService;
 
 	beforeEach(async () => {
+		mockRepository = td.object<FeedRepository>();
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [FeedService, { provide: FeedRepository, useValue: mockRepository }],
 		}).compile();
 
 		service = module.get<FeedService>(FeedService);
-		vi.clearAllMocks();
 	});
 
 	describe("getFeed", () => {
 		it("should request limit + 1 items from repository", async () => {
-			mockRepository.getFeedItems.mockResolvedValue([]);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve([]);
 
 			await service.getFeed({});
 
-			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(expect.objectContaining({ limit: PAGE_SIZE + 1 }));
+			expect(td.explain(mockRepository.getFeedItems).calls[0]?.args[0]).toEqual(
+				expect.objectContaining({ limit: PAGE_SIZE + 1 }),
+			);
 		});
 
 		it("should query without a cursor when pagination has not started", async () => {
-			mockRepository.getFeedItems.mockResolvedValue([]);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve([]);
 
 			await service.getFeed({});
 
-			expect(mockRepository.getFeedItems).toHaveBeenCalledWith(expect.objectContaining({ cursor: undefined }));
+			expect(td.explain(mockRepository.getFeedItems).calls[0]?.args[0]).toEqual(
+				expect.objectContaining({ cursor: undefined }),
+			);
 		});
 
 		it("should pass cursor to repository when provided", async () => {
@@ -61,7 +64,7 @@ describe("FeedService", () => {
 					createdAt: new Date(`2026-05-2${8 - i}T10:00:00.000Z`),
 				}),
 			);
-			mockRepository.getFeedItems.mockResolvedValue(items);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve(items);
 
 			const encodedCursor = encodeFeedPaginationCursor({
 				createdAt: "2026-05-28T10:00:00.000Z",
@@ -73,7 +76,7 @@ describe("FeedService", () => {
 			});
 
 			expect({
-				repositoryParams: mockRepository.getFeedItems.mock.calls[0]?.[0],
+				repositoryParams: td.explain(mockRepository.getFeedItems).calls[0]?.args[0],
 				itemCount: result.data.length,
 			}).toEqual({
 				repositoryParams: expect.objectContaining({
@@ -94,7 +97,7 @@ describe("FeedService", () => {
 					createdAt: new Date(now.getTime() - i * 60000),
 				}),
 			);
-			mockRepository.getFeedItems.mockResolvedValue(items);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve(items);
 
 			const result = await service.getFeed({});
 
@@ -115,7 +118,7 @@ describe("FeedService", () => {
 					createdAt: new Date(now.getTime() - i * 60000),
 				}),
 			);
-			mockRepository.getFeedItems.mockResolvedValue(items);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve(items);
 
 			const result = await service.getFeed({});
 
@@ -136,7 +139,7 @@ describe("FeedService", () => {
 					createdAt: new Date("2026-05-28T10:00:00.000Z"),
 				}),
 			];
-			mockRepository.getFeedItems.mockResolvedValue(items);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve(items);
 
 			const result = await service.getFeed({});
 
@@ -154,14 +157,16 @@ describe("FeedService", () => {
 		});
 
 		it("returns stored ready URLs without generating or signing per feed item", async () => {
-			mockRepository.getFeedItems.mockResolvedValue([_createMockFeedItemRaw({ id: "ready", createdAt: new Date() })]);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve([
+				_createMockFeedItemRaw({ id: "ready", createdAt: new Date() }),
+			]);
 			expect((await service.getFeed({})).data[0]?.location.imageUrl).toEqual(
 				"https://imagedelivery.net/test/map/format=webp,quality=80",
 			);
 		});
 
 		it("should return data with pagination metadata", async () => {
-			mockRepository.getFeedItems.mockResolvedValue([]);
+			td.when(mockRepository.getFeedItems(td.matchers.anything())).thenResolve([]);
 
 			const result = await service.getFeed({});
 

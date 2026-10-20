@@ -1,9 +1,16 @@
 node_modules/
+.bundle/
+vendor/bundle/
 gha-creds-*.json
 dist/
 .env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
 .infisical-secrets
 coverage/
+.vitest-attachments/
 generated/
 .idea/
 *.js.map
@@ -19,6 +26,7 @@ bun.lockb
 
 # Cloudflare Workers
 .wrangler/
+.cloudflare/
 
 # OpenTofu and Terraform-compatible artifacts
 .terraform/

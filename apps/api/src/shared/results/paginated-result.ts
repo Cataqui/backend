@@ -1,15 +1,14 @@
-import type { z } from "zod";
-import { PaginationOutputSchema } from "../schemas/pagination-output.schema";
+import type { PaginationOutput } from "@cataqui/response";
 
 const PAGINATED_RESULT = Symbol("paginated_result");
 
 export type PaginatedResult<T> = {
 	readonly [PAGINATED_RESULT]: true;
 	readonly data: T[];
-	readonly pagination: z.infer<typeof PaginationOutputSchema>;
+	readonly pagination: PaginationOutput;
 };
 
-function create<T>(params: { data: T[]; pagination: z.infer<typeof PaginationOutputSchema> }): PaginatedResult<T> {
+function create<T>(params: { data: T[]; pagination: PaginationOutput }): PaginatedResult<T> {
 	return {
 		[PAGINATED_RESULT]: true,
 		data: params.data,
@@ -22,6 +21,6 @@ function is(value: unknown): value is PaginatedResult<unknown> {
 }
 
 export const PaginatedResult = {
-	create,
-	is,
+	create: create,
+	is: is,
 } as const;

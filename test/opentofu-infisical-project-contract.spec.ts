@@ -8,6 +8,7 @@ const infisicalProjectModuleDirectory = resolve(infrastructureDirectory, "opento
 const infisicalRoots = [
 	"auth-secrets",
 	"cloudflare-api-tokens",
+	"cloudflare-hyperdrive",
 	"google-cloud-maps-platform",
 	"infisical-generated-folders",
 	"neon-api-keys",
@@ -67,7 +68,7 @@ describe("Infisical OpenTofu project resolution", () => {
 		expect(root).toMatch(/project_name\s*=\s*local\.manifest\.infisical\.project\.name/);
 		expect(root).toMatch(/project_slug\s*=\s*local\.manifest\.infisical\.project\.slug/);
 		expect(root).toMatch(/environment\s*=\s*var\.environment/);
-		expect(root).toMatch(/infisical_project_id\s*=\s*module\.infisical_project\.id/);
+		expect(root).toMatch(/(?:infisical_project_id|workspace_id)\s*=\s*module\.infisical_project\.id/);
 		expect(root).not.toMatch(/data "infisical_projects"/);
 		expect(root).not.toMatch(/local\.(?:platforms|manifest)\.infisical\.(?:project_id|project_slug)/);
 		expect(root).not.toMatch(/(?:workspace_id|project_id)\s*=\s*"[0-9a-f-]{36}"/);

@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "../../../core/errors/domain-error";
+import { AppError } from "../../../core/errors/app-error";
 import { ErrorCode } from "../../../core/errors/error-code.enum";
 import { JobNotFoundError } from "./job-not-found.error";
 
@@ -50,9 +50,9 @@ describe("JobNotFoundError", () => {
 			expect(error).toBeInstanceOf(Error);
 		});
 
-		it("should be an instance of DomainError", () => {
+		it("should be an instance of AppError", () => {
 			const error = new JobNotFoundError();
-			expect(error).toBeInstanceOf(DomainError);
+			expect(error).toBeInstanceOf(AppError);
 		});
 	});
 });

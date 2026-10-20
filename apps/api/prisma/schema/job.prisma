@@ -1,43 +1,43 @@
 model Job {
-  id                 String      @id @default(uuid()) @db.Uuid
-  posterUserId       String?     @map("poster_user_id") @db.Uuid
-  poster             User?       @relation(fields: [posterUserId], references: [id], onDelete: SetNull)
-  contactId          String?     @map("contact_id") @db.Uuid
+  id                 String   @id @default(uuid()) @db.Uuid
+  posterProfileId    String?  @map("poster_profile_id") @db.Uuid
+  poster             Profile? @relation(fields: [posterProfileId], references: [id], onDelete: SetNull)
+  contactId          String?  @map("contact_id") @db.Uuid
   contact            Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  title              String      @db.Text
-  description        String      @db.Text
-  descriptionSummary String      @map("description_summary") @db.Text
+  title              String   @db.Text
+  description        String   @db.Text
+  descriptionSummary String   @map("description_summary") @db.Text
 
-  locationPoint       Unsupported("geometry(Point,4326)")? @map("location_point")
-  locationTitle       String                               @map("location_title") @db.Text
-  fuzzyLatitude       Decimal                              @map("fuzzy_latitude") @db.Decimal(9, 6)
-  fuzzyLongitude      Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
-  status              JobStatus                            @default(ACTIVE)
-  payment             String?                              @db.Text
-  locationImageUrl    String?                              @map("location_image_url") @db.Text
-  postRequest         JobPostRequest?
-  createdAt           DateTime                             @default(now()) @map("created_at")
-  updatedAt           DateTime                             @updatedAt @map("updated_at")
+  locationPoint    Unsupported("geometry(Point,4326)")? @map("location_point")
+  locationTitle    String                               @map("location_title") @db.Text
+  fuzzyLatitude    Decimal                              @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude   Decimal                              @map("fuzzy_longitude") @db.Decimal(9, 6)
+  status           JobStatus                            @default(ACTIVE)
+  payment          String?                              @db.Text
+  locationImageUrl String?                              @map("location_image_url") @db.Text
+  postRequest      JobPostRequest?
+  createdAt        DateTime                             @default(now()) @map("created_at")
+  updatedAt        DateTime                             @updatedAt @map("updated_at")
 
   @@index([contactId])
-  @@index([posterUserId])
-  @@index([posterUserId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([posterProfileId])
+  @@index([posterProfileId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("jobs")
 }
 
 model JobPostRequest {
-  id             String   @id @default(uuid()) @db.Uuid
-  posterUserId   String   @map("poster_user_id") @db.Uuid
-  poster         User     @relation(fields: [posterUserId], references: [id], onDelete: Cascade)
-  idempotencyKey String   @map("idempotency_key") @db.Uuid
-  requestHash    String   @map("request_hash") @db.VarChar(64)
-  fuzzyLatitude  Decimal @map("fuzzy_latitude") @db.Decimal(9, 6)
-  fuzzyLongitude Decimal @map("fuzzy_longitude") @db.Decimal(9, 6)
-  jobId          String?  @unique @map("job_id") @db.Uuid
-  job            Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  posterProfileId String   @map("poster_profile_id") @db.Uuid
+  poster          Profile  @relation(fields: [posterProfileId], references: [id], onDelete: Cascade)
+  idempotencyKey  String   @map("idempotency_key") @db.Uuid
+  requestHash     String   @map("request_hash") @db.VarChar(64)
+  fuzzyLatitude   Decimal  @map("fuzzy_latitude") @db.Decimal(9, 6)
+  fuzzyLongitude  Decimal  @map("fuzzy_longitude") @db.Decimal(9, 6)
+  jobId           String?  @unique @map("job_id") @db.Uuid
+  job             Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  @@unique([posterUserId, idempotencyKey])
+  @@unique([posterProfileId, idempotencyKey])
   @@map("job_post_requests")
 }

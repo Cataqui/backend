@@ -1,4 +1,4 @@
 {
-	"recommendations": ["opentofu.vscode-opentofu"],
+	"recommendations": ["opentofu.vscode-opentofu", "Shopify.ruby-lsp"],
 	"unwantedRecommendations": ["hashicorp.terraform"]
 }

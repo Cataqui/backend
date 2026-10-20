@@ -1,6 +1,6 @@
-resource "cloudflare_r2_bucket" "maps" {
+resource "cloudflare_r2_bucket" "mapshot" {
   account_id    = local.cloudflare_account_id
-  name          = local.maps_bucket_name
+  name          = local.mapshot_bucket_name
   jurisdiction  = "default"
   location      = "enam"
   storage_class = "Standard"
@@ -10,16 +10,16 @@ resource "cloudflare_r2_bucket" "maps" {
   }
 }
 
-resource "cloudflare_r2_managed_domain" "maps" {
+resource "cloudflare_r2_managed_domain" "mapshot" {
   account_id   = local.cloudflare_account_id
-  bucket_name  = cloudflare_r2_bucket.maps.name
+  bucket_name  = cloudflare_r2_bucket.mapshot.name
   jurisdiction = "default"
   enabled      = false
 }
 
-resource "cloudflare_r2_bucket_lifecycle" "maps" {
+resource "cloudflare_r2_bucket_lifecycle" "mapshot" {
   account_id   = local.cloudflare_account_id
-  bucket_name  = cloudflare_r2_bucket.maps.name
+  bucket_name  = cloudflare_r2_bucket.mapshot.name
   jurisdiction = "default"
   rules = [{
     id      = "abort_incomplete_multipart_uploads_after_seven_days"

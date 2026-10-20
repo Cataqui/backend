@@ -1,7 +1,6 @@
 import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler/dist/throttler.constants";
-import { AccessTokenGuard } from "../../modules/auth/guards/access-token.guard";
-import { UserRateLimitGuard } from "../guards/user-rate-limit.guard";
+import { AccountRateLimitGuard } from "../guards/account-rate-limit.guard";
 import { RateLimit } from "./rate-limit.decorator";
 import { RateLimitConstants } from "./rate-limit.constants";
 
@@ -42,10 +41,9 @@ describe("rate-limit decorators", () => {
 		).toBe(true);
 	});
 
-	it("should authenticate the user before enforcing the rate limit", () => {
+	it("enforces the account rate limit after global authentication", () => {
 		expect(Reflect.getMetadata(GUARDS_METADATA, RateLimitTestController.prototype.limited)).toEqual([
-			AccessTokenGuard,
-			UserRateLimitGuard,
+			AccountRateLimitGuard,
 		]);
 	});
 });

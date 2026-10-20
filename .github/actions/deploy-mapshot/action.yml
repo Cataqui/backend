@@ -1,0 +1,77 @@
+name: Deploy Mapshot
+description: Execute one GitHub-owned preparation or verified deployment phase.
+inputs:
+  environment:
+    description: Target environment.
+    required: true
+  revision:
+    description: Trusted source revision.
+    required: true
+  operation:
+    description: Release operation; transfer, verify, prepare, deploy, probe or recover.
+    required: true
+  refresh:
+    description: Discover a newer staging dataset.
+    default: 'false'
+  promote:
+    description: Adopt staging data after its PR merges into main.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Validate the requested release operation
+      shell: ruby {0}
+      env:
+        INPUT_OPERATION: ${{ inputs.operation }}
+      run: |
+        unless %w[transfer verify prepare deploy probe recover].include?(ENV.fetch("INPUT_OPERATION"))
+          abort "Unsupported Mapshot release operation."
+        end
+    - name: Load Mapshot deployment credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: mapshot-deployment
+        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+    - name: Load staging map update credentials
+      uses: ./.github/actions/load-infisical-secrets
+      if: inputs.environment == 'staging' && inputs.refresh == 'true'
+      with:
+        environment: staging
+        profile: mapshot-map-update
+        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+    - name: Read the Cloudflare account
+      shell: ruby {0}
+      run: |
+        require "json"
+        account_id = JSON.parse(File.read("infrastructure/platforms.json", encoding: "UTF-8")).fetch("cloudflare").fetch("account_id")
+        File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_ACCOUNT_ID=#{account_id}") }
+    - name: Build Mapshot data and image tooling
+      shell: ruby {0}
+      working-directory: apps/mapshot
+      run: exec "pnpm", "tools:build"
+    - name: Run Mapshot ${{ inputs.operation }}
+      shell: ruby {0}
+      working-directory: .github/actions/deploy-mapshot
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_REVISION: ${{ inputs.revision }}
+        INPUT_OPERATION: ${{ inputs.operation }}
+        INPUT_REFRESH: ${{ inputs.refresh }}
+        INPUT_PROMOTE: ${{ inputs.promote }}
+      run: |
+        require "rbconfig"
+        args = ["--operation", ENV.fetch("INPUT_OPERATION"), "--environment", ENV.fetch("INPUT_ENVIRONMENT"),
+                "--revision", ENV.fetch("INPUT_REVISION")]
+        args.push("--refresh") if ENV.fetch("INPUT_REFRESH") == "true"
+        args.push("--promote") if ENV.fetch("INPUT_PROMOTE") == "true"
+        exec RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "release-mapshot.rb"), *args
+    - name: Clear Mapshot credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          %w[CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN MAPSHOT_R2_ACCESS_KEY_ID MAPSHOT_R2_SECRET_ACCESS_KEY].each do |name|
+            file.puts("#{name}=")
+          end
+        end

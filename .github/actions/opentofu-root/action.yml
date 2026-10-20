@@ -1,0 +1,150 @@
+name: Plan or apply an owned OpenTofu root
+description: Plan or apply an owned root with explicit validation and convergence checks. The caller installs OpenTofu once per job.
+inputs:
+  root:
+    description: Owned root directory under infrastructure/opentofu/roots.
+    required: true
+  environment:
+    description: Target environment; staging or production.
+    required: true
+  operation:
+    description: Operation; plan or apply.
+    required: true
+outputs:
+  has-changes:
+    description: Whether the saved plan contains changes.
+    value: ${{ steps.plan.outputs.has-changes }}
+runs:
+  using: composite
+  steps:
+    - name: Validate root inputs
+      id: validate
+      shell: ruby {0}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_OPERATION: ${{ inputs.operation }}
+      run: |
+        environment = ENV.fetch("INPUT_ENVIRONMENT")
+        operation = ENV.fetch("INPUT_OPERATION")
+        root = ENV.fetch("INPUT_ROOT")
+        abort "environment must be staging or production." unless %w[staging production].include?(environment)
+        abort "operation must be plan or apply." unless %w[plan apply].include?(operation)
+        case root
+        when "auth-secrets", "cloudflare-ai-gateways", "cloudflare-hyperdrive", "cloudflare-api-tokens", "cloudflare-pages", "cloudflare-queues", "cloudflare-r2", "google-cloud-maps-platform", "infisical-generated-folders", "neon-api-keys", "neon-database-access", "neon-projects", "upstash-redis"
+          # Environment-scoped roots.
+        when "cloudflare-zone-dns", "cloudflare-zone-configuration"
+          abort "Zone roots require production." unless environment == "production"
+        else
+          abort "Unsupported infrastructure root."
+        end
+        if root == "neon-api-keys" && !ENV.fetch("TF_VAR_neon_project_id", "").match?(/\A[a-z0-9]+(?:-[a-z0-9]+)+\z/)
+          abort "The Neon project context must supply TF_VAR_neon_project_id."
+        end
+    - name: Configure Upstash provider
+      if: inputs.root == 'upstash-redis'
+      shell: ruby {0}
+      run: |
+        require "json"
+        platforms = JSON.parse(File.read(File.join(ENV.fetch("GITHUB_WORKSPACE"), "infrastructure/platforms.json"), encoding: "UTF-8"))
+        email = platforms.fetch("upstash").fetch("account_email")
+        abort "Invalid Upstash account email." unless email.is_a?(String) && email.match?(/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/)
+        File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts "UPSTASH_EMAIL=#{email}" }
+    - name: Initialize backend
+      shell: ruby {0}
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        exec "tofu", "init", "-reconfigure", "-input=false",
+          "-backend-config=../../backends/r2.s3.tfbackend",
+          "-backend-config=../../environments/#{ENV.fetch('INPUT_ENVIRONMENT')}/#{ENV.fetch('INPUT_ROOT')}.s3.tfbackend"
+    - name: Create saved plan
+      id: plan
+      shell: ruby {0}
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "rbconfig"
+        File.umask(0o077)
+        root = ENV.fetch("INPUT_ROOT")
+        plan_file = File.join(ENV.fetch("RUNNER_TEMP"), "#{root}.tfplan")
+        plan_log = File.join(ENV.fetch("RUNNER_TEMP"), "#{root}-plan.log")
+        variables = %w[cloudflare-zone-dns cloudflare-zone-configuration].include?(root) ? [] : ["-var=environment=#{ENV.fetch('INPUT_ENVIRONMENT')}"]
+        system "tofu", "plan", "-input=false", "-detailed-exitcode", "-lock-timeout=5m", *variables, "-out=#{plan_file}", out: plan_log, err: [:child, :out]
+        status = $?.exitstatus || 1
+        unless [0, 2].include?(status)
+          system RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "summarize-failure.rb"), plan_log, "plan"
+          exit status
+        end
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "has-changes=#{status == 2}" }
+    - name: Check Pages build before domain activation
+      if: inputs.operation == 'apply' && inputs.root == 'cloudflare-pages'
+      shell: ruby {0}
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "rbconfig"
+        exec RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/actions/cloudflare-pages/verify-deployment.rb"), File.join(ENV.fetch("RUNNER_TEMP"), "#{ENV.fetch('INPUT_ROOT')}.tfplan")
+    - name: Apply saved plan
+      id: apply
+      if: inputs.operation == 'apply'
+      continue-on-error: ${{ inputs.root == 'cloudflare-zone-configuration' }}
+      shell: ruby {0}
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "rbconfig"
+        File.umask(0o077)
+        root = ENV.fetch("INPUT_ROOT")
+        plan_file = File.join(ENV.fetch("RUNNER_TEMP"), "#{root}.tfplan")
+        apply_log = File.join(ENV.fetch("RUNNER_TEMP"), "#{root}-apply.log")
+        system "tofu", "apply", "-input=false", "-auto-approve", "-lock-timeout=5m", plan_file, out: apply_log, err: [:child, :out]
+        status = $?.exitstatus || 1
+        unless status.zero?
+          system RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "summarize-failure.rb"), apply_log, "apply"
+          exit status
+        end
+    - name: Check Cloudflare zone convergence
+      if: "!cancelled() && inputs.root == 'cloudflare-zone-configuration' && (steps.apply.outcome == 'success' || steps.apply.outcome == 'failure')"
+      shell: ruby {0}
+      working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        APPLY_OUTCOME: ${{ steps.apply.outcome }}
+      run: |
+        require "rbconfig"
+        File.umask(0o077)
+        verify_log = File.join(ENV.fetch("RUNNER_TEMP"), "#{ENV.fetch('INPUT_ROOT')}-verify.log")
+        system "tofu", "plan", "-input=false", "-detailed-exitcode", "-lock-timeout=5m", out: verify_log, err: [:child, :out]
+        status = $?.exitstatus || 1
+        case status
+        when 0
+          puts "Cloudflare reported a post-apply provider error, but a fresh plan verified exact convergence." if ENV.fetch("APPLY_OUTCOME") == "failure"
+        when 2
+          abort "Cloudflare zone configuration still has changes after apply."
+        else
+          system RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "summarize-failure.rb"), verify_log, "plan"
+          exit status
+        end
+    - name: Remove plan files
+      if: always() && steps.validate.outcome == 'success'
+      shell: ruby {0}
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+      run: |
+        root = ENV.fetch("INPUT_ROOT")
+        ["#{root}.tfplan", "#{root}-plan.log", "#{root}-apply.log", "#{root}-verify.log"].each do |name|
+          begin
+            File.unlink(File.join(ENV.fetch("RUNNER_TEMP"), name))
+          rescue Errno::ENOENT
+            # A step may fail before creating its plan or log.
+          end
+        end

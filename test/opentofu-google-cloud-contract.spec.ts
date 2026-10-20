@@ -156,7 +156,7 @@ describe("Google Cloud OpenTofu contract", () => {
 	it("should deliver the Places key only through the Maps write-only field", () => {
 		const rootHcl = _getRootHcl("google-cloud-maps-platform");
 
-		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-geosearch-places-\$\{var\.environment\}"/);
+		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-maps-places-\$\{var\.environment\}"/);
 		expect(rootHcl).toMatch(/display_name\s*=\s*"Cataqui Maps Places \$\{title\(var\.environment\)\}"/);
 		expect(rootHcl).toMatch(/folder_path\s*=\s*"\/generated\/maps\/runtime"/);
 		expect(rootHcl).toMatch(/name\s*=\s*"GOOGLE_PLACES_API_KEY"/);
@@ -166,8 +166,14 @@ describe("Google Cloud OpenTofu contract", () => {
 		expect(rootHcl).not.toMatch(/\n\s*value\s*=|\boutput\s+"/);
 	});
 
+	it("preserves an existing Places key when migrating its OpenTofu resource address", () => {
+		expect(_getRootHcl("google-cloud-maps-platform")).toMatch(
+			/moved\s*{\s*from\s*=\s*google_apikeys_key\.geosearch_places\s*to\s*=\s*google_apikeys_key\.maps_places\s*}/,
+		);
+	});
+
 	it("should prohibit committed credentials and legacy execution references", () => {
-		const rootEnvironments = (rootName: (typeof rootNames)[number]) =>
+		const rootEnvironments = (rootName: (typeof rootNames)[number]): string[] =>
 			rootName === "google-cloud-github-auth" ? ["production"] : ["staging", "production"];
 		const committedConfiguration = [
 			...rootNames.map((rootName) => _getRootHcl(rootName)),

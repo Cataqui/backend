@@ -40,7 +40,7 @@ run "staging_maps_platform" {
 
   assert {
     condition = (
-      google_apikeys_key.maps_places.name == "cataqui-geosearch-places-staging" &&
+      google_apikeys_key.maps_places.name == "cataqui-maps-places-staging" &&
       google_apikeys_key.maps_places.project == "cataqui-staging"
     )
     error_message = "Staging must create its Maps Places key in the matching Google Cloud project."
@@ -66,7 +66,7 @@ run "production_maps_platform" {
 
   assert {
     condition = (
-      google_apikeys_key.maps_places.name == "cataqui-geosearch-places-production" &&
+      google_apikeys_key.maps_places.name == "cataqui-maps-places-production" &&
       google_apikeys_key.maps_places.project == "cataqui"
     )
     error_message = "Production must create its Maps Places key in the matching Google Cloud project."

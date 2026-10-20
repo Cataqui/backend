@@ -1,0 +1,117 @@
+name: Reconcile deployment infrastructure
+description: Apply environment infrastructure in dependency order with its owned secret profiles.
+inputs:
+  environment: { description: Target environment, required: true }
+runs:
+  using: composite
+  steps:
+    - name: Set up OpenTofu
+      uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      with: { tofu_version: 1.12.6, tofu_wrapper: false }
+    - name: Load bootstrap credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply generated folders
+      uses: ./.github/actions/infisical-generated-folders
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Apply Cloudflare API tokens
+      uses: ./.github/actions/cloudflare-api-tokens
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load Pages infrastructure credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply landing Pages configuration
+      uses: ./.github/actions/cloudflare-pages
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Clear Pages infrastructure credential
+      shell: ruby {0}
+      run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
+    - name: Load R2 infrastructure credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply private R2 image storage
+      uses: ./.github/actions/cloudflare-r2
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Clear R2 infrastructure credential
+      shell: ruby {0}
+      run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
+    - name: Apply generated authentication secrets
+      uses: ./.github/actions/auth-secrets
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load Neon project credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: neon-projects, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply Neon projects
+      uses: ./.github/actions/neon-projects
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load Neon API-key credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: neon-api-keys, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Load Neon project context
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: neon-project-context, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply Neon project API keys
+      uses: ./.github/actions/neon-api-keys
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load Neon database-access credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: neon-database-access, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply Neon database access
+      uses: ./.github/actions/neon-database-access
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load Hyperdrive infrastructure credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-hyperdrive, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply Auth database connection pool
+      uses: ./.github/actions/cloudflare-hyperdrive
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Clear Hyperdrive origin credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          %w[CLOUDFLARE_API_TOKEN DATABASE_HOST DATABASE_PASSWORD TF_VAR_database_host TF_VAR_database_password].each { |name| file.puts("#{name}=") }
+        end
+    - name: Clear Neon account issuer
+      shell: ruby {0}
+      run: |
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          %w[NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_API_KEY TF_VAR_neon_project_id].each do |name|
+            file.puts("#{name}=")
+          end
+        end
+    - name: Load Upstash credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: upstash-redis, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply Upstash
+      uses: ./.github/actions/upstash-redis
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Load AI Gateway credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: "${{ inputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply AI Gateway
+      uses: ./.github/actions/cloudflare-ai-gateways
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+    - name: Authenticate Google Cloud
+      uses: ./.github/actions/authenticate-google-cloud
+      with: { environment: "${{ inputs.environment }}", workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
+    - name: Apply Google Maps Platform
+      uses: ./.github/actions/google-cloud-maps-platform
+      with: { environment: "${{ inputs.environment }}", operation: apply }
+
+    - name: Load production DNS credentials
+      if: inputs.environment == 'production'
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: production, profile: cloudflare-zone-dns, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply production DNS
+      if: inputs.environment == 'production'
+      uses: ./.github/actions/cloudflare-zone-dns
+      with: { operation: apply }
+    - name: Load production zone credentials
+      if: inputs.environment == 'production'
+      uses: ./.github/actions/load-infisical-secrets
+      with: { environment: production, profile: cloudflare-zone-configuration, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+    - name: Apply production zone configuration
+      if: inputs.environment == 'production'
+      uses: ./.github/actions/cloudflare-zone-configuration
+      with: { operation: apply }

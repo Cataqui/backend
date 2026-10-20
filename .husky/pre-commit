@@ -1,1 +1,1 @@
-terraform fmt -check -recursive infrastructure && pnpm lint && pnpm lint:check && pnpm typecheck && pnpm test
+pnpm check

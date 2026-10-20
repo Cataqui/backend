@@ -1,0 +1,39 @@
+{
+	"name": "@cataqui/api-worker",
+	"version": "1.0.0",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"scripts": {
+		"build": "cf build --mode development",
+		"cf:deploy:production": "cf deploy --mode production --provision=false",
+		"cf:deploy:staging": "cf deploy --mode staging --provision=false",
+		"cf:dev": "node --env-file=../.env node_modules/cf/bin/cf dev --mode development",
+		"cf:tail": "wrangler tail",
+		"cf:secret:put": "wrangler secret put",
+		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist .cloudflare",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"typecheck": "pnpm cf:types && tsc --noEmit",
+		"cf:types": "cf workers types --include-runtime=false"
+	},
+	"dependencies": {
+		"@cataqui/response": "workspace:*",
+		"@cataqui/api-workerhole": "workspace:*",
+		"@cataqui/async": "workspace:*",
+		"@cataqui/workerhole": "workspace:*",
+		"@cataqui/auth-schemas": "workspace:*",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@types/node": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"testdouble": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:",
+		"cf": "catalog:",
+		"@cloudflare/config": "catalog:"
+	}
+}

@@ -4,6 +4,7 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { AppModule } from "./app.module";
 import { configureApp } from "./core/app.factory";
 import { requestSizeConfig } from "./core/config/request-size.config";
+import { runtimeConfig } from "./core/config/runtime.config";
 
 export async function bootstrap(): Promise<void> {
 	const logger = new Logger("Bootstrap");
@@ -20,11 +21,12 @@ export async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create<NestFastifyApplication>(
 		AppModule,
 		fastifyAdapter,
-		process.env["NODE_ENV"] === "production"
+		runtimeConfig().environment === "production"
 			? { abortOnError: false, logger: ["error", "warn", "fatal"] }
 			: { abortOnError: false },
 	);
 	await configureApp(app);
+	app.enableShutdownHooks();
 
 	const port = process.env["PORT"] ?? 3000;
 	const host = process.env["HOST"] ?? "0.0.0.0";

@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "rake/testtask"
+
+Rake::TestTask.new(:test) do |task|
+  task.description = "Run infrastructure bootstrap tests"
+  task.libs = []
+  task.test_files = FileList["test/**/*_test.rb"]
+end
+
+desc "Run infrastructure bootstrap tests with coverage"
+task :coverage do
+  ENV["COVERAGE"] = "1"
+  Rake::Task[:test].invoke
+end
+
+task default: :test

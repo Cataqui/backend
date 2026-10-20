@@ -1,0 +1,27 @@
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  Include:
+    - Gemfile
+    - '**/Rakefile'
+    - '.github/**/*.rb'
+    - 'infrastructure/**/*.rb'
+    - 'apps/mapshot/**/*.rb'
+  Exclude:
+    - '**/node_modules/**/*'
+    - '**/vendor/**/*'
+    - '**/dist/**/*'
+    - '**/generated/**/*'
+
+Style/Documentation:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - 'infrastructure/bootstrap/test/**/*.rb'

@@ -7,8 +7,8 @@
 		"r2": {
 			"buckets": {
 				"opentofu_state": "cataqui-backend-opentofu-state",
-				"maps_staging": "cataqui-maps-staging",
-				"maps_production": "cataqui-maps-production"
+				"mapshot_staging": "cataqui-mapshot-staging",
+				"mapshot_production": "cataqui-mapshot-production"
 			}
 		},
 		"pages": {
@@ -17,6 +17,14 @@
 			},
 			"landing_production": {
 				"name": "cataqui-landing-production"
+			}
+		},
+		"hyperdrive": {
+			"auth_staging": {
+				"name": "cataqui-auth-staging"
+			},
+			"auth_production": {
+				"name": "cataqui-auth-production"
 			}
 		}
 	},
@@ -48,12 +56,6 @@
 		"opentofu_identities": {
 			"cataqui_backend_staging": "cataqui-backend-opentofu-staging",
 			"cataqui_backend_production": "cataqui-backend-opentofu-production"
-		},
-		"manual_secrets": {
-			"maps_runtime": {
-				"path": "/generated/maps/runtime",
-				"secrets": ["GEOAPIFY_API_KEY"]
-			}
 		}
 	},
 	"github": {
@@ -93,6 +95,11 @@
 				"name": "cataqui",
 				"owner_role": "db_owner",
 				"runtime_role": "db_user"
+			},
+			"auth": {
+				"name": "auth",
+				"owner_role": "auth_owner",
+				"runtime_role": "auth_user"
 			}
 		}
 	},
@@ -104,6 +111,12 @@
 				},
 				"cataqui_api_production": {
 					"name": "cataqui-api-production"
+				},
+				"cataqui_auth_staging": {
+					"name": "cataqui-auth-staging"
+				},
+				"cataqui_auth_production": {
+					"name": "cataqui-auth-production"
 				}
 			}
 		}

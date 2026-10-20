@@ -42,10 +42,10 @@ describe("RequestHeaderFieldsTooLargeError", () => {
 			expect(error).toBeInstanceOf(Error);
 		});
 
-		it("should be an instance of DomainError", () => {
+		it("should be an instance of AppError", () => {
 			const error = new RequestHeaderFieldsTooLargeError();
-			expect(error).toBeInstanceOf(DomainError);
+			expect(error).toBeInstanceOf(AppError);
 		});
 	});
 });
-import { DomainError } from "./domain-error";
+import { AppError } from "./app-error";

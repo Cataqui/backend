@@ -12,5 +12,5 @@
 		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*", "test/**/*.ts"],
-	"exclude": ["node_modules", "dist", "src/platform/cloudflare"]
+	"exclude": ["node_modules", "dist"]
 }
