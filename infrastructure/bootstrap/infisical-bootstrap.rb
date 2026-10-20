@@ -281,6 +281,19 @@ module Bootstrap
     end
   end
 
+  def _infisical_list_identity_privileges(url, headers:)
+    payload = request_json(url, headers: headers)
+    privileges = payload["privileges"]
+    return payload unless privileges.is_a?(Array)
+
+    payload.merge("privileges" => privileges.map do |privilege|
+      request_json(
+        "#{INFISICAL_API_BASE_URL}/api/v2/identity-project-additional-privilege/#{privilege.fetch('id')}",
+        headers: headers
+      ).fetch("privilege")
+    end)
+  end
+
   def reconcile_infisical_identity(manifest:, project_id:, infisical_token:, environment:, github_oidc_subject_prefix:)
     name = manifest.fetch("infisical").fetch("opentofu_identities").fetch("cataqui_backend_#{environment}")
     environment_condition = { "$eq" => environment }
@@ -348,10 +361,10 @@ module Bootstrap
     membership = request_json(membership_url, headers: headers)["identityMembership"]
     roles = membership["roles"]
     privilege_query = URI.encode_www_form(
-      "identityId" => identity_id, "projectSlug" => manifest.fetch("infisical").fetch("project").fetch("slug")
+      "identityId" => identity_id, "projectId" => project_id
     )
-    privilege_url = "#{INFISICAL_API_BASE_URL}/api/v1/additional-privilege/identity?#{privilege_query}"
-    privilege_list = request_json(privilege_url, headers: headers)
+    privilege_url = "#{INFISICAL_API_BASE_URL}/api/v2/identity-project-additional-privilege?#{privilege_query}"
+    privilege_list = _infisical_list_identity_privileges(privilege_url, headers: headers)
     raise "Infisical returned an invalid privilege inventory." unless privilege_list["privileges"].is_a?(Array)
     if privilege_list["privileges"].any? { |candidate| candidate["slug"] != privilege_slug }
       raise "Infisical identity #{name} has privileges not owned by bootstrap."
@@ -391,7 +404,7 @@ module Bootstrap
       rescue StandardError => error
         raise unless is_infisical_privilege_already_present(error: error, privilege_slug: privilege_slug)
 
-        refreshed = request_json(privilege_url, headers: headers)
+        refreshed = _infisical_list_identity_privileges(privilege_url, headers: headers)
         raise "Infisical returned an invalid privilege inventory." unless refreshed["privileges"].is_a?(Array)
 
         privilege = resolve_infisical_privilege(privileges: refreshed["privileges"], privilege_slug: privilege_slug)
@@ -431,7 +444,7 @@ module Bootstrap
       raise "Infisical OIDC verification failed for #{environment}."
     end
 
-    verified_privileges = request_json(privilege_url, headers: headers)["privileges"]
+    verified_privileges = _infisical_list_identity_privileges(privilege_url, headers: headers)["privileges"]
     verified_privilege = verified_privileges.is_a?(Array) ? verified_privileges.first : nil
     if !verified_privileges.is_a?(Array) || verified_privileges.length != 1 ||
        verified_privilege["slug"] != privilege_slug || verified_privilege["isTemporary"] != false ||

@@ -60,6 +60,7 @@ class InfrastructureInfisicalBootstrapTest < Minitest::Test
     desired_privilege = {}
     membership_reads = 0
     privilege_reads = 0
+    privilege_details = {}
     identity_reads = 0
     identity_present = !["identity-create", "identity-limit"].include?(scenario)
     identity_protected = scenario != "identity-unprotected"
@@ -114,7 +115,7 @@ class InfrastructureInfisicalBootstrapTest < Minitest::Test
           }
         }
       end
-      if url.include?("/additional-privilege/identity?")
+      if url.include?("/identity-project-additional-privilege?")
         privilege_reads += 1
         next {} if fault == "privilege-inventory"
         next { "privileges" => [] } if scenario&.start_with?("privilege-") && privilege_reads == 1
@@ -127,12 +128,16 @@ class InfrastructureInfisicalBootstrapTest < Minitest::Test
           permission_fixture = [{ "subject" => "secrets", "action" => "readValue", "inverted" => true }]
         end
 
-        next {
+        privilege_details = {
           "privileges" => [{
             "id" => "privilege-id", "slug" => scenario == "foreign-privilege" ? "foreign" : "opentofu-staging", "isTemporary" => false,
             "permissions" => permission_fixture || []
           }]
         }
+        next { "privileges" => privilege_details.fetch("privileges").map { |entry| entry.reject { |key, _| key == "permissions" } } }
+      end
+      if url.end_with?("/identity-project-additional-privilege/privilege-id") && options[:method].nil?
+        next { "privilege" => privilege_details.fetch("privileges").first }
       end
       if url.end_with?("/identity-project-additional-privilege") && options[:method] == "POST"
         raise "fixture server failure" if scenario == "privilege-server-failure"
@@ -204,6 +209,15 @@ class InfrastructureInfisicalBootstrapTest < Minitest::Test
     end
   end
 
+  def test_reads_folder_permissions_from_v2_details_when_the_inventory_omits_permissions
+    _with_boundaries(**_identity_boundaries) do
+      assert_equal "identity-id", Bootstrap.reconcile_infisical_identity(**@input)
+      inventory = @calls.find { |url, _| url.include?("/identity-project-additional-privilege?") }
+      assert_equal "project-id", URI.decode_www_form(URI(inventory.first).query).to_h.fetch("projectId")
+      assert_equal(2, @calls.count { |url, options| url.end_with?("/identity-project-additional-privilege/privilege-id") && options[:method].nil? })
+    end
+  end
+
   def test_creates_missing_privileges_scoped_to_the_owned_environment
     _with_boundaries(**_identity_boundaries(scenario: "privilege-create")) do
       assert_equal "identity-id", Bootstrap.reconcile_infisical_identity(**@input)
@@ -218,7 +232,7 @@ class InfrastructureInfisicalBootstrapTest < Minitest::Test
   def test_adopts_a_privilege_created_concurrently_only_after_refreshing_and_reconciling_it
     _with_boundaries(**_identity_boundaries(scenario: "privilege-already-present")) do
       assert_equal "identity-id", Bootstrap.reconcile_infisical_identity(**@input)
-      assert_equal(3, @calls.count { |url, _| url.include?("/additional-privilege/identity?") })
+      assert_equal(3, @calls.count { |url, _| url.include?("/identity-project-additional-privilege?") })
       assert(@calls.any? { |url, options| url.include?("/identity-project-additional-privilege/") && options[:method] == "PATCH" })
     end
   end
