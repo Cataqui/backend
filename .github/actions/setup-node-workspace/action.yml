@@ -3,5 +3,12 @@ description: Install the repository Node.js and pnpm toolchain and frozen depend
 runs:
   using: composite
   steps:
-    - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
-      with: { runtime: node@24, cache: true, require-lockfile: true }
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with: { node-version: 24 }
+    - name: Enable the project-pinned package manager
+      shell: bash
+      run: corepack enable
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with: { node-version: 24, cache: pnpm }
+    - shell: bash
+      run: pnpm install --frozen-lockfile
