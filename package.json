@@ -37,7 +37,7 @@
 		"skills:install": "npx --yes skills@1.5.23 experimental_install",
 		"test": "pnpm build:contracts && pnpm test:repo && pnpm -r --if-present run test",
 		"test:api": "pnpm build:contracts && pnpm --filter @cataqui/api --filter @cataqui/api-worker run test",
-		"test:cov": "pnpm build:contracts && pnpm test:repo:cov && pnpm -r --if-present run test:cov",
+		"test:cov": "pnpm build:contracts && pnpm test:repo:cov && pnpm -r --workspace-concurrency=1 --if-present run test:cov",
 		"test:maps": "pnpm build:contracts && pnpm --filter @cataqui/maps-worker run test",
 		"test:mapshot": "pnpm build:contracts && pnpm --filter @cataqui/mapshot --filter @cataqui/mapshot-worker run test",
 		"test:repo": "vitest run --config vitest.config.ts && bundle exec rake -C infrastructure/bootstrap test",
