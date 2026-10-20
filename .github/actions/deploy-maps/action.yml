@@ -2,6 +2,9 @@ name: Deploy Maps Worker
 description: Publish the Maps Worker, check health, and restore the previous deployment on failure.
 
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Deployment environment; staging or production.
     required: true
@@ -14,13 +17,13 @@ runs:
       with:
         environment: ${{ inputs.environment }}
         profile: maps-deployment
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Load Maps runtime
       uses: ./.github/actions/load-infisical-secrets
       with:
         environment: ${{ inputs.environment }}
         profile: maps-runtime
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Build Maps for the deployment environment
       shell: ruby {0}
       working-directory: apps/workers/maps

@@ -2,6 +2,9 @@ name: Neon migration safety gate
 description: Validate application-owned Prisma migrations on an expiring Neon branch, then apply them once to main.
 
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Deployment environment; staging or production.
     required: true
@@ -19,7 +22,7 @@ runs:
       with:
         environment: ${{ inputs.environment }}
         profile: ${{ inputs.application }}-deployment
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Clear API deployment credential during migration
       shell: ruby {0}
       run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
@@ -28,7 +31,7 @@ runs:
       with:
         environment: ${{ inputs.environment }}
         profile: ${{ inputs.application }}-runtime
-        infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
     - name: Resolve Cloudflare account ID
       shell: ruby {0}
       run: |

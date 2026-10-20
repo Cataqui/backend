@@ -77,7 +77,7 @@ jobs:
         if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
         run: pnpm build:packages
       - uses: ./.github/actions/reconcile-infrastructure
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}", google-workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
       - name: Validate Maps runtime secret before application deployment
         if: needs.prepare.outputs.deploy-maps == 'true'
         uses: ./.github/actions/load-infisical-secrets
@@ -122,20 +122,20 @@ jobs:
       - name: Validate and apply migrations
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/neon-migrations
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Validate and apply Auth migrations
         if: needs.prepare.outputs.deploy-auth == 'true'
         uses: ./.github/actions/neon-migrations
-        with: { environment: "${{ needs.prepare.outputs.environment }}", application: auth }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", application: auth, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy Auth
         if: needs.prepare.outputs.deploy-auth == 'true'
         uses: ./.github/actions/deploy-auth
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy Maps
         if: needs.prepare.outputs.deploy-maps == 'true'
         uses: ./.github/actions/deploy-maps
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy API
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/deploy-api
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
