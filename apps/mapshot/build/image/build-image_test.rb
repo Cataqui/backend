@@ -52,7 +52,7 @@ class MapshotImageBuildTest < Minitest::Test
   end
 
   class Commands
-    attr_reader :calls, :bundle_directory, :bundled_source, :dockerfile
+    attr_reader :calls, :bundle_directory, :bundled_source, :bundled_source_mode, :dockerfile
     attr_accessor :digests, :failure_stage, :oversized, :real_cf
 
     #: (root: String, image: String) -> void
@@ -73,6 +73,7 @@ class MapshotImageBuildTest < Minitest::Test
 
       if stage == "build"
         @bundled_source = JSON.parse(File.read(File.join(@root, "generated/source-indexes/image/source.json")))
+        @bundled_source_mode = File.stat(File.join(@root, "generated/source-indexes/image/source.json")).mode & 0o777
         @dockerfile = File.read(File.join(@root, ".source-indexes.Dockerfile"))
       end
       case stage
@@ -144,6 +145,15 @@ class MapshotImageBuildTest < Minitest::Test
     assert_equal ["--dir", "worker", "exec", "cf", "containers", "push", "--tag", "cataqui-mapshot-staging:#{'f' * 64}"], push.fetch(:args)
     inspect = @commands.calls.find { |call| call.fetch(:args).include?("inspect") }
     assert_equal ["image", "inspect", "registry.cloudflare.com/#{'a' * 32}/cataqui-mapshot-staging:#{'f' * 64}", "--format", "{{json .RepoDigests}}"], inspect.fetch(:args)
+  end
+
+  #: () -> void
+  def test_keeps_generated_source_readable_by_the_container_user_under_the_private_release_umask
+    previous_umask = File.umask(0o077)
+    @builder.build_and_publish(**@input)
+    assert_equal 0o644, @commands.bundled_source_mode
+  ensure
+    File.umask(previous_umask)
   end
 
   #: () -> void
