@@ -176,7 +176,7 @@ describe("Neon OpenTofu contract", () => {
 	it("should keep database credentials ephemeral through least-privilege access provisioning", () => {
 		const rootHcl = _getRootHcl("neon-database-access");
 
-		expect(rootHcl.match(/ephemeral "infisical_secret"/g)).toHaveLength(3);
+		expect(rootHcl).not.toMatch(/(?:data "infisical_secret"|resource "random_password")/);
 		expect(rootHcl).toMatch(/ephemeral "random_password" "db_user"[\s\S]*length\s*=\s*40[\s\S]*special\s*=\s*false/);
 		expect(rootHcl).toMatch(/password_wo\s*=\s*ephemeral\.random_password\.db_user\.result/);
 		expect(rootHcl).toMatch(/name\s*=\s*local\.database_runtime_username/);
@@ -233,6 +233,13 @@ describe("Neon OpenTofu contract", () => {
 		expect(authAccess).toMatch(
 			/folder_path\s*=\s*"\/generated\/opentofu\/cloudflare-hyperdrive"[\s\S]*?name\s*=\s*"DATABASE_PASSWORD"[\s\S]*?value_wo\s*=\s*ephemeral\.random_password\.auth_user\.result/,
 		);
+		for (const role of ["auth_owner", "auth_user"]) {
+			expect(authAccess).toMatch(
+				new RegExp(
+					String.raw`resource "postgresql_role" "${role}"[^}]*password_wo\s*=\s*ephemeral\.infisical_secret\.${role}_password\.value`,
+				),
+			);
+		}
 		expect(authAccess).not.toContain("DATABASE_APP_POOLER_URL");
 		expect(authPrismaConfiguration).toContain("DATABASE_OWNER_DIRECT_URL");
 	});
