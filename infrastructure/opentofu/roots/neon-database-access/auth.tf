@@ -16,7 +16,7 @@ resource "postgresql_role" "auth_owner" {
   create_role               = false
   replication               = false
   bypass_row_level_security = false
-  password_wo               = ephemeral.random_password.auth_owner.result
+  password_wo               = ephemeral.infisical_secret.auth_owner_password.value
   password_wo_version       = "1"
 
   lifecycle {
@@ -24,17 +24,9 @@ resource "postgresql_role" "auth_owner" {
   }
 }
 
-resource "postgresql_grant_role" "auth_owner_administration" {
-  role              = local.database_owner_username
-  grant_role        = postgresql_role.auth_owner.name
-  with_admin_option = true
-}
-
 resource "postgresql_database" "auth" {
   name  = local.manifest.neon.databases.auth.name
   owner = postgresql_role.auth_owner.name
-
-  depends_on = [postgresql_grant_role.auth_owner_administration]
 
   lifecycle {
     prevent_destroy = true
@@ -50,7 +42,7 @@ resource "postgresql_role" "auth_user" {
   inherit                   = false
   replication               = false
   bypass_row_level_security = false
-  password_wo               = ephemeral.random_password.auth_user.result
+  password_wo               = ephemeral.infisical_secret.auth_user_password.value
   password_wo_version       = "1"
 
   lifecycle {
@@ -132,7 +124,7 @@ resource "infisical_secret" "auth_owner_direct_url" {
   env_slug         = var.environment
   folder_path      = "/generated/auth/deployment"
   name             = "DATABASE_OWNER_DIRECT_URL"
-  value_wo         = "postgresql://${postgresql_role.auth_owner.name}:${ephemeral.random_password.auth_owner.result}@${ephemeral.infisical_secret.database_owner_host.value}:5432/${postgresql_database.auth.name}?sslmode=require"
+  value_wo         = "postgresql://${postgresql_role.auth_owner.name}:${ephemeral.infisical_secret.auth_owner_password.value}@${ephemeral.infisical_secret.database_owner_host.value}:5432/${postgresql_database.auth.name}?sslmode=require"
   value_wo_version = 1
 }
 
@@ -152,5 +144,13 @@ resource "infisical_secret" "hyperdrive_origin_password" {
   name             = "DATABASE_PASSWORD"
   value_wo         = ephemeral.random_password.auth_user.result
   value_wo_version = 1
-  depends_on       = [postgresql_role.auth_user]
+}
+
+resource "infisical_secret" "auth_owner_password" {
+  workspace_id     = local.infisical_project_id
+  env_slug         = var.environment
+  folder_path      = "/generated/auth/deployment"
+  name             = "DATABASE_OWNER_PASSWORD"
+  value_wo         = ephemeral.random_password.auth_owner.result
+  value_wo_version = 1
 }

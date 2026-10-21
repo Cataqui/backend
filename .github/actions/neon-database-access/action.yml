@@ -16,6 +16,9 @@ runs:
   steps:
     - id: root
       uses: ./.github/actions/opentofu-root
+      env:
+        # PostgreSQL grants the creator SET/INHERIT on newly created Auth roles.
+        PGOPTIONS: '-c createrole_self_grant=set,inherit'
       with:
         root: neon-database-access
         environment: ${{ inputs.environment }}

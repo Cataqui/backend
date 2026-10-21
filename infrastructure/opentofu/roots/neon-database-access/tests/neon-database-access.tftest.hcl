@@ -139,6 +139,8 @@ run "auth_database_boundary" {
   }
   assert {
     condition = (
+      infisical_secret.auth_owner_password.folder_path == "/generated/auth/deployment" &&
+      infisical_secret.auth_owner_password.name == "DATABASE_OWNER_PASSWORD" &&
       infisical_secret.auth_owner_direct_url.folder_path == "/generated/auth/deployment" &&
       infisical_secret.hyperdrive_origin_password.folder_path == "/generated/opentofu/cloudflare-hyperdrive" &&
       infisical_secret.hyperdrive_origin_password.name == "DATABASE_PASSWORD"
