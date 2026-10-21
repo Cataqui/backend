@@ -80,7 +80,7 @@ class MapshotImageBuild
       end
       image = digests.find { |digest| digest.start_with?("#{registry}@") }
       raise "Published Mapshot image has no immutable digest." unless image
-      @_commands.run(command: "pnpm", args: ["build:contracts"], cwd: root)
+      @_commands.run(command: "pnpm", args: ["--filter", "@cataqui/mapshot-worker^...", "build"], cwd: root)
       worker = Dir.mktmpdir("mapshot-artifact-") do |directory|
         archive = File.join(directory, "worker.tar.gz")
         _remove(path: output)
