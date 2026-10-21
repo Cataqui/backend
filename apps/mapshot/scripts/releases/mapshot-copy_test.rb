@@ -170,8 +170,8 @@ class MapshotCopyTest < Minitest::Test
     _large
     refute_nil _copy
     parts = @storage.parts.sort_by { |part| part.fetch(:part_number) }
-    assert_equal([64 * 1024 * 1024, 1024 * 1024], parts.map { |part| part.fetch(:length) })
-    assert_equal([0, 64 * 1024 * 1024], parts.map { |part| part.fetch(:offset) })
+    assert_equal([256 * 1024 * 1024, 1024 * 1024], parts.map { |part| part.fetch(:length) })
+    assert_equal([0, 256 * 1024 * 1024], parts.map { |part| part.fetch(:offset) })
     assert_equal([1, 2], parts.map { |part| part.fetch(:part_number) })
     assert(@storage.parts.all? { |part| part.fetch(:source_bucket) == "staging" })
     assert_empty(@storage.reads.select { |read| read.fetch(:key) == @storage.asset.fetch("key") })
@@ -195,12 +195,12 @@ class MapshotCopyTest < Minitest::Test
     assert_equal([1], @storage.documents.fetch("source/slots/b/copy.json").fetch("value").fetch("transfer").fetch("parts").map { |part| part.fetch("partNumber") })
     @storage.part_error = nil
     refute_nil _copy
-    assert_equal([0, 64 * 1024 * 1024, 64 * 1024 * 1024], @storage.parts.map { |part| part.fetch(:offset) }.sort)
+    assert_equal([0, 256 * 1024 * 1024, 256 * 1024 * 1024], @storage.parts.map { |part| part.fetch(:offset) }.sort)
   end
 
   #: () -> void
   def test_parallel_copy_bounds_requests_drains_failure_and_resumes_contiguous_receipts
-    @source.fetch("release").fetch("pmtiles")["bytes"] = (4 * 64 * 1024 * 1024) + 1
+    @source.fetch("release").fetch("pmtiles")["bytes"] = (4 * 256 * 1024 * 1024) + 1
     _inventory
     started = Queue.new
     release = Queue.new
@@ -242,7 +242,7 @@ class MapshotCopyTest < Minitest::Test
 
   #: () -> void
   def test_cancellation_stops_and_drains_every_parallel_request_before_returning
-    @source.fetch("release").fetch("pmtiles")["bytes"] = 4 * 64 * 1024 * 1024
+    @source.fetch("release").fetch("pmtiles")["bytes"] = 4 * 256 * 1024 * 1024
     _inventory
     started = Queue.new
     finished = Queue.new
@@ -345,7 +345,7 @@ class MapshotCopyTest < Minitest::Test
   private
 
   def _large
-    @source.fetch("release").fetch("pmtiles")["bytes"] = 65 * 1024 * 1024
+    @source.fetch("release").fetch("pmtiles")["bytes"] = 257 * 1024 * 1024
     _inventory
   end
 

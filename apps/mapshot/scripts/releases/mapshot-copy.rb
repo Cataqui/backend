@@ -57,7 +57,7 @@ module Cataqui
               transfer = checkpoint.fetch("transfer")
               raise "Production multipart checkpoint conflicts." unless transfer.fetch("key") == target
 
-              part_bytes = 64 * 1024 * 1024
+              part_bytes = 256 * 1024 * 1024
               offset = transfer.fetch("parts").length * part_bytes
               while offset < asset.fetch("bytes")
                 if @_clock.call >= deadline_at
