@@ -7,10 +7,17 @@ import { Global, Inject, Module, type BeforeApplicationShutdown } from "@nestjs/
 	providers: [
 		{
 			provide: ApiWorkerPortal,
-			useFactory: async (): Promise<ApiWorkerPortal> =>
-				connectContainerToWorker(ApiWorkerPortal, {
+			useFactory: async (): Promise<ApiWorkerPortal> => {
+				const portal = await connectContainerToWorker(ApiWorkerPortal, {
 					expose: { expose: {} },
-				}),
+				});
+				// Nest probes provider lifecycle methods; the RPC proxy supplies every method name.
+				return {
+					getStaticMapLocationUrl: portal.getStaticMapLocationUrl,
+					withOptions: portal.withOptions,
+					close: portal.close,
+				};
+			},
 		},
 	],
 	exports: [ApiWorkerPortal],

@@ -26,20 +26,48 @@ beforeEach(() => {
 	td.when(_workerhole.connect(td.matchers.anything(), td.matchers.anything())).thenResolve(_worker);
 });
 
-it("provides the typed Worker client during Nest construction and closes it on shutdown", async () => {
+it("provides only the declared Worker client methods during Nest construction", async () => {
 	_module = await Test.createTestingModule({ imports: [WorkerholeModule] }).compile();
-	expect(_module.get(ApiWorkerPortal)).toBe(_worker);
+	const client = _module.get<ApiWorkerPortal>(ApiWorkerPortal);
 	const registration: ConnectToWorkerOptions = td.explain(_workerhole.connect).calls[0]?.args[1];
-	expect(td.explain(_workerhole.connect).calls[0]?.args[0]).toBe(ApiWorkerPortal);
-	expect(registration).not.toHaveProperty("server");
-	expect(registration.expose).toEqual({ expose: {} });
 	await _module.close();
 	_module = undefined;
-	td.verify(_worker.close(), { times: 1 });
+	expect({
+		client: client,
+		definition: td.explain(_workerhole.connect).calls[0]?.args[0],
+		registration: registration,
+	}).toEqual({
+		client: {
+			getStaticMapLocationUrl: _worker.getStaticMapLocationUrl,
+			withOptions: _worker.withOptions,
+			close: _worker.close,
+		},
+		definition: ApiWorkerPortal,
+		registration: { expose: { expose: {} } },
+	});
 });
 
 it("fails Nest construction when the private portal listener cannot start", async () => {
 	const failure = new Error("portal port occupied");
 	td.when(_workerhole.connect(td.matchers.anything(), td.matchers.anything())).thenReject(failure);
 	await expect(Test.createTestingModule({ imports: [WorkerholeModule] }).compile()).rejects.toBe(failure);
+});
+
+it("initializes and shuts down Nest without dispatching lifecycle hooks through the Worker portal", async () => {
+	const unknownRemoteCall = td.func<() => Promise<never>>();
+	td.when(unknownRemoteCall()).thenReject(new Error("Nest lifecycle hook was dispatched as RPC"));
+	const worker = new Proxy(_worker, {
+		get(target, property): unknown {
+			if (property === "then") return undefined;
+			if (property === "close" || property === "withOptions" || property === "getStaticMapLocationUrl")
+				return Reflect.get(target, property);
+			return unknownRemoteCall;
+		},
+	});
+	td.when(_workerhole.connect(td.matchers.anything(), td.matchers.anything())).thenResolve(worker);
+	_module = await Test.createTestingModule({ imports: [WorkerholeModule] }).compile();
+	await _module.init();
+	await _module.close();
+	_module = undefined;
+	td.verify(_worker.close(), { times: 1 });
 });
