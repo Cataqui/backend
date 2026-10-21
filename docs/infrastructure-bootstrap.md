@@ -81,6 +81,19 @@ After bootstrap:
 - run `pnpm check:opentofu` to validate the normal OpenTofu roots without applying them;
 - continue with the [deployment runbook](deployment.md) when the infrastructure is ready to reconcile and deploy.
 
+## WhatsApp callback after the first Auth deployment
+
+After the selected environment's Auth service is healthy, configure its Meta application's WhatsApp callback:
+
+| Environment | Callback |
+| --- | --- |
+| Staging | `https://staging.auth.cataqui.com/webhooks/whatsapp` |
+| Production | `https://auth.cataqui.com/webhooks/whatsapp` |
+
+Use `WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN` from that environment's `/generated/auth/runtime` folder when Meta verifies the callback. The selected Meta app must match Auth's `META_APP_SECRET`. Keep the `messages` subscription enabled, send a Meta test webhook, and confirm successful delivery in both Meta and Auth's request trace. Keep token values out of screenshots and logs.
+
+Real incoming WhatsApp messages require a published Meta app. Test webhook delivery alone does not verify the live user login flow; publishing is a separate launch action.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Action |
