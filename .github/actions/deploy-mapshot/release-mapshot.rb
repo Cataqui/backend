@@ -273,11 +273,13 @@ class MapshotRelease
     while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
       application = _cloudflare(path: "/containers/applications/#{URI.encode_uri_component(id)}").fetch("result")
       raise "Invalid Cloudflare scheduling policy." unless application.fetch("scheduling_policy") == "default"
-      unless application.fetch("configuration").fetch("image") == image
-        raise "Cloudflare container target changed unexpectedly."
-      end
       rollout_id = application.fetch("active_rollout_id", nil)
-      return if rollout_id.nil?
+      if rollout_id.nil?
+        unless application.fetch("configuration").fetch("image") == image
+          raise "Cloudflare container target changed unexpectedly."
+        end
+        return
+      end
       raise "Invalid Cloudflare rollout." unless rollout_id.is_a?(String)
       rollout = _cloudflare(
         path: "/containers/applications/#{URI.encode_uri_component(id)}/rollouts/#{URI.encode_uri_component(rollout_id)}"
