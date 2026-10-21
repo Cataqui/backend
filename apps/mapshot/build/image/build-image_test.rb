@@ -66,7 +66,7 @@ class MapshotImageBuildTest < Minitest::Test
     def run(command:, args:, cwd:, **options)
       @calls << {command: command, args: args, cwd: cwd, **options}
       stage = if command == "docker" then args.first == "build" ? "build" : "inspect"
-      elsif command == "pnpm" then args.include?("build:contracts") ? "contracts" : args.include?("push") ? "push" : "bundle"
+      elsif command == "pnpm" then args.include?("@cataqui/mapshot-worker^...") ? "contracts" : args.include?("push") ? "push" : "bundle"
       elsif command == "tar" then "archive"
       end
       raise "Build step failed." if failure_stage == stage
@@ -76,6 +76,11 @@ class MapshotImageBuildTest < Minitest::Test
         @dockerfile = File.read(File.join(@root, ".source-indexes.Dockerfile"))
       end
       case stage
+      when "contracts"
+        if real_cf
+          MapshotBuildCommand.new.run(command: command, args: args, cwd: File.expand_path("../..", __dir__))
+        end
+        ""
       when "inspect"
         JSON.generate(digests)
       when "bundle"
