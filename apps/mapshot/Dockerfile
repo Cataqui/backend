@@ -148,4 +148,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 	CMD node --input-type=module -e "const response=await fetch('http://127.0.0.1:8080/health',{signal:AbortSignal.timeout(3000)});if(!response.ok)process.exit(1)"
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "dist/native/server.mjs"]
+# Initialize reflection before the bundle's hoisted external DI imports.
+CMD ["node", "--require", "reflect-metadata", "dist/native/server.mjs"]
