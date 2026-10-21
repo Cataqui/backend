@@ -6,6 +6,8 @@ require "timeout"
 
 # cf/workerd exercises emitted decorator metadata and Worker crypto APIs.
 # All bindings are local; these routes do not access external providers.
+# Reproduce a deployment runner that has not run typecheck or tests first.
+FileUtils.rm_rf(%w[.cloudflare .worker-build src/generated])
 base = URI("http://127.0.0.1:18974")
 FileUtils.mkdir_p(".wrangler")
 File.open(".wrangler/runtime-check.log", "w") do |log|
@@ -45,7 +47,7 @@ File.open(".wrangler/runtime-check.log", "w") do |log|
     request.body = "{"
     response = Net::HTTP.start(base.host, base.port) { |http| http.request(request) }
     abort "Invalid input did not retain its HTTP error contract." unless response.code == "400"
-    puts "PASS: compiled Worker starts; 8 concurrent injected webhook verifications succeed; invalid JSON returns 400."
+    puts "PASS: Worker builds from a clean checkout; 8 concurrent injected webhook verifications succeed; invalid JSON returns 400."
   ensure
     Process.kill("TERM", -pid)
     Process.wait(pid)

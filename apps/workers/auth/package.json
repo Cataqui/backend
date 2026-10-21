@@ -19,6 +19,7 @@
 		"test:cov": "vitest run --coverage",
 		"typecheck": "pnpm cf:types && tsc --noEmit",
 		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist src/generated .cloudflare .worker-build",
+		"precompile": "pnpm prisma:generate",
 		"compile": "tsc -p tsconfig.build.json && ruby -rfileutils -e 'Dir.glob(\"src/generated/**/*.wasm\").each { |source| target = File.join(\".worker-build\", source); FileUtils.mkdir_p(File.dirname(target)); FileUtils.cp(source, target) }'",
 		"test:runtime": "bundle exec ruby test/check-worker-runtime.rb",
 		"pretest": "pnpm prisma:generate",
