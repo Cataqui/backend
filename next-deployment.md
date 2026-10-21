@@ -1,10 +1,17 @@
 # Next deployment: Auth and Profile v1
 
-Owner: Cataquí backend maintainers. Updated: 2026-10-20. This procedure has not been run.
+Owner: Cataquí backend maintainers. Updated: 2026-10-21. The staging cutover is partially complete; production has not started.
 
 This release replaces the unlaunched API authentication tables and User model with a separate Auth service and API Profiles. Both applications have fresh migration baselines. Existing development accounts, sessions, profiles, contacts, and jobs are disposable for this cutover. No data migration or old client compatibility is provided.
 
 Complete this procedure for staging first, verify it, then repeat for production. Use the matching `staging` or `main` branch and environment-scoped credentials throughout. Normal later releases follow [the deployment runbook](docs/deployment.md).
+
+## Execution status
+
+- Staging infrastructure is reconciled. The separate Auth database, restricted roles, Redis and Hyperdrive are provisioned, Auth secret profiles resolve, and the existing Meta secret has been copied to Auth. The protected Webhooks deployment-token addresses have already been forgotten in staging state; their real credentials remain until callback verification and cleanup.
+- Staging Mapshot was bootstrapped from an empty bucket. GitHub runners downloaded and verified the complete 129.47 GiB `20261020.pmtiles` archive and prepared the worldwide landmark/index artifacts. [Release verification passed](https://github.com/Cataqui/backend/actions/runs/39552459573) at `10fccf6c48763e5723273d3c136d3516350db25b`, including deployment, rollout verification and a live 960×960 WebP render.
+- The staging API still has its old schema. Prisma blocked reset before mutation because explicit human consent is required. Auth, Maps and API application delivery, Meta callback switching and the cleanup checklist remain pending. Do not dispatch `all`, `auth`, `maps` or `api` until the approved API reset succeeds: these application scopes include API migrations through dependency expansion.
+- Production API reset, application delivery, Mapshot resource reset and legacy cleanup have not started. Complete staging verification before repeating the procedure there. Retain both infrastructure `removed.tf` files until both environments have forgotten the listed legacy addresses.
 
 ## Before application delivery
 
