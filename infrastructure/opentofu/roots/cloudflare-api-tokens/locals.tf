@@ -7,6 +7,14 @@ locals {
   infisical_project_id  = module.infisical_project.id
 
   permission_groups = {
+    hyperdrive_read = {
+      name  = "Hyperdrive Read"
+      scope = "com.cloudflare.api.account"
+    }
+    hyperdrive_write = {
+      name  = "Hyperdrive Write"
+      scope = "com.cloudflare.api.account"
+    }
     pages_read = {
       name  = "Pages Read"
       scope = "com.cloudflare.api.account"
@@ -38,6 +46,14 @@ locals {
     r2_storage_write = {
       name  = "Workers R2 Storage Write"
       scope = "com.cloudflare.api.account"
+    }
+    r2_bucket_item_read = {
+      name  = "Workers R2 Storage Bucket Item Read"
+      scope = "com.cloudflare.edge.r2.bucket"
+    }
+    r2_bucket_item_write = {
+      name  = "Workers R2 Storage Bucket Item Write"
+      scope = "com.cloudflare.edge.r2.bucket"
     }
     queues_read = {
       name  = "Queues Read"
@@ -138,6 +154,10 @@ locals {
   }
 
   common_infrastructure_tokens = {
+    cloudflare-hyperdrive = {
+      permissions = ["hyperdrive_read", "hyperdrive_write"]
+      scope       = "account"
+    }
     cloudflare-pages = {
       permissions = ["pages_read", "pages_write"]
       scope       = "account"
@@ -207,15 +227,54 @@ locals {
       zone_permissions = ["zone_read", "workers_routes_read", "workers_routes_write"]
       folder_path      = "/generated/api/deployment"
     }
-    maps = {
-      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
-      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
-      folder_path         = "/generated/maps/deployment"
+    mapshot = {
+      account_permissions = [
+        "workers_scripts_read",
+        "workers_scripts_write",
+        "r2_storage_read",
+        "containers_read",
+        "containers_write",
+        "account_settings_read",
+      ]
+      zone_permissions = []
+      folder_path      = "/generated/mapshot/deployment"
     }
-    webhooks = {
+    maps = {
+      account_permissions = [
+        "workers_scripts_read",
+        "workers_scripts_write",
+        "account_settings_read",
+      ]
+      zone_permissions = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path      = "/generated/maps/deployment"
+    }
+    auth = {
       account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
       zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
-      folder_path         = "/generated/webhooks/deployment"
+      folder_path         = "/generated/auth/deployment"
     }
   }
+
+  mapshot_r2_tokens = merge(
+    {
+      deployment = {
+        bucket = (
+          var.environment == "staging" ?
+          local.manifest.cloudflare.r2.buckets.mapshot_staging :
+          local.manifest.cloudflare.r2.buckets.mapshot_production
+        )
+        copy_source_bucket = var.environment == "production" ? local.manifest.cloudflare.r2.buckets.mapshot_staging : null
+        permissions        = ["r2_bucket_item_read", "r2_bucket_item_write"]
+        folder_path        = "/generated/mapshot/deployment"
+      }
+    },
+    var.environment == "staging" ? {
+      map-update = {
+        bucket             = local.manifest.cloudflare.r2.buckets.mapshot_staging
+        copy_source_bucket = null
+        permissions        = ["r2_bucket_item_read", "r2_bucket_item_write"]
+        folder_path        = "/generated/mapshot/map-update"
+      }
+    } : {},
+  )
 }

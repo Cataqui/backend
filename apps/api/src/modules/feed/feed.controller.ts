@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus, Query, Version } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
 import type { PaginatedResult } from "../../shared/results/paginated-result";
 import { ApiGetFeedDocs } from "./decorators/api-get-feed-docs.decorator";
@@ -8,6 +8,7 @@ import { FeedInputSchema } from "./schemas/feed-input.schema";
 import { FeedService } from "./feed.service";
 
 @ApiTags("feed")
+@ApiBearerAuth()
 @Controller("feed")
 export class FeedController {
 	constructor(private readonly _feedService: FeedService) {}

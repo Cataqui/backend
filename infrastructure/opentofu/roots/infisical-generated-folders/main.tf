@@ -18,12 +18,12 @@ resource "infisical_secret_folder" "api" {
   depends_on = [infisical_secret_folder.generated]
 }
 
-resource "infisical_secret_folder" "webhooks" {
+resource "infisical_secret_folder" "auth" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
-  name             = "webhooks"
+  name             = "auth"
   folder_path      = "/generated"
-  description      = "Generated values scoped to the Webhooks Worker."
+  description      = "Generated values scoped to the Auth Worker."
   force_delete     = false
 
   depends_on = [infisical_secret_folder.generated]
@@ -40,15 +40,15 @@ resource "infisical_secret_folder" "api_runtime" {
   depends_on = [infisical_secret_folder.api]
 }
 
-resource "infisical_secret_folder" "webhooks_runtime" {
+resource "infisical_secret_folder" "auth_runtime" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
   name             = "runtime"
-  folder_path      = "/generated/webhooks"
-  description      = "Generated values consumed by the Webhooks Worker runtime."
+  folder_path      = "/generated/auth"
+  description      = "Generated values consumed by the Auth Worker runtime."
   force_delete     = false
 
-  depends_on = [infisical_secret_folder.webhooks]
+  depends_on = [infisical_secret_folder.auth]
 }
 
 resource "infisical_secret_folder" "deployment" {
@@ -62,15 +62,15 @@ resource "infisical_secret_folder" "deployment" {
   depends_on = [infisical_secret_folder.api]
 }
 
-resource "infisical_secret_folder" "webhooks_deployment" {
+resource "infisical_secret_folder" "auth_deployment" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment
   name             = "deployment"
-  folder_path      = "/generated/webhooks"
-  description      = "Generated privileged values consumed only by Webhooks deployment tooling."
+  folder_path      = "/generated/auth"
+  description      = "Generated privileged values consumed only by Auth deployment tooling."
   force_delete     = false
 
-  depends_on = [infisical_secret_folder.webhooks]
+  depends_on = [infisical_secret_folder.auth]
 }
 
 resource "infisical_secret_folder" "opentofu" {
@@ -128,4 +128,39 @@ resource "infisical_secret_folder" "maps_runtime" {
   force_delete     = false
 
   depends_on = [infisical_secret_folder.maps]
+}
+
+resource "infisical_secret_folder" "mapshot" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "mapshot"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the Mapshot app."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "mapshot_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/mapshot"
+  description      = "Generated privileged values consumed only by Mapshot deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.mapshot]
+}
+
+resource "infisical_secret_folder" "mapshot_pipeline" {
+  for_each = local.mapshot_pipeline_folders
+
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = each.key
+  folder_path      = "/generated/mapshot"
+  description      = each.value
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.mapshot]
 }

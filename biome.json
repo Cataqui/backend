@@ -15,18 +15,15 @@
 			"apps/**/*.jsonc",
 			"apps/**/*.mjs",
 			"apps/**/*.ts",
-			"infrastructure/**/*.mjs",
 			"infrastructure/**/*.json",
-			".github/actions/**/*.mjs",
+			".github/actions/**/*.ts",
 			".github/actions/**/*.json",
 			"packages/**/*.json",
 			"packages/**/*.mjs",
 			"packages/**/*.ts",
 			"test/**/*.ts",
 			"!skills-lock.json",
-			"!apps/api/src/core/i18n/i18n.generated.ts",
-			"!apps/api/api-worker-env.d.ts",
-			"!apps/workers/**/*-worker-env.d.ts"
+			"!apps/api/src/core/i18n/i18n.generated.ts"
 		]
 	},
 	"formatter": {
@@ -52,6 +49,9 @@
 			},
 			"correctness": {
 				"noUnusedPrivateClassMembers": "off"
+			},
+			"nursery": {
+				"useExplicitReturnType": "error"
 			},
 			"style": {
 				"useImportType": "off",

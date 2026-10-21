@@ -1,0 +1,2461 @@
+{
+	"schemaVersion": 1,
+	"provenance": {
+		"source": "https://build.protomaps.com/20261011.pmtiles",
+		"etag": "2b30e465550f4f1e683fab05b304fd98-518",
+		"releaseEnvelope": "synthetic-test-only",
+		"cataloguePolicy": "Production LandmarkService selection from verified finite source15 capture; coverage is limited to these fixture cameras."
+	},
+	"resources": [
+		{
+			"file": "tiles/13-3034-4646.mvt.gz",
+			"compressedBytes": 61747,
+			"compressedSha256": "1641e95e02a1084b6e31690fe462a82996a17743e1892a40c8063626dc0ef6ef",
+			"revision": {
+				"id": "0c1250dddab0f3c287d158babb29a1f3c18fa400a2e7444656136433bb4bed4f",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3034/4646.mvt"
+			}
+		},
+		{
+			"file": "tiles/13-3034-4647.mvt.gz",
+			"compressedBytes": 104618,
+			"compressedSha256": "119a0600eb11f89eaf3fac0e30fc6f24185ad2800c2aaee334e2d4c6ee569a44",
+			"revision": {
+				"id": "6e3937c1623b64d2dfcc00f06c0ffdd13edb21f03df3e01d7425c1f6cffb51cd",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3034/4647.mvt"
+			}
+		},
+		{
+			"file": "tiles/13-3034-4648.mvt.gz",
+			"compressedBytes": 77564,
+			"compressedSha256": "982738b34634fee7b9ff9014d71bc70823cb5644fc03308a40260f7a64ba99b5",
+			"revision": {
+				"id": "7c18c0ced51535dc1efbfd4c215da7fbb4a852513b8a93723980cc54f8ba6070",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3034/4648.mvt"
+			}
+		},
+		{
+			"file": "tiles/13-3035-4646.mvt.gz",
+			"compressedBytes": 70229,
+			"compressedSha256": "a1bd75710f15d9e86288c7f0d96187013497ce94e3944ad1ab209232318b5099",
+			"revision": {
+				"id": "2ca5d76820bdf4767abb440a9a4e4b55c5d009220e23249f7c2a53ed0c0c8b07",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3035/4646.mvt"
+			}
+		},
+		{
+			"file": "tiles/13-3035-4647.mvt.gz",
+			"compressedBytes": 79189,
+			"compressedSha256": "fcb576a765848de7c1481f9aa199a89933c2e94dfd1357a95a731a39e6a9654e",
+			"revision": {
+				"id": "0f5952828797a17cc796b85fccbbc0f510157657ab12792f1495e331a53cb0ef",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3035/4647.mvt"
+			}
+		},
+		{
+			"file": "tiles/13-3035-4648.mvt.gz",
+			"compressedBytes": 64859,
+			"compressedSha256": "0db1b71adfa609aaedc35db131b33d09e273fe8b57204e0820e854d69e8d48dc",
+			"revision": {
+				"id": "a0c670e5fdd7dbfe7e1d597bcfc87016061c9053c2215b8b2575c92c114aa357",
+				"path": "/tiles/b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9/13/3035/4648.mvt"
+			}
+		}
+	],
+	"snapshots": [
+		{
+			"id": "sao-paulo-se-z13-480-d2",
+			"input": {
+				"center": {
+					"latitude": -23.5505,
+					"longitude": -46.6333
+				},
+				"zoom": 13,
+				"size": {
+					"width": 480,
+					"height": 480
+				},
+				"catalogue": {
+					"landmarks": [
+						{
+							"id": "protomaps:pois:35184380182569",
+							"label": "Catedral da Sé",
+							"alternativeLabels": [],
+							"category": "PLACE_OF_WORSHIP",
+							"coordinates": {
+								"latitude": -23.551268429461757,
+								"longitude": -46.634371876716614
+							},
+							"rank": 0,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184447577466",
+							"label": "Praça da Sé",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55039063893041,
+								"longitude": -46.63308173418045
+							},
+							"rank": 1,
+							"sourceMinZoom": 12
+						},
+						{
+							"id": "protomaps:pois:17596303610158",
+							"label": "Brás",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.547858045162755,
+								"longitude": -46.61591827869415
+							},
+							"rank": 2,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184797544973",
+							"label": "Edifício Guinle",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.549072712728247,
+								"longitude": -46.63413316011429
+							},
+							"rank": 3,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184420600760",
+							"label": "Vale do Anhangabaú",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.545519655559943,
+								"longitude": -46.63673758506775
+							},
+							"rank": 4,
+							"sourceMinZoom": 12
+						},
+						{
+							"id": "protomaps:pois:35184808024697",
+							"label": "Hospital Sancta Maggiore",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.55241913758202,
+								"longitude": -46.6249144077301
+							},
+							"rank": 5,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184701474530",
+							"label": "Edifício Sampaio Moreira",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546719591487047,
+								"longitude": -46.63623869419098
+							},
+							"rank": 6,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184380929455",
+							"label": "Praça da República",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543171388609025,
+								"longitude": -46.64252042770386
+							},
+							"rank": 7,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:17597171662620",
+							"label": "Júlio Prestes",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.533217221880037,
+								"longitude": -46.640565097332
+							},
+							"rank": 8,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184563695981",
+							"label": "Edifício Altino Arantes",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.545775380528198,
+								"longitude": -46.634098291397095
+							},
+							"rank": 9,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603494012",
+							"label": "Largo do Arouche",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.541064059947942,
+								"longitude": -46.64490759372711
+							},
+							"rank": 10,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:17597088242043",
+							"label": "Santa Margiore",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.559315798827058,
+								"longitude": -46.631965935230255
+							},
+							"rank": 11,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184563695982",
+							"label": "Edifício Martinelli",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.545524573352495,
+								"longitude": -46.635238230228424
+							},
+							"rank": 12,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184609301633",
+							"label": "Praça da Liberdade-Japão",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.554973771951637,
+								"longitude": -46.635495722293854
+							},
+							"rank": 13,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184793235463",
+							"label": "República",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.5430410647123,
+								"longitude": -46.643933951854706
+							},
+							"rank": 14,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184793407537",
+							"label": "Shopping Light",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.54669500274599,
+								"longitude": -46.63858562707901
+							},
+							"rank": 15,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184671824513",
+							"label": "Parque Dom Pedro II",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55087010507313,
+								"longitude": -46.62751346826553
+							},
+							"rank": 16,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17596774190253",
+							"label": "Medicina Diagnóstica Lavoisier",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54521229316113,
+								"longitude": -46.643072962760925
+							},
+							"rank": 17,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184419016763",
+							"label": "Teatro Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.54528114240091,
+								"longitude": -46.63863927125931
+							},
+							"rank": 18,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776570028700",
+							"label": "Praça Cívica Ulisses Guimarães",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.546429444049494,
+								"longitude": -46.627569794654846
+							},
+							"rank": 19,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184796661803",
+							"label": "Luz",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.536564050237615,
+								"longitude": -46.63325607776642
+							},
+							"rank": 20,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184793407618",
+							"label": "Galeria do Rock",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.54426807137814,
+								"longitude": -46.639114022254944
+							},
+							"rank": 21,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184618797191",
+							"label": "Largo do Paissandú",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543026311055485,
+								"longitude": -46.63819134235382
+							},
+							"rank": 22,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17602191172116",
+							"label": "Hospital A C Camargo Câncer Center",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.56544258248023,
+								"longitude": -46.63514971733093
+							},
+							"rank": 23,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776562736244",
+							"label": "Mercado Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.541732900707274,
+								"longitude": -46.6295251250267
+							},
+							"rank": 24,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184533305994",
+							"label": "Praça Franklin Roosevelt",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.548694052383453,
+								"longitude": -46.64678245782852
+							},
+							"rank": 25,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35185589464144",
+							"label": "Estação Higienópolis-Mackenzie",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.548617828415942,
+								"longitude": -46.6523078083992
+							},
+							"rank": 26,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:52776564393065",
+							"label": "Galeria Metrópole",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.54636305429156,
+								"longitude": -46.642595529556274
+							},
+							"rank": 27,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603199807",
+							"label": "Parque da Luz",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.532904912465895,
+								"longitude": -46.634980738162994
+							},
+							"rank": 28,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17605905947317",
+							"label": "Santa casa",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54272140177717,
+								"longitude": -46.650215685367584
+							},
+							"rank": 29,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184793383054",
+							"label": "Centro Comercial Efigênia",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.540385379818133,
+								"longitude": -46.63802236318588
+							},
+							"rank": 30,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184577872971",
+							"label": "Patio do Collegio",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547260542626958,
+								"longitude": -46.63256138563156
+							},
+							"rank": 31,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184927341460",
+							"label": "Higienópolis-Mackenzie",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.54869651122037,
+								"longitude": -46.65233463048935
+							},
+							"rank": 32,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184380189080",
+							"label": "Edifício Copan",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546594188859558,
+								"longitude": -46.64453208446503
+							},
+							"rank": 33,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184826762956",
+							"label": "Praça da Bandeira",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.548785029319077,
+								"longitude": -46.63921058177948
+							},
+							"rank": 34,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184792177822",
+							"label": "Hospital Santa Isabel",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.542706648084476,
+								"longitude": -46.6507413983345
+							},
+							"rank": 35,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184674056534",
+							"label": "Edifício do Tribunal de Justiça de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546272075679965,
+								"longitude": -46.645583510398865
+							},
+							"rank": 36,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184814218439",
+							"label": "Jardim Oriental",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.556308849849486,
+								"longitude": -46.63542598485947
+							},
+							"rank": 37,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17596497118244",
+							"label": "Sé",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.550442273829802,
+								"longitude": -46.633446514606476
+							},
+							"rank": 38,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184380194664",
+							"label": "Estação da Luz",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.535115653706498,
+								"longitude": -46.63539111614227
+							},
+							"rank": 39,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776565514318",
+							"label": "Praça dos Artesãos Calabreses",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.555295863809178,
+								"longitude": -46.637727320194244
+							},
+							"rank": 40,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184410718464",
+							"label": "Universidade Presbiteriana Mackenzie",
+							"alternativeLabels": [],
+							"category": "EDUCATION",
+							"coordinates": {
+								"latitude": -23.5471941532887,
+								"longitude": -46.652463376522064
+							},
+							"rank": 41,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35185378318851",
+							"label": "Feirinha da Madrugada",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.537109961260512,
+								"longitude": -46.6242653131485
+							},
+							"rank": 42,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184412879181",
+							"label": "Praça Ramos de Azevedo",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.54577046274504,
+								"longitude": -46.637979447841644
+							},
+							"rank": 43,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17597555321486",
+							"label": "Japão - Liberdade",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.555229478529085,
+								"longitude": -46.635863184928894
+							},
+							"rank": 44,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184563679909",
+							"label": "Estação Pinacoteca",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.53482302157103,
+								"longitude": -46.63878947496414
+							},
+							"rank": 45,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184739408625",
+							"label": "Praça Ministro Francisco Sá Carneiro",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.553589505593038,
+								"longitude": -46.626960933208466
+							},
+							"rank": 46,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184792177800",
+							"label": "Departamento de Cirurgia",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54224436487509,
+								"longitude": -46.65076285600662
+							},
+							"rank": 47,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184810727688",
+							"label": "Busca Busca",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.536782906730593,
+								"longitude": -46.61855220794678
+							},
+							"rank": 48,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184712380744",
+							"label": "Largo São Bento",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543943493574275,
+								"longitude": -46.63435846567154
+							},
+							"rank": 49,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17595697825780",
+							"label": "Anhangabaú",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.547769526439907,
+								"longitude": -46.639323234558105
+							},
+							"rank": 50,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35185905233994",
+							"label": "Vautier Premium",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.533817247335378,
+								"longitude": -46.62058800458908
+							},
+							"rank": 51,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603494011",
+							"label": "Praça Dom José Gaspar",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547326931931707,
+								"longitude": -46.64208322763443
+							},
+							"rank": 52,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17593832874180",
+							"label": "Pró Matre Paulista",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.565730229425498,
+								"longitude": -46.64938420057297
+							},
+							"rank": 53,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184624150792",
+							"label": "Shopping Canindé",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.532211435368012,
+								"longitude": -46.62081599235535
+							},
+							"rank": 54,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184802215324",
+							"label": "Largo do Redentor",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.563709311913584,
+								"longitude": -46.62956804037094
+							},
+							"rank": 55,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17597555322360",
+							"label": "São Bento",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.54403693272114,
+								"longitude": -46.6343155503273
+							},
+							"rank": 56,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184810728571",
+							"label": "Shopping Fashion Bras",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.534395138117176,
+								"longitude": -46.61307781934738
+							},
+							"rank": 57,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776574956185",
+							"label": "Parque Augusta",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.54992592392317,
+								"longitude": -46.6491562128067
+							},
+							"rank": 58,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17597085915903",
+							"label": "Hospital Total Cor",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.567642942665287,
+								"longitude": -46.650972068309784
+							},
+							"rank": 59,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776564458901",
+							"label": "Solar da Marquesa de Santos",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.548536686724546,
+								"longitude": -46.631944477558136
+							},
+							"rank": 60,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184714705442",
+							"label": "Parque Municipal Benemérito José Brás",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547683466513334,
+								"longitude": -46.61660224199295
+							},
+							"rank": 61,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17596303616244",
+							"label": "Pedro II",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.54969971284899,
+								"longitude": -46.62598192691803
+							},
+							"rank": 62,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184577872969",
+							"label": "Casa da Imagem",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.548342438229568,
+								"longitude": -46.632185876369476
+							},
+							"rank": 63,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35185497842084",
+							"label": "Praça Princesa Isabel",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.535877969658188,
+								"longitude": -46.64357990026474
+							},
+							"rank": 64,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184795333782",
+							"label": "Pão de Açúcar",
+							"alternativeLabels": [],
+							"category": "SUPERMARKET",
+							"coordinates": {
+								"latitude": -23.562858648773158,
+								"longitude": -46.64103180170059
+							},
+							"rank": 65,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:52776567867884",
+							"label": "Pateo do Collegio",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.548020329333184,
+								"longitude": -46.63302272558212
+							},
+							"rank": 66,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184380932489",
+							"label": "Parque Princesa Isabel",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.535848460735792,
+								"longitude": -46.64362281560898
+							},
+							"rank": 67,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17599903321371",
+							"label": "São Joaquim",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.56181621013097,
+								"longitude": -46.63865804672241
+							},
+							"rank": 68,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:17603305697634",
+							"label": "Subprefeitura da Sé",
+							"alternativeLabels": [],
+							"category": "GOVERNMENT_OFFICE",
+							"coordinates": {
+								"latitude": -23.548143271753176,
+								"longitude": -46.63462936878204
+							},
+							"rank": 69,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184809270629",
+							"label": "Praça Capitão Gino Struffaldi",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.557031704046054,
+								"longitude": -46.65147364139557
+							},
+							"rank": 70,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17598965836618",
+							"label": "Biblioteca Monteiro Lobato",
+							"alternativeLabels": [],
+							"category": "LIBRARY",
+							"coordinates": {
+								"latitude": -23.544990991789092,
+								"longitude": -46.64925545454025
+							},
+							"rank": 71,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17597265377848",
+							"label": "Prefeitura Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "GOVERNMENT_OFFICE",
+							"coordinates": {
+								"latitude": -23.547430204116893,
+								"longitude": -46.63728475570679
+							},
+							"rank": 72,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184576160482",
+							"label": "Sede São Paulo do Iate Clube de Santos",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.544784443505804,
+								"longitude": -46.65252238512039
+							},
+							"rank": 73,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35185037550540",
+							"label": "Luz",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.536175517589044,
+								"longitude": -46.63529187440872
+							},
+							"rank": 74,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184589422339",
+							"label": "Teatro Renault",
+							"alternativeLabels": [],
+							"category": "THEATER",
+							"coordinates": {
+								"latitude": -23.554223860369945,
+								"longitude": -46.63824766874313
+							},
+							"rank": 75,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184421811978",
+							"label": "Praça Clóvis Beviláqua",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.550904528216094,
+								"longitude": -46.63175404071808
+							},
+							"rank": 76,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184603494013",
+							"label": "Santa Casa de São Paulo",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.542709107033374,
+								"longitude": -46.650078892707825
+							},
+							"rank": 77,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184554096016",
+							"label": "Mirante do Vale",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.542185349880313,
+								"longitude": -46.63538843393326
+							},
+							"rank": 78,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184627975494",
+							"label": "Praça Doutor João Mendes",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.552006064031218,
+								"longitude": -46.634701788425446
+							},
+							"rank": 79,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:17597173853241",
+							"label": "Brás",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.545325402607446,
+								"longitude": -46.61644399166107
+							},
+							"rank": 80,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184793413893",
+							"label": "Jaraguá Center",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.5481408129059,
+								"longitude": -46.6422575712204
+							},
+							"rank": 81,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184891244716",
+							"label": "Largo Sete de Setembro",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55280270471684,
+								"longitude": -46.634350419044495
+							},
+							"rank": 82,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184792177865",
+							"label": "Departamento de Obstetrícia e Ginecologia",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.543259910427494,
+								"longitude": -46.6507950425148
+							},
+							"rank": 83,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184796675707",
+							"label": "Shopping 25 de Março",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.540449313602963,
+								"longitude": -46.6324782371521
+							},
+							"rank": 84,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184706525005",
+							"label": "Praça do Carmo",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.550803717557685,
+								"longitude": -46.63046658039093
+							},
+							"rank": 85,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:17597555313438",
+							"label": "Santa Cecília",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.539323090844846,
+								"longitude": -46.6489577293396
+							},
+							"rank": 86,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184795597767",
+							"label": "Teatro Bibi Ferreira",
+							"alternativeLabels": [],
+							"category": "THEATER",
+							"coordinates": {
+								"latitude": -23.558113519224975,
+								"longitude": -46.64091110229492
+							},
+							"rank": 87,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184826689422",
+							"label": "Praça Paulo Alfeu de Monteiro Duarte",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.549188277681168,
+								"longitude": -46.63674831390381
+							},
+							"rank": 88,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184563599301",
+							"label": "Hospital Sírio Libanês",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.557513604634835,
+								"longitude": -46.653823256492615
+							},
+							"rank": 89,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184623300451",
+							"label": "Edifício Itália",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.545529491144862,
+								"longitude": -46.643577218055725
+							},
+							"rank": 90,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184609301622",
+							"label": "Praça Carlos Gomes",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.553247739541035,
+								"longitude": -46.63568615913391
+							},
+							"rank": 91,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:17597083880374",
+							"label": "Vergueiro - Sebrae",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.568815633538847,
+								"longitude": -46.63992136716843
+							},
+							"rank": 92,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184576160467",
+							"label": "Museu Judaico de São Paulo",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.550823387936134,
+								"longitude": -46.64561301469803
+							},
+							"rank": 93,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184741307741",
+							"label": "Praça Magdalena Tagliaferro",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55263305016065,
+								"longitude": -46.63636475801468
+							},
+							"rank": 94,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184813923576",
+							"label": "Carrefour",
+							"alternativeLabels": [],
+							"category": "SUPERMARKET",
+							"coordinates": {
+								"latitude": -23.563726521804668,
+								"longitude": -46.613759100437164
+							},
+							"rank": 95,
+							"sourceMinZoom": 14
+						}
+					]
+				}
+			},
+			"expected": {
+				"pixelSha256": "aa61900e9119ae8905c49c45cca0018bdaa6f62bfcd4b84eefea83e48f814e5c",
+				"visibleLandmarkIds": [
+					"protomaps:pois:35184420600760",
+					"protomaps:pois:17597088242043",
+					"protomaps:pois:35185378318851",
+					"protomaps:pois:35184808024697",
+					"protomaps:pois:17593832874180",
+					"protomaps:pois:35184380189080",
+					"protomaps:pois:35184563679909",
+					"protomaps:pois:17596303610158"
+				]
+			}
+		},
+		{
+			"id": "sao-paulo-se-z13-1280-d2",
+			"input": {
+				"center": {
+					"latitude": -23.5505,
+					"longitude": -46.6333
+				},
+				"zoom": 13,
+				"size": {
+					"width": 480,
+					"height": 1280
+				},
+				"catalogue": {
+					"landmarks": [
+						{
+							"id": "protomaps:pois:35184380182569",
+							"label": "Catedral da Sé",
+							"alternativeLabels": [],
+							"category": "PLACE_OF_WORSHIP",
+							"coordinates": {
+								"latitude": -23.551268429461757,
+								"longitude": -46.634371876716614
+							},
+							"rank": 0,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184447577466",
+							"label": "Praça da Sé",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55039063893041,
+								"longitude": -46.63308173418045
+							},
+							"rank": 1,
+							"sourceMinZoom": 12
+						},
+						{
+							"id": "protomaps:pois:17596303610158",
+							"label": "Brás",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.547858045162755,
+								"longitude": -46.61591827869415
+							},
+							"rank": 2,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184797544973",
+							"label": "Edifício Guinle",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.549072712728247,
+								"longitude": -46.63413316011429
+							},
+							"rank": 3,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184420600760",
+							"label": "Vale do Anhangabaú",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.545519655559943,
+								"longitude": -46.63673758506775
+							},
+							"rank": 4,
+							"sourceMinZoom": 12
+						},
+						{
+							"id": "protomaps:pois:35184808024697",
+							"label": "Hospital Sancta Maggiore",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.55241913758202,
+								"longitude": -46.6249144077301
+							},
+							"rank": 5,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184701474530",
+							"label": "Edifício Sampaio Moreira",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546719591487047,
+								"longitude": -46.63623869419098
+							},
+							"rank": 6,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184380929455",
+							"label": "Praça da República",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543171388609025,
+								"longitude": -46.64252042770386
+							},
+							"rank": 7,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:17597171662620",
+							"label": "Júlio Prestes",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.533217221880037,
+								"longitude": -46.640565097332
+							},
+							"rank": 8,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184563695981",
+							"label": "Edifício Altino Arantes",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.545775380528198,
+								"longitude": -46.634098291397095
+							},
+							"rank": 9,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603494012",
+							"label": "Largo do Arouche",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.541064059947942,
+								"longitude": -46.64490759372711
+							},
+							"rank": 10,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:17597088242043",
+							"label": "Santa Margiore",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.559315798827058,
+								"longitude": -46.631965935230255
+							},
+							"rank": 11,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184563695982",
+							"label": "Edifício Martinelli",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.545524573352495,
+								"longitude": -46.635238230228424
+							},
+							"rank": 12,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184609301633",
+							"label": "Praça da Liberdade-Japão",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.554973771951637,
+								"longitude": -46.635495722293854
+							},
+							"rank": 13,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184388734131",
+							"label": "Armênia",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.52540926413424,
+								"longitude": -46.62925958633423
+							},
+							"rank": 14,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184793407537",
+							"label": "Shopping Light",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.54669500274599,
+								"longitude": -46.63858562707901
+							},
+							"rank": 15,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184671824513",
+							"label": "Parque Dom Pedro II",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.55087010507313,
+								"longitude": -46.62751346826553
+							},
+							"rank": 16,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17596774190253",
+							"label": "Medicina Diagnóstica Lavoisier",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54521229316113,
+								"longitude": -46.643072962760925
+							},
+							"rank": 17,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184419016763",
+							"label": "Teatro Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.54528114240091,
+								"longitude": -46.63863927125931
+							},
+							"rank": 18,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776570028700",
+							"label": "Praça Cívica Ulisses Guimarães",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.546429444049494,
+								"longitude": -46.627569794654846
+							},
+							"rank": 19,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17597339915547",
+							"label": "Santa Cruz",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.59903400971936,
+								"longitude": -46.63667589426041
+							},
+							"rank": 20,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184793407618",
+							"label": "Galeria do Rock",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.54426807137814,
+								"longitude": -46.639114022254944
+							},
+							"rank": 21,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184618797191",
+							"label": "Largo do Paissandú",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543026311055485,
+								"longitude": -46.63819134235382
+							},
+							"rank": 22,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17602191172116",
+							"label": "Hospital A C Camargo Câncer Center",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.56544258248023,
+								"longitude": -46.63514971733093
+							},
+							"rank": 23,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776562736244",
+							"label": "Mercado Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.541732900707274,
+								"longitude": -46.6295251250267
+							},
+							"rank": 24,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184533305994",
+							"label": "Praça Franklin Roosevelt",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.548694052383453,
+								"longitude": -46.64678245782852
+							},
+							"rank": 25,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184866314607",
+							"label": "Estação Hospital São Paulo",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.598478524390956,
+								"longitude": -46.64558082818985
+							},
+							"rank": 26,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:52776564393065",
+							"label": "Galeria Metrópole",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.54636305429156,
+								"longitude": -46.642595529556274
+							},
+							"rank": 27,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603199807",
+							"label": "Parque da Luz",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.532904912465895,
+								"longitude": -46.634980738162994
+							},
+							"rank": 28,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:17605905947317",
+							"label": "Santa casa",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54272140177717,
+								"longitude": -46.650215685367584
+							},
+							"rank": 29,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184793383054",
+							"label": "Centro Comercial Efigênia",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.540385379818133,
+								"longitude": -46.63802236318588
+							},
+							"rank": 30,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184629057978",
+							"label": "Praça Pinheiro da Cunha",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.59534465821946,
+								"longitude": -46.615985333919525
+							},
+							"rank": 31,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184793235463",
+							"label": "República",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.5430410647123,
+								"longitude": -46.643933951854706
+							},
+							"rank": 32,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184380189080",
+							"label": "Edifício Copan",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546594188859558,
+								"longitude": -46.64453208446503
+							},
+							"rank": 33,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184577872971",
+							"label": "Patio do Collegio",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547260542626958,
+								"longitude": -46.63256138563156
+							},
+							"rank": 34,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184792177822",
+							"label": "Hospital Santa Isabel",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.542706648084476,
+								"longitude": -46.6507413983345
+							},
+							"rank": 35,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184674056534",
+							"label": "Edifício do Tribunal de Justiça de São Paulo",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.546272075679965,
+								"longitude": -46.645583510398865
+							},
+							"rank": 36,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184826762956",
+							"label": "Praça da Bandeira",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.548785029319077,
+								"longitude": -46.63921058177948
+							},
+							"rank": 37,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184796661803",
+							"label": "Luz",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.536564050237615,
+								"longitude": -46.63325607776642
+							},
+							"rank": 38,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184380194664",
+							"label": "Estação da Luz",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.535115653706498,
+								"longitude": -46.63539111614227
+							},
+							"rank": 39,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184814218439",
+							"label": "Jardim Oriental",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.556308849849486,
+								"longitude": -46.63542598485947
+							},
+							"rank": 40,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184410718464",
+							"label": "Universidade Presbiteriana Mackenzie",
+							"alternativeLabels": [],
+							"category": "EDUCATION",
+							"coordinates": {
+								"latitude": -23.5471941532887,
+								"longitude": -46.652463376522064
+							},
+							"rank": 41,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35185378318851",
+							"label": "Feirinha da Madrugada",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.537109961260512,
+								"longitude": -46.6242653131485
+							},
+							"rank": 42,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776565514318",
+							"label": "Praça dos Artesãos Calabreses",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.555295863809178,
+								"longitude": -46.637727320194244
+							},
+							"rank": 43,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35185589464144",
+							"label": "Estação Higienópolis-Mackenzie",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.548617828415942,
+								"longitude": -46.6523078083992
+							},
+							"rank": 44,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184563679909",
+							"label": "Estação Pinacoteca",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.53482302157103,
+								"longitude": -46.63878947496414
+							},
+							"rank": 45,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184412879181",
+							"label": "Praça Ramos de Azevedo",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.54577046274504,
+								"longitude": -46.637979447841644
+							},
+							"rank": 46,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184792177800",
+							"label": "Departamento de Cirurgia",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.54224436487509,
+								"longitude": -46.65076285600662
+							},
+							"rank": 47,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184810727688",
+							"label": "Busca Busca",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.536782906730593,
+								"longitude": -46.61855220794678
+							},
+							"rank": 48,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184739408625",
+							"label": "Praça Ministro Francisco Sá Carneiro",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.553589505593038,
+								"longitude": -46.626960933208466
+							},
+							"rank": 49,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184927341460",
+							"label": "Higienópolis-Mackenzie",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.54869651122037,
+								"longitude": -46.65233463048935
+							},
+							"rank": 50,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35185905233994",
+							"label": "Vautier Premium",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.533817247335378,
+								"longitude": -46.62058800458908
+							},
+							"rank": 51,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184712380744",
+							"label": "Largo São Bento",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.543943493574275,
+								"longitude": -46.63435846567154
+							},
+							"rank": 52,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17596567807005",
+							"label": "Examen",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.529346500105774,
+								"longitude": -46.63224756717682
+							},
+							"rank": 53,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184624150792",
+							"label": "Shopping Canindé",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.532211435368012,
+								"longitude": -46.62081599235535
+							},
+							"rank": 54,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184603494011",
+							"label": "Praça Dom José Gaspar",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547326931931707,
+								"longitude": -46.64208322763443
+							},
+							"rank": 55,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35185605312094",
+							"label": "Portuguesa - Tietê",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.516152237899703,
+								"longitude": -46.62469446659088
+							},
+							"rank": 56,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184523971222",
+							"label": "Shopping Pátio Paulista",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.570770095060155,
+								"longitude": -46.64318561553955
+							},
+							"rank": 57,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184802215324",
+							"label": "Largo do Redentor",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.563709311913584,
+								"longitude": -46.62956804037094
+							},
+							"rank": 58,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17593832874180",
+							"label": "Pró Matre Paulista",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.565730229425498,
+								"longitude": -46.64938420057297
+							},
+							"rank": 59,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184810728571",
+							"label": "Shopping Fashion Bras",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.534395138117176,
+								"longitude": -46.61307781934738
+							},
+							"rank": 60,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776574956185",
+							"label": "Parque Augusta",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.54992592392317,
+								"longitude": -46.6491562128067
+							},
+							"rank": 61,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184388733347",
+							"label": "Carandiru",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.509546002411568,
+								"longitude": -46.624976098537445
+							},
+							"rank": 62,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35185793237998",
+							"label": "Aeroporto Campo de Marte",
+							"alternativeLabels": [],
+							"category": "AIRPORT",
+							"coordinates": {
+								"latitude": -23.509373832499065,
+								"longitude": -46.639339327812195
+							},
+							"rank": 63,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184714705442",
+							"label": "Parque Municipal Benemérito José Brás",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.547683466513334,
+								"longitude": -46.61660224199295
+							},
+							"rank": 64,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17597085915903",
+							"label": "Hospital Total Cor",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.567642942665287,
+								"longitude": -46.650972068309784
+							},
+							"rank": 65,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776564458901",
+							"label": "Solar da Marquesa de Santos",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.548536686724546,
+								"longitude": -46.631944477558136
+							},
+							"rank": 66,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35185497842084",
+							"label": "Praça Princesa Isabel",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.535877969658188,
+								"longitude": -46.64357990026474
+							},
+							"rank": 67,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184655361954",
+							"label": "Santos - Imigrantes",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.595966521540007,
+								"longitude": -46.620579957962036
+							},
+							"rank": 68,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184577872969",
+							"label": "Casa da Imagem",
+							"alternativeLabels": [],
+							"category": "MUSEUM",
+							"coordinates": {
+								"latitude": -23.548342438229568,
+								"longitude": -46.632185876369476
+							},
+							"rank": 69,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184380932489",
+							"label": "Parque Princesa Isabel",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.535848460735792,
+								"longitude": -46.64362281560898
+							},
+							"rank": 70,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17605992112344",
+							"label": "Hospital de Transplantes do Estado de São Paulo Euryclides de Jesus Zerbini",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.570460333286945,
+								"longitude": -46.64875388145447
+							},
+							"rank": 71,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:52776567867884",
+							"label": "Pateo do Collegio",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.548020329333184,
+								"longitude": -46.63302272558212
+							},
+							"rank": 72,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184809270629",
+							"label": "Praça Capitão Gino Struffaldi",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.557031704046054,
+								"longitude": -46.65147364139557
+							},
+							"rank": 73,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:52776561442201",
+							"label": "Santana",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.502543424563,
+								"longitude": -46.62492245435715
+							},
+							"rank": 74,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17603305697634",
+							"label": "Subprefeitura da Sé",
+							"alternativeLabels": [],
+							"category": "GOVERNMENT_OFFICE",
+							"coordinates": {
+								"latitude": -23.548143271753176,
+								"longitude": -46.63462936878204
+							},
+							"rank": 75,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184576160482",
+							"label": "Sede São Paulo do Iate Clube de Santos",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.544784443505804,
+								"longitude": -46.65252238512039
+							},
+							"rank": 76,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17593880042728",
+							"label": "Hospital Militar de Área de São Paulo",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.569671174991626,
+								"longitude": -46.61344796419144
+							},
+							"rank": 77,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:17597265377848",
+							"label": "Prefeitura Municipal de São Paulo",
+							"alternativeLabels": [],
+							"category": "GOVERNMENT_OFFICE",
+							"coordinates": {
+								"latitude": -23.547430204116893,
+								"longitude": -46.63728475570679
+							},
+							"rank": 78,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:52776572546843",
+							"label": "Praça Coronel Fernando Prestes",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.530241645377302,
+								"longitude": -46.63314878940582
+							},
+							"rank": 79,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:52776578945329",
+							"label": "Estação AACD-Servidor;AACD – Servidor",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.597802598804947,
+								"longitude": -46.6524338722229
+							},
+							"rank": 80,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:35184589422339",
+							"label": "Teatro Renault",
+							"alternativeLabels": [],
+							"category": "THEATER",
+							"coordinates": {
+								"latitude": -23.554223860369945,
+								"longitude": -46.63824766874313
+							},
+							"rank": 81,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184447895528",
+							"label": "Centro Cultural São Paulo",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.57064225695659,
+								"longitude": -46.64019763469696
+							},
+							"rank": 82,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17598639466704",
+							"label": "Hcor",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.575716350735618,
+								"longitude": -46.64304882287979
+							},
+							"rank": 83,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184554096016",
+							"label": "Mirante do Vale",
+							"alternativeLabels": [],
+							"category": "ATTRACTION",
+							"coordinates": {
+								"latitude": -23.542185349880313,
+								"longitude": -46.63538843393326
+							},
+							"rank": 84,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35185478349019",
+							"label": "Rosas",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.571079856102727,
+								"longitude": -46.645419895648956
+							},
+							"rank": 85,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17596497118244",
+							"label": "Sé",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.550442273829802,
+								"longitude": -46.633446514606476
+							},
+							"rank": 86,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184793413893",
+							"label": "Jaraguá Center",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.5481408129059,
+								"longitude": -46.6422575712204
+							},
+							"rank": 87,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184671824515",
+							"label": "Praça Armênia",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.526840552799328,
+								"longitude": -46.630694568157196
+							},
+							"rank": 88,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17601088138933",
+							"label": "Centro Hospitalar do Sistema Penitenciário CHSP/CASH",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.50927544959086,
+								"longitude": -46.61899209022522
+							},
+							"rank": 89,
+							"sourceMinZoom": 13
+						},
+						{
+							"id": "protomaps:pois:35184796675707",
+							"label": "Shopping 25 de Março",
+							"alternativeLabels": [],
+							"category": "SHOPPING_MALL",
+							"coordinates": {
+								"latitude": -23.540449313602963,
+								"longitude": -46.6324782371521
+							},
+							"rank": 90,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184411170250",
+							"label": "Parque da Aclimação",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.574590430186447,
+								"longitude": -46.62884384393692
+							},
+							"rank": 91,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17597555321486",
+							"label": "Japão - Liberdade",
+							"alternativeLabels": [],
+							"category": "TRAIN_STATION",
+							"coordinates": {
+								"latitude": -23.555229478529085,
+								"longitude": -46.635863184928894
+							},
+							"rank": 92,
+							"sourceMinZoom": 16
+						},
+						{
+							"id": "protomaps:pois:35184795597767",
+							"label": "Teatro Bibi Ferreira",
+							"alternativeLabels": [],
+							"category": "THEATER",
+							"coordinates": {
+								"latitude": -23.558113519224975,
+								"longitude": -46.64091110229492
+							},
+							"rank": 93,
+							"sourceMinZoom": 14
+						},
+						{
+							"id": "protomaps:pois:35184619589644",
+							"label": "Praça Rodrigues de Abreu",
+							"alternativeLabels": [],
+							"category": "PARK",
+							"coordinates": {
+								"latitude": -23.57480922336336,
+								"longitude": -46.640940606594086
+							},
+							"rank": 94,
+							"sourceMinZoom": 15
+						},
+						{
+							"id": "protomaps:pois:17593026740293",
+							"label": "Hospital São Paulo",
+							"alternativeLabels": [],
+							"category": "HOSPITAL",
+							"coordinates": {
+								"latitude": -23.597775561709042,
+								"longitude": -46.64353430271149
+							},
+							"rank": 95,
+							"sourceMinZoom": 13
+						}
+					]
+				}
+			},
+			"expected": {
+				"pixelSha256": "bfe4780471beb822c3ff34d7dbb12c1ef1141d71a65bf2327ccbfc85dd21730b",
+				"visibleLandmarkIds": [
+					"protomaps:pois:35184420600760",
+					"protomaps:pois:17597088242043",
+					"protomaps:pois:17596567807005",
+					"protomaps:pois:17598639466704",
+					"protomaps:pois:35184810727688",
+					"protomaps:pois:35184808024697",
+					"protomaps:pois:17593832874180",
+					"protomaps:pois:35185793237998",
+					"protomaps:pois:35184380189080",
+					"protomaps:pois:17601088138933",
+					"protomaps:pois:35184563679909",
+					"protomaps:pois:17593026740293",
+					"protomaps:pois:35184411170250",
+					"protomaps:pois:17596303610158",
+					"protomaps:pois:35184795597767"
+				]
+			}
+		}
+	],
+	"source": {
+		"schemaVersion": 1,
+		"pmtiles": {
+			"id": "b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9",
+			"objectKey": "fixtures/owned-renderer.pmtiles",
+			"bytes": 138796124160,
+			"etag": "2b30e465550f4f1e683fab05b304fd98-518",
+			"digest": {
+				"algorithm": "sha256",
+				"value": "b5a8747ff66df21c256669013eebe60f72872d63338a645d87c567081638fcb9",
+				"verified": true
+			},
+			"minZoom": 0,
+			"maxZoom": 15,
+			"coverage": "complete-planet"
+		},
+		"references": {
+			"id": "72916d1612a6b0dde75f283c111d1a7cdd6f05c22b023471a0910b9de4b1e087",
+			"catalogueKey": "fixtures/references.pmtiles"
+		}
+	}
+}

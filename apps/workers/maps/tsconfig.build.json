@@ -1,0 +1,16 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"noEmitOnError": true,
+		"allowImportingTsExtensions": true,
+		"rootDir": ".",
+		"outDir": ".worker-build",
+		"rewriteRelativeImportExtensions": true,
+		"types": ["@cloudflare/workers-types", "node"],
+		"noCheck": true,
+		"noResolve": true
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/*.spec.ts"]
+}

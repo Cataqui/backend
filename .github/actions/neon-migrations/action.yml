@@ -1,114 +1,144 @@
 name: Neon migration safety gate
-description: Validate Prisma migrations on an expiring Neon branch, then apply them once to main.
+description: Validate application-owned Prisma migrations on an expiring Neon branch, then apply them once to main.
 
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Deployment environment; staging or production.
     required: true
 
+  application:
+    description: Database owner; api or auth.
+    required: false
+    default: api
+
 runs:
   using: composite
   steps:
-    - name: Validate and apply migrations
-      shell: bash
+    - name: Load migration values
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: ${{ inputs.application }}-deployment
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Clear API deployment credential during migration
+      shell: ruby {0}
+      run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
+    - name: Load application runtime for migration validation
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: ${{ inputs.application }}-runtime
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Resolve Cloudflare account ID
+      shell: ruby {0}
+      run: |
+        require "json"
+        account_id = JSON.parse(File.read("infrastructure/platforms.json", encoding: "UTF-8")).fetch("cloudflare").fetch("account_id")
+        File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_ACCOUNT_ID=#{account_id}") }
+    - name: Get migration branch config
+      id: branch-config
+      shell: ruby {0}
       env:
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_APPLICATION: ${{ inputs.application }}
       run: |
-        set -euo pipefail
-        case "$INPUT_ENVIRONMENT" in staging | production) ;; *) exit 1 ;; esac
-        command -v docker >/dev/null
-        real_database_owner_direct_url="$DATABASE_OWNER_DIRECT_URL"
-        database_name="$(jq -er .neon.databases.cataqui.name infrastructure/manifest.json)"
-        owner_role="$(jq -er .neon.databases.cataqui.owner_role infrastructure/manifest.json)"
-
-        branch_name="ci-migration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-        container_name="cataqui-api-migration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-        expires_at="$(node -e 'process.stdout.write(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())')"
-        branch_created=false
-        container_started=false
-        cleanup() {
-          if [[ "$container_started" == true ]]; then docker rm -f "$container_name" >/dev/null 2>&1 || true; fi
-          if [[ "$branch_created" == true ]]; then
-            pnpm exec neon branches delete "$branch_name" --project-id "$NEON_PROJECT_ID" --output json --no-analytics >/dev/null 2>&1 || true
-          fi
-          unset branch_url DATABASE_OWNER_DIRECT_URL PGOPTIONS
-        }
-        trap cleanup EXIT
-
-        branch_json="$(pnpm exec neon branches create \
-          --project-id "$NEON_PROJECT_ID" \
-          --name "$branch_name" \
-          --parent main \
-          --expires-at "$expires_at" \
-          --output json \
-          --no-analytics)"
-        branch_created=true
-        printf '%s' "$branch_json" | node -e 'let value="";process.stdin.on("data",c=>value+=c).on("end",()=>{const payload=JSON.parse(value);if(!(payload.id??payload.branch?.id))process.exit(1)})'
-        unset branch_json
-        connection_value="$(pnpm exec neon connection-string "$branch_name" \
-          --project-id "$NEON_PROJECT_ID" \
-          --database-name "$database_name" \
-          --role-name "$owner_role" \
-          --output json \
-          --no-analytics)"
-        echo "::add-mask::$connection_value"
-        if ! branch_url="$(CONNECTION_VALUE="$connection_value" node -e '
-          const value=process.env.CONNECTION_VALUE.trim();
-          let payload=value;
-          try { payload=JSON.parse(value); } catch {}
-          const visit=(item) => {
-            if (typeof item === "string" && /^postgres(?:ql)?:\/\//.test(item)) return item;
-            if (item && typeof item === "object") for (const child of Object.values(item)) { const found=visit(child); if (found) return found; }
-          };
-          const result=visit(payload);
-          if (!result) process.exit(1);
-          process.stdout.write(result);
-        ')"; then
-          echo "Neon CLI returned an unsupported connection-string response." >&2
-          exit 1
-        fi
-        unset connection_value
-        if [[ "$branch_url" == *-pooler.* ]]; then
-          echo "Neon returned a pooled URL for migration validation." >&2
-          exit 1
-        fi
-        export DATABASE_OWNER_DIRECT_URL="$branch_url"
-        pnpm --filter @cataqui/api prisma:migrate:deploy >/dev/null
-        pnpm --filter @cataqui/api exec prisma migrate status >/dev/null
-
-        docker build --file apps/api/Dockerfile --tag "cataqui-api-candidate:$GITHUB_SHA" . >/dev/null
-        export NODE_ENV="$INPUT_ENVIRONMENT"
-        export CLOUDFLARE_ACCOUNT_ID
-        export DATABASE_APP_POOLER_URL="$branch_url"
-        export DERIVE_JOB_DATA_AI_GATEWAY_ID="cataqui-derive-job-data-$INPUT_ENVIRONMENT"
-        export CORS_ORIGINS="https://${INPUT_ENVIRONMENT/staging/staging.}cataqui.com"
-        export WHATSAPP_NOTP_RECEIVER="+15556625497"
-        if [[ "$INPUT_ENVIRONMENT" == production ]]; then
-          CORS_ORIGINS="https://cataqui.com"
-          WHATSAPP_NOTP_RECEIVER="+5511963270517"
-        fi
-        docker run --detach --name "$container_name" --publish 127.0.0.1:3000:3000 \
-          -e NODE_ENV -e CLOUDFLARE_ACCOUNT_ID -e DATABASE_APP_POOLER_URL -e CORS_ORIGINS \
-          -e AI_GATEWAY_API_TOKEN -e DERIVE_JOB_DATA_AI_GATEWAY_ID \
-          -e UPSTASH_REDIS_REST_URL -e UPSTASH_REDIS_REST_TOKEN \
-          -e AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL \
-          -e MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 \
-          -e WHATSAPP_NOTP_RECEIVER \
-          "cataqui-api-candidate:$GITHUB_SHA" >/dev/null
-        container_started=true
-        for attempt in $(seq 1 24); do
-          live="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/health/live || true)"
-          ready="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/health || true)"
-          jwks="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/v1/auth/microservices/jwks || true)"
-          if [[ "$live" == 204 && "$ready" == 200 && "$jwks" == 200 ]]; then break; fi
-          if [[ "$attempt" == 24 ]]; then echo "Candidate API failed migration-branch probes." >&2; exit 1; fi
-          sleep 5
-        done
-        docker rm -f "$container_name" >/dev/null
-        container_started=false
-
-        export DATABASE_OWNER_DIRECT_URL
-        DATABASE_OWNER_DIRECT_URL="$real_database_owner_direct_url"
-        export PGOPTIONS='-c lock_timeout=5s -c statement_timeout=300s'
-        pnpm --filter @cataqui/api prisma:migrate:deploy >/dev/null
-        pnpm --filter @cataqui/api exec prisma migrate status >/dev/null
+        require "json"
+        require "time"
+        abort("Unsupported migration environment.") unless %w[staging production].include?(ENV.fetch("INPUT_ENVIRONMENT"))
+        application = ENV.fetch("INPUT_APPLICATION")
+        abort("Unsupported database owner.") unless %w[api auth].include?(application)
+        abort("Docker is required for API migration validation.") if application == "api" && !system("docker", "--version", out: File::NULL)
+        database = JSON.parse(File.read("infrastructure/manifest.json", encoding: "UTF-8")).fetch("neon").fetch("databases").fetch(application == "api" ? "cataqui" : "auth")
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |file|
+          file.puts("name=ci-migration-#{application}-#{ENV.fetch('GITHUB_RUN_ID')}-#{ENV.fetch('GITHUB_RUN_ATTEMPT')}")
+          file.puts("database=#{database.fetch('name')}")
+          file.puts("role=#{database.fetch('owner_role')}")
+          file.puts("expires-at=#{(Time.now.utc + 24 * 60 * 60).iso8601(3)}")
+        end
+    - name: Mask inherited database password
+      shell: ruby {0}
+      run: |
+        require "uri"
+        begin
+          password = URI.parse(ENV.fetch("DATABASE_OWNER_DIRECT_URL")).password
+          abort("The migration database URL must contain a password.") if password.nil? || password.empty?
+          decoded_password = URI.decode_uri_component(password)
+          abort("The migration database password encoding is invalid.") unless decoded_password.valid_encoding?
+        rescue URI::InvalidURIError, ArgumentError
+          abort("The migration database URL is invalid.")
+        end
+        # The branch inherits its parent's role password; mask it before the action returns URLs.
+        [password, decoded_password].each do |value|
+          puts("::add-mask::#{value.gsub('%', '%25').gsub("\r", '%0D').gsub("\n", '%0A')}")
+        end
+    - name: Create expiring migration branch
+      id: branch
+      uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # 6.3.1
+      with:
+        api_key: ${{ env.NEON_API_KEY }}
+        project_id: ${{ env.NEON_PROJECT_ID }}
+        branch_name: ${{ steps.branch-config.outputs.name }}
+        parent_branch: main
+        database: ${{ steps.branch-config.outputs.database }}
+        role: ${{ steps.branch-config.outputs.role }}
+        expires_at: ${{ steps.branch-config.outputs.expires-at }}
+    - name: Apply migrations to temporary branch
+      shell: ruby {0}
+      env:
+        INPUT_APPLICATION: ${{ inputs.application }}
+        DATABASE_OWNER_DIRECT_URL: ${{ steps.branch.outputs.db_url }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "apply-migrations.rb")
+    - name: Build candidate API image
+      if: inputs.application == 'api'
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      env:
+        DOCKER_BUILD_SUMMARY: 'false'
+        DOCKER_BUILD_RECORD_UPLOAD: 'false'
+      with:
+        context: .
+        file: apps/api/Dockerfile
+        tags: cataqui-api-candidate:${{ github.sha }}
+        load: true
+    - name: Check API against migrated branch
+      if: inputs.application == 'api'
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        MIGRATION_BRANCH_URL: ${{ steps.branch.outputs.db_url }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-api-on-migration-branch.rb")
+    - name: Check Auth against migrated branch
+      if: inputs.application == 'auth'
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        MIGRATION_BRANCH_URL: ${{ steps.branch.outputs.db_url }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-auth-on-migration-branch.rb")
+    - name: Apply migrations to main database
+      shell: ruby {0}
+      env:
+        INPUT_APPLICATION: ${{ inputs.application }}
+        PGOPTIONS: -c lock_timeout=5s -c statement_timeout=300s
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "apply-migrations.rb")
+    - name: Delete migration branch
+      if: always() && steps.branch-config.outcome == 'success' && steps.branch.outcome != 'skipped'
+      continue-on-error: true
+      uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3.2.1
+      with:
+        api_key: ${{ env.NEON_API_KEY }}
+        project_id: ${{ env.NEON_PROJECT_ID }}
+        branch: ${{ steps.branch-config.outputs.name }}
+    - name: Clear migration credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        names = %w[
+          CLOUDFLARE_API_TOKEN DATABASE_OWNER_DIRECT_URL NEON_PROJECT_ID NEON_PROJECT_API_KEY NEON_API_KEY
+          DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN
+          AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN META_APP_SECRET HYPERDRIVE_ID
+        ]
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          names.each { |name| file.puts("#{name}=") }
+        end

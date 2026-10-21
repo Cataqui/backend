@@ -7,8 +7,18 @@
 	},
 	"typescript.enablePromptUseWorkspaceTsdk": true,
 	"typescript.tsdk": "node_modules/typescript/lib",
+	"evenBetterToml.schema.enabled": true,
+	"evenBetterToml.schema.associations": {
+		"(^|/)Cargo\\.toml$": "https://json.schemastore.org/cargo.json"
+	},
 	"opentofu.experimentalFeatures.validateOnSave": true,
 	"opentofu.validation.enableEnhancedValidation": false,
+	"rubyLsp.formatter": "rubocop",
+	"[ruby]": {
+		"editor.defaultFormatter": "Shopify.ruby-lsp",
+		"editor.formatOnSave": true,
+		"editor.formatOnSaveMode": "file"
+	},
 	"[opentofu][opentofu-vars]": {
 		"editor.defaultFormatter": "opentofu.vscode-opentofu",
 		"editor.formatOnSave": true,

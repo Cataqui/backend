@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { loadCloudflareConfiguration } from "./cloudflare-configuration";
 
 const repositoryRoot = process.cwd();
 const infrastructureDirectory = resolve(repositoryRoot, "infrastructure");
@@ -19,11 +20,11 @@ function _getRootHcl(): string {
 
 function _getApplicationConfiguration(): string {
 	return [
-		".env.example",
+		"apps/api/.env.example",
 		"apps/api/src/core/config/env.schema.ts",
 		"apps/api/src/modules/ai/ai.config.ts",
-		"apps/api/src/platform/cloudflare/container/api-container.ts",
-		"apps/api/wrangler.jsonc",
+		"apps/api/worker/src/container.ts",
+		"apps/api/worker/cloudflare.config.ts",
 	]
 		.map((path) => readFileSync(resolve(repositoryRoot, path), "utf8"))
 		.join("\n");
@@ -145,16 +146,15 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		);
 	});
 
-	it("should commit one derive-job-data gateway ID for each application environment", () => {
-		const wrangler = readFileSync(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), "utf8");
+	it("should configure the owned gateway for each application environment", async () => {
 		const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
-
-		expect(wrangler.match(/cataqui-derive-job-data-(?:development|staging|production)/g)).toEqual([
-			"cataqui-derive-job-data-development",
-			"cataqui-derive-job-data-staging",
-			"cataqui-derive-job-data-production",
-		]);
-		expect(wrangler).toContain(manifest.cloudflare.ai_gateways.derive_job_data_staging);
-		expect(wrangler).toContain(manifest.cloudflare.ai_gateways.derive_job_data_production);
+		for (const mode of ["development", "staging", "production"] as const) {
+			const configuration = await loadCloudflareConfiguration({ application: "apps/api/worker", mode: mode });
+			const expected =
+				mode === "development"
+					? "cataqui-derive-job-data-development"
+					: manifest.cloudflare.ai_gateways[`derive_job_data_${mode}`];
+			expect(configuration.worker?.env?.DERIVE_JOB_DATA_AI_GATEWAY_ID).toEqual({ type: "text", value: expected });
+		}
 	});
 });

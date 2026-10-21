@@ -1,0 +1,312 @@
+{
+	"qualification": "Saved genuine PMTiles directory metadata only; no installed archive or verified global digest is claimed by this fixture. Tile bodies deliberately unavailable.",
+	"sourceId": "f0c7df45fec8e6cc6b0521505b3029d5e1c930ec2509304d4c0797fd926ec5a7",
+	"contents": [
+		{
+			"key": "91878954695:130573",
+			"offset": 91878954695,
+			"length": 130573,
+			"intervals": [
+				{
+					"start": 862662197,
+					"end": 862662198
+				}
+			]
+		},
+		{
+			"key": "91879085268:113531",
+			"offset": 91879085268,
+			"length": 113531,
+			"intervals": [
+				{
+					"start": 862662198,
+					"end": 862662199
+				}
+			]
+		},
+		{
+			"key": "91879198799:140531",
+			"offset": 91879198799,
+			"length": 140531,
+			"intervals": [
+				{
+					"start": 862662199,
+					"end": 862662200
+				}
+			]
+		},
+		{
+			"key": "91879339330:124212",
+			"offset": 91879339330,
+			"length": 124212,
+			"intervals": [
+				{
+					"start": 862662200,
+					"end": 862662201
+				}
+			]
+		},
+		{
+			"key": "91879463542:83634",
+			"offset": 91879463542,
+			"length": 83634,
+			"intervals": [
+				{
+					"start": 862662201,
+					"end": 862662202
+				}
+			]
+		},
+		{
+			"key": "91879547176:101563",
+			"offset": 91879547176,
+			"length": 101563,
+			"intervals": [
+				{
+					"start": 862662202,
+					"end": 862662203
+				}
+			]
+		},
+		{
+			"key": "91879648739:66877",
+			"offset": 91879648739,
+			"length": 66877,
+			"intervals": [
+				{
+					"start": 862662203,
+					"end": 862662204
+				}
+			]
+		},
+		{
+			"key": "91879715616:44334",
+			"offset": 91879715616,
+			"length": 44334,
+			"intervals": [
+				{
+					"start": 862662204,
+					"end": 862662205
+				}
+			]
+		},
+		{
+			"key": "91879759950:77402",
+			"offset": 91879759950,
+			"length": 77402,
+			"intervals": [
+				{
+					"start": 862662205,
+					"end": 862662206
+				}
+			]
+		},
+		{
+			"key": "91879837352:101055",
+			"offset": 91879837352,
+			"length": 101055,
+			"intervals": [
+				{
+					"start": 862662206,
+					"end": 862662207
+				}
+			]
+		},
+		{
+			"key": "91879938407:115453",
+			"offset": 91879938407,
+			"length": 115453,
+			"intervals": [
+				{
+					"start": 862662207,
+					"end": 862662208
+				}
+			]
+		},
+		{
+			"key": "91880053860:131259",
+			"offset": 91880053860,
+			"length": 131259,
+			"intervals": [
+				{
+					"start": 862662208,
+					"end": 862662209
+				}
+			]
+		},
+		{
+			"key": "91880185119:97155",
+			"offset": 91880185119,
+			"length": 97155,
+			"intervals": [
+				{
+					"start": 862662209,
+					"end": 862662210
+				}
+			]
+		},
+		{
+			"key": "91880282274:118646",
+			"offset": 91880282274,
+			"length": 118646,
+			"intervals": [
+				{
+					"start": 862662210,
+					"end": 862662211
+				}
+			]
+		},
+		{
+			"key": "91880400920:136497",
+			"offset": 91880400920,
+			"length": 136497,
+			"intervals": [
+				{
+					"start": 862662211,
+					"end": 862662212
+				}
+			]
+		},
+		{
+			"key": "91880537417:142241",
+			"offset": 91880537417,
+			"length": 142241,
+			"intervals": [
+				{
+					"start": 862662212,
+					"end": 862662213
+				}
+			]
+		}
+	],
+	"batch": {
+		"offset": 91878954695,
+		"length": 1724963,
+		"parts": [
+			{
+				"contentKey": "91878954695:130573",
+				"contentOffset": 0,
+				"offsetInBatch": 0,
+				"length": 130573
+			},
+			{
+				"contentKey": "91879085268:113531",
+				"contentOffset": 0,
+				"offsetInBatch": 130573,
+				"length": 113531
+			},
+			{
+				"contentKey": "91879198799:140531",
+				"contentOffset": 0,
+				"offsetInBatch": 244104,
+				"length": 140531
+			},
+			{
+				"contentKey": "91879339330:124212",
+				"contentOffset": 0,
+				"offsetInBatch": 384635,
+				"length": 124212
+			},
+			{
+				"contentKey": "91879463542:83634",
+				"contentOffset": 0,
+				"offsetInBatch": 508847,
+				"length": 83634
+			},
+			{
+				"contentKey": "91879547176:101563",
+				"contentOffset": 0,
+				"offsetInBatch": 592481,
+				"length": 101563
+			},
+			{
+				"contentKey": "91879648739:66877",
+				"contentOffset": 0,
+				"offsetInBatch": 694044,
+				"length": 66877
+			},
+			{
+				"contentKey": "91879715616:44334",
+				"contentOffset": 0,
+				"offsetInBatch": 760921,
+				"length": 44334
+			},
+			{
+				"contentKey": "91879759950:77402",
+				"contentOffset": 0,
+				"offsetInBatch": 805255,
+				"length": 77402
+			},
+			{
+				"contentKey": "91879837352:101055",
+				"contentOffset": 0,
+				"offsetInBatch": 882657,
+				"length": 101055
+			},
+			{
+				"contentKey": "91879938407:115453",
+				"contentOffset": 0,
+				"offsetInBatch": 983712,
+				"length": 115453
+			},
+			{
+				"contentKey": "91880053860:131259",
+				"contentOffset": 0,
+				"offsetInBatch": 1099165,
+				"length": 131259
+			},
+			{
+				"contentKey": "91880185119:97155",
+				"contentOffset": 0,
+				"offsetInBatch": 1230424,
+				"length": 97155
+			},
+			{
+				"contentKey": "91880282274:118646",
+				"contentOffset": 0,
+				"offsetInBatch": 1327579,
+				"length": 118646
+			},
+			{
+				"contentKey": "91880400920:136497",
+				"contentOffset": 0,
+				"offsetInBatch": 1446225,
+				"length": 136497
+			},
+			{
+				"contentKey": "91880537417:142241",
+				"contentOffset": 0,
+				"offsetInBatch": 1582722,
+				"length": 142241
+			}
+		]
+	},
+	"counts": {
+		"requestedIds": 16,
+		"presentIds": 16,
+		"noEntryIds": 0,
+		"unknownIds": 0,
+		"selectedEntries": 16,
+		"uniqueContents": 16,
+		"uniquePayloadBytes": 1724963,
+		"selectedByteUnion": 1724963,
+		"batchBytes": 1724963,
+		"overfetchBytes": 0
+	},
+	"readDirectories": [
+		{
+			"offset": 127,
+			"length": 15547,
+			"sha256": "47a43a9146254737886031d7d9f1b3e1f2c2048daf650b4d4200fe2f14a9437c",
+			"entries": 2917,
+			"decodedBytes": 23450
+		},
+		{
+			"offset": 138644179926,
+			"length": 123782,
+			"sha256": "9e289b54f089003c7abbdfda5ae9dc25c525a763d1cea6792b530afa917ea685",
+			"entries": 61094,
+			"decodedBytes": 330435
+		}
+	]
+}

@@ -1,0 +1,34 @@
+{
+	"name": "@cataqui/auth-schemas",
+	"version": "1.0.0",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"files": [
+		"dist",
+		"package.json"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts --tsconfig tsconfig.build.json --format esm --dts --sourcemap --target es2023 --platform neutral --out-dir dist",
+		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"dependencies": {
+		"zod": "catalog:"
+	}
+}

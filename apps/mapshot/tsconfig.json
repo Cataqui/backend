@@ -1,0 +1,13 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"lib": ["ESNext"],
+		"types": ["node", "vitest/globals"],
+		"noEmit": true,
+		"resolveJsonModule": true,
+		"allowImportingTsExtensions": true
+	},
+	"include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}

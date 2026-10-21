@@ -1,21 +1,21 @@
 import { Test } from "@nestjs/testing";
+import * as td from "testdouble";
 import { type IUpstashRedisConfig, upstashRedisConfig } from "../config/upstash-redis.config";
 import { RedisService } from "./redis.service";
 
-let redisConfigs: Record<string, unknown>[] = [];
+afterEach(() => td.reset());
 
-const MockRedis = vi.hoisted(() => {
-	return class {
-		readonly eval = vi.fn();
-
-		constructor(config: Record<string, unknown>) {
-			redisConfigs.push(config);
-		}
-	};
+const _redis = await vi.hoisted(async () => {
+	const td = await import("testdouble");
+	return { construct: td.func<(config: Record<string, unknown>) => void>() };
 });
 
 vi.mock("@upstash/redis", () => ({
-	Redis: MockRedis,
+	Redis: class {
+		constructor(config: Record<string, unknown>) {
+			_redis.construct(config);
+		}
+	},
 }));
 
 const MOCK_CONFIG: IUpstashRedisConfig = {
@@ -27,19 +27,9 @@ describe("RedisService", () => {
 	let redisService: RedisService;
 
 	beforeEach(async () => {
-		redisConfigs = [];
-		vi.clearAllMocks();
-
 		const module = await Test.createTestingModule({
-			providers: [
-				{
-					provide: upstashRedisConfig.KEY,
-					useValue: MOCK_CONFIG,
-				},
-				RedisService,
-			],
+			providers: [{ provide: upstashRedisConfig.KEY, useValue: MOCK_CONFIG }, RedisService],
 		}).compile();
-
 		redisService = module.get(RedisService);
 	});
 
@@ -48,9 +38,6 @@ describe("RedisService", () => {
 	});
 
 	it("should configure the Upstash client with the registered REST URL and token", () => {
-		expect(redisConfigs[0]).toEqual({
-			url: MOCK_CONFIG.restUrl,
-			token: MOCK_CONFIG.restToken,
-		});
+		td.verify(_redis.construct({ url: MOCK_CONFIG.restUrl, token: MOCK_CONFIG.restToken }), { times: 1 });
 	});
 });

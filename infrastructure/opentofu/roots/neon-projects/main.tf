@@ -78,3 +78,11 @@ resource "infisical_secret" "neon_project_id" {
     prevent_destroy = true
   }
 }
+
+resource "infisical_secret" "auth_neon_project_id" {
+  workspace_id = local.infisical_project_id
+  env_slug     = var.environment
+  folder_path  = "/generated/auth/deployment"
+  name         = "NEON_PROJECT_ID"
+  value        = neon_project.cataqui.id
+}

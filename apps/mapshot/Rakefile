@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "rake/testtask"
+
+Rake::TestTask.new(:test) do |task|
+  task.description = "Run Mapshot automation tests"
+  task.libs = []
+  task.test_files = FileList["{build,scripts}/**/*_test.rb"]
+end
+
+desc "Run Mapshot automation tests with coverage"
+task :coverage do
+  ENV["COVERAGE"] = "1"
+  Rake::Task[:test].invoke
+end
+
+task default: :test

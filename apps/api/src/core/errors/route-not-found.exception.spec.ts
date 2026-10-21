@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import { DomainError } from "./domain-error";
+import { AppError } from "./app-error";
 import { ErrorCode } from "./error-code.enum";
 import { RouteNotFoundException } from "./route-not-found.exception";
 
@@ -48,9 +48,9 @@ describe("RouteNotFoundException", () => {
 			expect(error).toBeInstanceOf(Error);
 		});
 
-		it("should be an instance of DomainError", () => {
+		it("should be an instance of AppError", () => {
 			const error = new RouteNotFoundException();
-			expect(error).toBeInstanceOf(DomainError);
+			expect(error).toBeInstanceOf(AppError);
 		});
 	});
 });

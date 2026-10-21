@@ -34,18 +34,24 @@ run "generated_folder_contract" {
       infisical_secret_folder.api.folder_path == "/generated" &&
       infisical_secret_folder.api.name == "api" &&
       !infisical_secret_folder.api.force_delete &&
+      infisical_secret_folder.mapshot.folder_path == "/generated" &&
+      infisical_secret_folder.mapshot.name == "mapshot" &&
+      !infisical_secret_folder.mapshot.force_delete &&
+      infisical_secret_folder.mapshot_deployment.folder_path == "/generated/mapshot" &&
+      infisical_secret_folder.mapshot_deployment.name == "deployment" &&
+      !infisical_secret_folder.mapshot_deployment.force_delete &&
       infisical_secret_folder.maps.folder_path == "/generated" &&
       infisical_secret_folder.maps.name == "maps" &&
       !infisical_secret_folder.maps.force_delete &&
-      infisical_secret_folder.webhooks.folder_path == "/generated" &&
-      infisical_secret_folder.webhooks.name == "webhooks" &&
-      !infisical_secret_folder.webhooks.force_delete &&
+      infisical_secret_folder.auth.folder_path == "/generated" &&
+      infisical_secret_folder.auth.name == "auth" &&
+      !infisical_secret_folder.auth.force_delete &&
       infisical_secret_folder.api_runtime.folder_path == "/generated/api" &&
       infisical_secret_folder.api_runtime.name == "runtime" &&
       !infisical_secret_folder.api_runtime.force_delete &&
-      infisical_secret_folder.webhooks_runtime.folder_path == "/generated/webhooks" &&
-      infisical_secret_folder.webhooks_runtime.name == "runtime" &&
-      !infisical_secret_folder.webhooks_runtime.force_delete &&
+      infisical_secret_folder.auth_runtime.folder_path == "/generated/auth" &&
+      infisical_secret_folder.auth_runtime.name == "runtime" &&
+      !infisical_secret_folder.auth_runtime.force_delete &&
       infisical_secret_folder.deployment.folder_path == "/generated/api" &&
       infisical_secret_folder.deployment.name == "deployment" &&
       !infisical_secret_folder.deployment.force_delete &&
@@ -55,11 +61,11 @@ run "generated_folder_contract" {
       infisical_secret_folder.maps_deployment.folder_path == "/generated/maps" &&
       infisical_secret_folder.maps_deployment.name == "deployment" &&
       !infisical_secret_folder.maps_deployment.force_delete &&
-      infisical_secret_folder.webhooks_deployment.folder_path == "/generated/webhooks" &&
-      infisical_secret_folder.webhooks_deployment.name == "deployment" &&
-      !infisical_secret_folder.webhooks_deployment.force_delete
+      infisical_secret_folder.auth_deployment.folder_path == "/generated/auth" &&
+      infisical_secret_folder.auth_deployment.name == "deployment" &&
+      !infisical_secret_folder.auth_deployment.force_delete
     )
-    error_message = "API, Maps, and Webhooks must each have protected runtime and deployment folders."
+    error_message = "Every application must have protected deployment and runtime credential folders."
   }
 
   assert {
@@ -69,6 +75,7 @@ run "generated_folder_contract" {
       !infisical_secret_folder.opentofu.force_delete &&
       toset(keys(infisical_secret_folder.cloudflare_opentofu_root)) == toset([
         "cloudflare-ai-gateways",
+        "cloudflare-hyperdrive",
         "cloudflare-pages",
         "cloudflare-queues",
         "cloudflare-r2",
@@ -90,13 +97,15 @@ run "production_folder_environment" {
       infisical_secret_folder.generated.environment_slug == "production" &&
       infisical_secret_folder.api.environment_slug == "production" &&
       infisical_secret_folder.maps_runtime.environment_slug == "production" &&
+      infisical_secret_folder.mapshot.environment_slug == "production" &&
+      infisical_secret_folder.mapshot_deployment.environment_slug == "production" &&
       infisical_secret_folder.maps.environment_slug == "production" &&
       infisical_secret_folder.maps_deployment.environment_slug == "production" &&
-      infisical_secret_folder.webhooks.environment_slug == "production" &&
+      infisical_secret_folder.auth.environment_slug == "production" &&
       infisical_secret_folder.api_runtime.environment_slug == "production" &&
-      infisical_secret_folder.webhooks_runtime.environment_slug == "production" &&
+      infisical_secret_folder.auth_runtime.environment_slug == "production" &&
       infisical_secret_folder.deployment.environment_slug == "production" &&
-      infisical_secret_folder.webhooks_deployment.environment_slug == "production"
+      infisical_secret_folder.auth_deployment.environment_slug == "production"
     )
     error_message = "Every folder must use the selected Infisical environment."
   }
@@ -104,10 +113,10 @@ run "production_folder_environment" {
   assert {
     condition = (
       infisical_secret_folder.opentofu.environment_slug == "production" &&
-      length(infisical_secret_folder.cloudflare_opentofu_root) == 6 &&
+      length(infisical_secret_folder.cloudflare_opentofu_root) == 7 &&
       alltrue([for folder in values(infisical_secret_folder.cloudflare_opentofu_root) : folder.environment_slug == "production"])
     )
-    error_message = "Production must create one credential folder for each of its six Cloudflare roots."
+    error_message = "Production must create one credential folder for each of its seven Cloudflare roots."
   }
 }
 
@@ -134,5 +143,43 @@ run "r2_credential_folder" {
       !infisical_secret_folder.cloudflare_opentofu_root["cloudflare-r2"].force_delete
     )
     error_message = "R2 credentials must have a protected environment-scoped generated folder."
+  }
+}
+
+run "mapshot_staging_pipeline_folders" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  assert {
+    condition = (
+      toset(keys(infisical_secret_folder.mapshot_pipeline)) == toset(["map-update"]) &&
+      alltrue([
+        for name, folder in infisical_secret_folder.mapshot_pipeline :
+        folder.name == name && folder.folder_path == "/generated/mapshot" && folder.environment_slug == "staging" && !folder.force_delete
+      ])
+    )
+    error_message = "Staging must own protected map-update folder without production promotion credentials."
+  }
+}
+
+run "mapshot_production_pipeline_folders" {
+  command = plan
+
+  variables {
+    environment = "production"
+  }
+
+  assert {
+    condition = (
+      length(infisical_secret_folder.mapshot_pipeline) == 0 &&
+      alltrue([
+        for name, folder in infisical_secret_folder.mapshot_pipeline :
+        folder.name == name && folder.folder_path == "/generated/mapshot" && folder.environment_slug == "production" && !folder.force_delete
+      ])
+    )
+    error_message = "Production must reuse its deployment folder without a separate promotion or map-update folder."
   }
 }

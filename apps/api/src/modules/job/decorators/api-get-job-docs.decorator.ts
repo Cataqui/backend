@@ -1,6 +1,7 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
+import { createSuccessResponseSchema } from "@cataqui/response";
 import { PublicJobOutputSchema } from "../schemas/public-job-output.schema";
 
 export function ApiGetJobDocs(): MethodDecorator & ClassDecorator {
@@ -13,6 +14,11 @@ export function ApiGetJobDocs(): MethodDecorator & ClassDecorator {
 			status: HttpStatus.OK,
 			description: "Public job found.",
 			standardSchema: responseSchema,
+		}),
+		ApiResponse({
+			status: "default",
+			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.NOT_FOUND,

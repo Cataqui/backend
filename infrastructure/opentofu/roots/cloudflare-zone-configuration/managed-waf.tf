@@ -12,7 +12,7 @@ resource "cloudflare_ruleset" "managed_waf" {
     }
     description = "Execute Cloudflare Managed Ruleset except for the WhatsApp route authenticated by Worker HMAC"
     enabled     = true
-    expression  = "not (http.host in {\"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/whatsapp\")"
+    expression  = "not (http.host in {\"auth.cataqui.com\" \"staging.auth.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/webhooks/whatsapp\")"
     ref         = "execute_cloudflare_managed_ruleset"
   }]
 

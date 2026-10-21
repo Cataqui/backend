@@ -14,24 +14,22 @@ runs:
   steps:
     - name: Resolve Google service account
       id: google-service-account
-      shell: bash
+      shell: ruby {0}
       env:
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        set -euo pipefail
-        case "$INPUT_ENVIRONMENT" in
-          staging|production) ;;
-          *)
-            echo "Unsupported environment: $INPUT_ENVIRONMENT" >&2
-            exit 1
-            ;;
-        esac
+        require "json"
 
-        manifest_file="$GITHUB_ACTION_PATH/../../../infrastructure/manifest.json"
-        project_id="$(jq -er --arg key "cataqui_$INPUT_ENVIRONMENT" '.google_cloud.projects[$key].id' "$manifest_file")"
-        service_account_id="$(jq -er --arg key "cataqui_backend_$INPUT_ENVIRONMENT" '.google_cloud.github_auth.service_accounts[$key]' "$manifest_file")"
-        printf 'email=%s@%s.iam.gserviceaccount.com\n' "$service_account_id" "$project_id" >> "$GITHUB_OUTPUT"
+        environment = ENV.fetch("INPUT_ENVIRONMENT")
+        abort("Unsupported environment: #{environment}") unless %w[staging production].include?(environment)
 
+        manifest = JSON.parse(File.read(File.join(ENV.fetch("GITHUB_ACTION_PATH"), "../../../infrastructure/manifest.json"), encoding: "UTF-8"))
+        project_id = manifest.dig("google_cloud", "projects", "cataqui_#{environment}", "id")
+        service_account_id = manifest.dig("google_cloud", "github_auth", "service_accounts", "cataqui_backend_#{environment}")
+        abort("Google Cloud project or service account is missing from the infrastructure manifest.") unless project_id && service_account_id
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |file|
+          file.puts("email=#{service_account_id}@#{project_id}.iam.gserviceaccount.com")
+        end
     - name: Authenticate to Google Cloud
       id: google-auth
       uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -46,18 +44,14 @@ runs:
         cleanup_credentials: true
 
     - name: Export OpenTofu Google access token
-      shell: bash
+      shell: ruby {0}
       env:
         GOOGLE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
       run: |
-        set -euo pipefail
-        if [[ -z "$GOOGLE_ACCESS_TOKEN" ]]; then
-          echo "Google Cloud authentication did not return an access token." >&2
-          exit 1
-        fi
-        if [[ "$GOOGLE_ACCESS_TOKEN" == *$'\n'* || "$GOOGLE_ACCESS_TOKEN" == *$'\r'* ]]; then
-          echo "Google Cloud authentication returned an invalid access token." >&2
-          exit 1
-        fi
-        printf '::add-mask::%s\n' "$GOOGLE_ACCESS_TOKEN"
-        printf 'GOOGLE_OAUTH_ACCESS_TOKEN=%s\n' "$GOOGLE_ACCESS_TOKEN" >> "$GITHUB_ENV"
+        token = ENV.fetch("GOOGLE_ACCESS_TOKEN")
+        abort("Google Cloud authentication did not return an access token.") if token.empty?
+        abort("Google Cloud authentication returned an invalid access token.") if token.include?("\n") || token.include?("\r")
+        puts("::add-mask::#{token}")
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          file.puts("GOOGLE_OAUTH_ACCESS_TOKEN=#{token}")
+        end

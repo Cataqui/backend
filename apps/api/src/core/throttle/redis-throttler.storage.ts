@@ -59,7 +59,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
 						0
 					}
 				`,
-				[this._buildRequestTimestampsRedisKey({ requestKey: requestKey, throttlerName: throttlerName })],
+				[`rate-limit:${throttlerName}:request-timestamps-by-key:${requestKey}`],
 				[String(ttlMilliseconds), String(limit), randomUUID()],
 			);
 
@@ -74,9 +74,5 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
 
 			throw new RateLimitedError();
 		}
-	}
-
-	private _buildRequestTimestampsRedisKey(params: { requestKey: string; throttlerName: string }): string {
-		return `rate-limit:${params.throttlerName}:request-timestamps-by-key:${params.requestKey}`;
 	}
 }

@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { ErrorOutputSchema } from "../../../core/errors/error-output";
-import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
+import { createSuccessResponseSchema } from "@cataqui/response";
 import { PublicJobOutputSchema } from "../schemas/public-job-output.schema";
 
 export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
@@ -28,28 +28,28 @@ export function ApiCreateJobDocs(): MethodDecorator & ClassDecorator {
 		ApiResponse({
 			status: HttpStatus.BAD_REQUEST,
 			description: "Invalid post or idempotency key.",
-			standardSchema: ErrorOutputSchema,
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
-			status: HttpStatus.UNAUTHORIZED,
-			description: "A valid bearer access token is required.",
-			standardSchema: ErrorOutputSchema,
+			status: "default",
+			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.CONFLICT,
-			description: "This idempotency key was used for different post content.",
-			standardSchema: ErrorOutputSchema,
+			description: "A profile is required, or this idempotency key was used for different post content.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.TOO_MANY_REQUESTS,
 			description: "Posting rate limit reached.",
-			standardSchema: ErrorOutputSchema,
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.SERVICE_UNAVAILABLE,
 			description:
 				"Job details or maps could not be prepared. Keep the form and retry unchanged content with the same Idempotency-Key.",
-			standardSchema: ErrorOutputSchema,
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 	);
 }

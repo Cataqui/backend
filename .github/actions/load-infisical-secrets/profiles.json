@@ -93,9 +93,7 @@
 			"DATABASE_APP_POOLER_URL",
 			"AI_GATEWAY_API_TOKEN",
 			"UPSTASH_REDIS_REST_URL",
-			"UPSTASH_REDIS_REST_TOKEN",
-			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
-			"MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64"
+			"UPSTASH_REDIS_REST_TOKEN"
 		],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
@@ -113,21 +111,21 @@
 		},
 		"authenticate_infisical_provider": false
 	},
-	"webhooks-runtime": {
-		"secret_path": "/generated/webhooks/runtime",
-		"required_secrets": ["WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN", "META_APP_SECRET"],
-		"environment_aliases": {},
-		"authenticate_infisical_provider": false
-	},
-	"webhooks-deployment": {
-		"secret_path": "/generated/webhooks/deployment",
-		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
-		"environment_aliases": {},
-		"authenticate_infisical_provider": false
-	},
 	"cloudflare-r2": {
 		"secret_path": "/generated/opentofu/cloudflare-r2",
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"mapshot-deployment": {
+		"secret_path": "/generated/mapshot/deployment",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN", "MAPSHOT_R2_ACCESS_KEY_ID", "MAPSHOT_R2_SECRET_ACCESS_KEY"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"mapshot-map-update": {
+		"secret_path": "/generated/mapshot/map-update",
+		"required_secrets": ["MAPSHOT_R2_ACCESS_KEY_ID", "MAPSHOT_R2_SECRET_ACCESS_KEY"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
 	},
@@ -139,7 +137,7 @@
 	},
 	"maps-runtime": {
 		"secret_path": "/generated/maps/runtime",
-		"required_secrets": ["GOOGLE_PLACES_API_KEY", "GEOAPIFY_API_KEY"],
+		"required_secrets": ["GOOGLE_PLACES_API_KEY", "STATIC_MAP_LOCATION_SIGNING_KEY_BASE64URL"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
 	},
@@ -148,5 +146,40 @@
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
+	},
+	"auth-runtime": {
+		"secret_path": "/generated/auth/runtime",
+		"required_secrets": [
+			"UPSTASH_REDIS_REST_URL",
+			"UPSTASH_REDIS_REST_TOKEN",
+			"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+			"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN",
+			"META_APP_SECRET"
+		],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
+	"auth-deployment": {
+		"secret_path": "/generated/auth/deployment",
+		"required_secrets": [
+			"CLOUDFLARE_API_TOKEN",
+			"DATABASE_OWNER_DIRECT_URL",
+			"NEON_PROJECT_ID",
+			"NEON_PROJECT_API_KEY",
+			"HYPERDRIVE_ID"
+		],
+		"environment_aliases": {
+			"NEON_API_KEY": "NEON_PROJECT_API_KEY"
+		},
+		"authenticate_infisical_provider": false
+	},
+	"cloudflare-hyperdrive": {
+		"secret_path": "/generated/opentofu/cloudflare-hyperdrive",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN", "DATABASE_HOST", "DATABASE_PASSWORD"],
+		"environment_aliases": {
+			"TF_VAR_database_host": "DATABASE_HOST",
+			"TF_VAR_database_password": "DATABASE_PASSWORD"
+		},
+		"authenticate_infisical_provider": true
 	}
 }

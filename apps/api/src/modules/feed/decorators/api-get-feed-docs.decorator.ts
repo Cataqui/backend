@@ -1,6 +1,7 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { createPaginatedSuccessResponseSchema } from "../../../shared/schemas/paginated-success-response.schema";
+import { createPaginatedSuccessResponseSchema } from "@cataqui/response";
+import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
 import { FeedItemOutputSchema } from "../schemas/feed-item-output.schema";
 
 export function ApiGetFeedDocs(): MethodDecorator & ClassDecorator {
@@ -18,8 +19,9 @@ export function ApiGetFeedDocs(): MethodDecorator & ClassDecorator {
 			standardSchema: responseSchema,
 		}),
 		ApiResponse({
-			status: HttpStatus.BAD_REQUEST,
-			description: "Invalid cursor or query parameters",
+			status: "default",
+			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 	);
 }

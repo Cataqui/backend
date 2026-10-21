@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { ErrorOutputSchema } from "../../../core/errors/error-output";
-import { createSuccessResponseSchema } from "../../../shared/schemas/success-response.schema";
+import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
+import { createSuccessResponseSchema } from "@cataqui/response";
 import { ContactOutputSchema } from "../../contact/schemas/contact-output.schema";
 
 export function ApiGetJobContactDocs(): MethodDecorator & ClassDecorator {
@@ -21,14 +21,14 @@ export function ApiGetJobContactDocs(): MethodDecorator & ClassDecorator {
 			},
 		}),
 		ApiResponse({
-			status: HttpStatus.BAD_REQUEST,
-			description: "Invalid job or contact ID.",
-			standardSchema: ErrorOutputSchema,
+			status: "default",
+			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.NOT_FOUND,
 			description: "The job is unavailable or does not use this contact.",
-			standardSchema: ErrorOutputSchema,
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 	);
 }

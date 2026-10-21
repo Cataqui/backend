@@ -1,36 +1,47 @@
-import { ContactMethod } from "../../../../generated/prisma/client.js";
+import * as td from "testdouble";
+import { ContactMethod } from "../../../../generated/prisma/client";
 import type { PrismaService } from "../../../core/prisma/prisma.service";
 import { ContactRepository } from "./contact.repository";
 
-const userId = "f3f3f078-9332-4879-9904-6565abc5d88d";
+const ownerProfileId = "f3f3f078-9332-4879-9904-6565abc5d88d";
+
+afterEach(() => td.reset());
 
 describe("ContactRepository", () => {
-	const prisma = { contact: { upsert: vi.fn(), findMany: vi.fn() } };
-	const repository = new ContactRepository(prisma as unknown as PrismaService);
+	const prisma = td.object<PrismaService>();
+	const repository = new ContactRepository(prisma);
 
-	beforeEach(() => vi.resetAllMocks());
+	beforeEach(() => {
+		Object.defineProperty(prisma, "contact", { value: td.object<PrismaService["contact"]>(), configurable: true });
+	});
 
-	it("creates or reuses a user's immutable contact", async () => {
+	it("creates or reuses a profile's immutable contact", async () => {
 		await repository.upsertContact({
-			userId: userId,
+			ownerProfileId: ownerProfileId,
 			contactMethod: ContactMethod.WHATSAPP,
 			identifier: "@cataqui.poster",
 		});
-		expect(prisma.contact.upsert).toHaveBeenCalledWith({
-			where: {
-				userId_contactMethod_identifier: {
-					userId: userId,
+		td.verify(
+			prisma.contact.upsert({
+				where: {
+					ownerProfileId_contactMethod_identifier: {
+						ownerProfileId: ownerProfileId,
+						contactMethod: ContactMethod.WHATSAPP,
+						identifier: "@cataqui.poster",
+					},
+				},
+				update: {},
+				create: {
+					ownerProfileId: ownerProfileId,
 					contactMethod: ContactMethod.WHATSAPP,
 					identifier: "@cataqui.poster",
 				},
-			},
-			update: {},
-			create: { userId: userId, contactMethod: ContactMethod.WHATSAPP, identifier: "@cataqui.poster" },
-		});
+			}),
+		);
 	});
 
-	it("lists one user's contacts newest first", async () => {
-		await repository.findContactsByUserId({ userId: userId });
-		expect(prisma.contact.findMany).toHaveBeenCalledWith({ where: { userId: userId }, orderBy: { createdAt: "desc" } });
+	it("lists one profile's contacts newest first", async () => {
+		await repository.findContactsByOwnerProfileId({ ownerProfileId: ownerProfileId });
+		td.verify(prisma.contact.findMany({ where: { ownerProfileId: ownerProfileId }, orderBy: { createdAt: "desc" } }));
 	});
 });

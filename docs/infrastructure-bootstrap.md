@@ -26,11 +26,12 @@ The local operator must be able to manage:
 - Google Cloud projects, billing attachment, service accounts, Workload Identity Federation, and required IAM bindings—the Google principal needs Project Creator on the organization and Billing Account User on the billing account at minimum;
 - GitHub environments, deployment branch policies, and environment variables for the repository.
 
-Install the repository dependencies and authenticate every required CLI from the repository root:
+Install Ruby at the version pinned in `.ruby-version` and the [repository prerequisites](../README.md#prerequisites). Install the locked dependencies and authenticate every required CLI from the repository root:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm exec wrangler login
+bundle install
+pnpm exec cf auth login
 infisical login
 gcloud auth login
 gcloud auth application-default login
@@ -38,13 +39,13 @@ gh auth login
 pnpm exec neon auth
 ```
 
-Confirm that Wrangler is authenticated to the configured Cloudflare account, GitHub CLI resolves the configured repository, Neon uses an OAuth-authenticated `DEFAULT` profile, and Google Application Default Credentials are available. Bootstrap verifies these identities before making changes.
+Confirm that Cloudflare CLI is authenticated to the configured Cloudflare account, GitHub CLI resolves the configured repository, Neon uses an OAuth-authenticated `DEFAULT` profile, and Google Application Default Credentials are available. Bootstrap verifies these identities before making changes.
 
 The following values originate outside bootstrap and are requested through hidden prompts only when no healthy stored value exists:
 
 - a Cloudflare API token with `API Tokens Write`;
 - an account-wide Upstash Management API key from the Upstash Console;
-- the Meta app secret used by the Webhooks runtime.
+- the Meta app secret used by the Auth runtime.
 
 Never commit these values or pass them through command arguments. Bootstrap stores its provider credentials in Infisical's single `/opentofu/bootstrap` folder; it does not create child folders beneath that path.
 
@@ -64,25 +65,6 @@ pnpm infrastructure:bootstrap
 
 If prompted, enter the missing manually issued values interactively. Do not redirect output to a shared log or persist terminal history containing secret material.
 
-Bootstrap creates, imports, reuses, or reconciles:
-
-- the Infisical project, staging and production environments, `/opentofu/bootstrap`, generated secret folders (including `/generated/maps/runtime`), environment-scoped OIDC identities, and identity permissions;
-- the private Cloudflare R2 state bucket and environment-scoped R2 credentials;
-- the foundational `infisical-generated-folders` OpenTofu root for staging and production, using the same remote state later used by CI;
-- the Meta Webhooks runtime secret, Upstash management credential, and one shared Neon account bootstrap issuer;
-- Google Cloud projects, billing attachment, GitHub Workload Identity Federation, service accounts, and required IAM bindings;
-- GitHub staging and production environments, deployment branch policies, and the environment variables required for Infisical and Google authentication.
-
-Bootstrap is state-aware and repeatable: it inspects live resources and applicable OpenTofu state, adopts a valid existing resource when needed, reconciles owned configuration, and fails closed on ambiguous or foreign resources.
-
-### 3. Add manually issued application keys
-
-OpenTofu creates `/generated/maps/runtime` in both Infisical environments. Bootstrap then creates an empty `GEOAPIFY_API_KEY` entry only when it is missing. Before deploying Maps, fill in that entry in `staging` and `production` with the appropriate Geoapify key. The Google Maps Platform root delivers `GOOGLE_PLACES_API_KEY` into the same folder.
-
-Generated folders remain owned by OpenTofu. The manual-key placeholder step creates only missing secret names and leaves every existing entry untouched, including blank values. CI reads the key from the selected environment and configures the deployed Worker; it does not create or rotate the key. Missing or blank keys stop deployment preflight.
-
-Group application credentials by consuming service under `/generated/<service>/runtime`. The folder is managed by OpenTofu; individual values may be automatically issued or manually supplied. Keep OpenTofu initialization/provider credentials under `/opentofu/bootstrap`.
-
 ## Verification
 
 The command succeeds only after it verifies the reconciled identities and credentials. A successful run ends with:
@@ -95,8 +77,7 @@ After bootstrap:
 
 - confirm the staging and production GitHub environments have the expected branch policies and authentication variables;
 - confirm the expected values exist in `/opentofu/bootstrap` and the generated runtime folders without printing their contents;
-- confirm `GEOAPIFY_API_KEY` has been entered in `/generated/maps/runtime` for each environment that will deploy Maps;
-- apply `cloudflare-api-tokens` before application deployment so each application receives its environment-specific Workers credential under `/generated/<app>/deployment`;
+- reconcile infrastructure through the Deploy workflow's `infrastructure` scope before application deployment; confirm each application's `/generated/<app>/deployment` credentials and staging's `/generated/mapshot/map-update` credentials exist without printing their values;
 - run `pnpm check:opentofu` to validate the normal OpenTofu roots without applying them;
 - continue with the [deployment runbook](deployment.md) when the infrastructure is ready to reconcile and deploy.
 

@@ -1,7 +1,10 @@
 name: Deploy Maps Worker
-description: Deploy Maps immediately, verify health, and attempt restoration after failure.
+description: Publish the Maps Worker, check health, and restore the previous deployment on failure.
 
 inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
   environment:
     description: Deployment environment; staging or production.
     required: true
@@ -9,96 +12,81 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Deploy Maps version
-      shell: bash
-      working-directory: ${{ github.workspace }}/apps/workers/maps
+    - name: Load Maps deployment credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: maps-deployment
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Load Maps runtime
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: maps-runtime
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Build Maps for the deployment environment
+      shell: ruby {0}
+      working-directory: apps/workers/maps
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: exec "pnpm", "exec", "cf", "build", "--mode", ENV.fetch("INPUT_ENVIRONMENT")
+    - name: Get current Worker deployment
+      id: current-deployment
+      shell: ruby {0}
+      working-directory: apps/workers/maps
       env:
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        set -euo pipefail
-        case "$INPUT_ENVIRONMENT" in staging | production) ;; *) exit 1 ;; esac
-        umask 077
-        secrets_file="$RUNNER_TEMP/maps-secrets.json"
-        deployments_file="$RUNNER_TEMP/maps-deployments.json"
-        command_log="$RUNNER_TEMP/maps-deploy.log"
-        cleanup() { rm -f -- "$secrets_file" "$deployments_file" "$command_log"; }
-        trap cleanup EXIT
-        node - "$secrets_file" <<'NODE'
-        const { writeFileSync } = require("node:fs");
-        if (!process.env.GEOAPIFY_API_KEY || !process.env.GOOGLE_PLACES_API_KEY) process.exit(1);
-        writeFileSync(process.argv[2], JSON.stringify({ GEOAPIFY_API_KEY: process.env.GEOAPIFY_API_KEY, GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY }), { mode: 0o600 });
-        NODE
-        worker_name="cataqui-maps-$INPUT_ENVIRONMENT"
-        base_url="https://maps.cataqui.com"
-        [[ "$INPUT_ENVIRONMENT" == staging ]] && base_url="https://staging.maps.cataqui.com"
-        account_id="$(jq -er '.account_id' wrangler.jsonc)"
-        worker_exists="$(WORKER_NAME="$worker_name" CLOUDFLARE_ACCOUNT_ID="$account_id" node --input-type=module <<'NODE'
-        try {
-          const { CLOUDFLARE_ACCOUNT_ID: accountId, CLOUDFLARE_API_TOKEN: token, WORKER_NAME: workerName } = process.env;
-          if (!token) process.exit(1);
-          const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts`, {
-            headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000),
-          });
-          if (!response.ok) process.exit(1);
-          const body = await response.json();
-          if (body.success !== true || !Array.isArray(body.result) || !body.result.every((worker) => typeof worker.id === "string")) process.exit(1);
-          const matches = body.result.filter((worker) => worker.id === workerName);
-          if (matches.length > 1) process.exit(1);
-          process.stdout.write(matches.length === 1 ? "true" : "false");
-        } catch { process.exit(1); }
-        NODE
-        )" || { echo "Maps Worker lookup failed; deployment stopped." >&2; exit 1; }
-        previous_version=""
-        if [[ "$worker_exists" == true ]]; then
-          pnpm exec wrangler deployments list --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" --json >"$deployments_file" 2>"$command_log" || {
-            echo "Maps deployment lookup failed; deployment stopped." >&2; exit 1;
-          }
-          previous_version="$(node - "$deployments_file" <<'NODE'
-          const { readFileSync } = require("node:fs");
-          try {
-            const deployments = JSON.parse(readFileSync(process.argv[2], "utf8"));
-            if (!Array.isArray(deployments) || !Array.isArray(deployments.at(-1)?.versions)) process.exit(1);
-            const versions = deployments.at(-1).versions;
-            if (versions.length !== 1 || versions[0].percentage !== 100 || typeof versions[0].version_id !== "string") process.exit(1);
-            process.stdout.write(versions[0].version_id);
-          } catch { process.exit(1); }
-        NODE
-          )" || { echo "Maps has no single fully active version to restore; resolve its deployment before retrying." >&2; exit 1; }
-        fi
-        restore() {
-          if [[ -z "$previous_version" ]]; then
-            echo "No previous Maps version exists; resolve the failed first deployment before retrying." >&2
-            return 1
-          fi
-          if ! pnpm exec wrangler versions deploy "$previous_version@100%" --config wrangler.jsonc \
-            --env "$INPUT_ENVIRONMENT" --message "Automatic rollback after failed $GITHUB_SHA" --yes >"$command_log" 2>&1; then
-            echo "Maps rollback failed or is unavailable after a Durable Object lifecycle change; inspect the deployment and recover forward." >&2
-            return 1
-          fi
-          echo "Previous Maps version restored; verify public health before retrying." >&2
-        }
-        if ! pnpm exec wrangler deploy --config wrangler.jsonc --env "$INPUT_ENVIRONMENT" \
-          --strict --tag "$GITHUB_SHA" --message "Deploy $GITHUB_SHA" --secrets-file "$secrets_file" >"$command_log" 2>&1; then
-          echo "Maps deployment failed; raw output is withheld." >&2
-          restore || true
-          exit 1
-        fi
-        successes=0
-        failures=0
-        last_status=000
-        for attempt in $(seq 1 40); do
-          last_status="$(curl --silent --connect-timeout 5 --max-time 10 --output /dev/null --write-out '%{http_code}' "$base_url/v1/health" || true)"
-          if [[ "$last_status" == 204 ]]; then
-            successes=$((successes+1))
-            failures=0
-            if [[ "$successes" -ge 3 ]]; then exit 0; fi
-          else
-            successes=0
-            failures=$((failures+1))
-            if [[ -n "$previous_version" && "$failures" -ge 3 ]]; then break; fi
-          fi
-          if [[ "$attempt" -lt 40 ]]; then sleep 15; fi
-        done
-        echo "Maps failed post-deployment health verification with HTTP $last_status." >&2
-        restore || true
-        exit 1
+        require "open3"
+        require "rbconfig"
+        versions, status = Open3.capture2(
+          RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/get-current-worker-deployment.rb")
+        )
+        exit(status.exitstatus || 1) unless status.success?
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "versions=#{versions.strip}" }
+    - name: Deploy Maps
+      id: deploy
+      shell: ruby {0}
+      working-directory: apps/workers/maps
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_RUNTIME_PROFILE: maps-runtime
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/deploy-worker.rb")
+    - name: Verify Maps health
+      id: health
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-maps-health.rb")
+    - name: Restore previous Maps deployment
+      id: restore
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions != '[]'
+      shell: ruby {0}
+      working-directory: apps/workers/maps
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        PREVIOUS_VERSIONS: ${{ steps.current-deployment.outputs.versions }}
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/restore-worker-deployment.rb")
+    - name: Check Maps health after restoration
+      if: failure() && steps.restore.outcome == 'success'
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-maps-health.rb")
+    - name: Report unavailable first-deployment rollback
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions == '[]'
+      shell: ruby {0}
+      run: warn "Maps deployment failed; no previous Worker deployment exists to restore."
+    - name: Clear Maps credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        require "json"
+        profiles = JSON.parse(File.read(".github/actions/load-infisical-secrets/profiles.json", encoding: "UTF-8"))
+        names = %w[maps-deployment maps-runtime].flat_map do |name|
+          profile = profiles.fetch(name)
+          profile.fetch("required_secrets") + profile.fetch("environment_aliases").keys
+        end
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          names.uniq.each { |name| file.puts "#{name}=" }
+        end

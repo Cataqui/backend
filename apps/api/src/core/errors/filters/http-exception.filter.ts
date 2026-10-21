@@ -2,9 +2,9 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { RequestUtils } from "../../../shared/utils/request.utils";
-import { ValidationViolationSchema } from "../../validation/validation-violation.schema";
+import { ValidationViolationSchema, type ValidationViolation } from "@cataqui/response";
+import { ApiErrorResponseOutputSchema } from "../api-error-response-output.schema";
 import { ErrorCode } from "../error-code.enum";
-import { ErrorOutputSchema, toErrorOutput } from "../error-output";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -25,7 +25,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 	private _resolveError(
 		exception: unknown,
 		request: FastifyRequest,
-	): { status: HttpStatus; body: z.infer<typeof ErrorOutputSchema> } {
+	): { status: HttpStatus; body: z.infer<typeof ApiErrorResponseOutputSchema> } {
 		if (exception instanceof HttpException) return this._resolveHttpException(exception, request);
 
 		if (exception instanceof Error) {
@@ -45,7 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		request: FastifyRequest,
 	): {
 		status: HttpStatus;
-		body: z.infer<typeof ErrorOutputSchema>;
+		body: z.infer<typeof ApiErrorResponseOutputSchema>;
 	} {
 		const status = exception.getStatus();
 		const exceptionResponse = exception.getResponse();
@@ -112,7 +112,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		request: FastifyRequest,
 	): {
 		status: HttpStatus;
-		body: z.infer<typeof ErrorOutputSchema>;
+		body: z.infer<typeof ApiErrorResponseOutputSchema>;
 	} {
 		const { errorCode, message } = this._resolveErrorCodeFromObject(resp, status);
 		const validationViolationsResult = z.array(ValidationViolationSchema).min(1).safeParse(resp["violations"]);
@@ -130,8 +130,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		resp: Record<string, unknown>,
 		status: HttpStatus,
 	): { errorCode: ErrorCode; message: string } {
-		if (typeof resp["errorCode"] === "string") {
-			return { errorCode: resp["errorCode"] as ErrorCode, message: this._resolveMessage(resp["message"]) };
+		if (resp["errorCode"] !== undefined) {
+			const errorCode = ApiErrorResponseOutputSchema.shape.errorCode.safeParse(resp["errorCode"]);
+			if (!errorCode.success) {
+				return { errorCode: ErrorCode.INTERNAL_ERROR, message: "An unexpected error occurred" };
+			}
+			return { errorCode: errorCode.data, message: this._resolveMessage(resp["message"]) };
 		}
 
 		if (status === HttpStatus.NOT_FOUND) {
@@ -172,14 +176,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		message: string;
 		status: HttpStatus;
 		request: FastifyRequest;
-		violations?: z.infer<typeof ValidationViolationSchema>[];
+		violations?: ValidationViolation[];
 	}): {
 		status: HttpStatus;
-		body: z.infer<typeof ErrorOutputSchema>;
+		body: z.infer<typeof ApiErrorResponseOutputSchema>;
 	} {
 		return {
 			status: params.status,
-			body: toErrorOutput({
+			body: ApiErrorResponseOutputSchema.parse({
 				errorCode: params.errorCode,
 				message: params.message,
 				status: params.status,

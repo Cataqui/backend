@@ -1,0 +1,14 @@
+name: Set up Node workspace
+description: Install the repository Node.js and pnpm toolchain and frozen dependencies.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with: { node-version: 24 }
+    - name: Enable the project-pinned package manager
+      shell: bash
+      run: corepack enable
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with: { node-version: 24, cache: pnpm }
+    - shell: bash
+      run: pnpm install --frozen-lockfile

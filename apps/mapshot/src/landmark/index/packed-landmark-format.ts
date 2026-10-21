@@ -1,0 +1,42 @@
+import { PlaceCategory } from "@cataqui/places";
+
+export const PackedLandmarkKinds = [
+	PlaceCategory.AIRPORT,
+	PlaceCategory.TRAIN_STATION,
+	PlaceCategory.SHOPPING_MALL,
+	PlaceCategory.STADIUM,
+	PlaceCategory.HOSPITAL,
+	PlaceCategory.EDUCATION,
+	PlaceCategory.MUSEUM,
+	PlaceCategory.ZOO,
+	PlaceCategory.PLACE_OF_WORSHIP,
+	PlaceCategory.PARK,
+	PlaceCategory.SUPERMARKET,
+	PlaceCategory.LIBRARY,
+	PlaceCategory.GOVERNMENT_OFFICE,
+	PlaceCategory.THEATER,
+	PlaceCategory.ATTRACTION,
+	PlaceCategory.BUS_STATION,
+	PlaceCategory.STORE,
+	PlaceCategory.POLICE_STATION,
+	PlaceCategory.FIRE_STATION,
+	PlaceCategory.PHARMACY,
+	PlaceCategory.COMMUNITY_CENTER,
+	PlaceCategory.PEDESTRIAN_AREA,
+	PlaceCategory.FERRY_TERMINAL,
+	PlaceCategory.CLINIC,
+	PlaceCategory.BUILDING,
+	PlaceCategory.BRIDGE,
+].flatMap((category) => PlaceCategory.toProtomapsKinds(category));
+
+export const PackedLandmarkColumns = [
+	"id",
+	"name",
+	"names",
+	"category",
+	"detail",
+	"lon",
+	"lat",
+	"minZoom",
+	"rank",
+] as const;

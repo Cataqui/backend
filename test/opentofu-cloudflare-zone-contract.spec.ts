@@ -154,12 +154,13 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			.filter((entry) => entry.isDirectory())
 			.map((entry) => entry.name)
 			.sort();
-		const runner = _readInfrastructureFile("opentofu/run-root-command.mjs");
+		const runner = _readInfrastructureFile("opentofu/run-root-command.rb");
 
 		expect(rootNames).toEqual([
 			"auth-secrets",
 			"cloudflare-ai-gateways",
 			"cloudflare-api-tokens",
+			"cloudflare-hyperdrive",
 			"cloudflare-pages",
 			"cloudflare-queues",
 			"cloudflare-r2",
@@ -174,7 +175,7 @@ describe("cataqui.com OpenTofu ownership contract", () => {
 			"neon-projects",
 			"upstash-redis",
 		]);
-		expect(runner).toContain('new URL("./roots/", import.meta.url)');
+		expect(runner).toContain('File.expand_path("roots", __dir__)');
 		expect(runner).not.toContain("cloudflare-ai-gateways");
 	});
 });

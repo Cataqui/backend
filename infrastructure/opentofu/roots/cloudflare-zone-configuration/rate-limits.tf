@@ -48,7 +48,7 @@ resource "cloudflare_ruleset" "rate_limits" {
       }
       description = "Limit NOTP intent creation per environment and NAT-aware visitor"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/v1/auth/notp/intents\""
+      expression  = "http.host in {\"auth.cataqui.com\" \"staging.auth.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/v1/notp/intents\""
       ratelimit = {
         characteristics     = ["cf.colo.id", "cf.unique_visitor_id"]
         mitigation_timeout  = 60
@@ -100,10 +100,10 @@ resource "cloudflare_ruleset" "rate_limits" {
       }
       description = "Limit repeated invalid WhatsApp webhook signatures"
       enabled     = true
-      expression  = "http.host in {\"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/whatsapp\""
+      expression  = "http.host in {\"auth.cataqui.com\" \"staging.auth.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/webhooks/whatsapp\""
       ratelimit = {
         characteristics     = ["cf.colo.id", "ip.src"]
-        counting_expression = "http.host in {\"webhooks.cataqui.com\" \"staging.webhooks.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/whatsapp\" and http.response.code eq 401"
+        counting_expression = "http.host in {\"auth.cataqui.com\" \"staging.auth.cataqui.com\"} and http.request.method eq \"POST\" and http.request.uri.path eq \"/webhooks/whatsapp\" and http.response.code eq 401"
         mitigation_timeout  = 60
         period              = 60
         requests_per_period = 300

@@ -41,6 +41,11 @@ describe("ObjectUtils", () => {
 			const input = { name: "test", age: undefined };
 			const result = ObjectUtils.filterUndefined(input);
 			expect(result).toEqual({ name: "test" });
+		});
+
+		it("should omit undefined keys from the partial result", () => {
+			const input = { name: "test", age: undefined };
+			const result = ObjectUtils.filterUndefined(input);
 			expect(Object.keys(result)).not.toContain("age");
 		});
 	});

@@ -1,0 +1,8 @@
+model Account {
+  id         String     @id @default(uuid()) @db.Uuid
+  createdAt  DateTime   @default(now()) @map("created_at")
+  identities Identity[]
+  sessions   Session[]
+
+  @@map("accounts")
+}

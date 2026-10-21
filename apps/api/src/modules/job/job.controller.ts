@@ -1,3 +1,4 @@
+import type { AuthenticatedSession } from "@cataqui/auth-schemas";
 import {
 	BadRequestException,
 	Body,
@@ -11,12 +12,11 @@ import {
 	Post,
 	Version,
 } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { RateLimit } from "../../core/throttle/rate-limit.decorator";
-import { CurrentAuthSession } from "../auth/decorators/current-auth-session.decorator";
-import { AccessTokenRequired } from "../auth/decorators/access-token-required.decorator";
-import type { IAuthenticatedSession } from "../auth/interfaces/authenticated-session.interface";
+import { CurrentAuthSession } from "../authentication/decorators/current-auth-session.decorator";
+import { ProfileRequired } from "../profile/decorators/profile-required.decorator";
 import { ContactOutputSchema } from "../contact/schemas/contact-output.schema";
 import { ApiArchiveJobDocs } from "./decorators/api-archive-job-docs.decorator";
 import { ApiActivateJobDocs } from "./decorators/api-activate-job-docs.decorator";
@@ -30,10 +30,12 @@ import { GetJobContactInputSchema } from "./schemas/get-job-contact-input.schema
 import { PublicJobOutputSchema } from "./schemas/public-job-output.schema";
 
 @ApiTags("jobs")
+@ApiBearerAuth()
 @Controller("jobs")
 export class JobController {
 	constructor(private readonly _jobService: JobService) {}
 
+	@ProfileRequired()
 	@Post()
 	@Version("1")
 	@RateLimit({ requests: 20, per: "hour" })
@@ -42,11 +44,15 @@ export class JobController {
 	async createJob(
 		@Body({ schema: CreateJobInputSchema }) dto: z.infer<typeof CreateJobInputSchema>,
 		@Headers("idempotency-key") idempotencyKey: string | undefined,
-		@CurrentAuthSession() authSession: IAuthenticatedSession,
+		@CurrentAuthSession() authSession: AuthenticatedSession,
 	): Promise<z.infer<typeof PublicJobOutputSchema>> {
 		const parsedKey = z.uuid().safeParse(idempotencyKey);
 		if (!parsedKey.success) throw new BadRequestException("Idempotency-Key must be a UUID.");
-		return this._jobService.createJob({ dto: dto, idempotencyKey: parsedKey.data, posterUserId: authSession.userId });
+		return this._jobService.createJob({
+			dto: dto,
+			idempotencyKey: parsedKey.data,
+			posterProfileId: authSession.accountId,
+		});
 	}
 
 	@Get(":jobId")
@@ -61,26 +67,24 @@ export class JobController {
 
 	@Post(":jobId/archive")
 	@Version("1")
-	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
 	@ApiArchiveJobDocs()
 	async archiveJob(
 		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
-		@CurrentAuthSession() authSession: IAuthenticatedSession,
+		@CurrentAuthSession() authSession: AuthenticatedSession,
 	): Promise<z.infer<typeof PublicJobOutputSchema>> {
-		return this._jobService.archiveJob({ jobId: params.jobId, posterUserId: authSession.userId });
+		return this._jobService.archiveJob({ jobId: params.jobId, posterProfileId: authSession.accountId });
 	}
 
 	@Post(":jobId/activate")
 	@Version("1")
-	@AccessTokenRequired()
 	@HttpCode(HttpStatus.OK)
 	@ApiActivateJobDocs()
 	async activateJob(
 		@Param({ schema: GetJobInputSchema }) params: z.infer<typeof GetJobInputSchema>,
-		@CurrentAuthSession() authSession: IAuthenticatedSession,
+		@CurrentAuthSession() authSession: AuthenticatedSession,
 	): Promise<z.infer<typeof PublicJobOutputSchema>> {
-		return this._jobService.activateJob({ jobId: params.jobId, posterUserId: authSession.userId });
+		return this._jobService.activateJob({ jobId: params.jobId, posterProfileId: authSession.accountId });
 	}
 
 	@Get(":jobId/contact/:contactId")

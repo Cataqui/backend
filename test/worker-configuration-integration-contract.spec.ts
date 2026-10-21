@@ -1,191 +1,87 @@
-import { readFileSync } from "node:fs";
+import { globSync } from "node:fs";
 import { resolve } from "node:path";
-import ts from "typescript";
+import { loadCloudflareConfiguration } from "./cloudflare-configuration";
 
-type WorkerEnvironment = {
-	name: string;
-	workers_dev?: boolean;
-	containers?: Array<{
-		constraints?: { regions?: string[] };
-		max_instances?: number;
-		rollout_step_percentage?: number | number[];
-	}>;
-	observability?: { logs?: { head_sampling_rate?: number; invocation_logs?: boolean } };
-	vars: {
-		API_CONTAINER_POOL_SIZE?: string;
-		WHATSAPP_NOTP_PHONE_NUMBER_ID?: string;
-		WHATSAPP_NOTP_RECEIVER?: string;
-	};
-	queues?: unknown;
-	services?: Array<{ binding: string; service: string; entrypoint?: string }>;
-};
+describe("native Cloudflare configuration integration", () => {
+	beforeEach(() => vi.stubEnv("HYPERDRIVE_ID", "a".repeat(32)));
+	afterEach(() => vi.unstubAllEnvs());
 
-type WorkerConfig = WorkerEnvironment & {
-	account_id?: string;
-	cache?: { cross_version_cache?: boolean; enabled: boolean };
-	exports?: Record<string, { cache?: { enabled: boolean }; type: string }>;
-	main: string;
-	env: Record<"staging" | "production", WorkerEnvironment>;
-};
-
-const repositoryRoot = process.cwd();
-const apiConfig = ts.readConfigFile(resolve(repositoryRoot, "apps/api/wrangler.jsonc"), ts.sys.readFile)
-	.config as WorkerConfig;
-const webhooksConfig = ts.readConfigFile(
-	resolve(repositoryRoot, "apps/workers/webhooks/wrangler.jsonc"),
-	ts.sys.readFile,
-).config as WorkerConfig;
-
-describe("API and Webhooks Worker configuration integration", () => {
-	it("should use one deployment account and independent entrypoints", () => {
-		expect({
-			accounts: [apiConfig.account_id, webhooksConfig.account_id],
-			entrypoints: [apiConfig.main, webhooksConfig.main],
-		}).toEqual({
-			accounts: ["1fca946385505503c59dd6a2a4eeb442", "1fca946385505503c59dd6a2a4eeb442"],
-			entrypoints: ["./src/platform/cloudflare/worker/worker.ts", "./src/app.ts"],
-		});
-	});
-
-	it("should bind every Webhooks environment to the matching private API entrypoint", () => {
-		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];
-		const webhooksEnvironments = [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production];
-
-		expect(
-			webhooksEnvironments.map((environment, index) => ({
-				binding: environment.services?.[0]?.binding,
-				entrypoint: environment.services?.[0]?.entrypoint,
-				service: environment.services?.[0]?.service,
-				target: apiEnvironments[index]?.name,
-			})),
-		).toEqual(
-			apiEnvironments.map((environment) => ({
-				binding: "API_WORKER",
-				entrypoint: "ApiContainerInboundEntrypoint",
-				service: environment.name,
-				target: environment.name,
-			})),
-		);
-	});
-
-	it("should cache only the API public-JWKS entrypoint without sharing entries across versions", () => {
-		expect({ cache: apiConfig.cache, exports: apiConfig.exports }).toEqual({
-			cache: { enabled: false, cross_version_cache: false },
-			exports: {
-				MicroservicesAuthJwksEntrypoint: {
+	it.each(["development", "staging", "production"] as const)(
+		"connects independent applications through private bindings in %s",
+		async (mode) => {
+			const [api, auth, maps, mapshot] = await Promise.all([
+				loadCloudflareConfiguration({ application: "apps/api/worker", mode: mode }),
+				loadCloudflareConfiguration({ application: "apps/workers/auth", mode: mode }),
+				loadCloudflareConfiguration({ application: "apps/workers/maps", mode: mode }),
+				loadCloudflareConfiguration({ application: "apps/mapshot/worker", mode: mode }),
+			]);
+			expect([api.accountId, auth.accountId, maps.accountId, mapshot.accountId]).toEqual(
+				Array(4).fill("1fca946385505503c59dd6a2a4eeb442"),
+			);
+			expect(api.worker?.entrypoint).toBe(resolve("apps/api/worker/src/worker.ts"));
+			expect(auth.worker?.entrypoint).toBe(resolve("apps/workers/auth/src/app.ts"));
+			for (const caller of [api, maps]) {
+				expect(caller.worker?.env?.AUTH).toMatchObject({
 					type: "worker",
-					cache: { enabled: true },
-				},
-			},
-		});
+					worker: auth.worker?.name,
+					exportName: "AuthEntrypoint",
+				});
+				for (const name of [
+					"META_APP_SECRET",
+					"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+					"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN",
+					"WHATSAPP_NOTP_PHONE_NUMBER_ID",
+					"WHATSAPP_NOTP_RECEIVER",
+				]) {
+					expect(caller.worker?.env).not.toHaveProperty(name);
+				}
+			}
+			expect(api.worker?.env?.MAPS).toMatchObject({ type: "worker", worker: maps.worker?.name });
+			expect(maps.worker?.env?.MAPSHOT).toMatchObject({ type: "worker", worker: mapshot.worker?.name });
+			expect(Object.values(auth.worker?.env ?? {}).some((binding) => binding.type === "worker")).toBe(false);
+			expect(auth.worker?.env?.DB).toMatchObject({ type: "hyperdrive" });
+			for (const name of [
+				"META_APP_SECRET",
+				"AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL",
+				"WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN",
+				"UPSTASH_REDIS_REST_URL",
+				"UPSTASH_REDIS_REST_TOKEN",
+			]) {
+				expect(auth.worker?.env?.[name]).toEqual({ type: "secret" });
+			}
+			expect(api.worker?.cache).toEqual({ enabled: false, crossVersionCache: false });
+			expect(api.containers?.[0]).toMatchObject({ maxInstances: 1, constraints: { regions: ["SAM"] } });
+			expect(mapshot.worker?.compatibilityFlags).toContain("enable_request_signal");
+			expect(JSON.stringify(auth.worker?.triggers)).not.toContain("verify-whatsapp-notp");
+		},
+	);
+
+	it.each(["staging", "production"] as const)("disables workers.dev endpoints in %s", async (mode) => {
+		for (const application of ["apps/api/worker", "apps/workers/auth", "apps/workers/maps", "apps/mapshot/worker"]) {
+			const configuration = await loadCloudflareConfiguration({ application: application, mode: mode });
+			expect(configuration.worker?.workersDev).toBe(false);
+			if (mode === "production") {
+				expect(configuration.worker?.observability?.logs).toMatchObject({ headSamplingRate: 1, invocationLogs: false });
+			}
+		}
 	});
 
-	it("should isolate Webhooks provider configuration from the API receiver", () => {
-		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];
-		const webhooksEnvironments = [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production];
+	it.each(["staging", "production"] as const)(
+		"resolves caller bindings without Auth deployment credentials in %s",
+		async (mode) => {
+			vi.stubEnv("HYPERDRIVE_ID", undefined);
+			for (const application of ["apps/api/worker", "apps/workers/maps"]) {
+				const configuration = await loadCloudflareConfiguration({ application: application, mode: mode });
+				expect(configuration.worker?.env?.AUTH).toMatchObject({ worker: `cataqui-auth-${mode}` });
+			}
+		},
+	);
 
-		expect({
-			apiHasPhoneNumberId: apiEnvironments.some(
-				(environment) => environment.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID !== undefined,
-			),
-			apiReceivers: apiEnvironments.map((environment) => environment.vars.WHATSAPP_NOTP_RECEIVER),
-			webhooksHasReceiver: webhooksEnvironments.some(
-				(environment) => environment.vars.WHATSAPP_NOTP_RECEIVER !== undefined,
-			),
-			webhooksPhoneNumberIds: webhooksEnvironments.map((environment) => environment.vars.WHATSAPP_NOTP_PHONE_NUMBER_ID),
-		}).toEqual({
-			apiHasPhoneNumberId: false,
-			apiReceivers: ["+15556625497", "+15556625497", "+5511963270517"],
-			webhooksHasReceiver: false,
-			webhooksPhoneNumberIds: ["1211194405413752", "1211194405413752", "1203689159488121"],
-		});
-	});
-
-	it("should keep synchronous WhatsApp authentication out of every Queue configuration", () => {
-		const workerEnvironments = [
-			apiConfig,
-			apiConfig.env.staging,
-			apiConfig.env.production,
-			webhooksConfig,
-			webhooksConfig.env.staging,
-			webhooksConfig.env.production,
-		];
-
+	it("keeps maintained runtime configuration exclusively in native config files", () => {
 		expect(
-			workerEnvironments.some((environment) =>
-				JSON.stringify(environment.queues ?? {}).includes("verify-whatsapp-notp"),
-			),
-		).toBe(false);
-	});
-
-	it("should retain all logs while disabling production invocation logs", () => {
-		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];
-		const webhooksEnvironments = [webhooksConfig, webhooksConfig.env.staging, webhooksConfig.env.production];
-		const workerEnvironments = [...apiEnvironments, ...webhooksEnvironments];
-
-		expect({
-			headSamplingRates: workerEnvironments.map((environment) => environment.observability?.logs?.head_sampling_rate),
-			productionInvocationLogs: [
-				apiConfig.env.production.observability?.logs?.invocation_logs,
-				webhooksConfig.env.production.observability?.logs?.invocation_logs,
-			],
-			workersDev: workerEnvironments.map((environment) => environment.workers_dev),
-		}).toEqual({
-			headSamplingRates: [1, 1, 1, 1, 1, 1],
-			productionInvocationLogs: [false, false],
-			workersDev: [true, false, false, true, false, false],
-		});
-	});
-
-	it("should keep API container placement and capacity at the API boundary", () => {
-		const apiContainerSource = readFileSync(
-			resolve(repositoryRoot, "apps/api/src/platform/cloudflare/container/api-container.ts"),
-			"utf8",
-		);
-		const apiEnvironments = [apiConfig, apiConfig.env.staging, apiConfig.env.production];
-
-		expect({
-			containerCapacity: apiEnvironments.map((environment) => ({
-				maxInstances: environment.containers?.[0]?.max_instances,
-				poolSize: environment.vars.API_CONTAINER_POOL_SIZE,
-				rolloutStepPercentage: environment.containers?.[0]?.rollout_step_percentage,
-			})),
-			containerRegions: apiEnvironments.map((environment) => environment.containers?.[0]?.constraints?.regions),
-			forwardedToNest: apiContainerSource.includes("API_CONTAINER_POOL_SIZE"),
-		}).toEqual({
-			containerCapacity: [
-				{ maxInstances: 10, poolSize: "1", rolloutStepPercentage: undefined },
-				// Restore [10, 50, 100] when staging has at least 3 instances.
-				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
-				// Restore [10, 25, 50, 100] when production has at least 4 instances.
-				{ maxInstances: 1, poolSize: "1", rolloutStepPercentage: 100 },
-			],
-			containerRegions: [["SAM"], ["SAM"], ["SAM"]],
-			forwardedToNest: false,
-		});
-	});
-
-	it("should keep provider and database secrets out of the opposite Worker interface", () => {
-		const apiEnvironmentSource = readFileSync(resolve(repositoryRoot, "apps/api/api-worker-env.d.ts"), "utf8");
-		const webhooksEnvironmentSource = readFileSync(
-			resolve(repositoryRoot, "apps/workers/webhooks/webhooks-worker-env.d.ts"),
-			"utf8",
-		);
-
-		expect({
-			apiHasOutboundToken: apiEnvironmentSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN"),
-			apiHasWebhookSecret: apiEnvironmentSource.includes("META_APP_SECRET"),
-			webhooksHasOutboundToken: webhooksEnvironmentSource.includes("WHATSAPP_AUTH_ACCESS_TOKEN"),
-			webhooksHasRedisCredentials: webhooksEnvironmentSource.includes("REDIS_"),
-			webhooksHasWebhookSecrets:
-				webhooksEnvironmentSource.includes("META_APP_SECRET") &&
-				webhooksEnvironmentSource.includes("WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN"),
-		}).toEqual({
-			apiHasOutboundToken: false,
-			apiHasWebhookSecret: false,
-			webhooksHasOutboundToken: false,
-			webhooksHasRedisCredentials: false,
-			webhooksHasWebhookSecrets: true,
-		});
+			globSync("{apps,packages}/**/wrangler.{json,jsonc,toml}", {
+				exclude: ["**/node_modules/**", "**/dist/**", "**/.cloudflare/**", "**/.wrangler/**", "**/target/**"],
+			}),
+		).toEqual([]);
 	});
 });

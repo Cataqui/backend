@@ -1,0 +1,54 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 20a2f6ba19402b48e87ecd74ec04c356007de33c..fa2165ee1b7966e2c3181187e1b3ed0d026e0c65 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -15,7 +15,8 @@ const ALLOWED_METHODS = [
+   "OPTIONS",
+   "HEAD",
+   "PATCH",
+-  "TRACE"
++  "TRACE",
++  "QUERY"
+ ];
+ const toOpenAPIPathSegment = (segment) => {
+   let tmp = segment;
+diff --git a/dist/index.d.cts b/dist/index.d.cts
+index 4863ef83931bd9d64d2e7d8afe253d9181b939b3..6fbdd089083bd020e3ac1ef4e22b15c49b512cbc 100644
+--- a/dist/index.d.cts
++++ b/dist/index.d.cts
+@@ -82,7 +82,7 @@ declare const uniqueSymbol: unique symbol;
+  * the `Object.entries`-based merge in `mergeSpecs`.
+  */
+ declare const VALIDATION_MARKER = "__HonoOpenAPIValidator__";
+-declare const ALLOWED_METHODS: readonly ["GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"];
++declare const ALLOWED_METHODS: readonly ["GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE", "QUERY"];
+ type AllowedMethods = (typeof ALLOWED_METHODS)[number];
+ declare const setSpecComponents: (spec: object, components: OpenAPIV3_1.ComponentsObject[]) => WeakMap<object, OpenAPIV3_1.ComponentsObject[]>;
+ declare const getSpecComponents: (spec: unknown) => OpenAPIV3_1.ComponentsObject[];
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 4863ef83931bd9d64d2e7d8afe253d9181b939b3..6fbdd089083bd020e3ac1ef4e22b15c49b512cbc 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -82,7 +82,7 @@ declare const uniqueSymbol: unique symbol;
+  * the `Object.entries`-based merge in `mergeSpecs`.
+  */
+ declare const VALIDATION_MARKER = "__HonoOpenAPIValidator__";
+-declare const ALLOWED_METHODS: readonly ["GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"];
++declare const ALLOWED_METHODS: readonly ["GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE", "QUERY"];
+ type AllowedMethods = (typeof ALLOWED_METHODS)[number];
+ declare const setSpecComponents: (spec: object, components: OpenAPIV3_1.ComponentsObject[]) => WeakMap<object, OpenAPIV3_1.ComponentsObject[]>;
+ declare const getSpecComponents: (spec: unknown) => OpenAPIV3_1.ComponentsObject[];
+diff --git a/dist/index.js b/dist/index.js
+index 797cbddfec526818d119c9cf398c8aeeb425d4fa..c59cad12ac769900b9dfeeee5ba98aa921477db7 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -13,7 +13,8 @@ const ALLOWED_METHODS = [
+   "OPTIONS",
+   "HEAD",
+   "PATCH",
+-  "TRACE"
++  "TRACE",
++  "QUERY"
+ ];
+ const toOpenAPIPathSegment = (segment) => {
+   let tmp = segment;

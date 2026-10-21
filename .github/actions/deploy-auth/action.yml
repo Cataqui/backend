@@ -1,0 +1,92 @@
+name: Deploy Auth Worker
+description: Publish the Auth Worker, check health, and restore the previous deployment on failure.
+
+inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
+  environment:
+    description: Deployment environment; staging or production.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Load Auth deployment credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: auth-deployment
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Load Auth runtime
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: auth-runtime
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Build Auth for the deployment environment
+      shell: ruby {0}
+      working-directory: apps/workers/auth
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: exec "pnpm", "exec", "cf", "build", "--mode", ENV.fetch("INPUT_ENVIRONMENT")
+    - name: Get current Worker deployment
+      id: current-deployment
+      shell: ruby {0}
+      working-directory: apps/workers/auth
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "open3"
+        require "rbconfig"
+        versions, status = Open3.capture2(
+          RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/get-current-worker-deployment.rb")
+        )
+        exit(status.exitstatus || 1) unless status.success?
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "versions=#{versions.strip}" }
+    - name: Deploy Auth
+      id: deploy
+      shell: ruby {0}
+      working-directory: apps/workers/auth
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_RUNTIME_PROFILE: auth-runtime
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/deploy-worker.rb")
+    - name: Verify Auth health
+      id: health
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-auth-health.rb")
+    - name: Restore previous Auth deployment
+      id: restore
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions != '[]'
+      shell: ruby {0}
+      working-directory: apps/workers/auth
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        PREVIOUS_VERSIONS: ${{ steps.current-deployment.outputs.versions }}
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/restore-worker-deployment.rb")
+    - name: Check Auth health after restoration
+      if: failure() && steps.restore.outcome == 'success'
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-auth-health.rb")
+    - name: Report unavailable first-deployment rollback
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions == '[]'
+      shell: ruby {0}
+      run: warn "Auth deployment failed; no previous Worker deployment exists to restore."
+    - name: Clear Auth credentials
+      if: always()
+      shell: ruby {0}
+      run: |
+        require "json"
+        profiles = JSON.parse(File.read(".github/actions/load-infisical-secrets/profiles.json", encoding: "UTF-8"))
+        names = %w[auth-deployment auth-runtime].flat_map do |name|
+          profile = profiles.fetch(name)
+          profile.fetch("required_secrets") + profile.fetch("environment_aliases").keys
+        end
+        File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+          names.uniq.each { |name| file.puts "#{name}=" }
+        end

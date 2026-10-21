@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import fc from "fast-check";
-import { Prisma } from "../../../../generated/prisma/client.js";
+import { Prisma } from "../../../../generated/prisma/client";
 import { toFuzzyJobLocationOutput } from "./fuzzy-job-location-output.mapper";
 
 it("converts numeric and decimal fuzzy coordinates while preserving the supplied image URL", () => {

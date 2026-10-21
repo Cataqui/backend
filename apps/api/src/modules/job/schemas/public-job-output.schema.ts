@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { JobStatus } from "../../../../generated/prisma/client.js";
+import { JobStatus } from "../../../../generated/prisma/client";
 import { JobContactReferenceOutputSchema } from "./job-contact-reference-output.schema";
 import { FuzzyJobLocationOutputSchema } from "./fuzzy-job-location-output.schema";
 

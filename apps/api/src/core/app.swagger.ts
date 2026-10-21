@@ -2,9 +2,10 @@ import type { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from "@nestjs/swagger";
 import type { ZodType } from "zod";
 import { createSchema } from "zod-openapi";
+import { runtimeConfig, type RuntimeConfig } from "./config/runtime.config";
 
 function setup(app: INestApplication): OpenAPIObject | undefined {
-	if (process.env["NODE_ENV"] === "production") return undefined;
+	if (app.get<RuntimeConfig>(runtimeConfig.KEY).environment === "production") return undefined;
 
 	const document = SwaggerModule.createDocument(
 		app,
@@ -50,5 +51,5 @@ function setup(app: INestApplication): OpenAPIObject | undefined {
 }
 
 export const AppSwagger = {
-	setup,
+	setup: setup,
 } as const;

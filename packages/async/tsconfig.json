@@ -1,0 +1,10 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"declaration": true,
+		"lib": ["ESNext", "DOM"],
+		"rootDir": "./src",
+		"types": ["vitest/globals"]
+	},
+	"include": ["src/**/*.ts"]
+}

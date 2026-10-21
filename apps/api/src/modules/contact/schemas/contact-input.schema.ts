@@ -1,8 +1,8 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { z } from "zod";
-import { ContactMethod } from "../../../../generated/prisma/client.js";
+import { ContactMethod } from "../../../../generated/prisma/client";
 
-function _createContactIdentifierSchema() {
+function _createContactIdentifierSchema(): z.ZodString {
 	return z
 		.string()
 		.trim()

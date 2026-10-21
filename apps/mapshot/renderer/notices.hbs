@@ -1,0 +1,14 @@
+Mapshot engine dependency licenses
+==================================
+
+{{#each licenses}}
+{{{name}}} ({{id}})
+Used by: {{#each used_by}}{{crate.name}} {{crate.version}}; {{/each}}
+
+{{#if source_path}}
+{{{text}}}
+{{else}}
+Upstream license text was not found. The license identifier comes from dependency metadata.
+{{/if}}
+
+{{/each}}

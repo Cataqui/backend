@@ -1,0 +1,42 @@
+name: Renderer dependencies
+
+on:
+  pull_request:
+    branches: [staging, main]
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - '**/deny.toml'
+      - '**/rust-toolchain.toml'
+      - '.github/workflows/renderer-dependencies.yml'
+  push:
+    branches: [staging, main]
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - '**/deny.toml'
+      - '**/rust-toolchain.toml'
+      - '.github/workflows/renderer-dependencies.yml'
+  schedule:
+    - cron: '17 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check renderer dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check advisories, licenses, bans, and sources
+        uses: EmbarkStudios/cargo-deny-action@c3bbe7e4e3f7baeee1a3dd9aec0a3b2aded580fb # v2.1.1
+        with:
+          manifest-path: apps/mapshot/renderer/Cargo.toml
+          arguments: --locked

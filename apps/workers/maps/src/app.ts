@@ -1,62 +1,69 @@
-import { MapsOpenApiDocument } from "./openapi";
-import { createStaticRoutes } from "./modules/static/static.routes";
+import "reflect-metadata";
+import { PayloadTooLargeError } from "#maps/http/errors/payload-too-large.error";
+import { RouteNotFoundError } from "#maps/http/errors/route-not-found.error";
+import { healthRoutes } from "#maps/health/health.routes";
+import { createMapsErrorResponseFromError } from "#maps/http/maps-error.handler";
+import type { MapsContext } from "#maps/http/context";
+import { registerMapsDependencies } from "#maps/maps-dependencies";
+import { mapsOpenApiOptions } from "#maps/http/openapi";
+import { placesRoutes } from "#maps/places/places.routes";
+import { staticRoutes } from "#maps/static/static.routes";
+import { tsyringe } from "@hono/tsyringe";
 import { Hono } from "hono";
+import { openAPIRouteHandler } from "hono-openapi";
 import { bodyLimit } from "hono/body-limit";
-import { createPlacesRoutes } from "./modules/places/places.routes";
-import { createMapsErrorResponseFromError } from "./shared/maps-error.handler";
-import { MapsErrorCode } from "./shared/maps-error-code.enum";
-import type { IMapsHonoEnvironment } from "./shared/maps-hono-environment.interface";
-import { createMapsErrorResponse } from "./shared/maps-error.response";
+import { requestId } from "hono/request-id";
+import type { DependencyContainer } from "tsyringe";
 
-const app = new Hono<IMapsHonoEnvironment>();
+const app = new Hono<MapsContext>();
+
+app.use("*", requestId());
 
 app.use("*", async (context, next) => {
-	const receivedRequestId = context.req.header("x-request-id");
-
-	const requestId =
-		receivedRequestId !== undefined && /^[A-Za-z0-9._-]{1,128}$/.test(receivedRequestId)
-			? receivedRequestId
-			: crypto.randomUUID();
-
-	context.set("requestId", requestId);
-
 	await next();
-	if (!context.res.headers.has("Cache-Control")) context.res.headers.set("Cache-Control", "no-store");
-	context.res.headers.set("x-request-id", requestId);
+
+	if (context.res.status >= 400 || !context.res.headers.has("Cache-Control")) {
+		context.res.headers.set("Cache-Control", "no-store");
+	}
 });
 
 app.use(
 	"*",
 	bodyLimit({
 		maxSize: 4 * 1024,
-		onError: (context) =>
-			createMapsErrorResponse({
-				context: context,
-				errorCode: MapsErrorCode.PAYLOAD_TOO_LARGE,
-				message: "The request body is too large.",
-				status: 413,
-			}),
+		onError: () => {
+			throw new PayloadTooLargeError();
+		},
 	}),
 );
 
-app.get("/openapi.json", (context) => context.json(MapsOpenApiDocument));
+app.use("*", async (context, next) => {
+	let scope: DependencyContainer | undefined;
+	try {
+		await tsyringe((childContainer) => {
+			scope = childContainer;
+			registerMapsDependencies({
+				container: childContainer,
+				environment: context.env,
+			});
+		})(context, next);
+	} finally {
+		await scope?.dispose();
+	}
+});
 
-app.get("/v1/health", (context) => context.body(null, 204));
-app.route("/places", createPlacesRoutes());
-app.route("/static", createStaticRoutes());
+app.get("/openapi.json", openAPIRouteHandler(app, mapsOpenApiOptions));
 
-app.notFound((context) =>
-	createMapsErrorResponse({
-		context: context,
-		errorCode: MapsErrorCode.ROUTE_NOT_FOUND,
-		message: "The requested route was not found.",
-		status: 404,
-	}),
-);
+app.route("/v1/health", healthRoutes);
+app.route("/places", placesRoutes);
+app.route("/static", staticRoutes);
+
+app.notFound(() => {
+	throw new RouteNotFoundError();
+});
 
 app.onError((error, context) => createMapsErrorResponseFromError({ context: context, error: error }));
 
 export default app;
 
-export { MapsEntrypoint } from "./maps-entrypoint";
-export { StaticGenerationDurableObject as StaticMapGeneration } from "./modules/static/static-generation.durable-object";
+export { WorkerEntrypoint } from "#maps/rpc/entrypoint";

@@ -11,10 +11,16 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, infrastructure, api, maps, webhooks]
+        options: [all, infrastructure, api, maps, mapshot, auth]
 
 permissions:
   contents: read
+  pull-requests: read
+
+concurrency:
+  group: deploy-${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare:
@@ -24,335 +30,112 @@ jobs:
       environment: ${{ steps.scope.outputs.environment }}
       deploy-api: ${{ steps.scope.outputs.deploy-api }}
       deploy-maps: ${{ steps.scope.outputs.deploy-maps }}
-      deploy-webhooks: ${{ steps.scope.outputs.deploy-webhooks }}
+      deploy-mapshot: ${{ steps.scope.outputs.deploy-mapshot }}
+      promote-mapshot: ${{ steps.scope.outputs.promote-mapshot }}
+      deploy-auth: ${{ steps.scope.outputs.deploy-auth }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { ref: "${{ github.sha }}", fetch-depth: 0, persist-credentials: false }
-      - name: Resolve deployment contract
-        id: scope
-        shell: bash
-        env:
-          DEPLOYMENT_SCOPE: ${{ inputs.scope }}
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          case "$GITHUB_REF" in refs/heads/staging) environment=staging ;; refs/heads/main) environment=production ;; *) echo "Deployments require staging or main." >&2; exit 1 ;; esac
-          deploy_api=false; deploy_maps=false; deploy_webhooks=false
-          case "$DEPLOYMENT_SCOPE" in
-            all) deploy_api=true; deploy_maps=true; deploy_webhooks=true ;;
-            infrastructure) ;;
-            api) deploy_api=true ;;
-            maps) deploy_maps=true ;;
-            webhooks) deploy_webhooks=true ;;
-            automatic)
-              base="$BEFORE_SHA"; [[ -z "$base" || "$base" =~ ^0+$ ]] && base=HEAD^
-              while IFS= read -r path; do
-                case "$path" in
-                  *.md|.agents/skills/*) continue ;;
-                  .github/actions/load-infisical-secrets/profiles.json)
-                    if ! PROFILE_BASE="$base" node --input-type=module <<'NODE'
-          import { execFileSync } from "node:child_process";
-          import { readFileSync } from "node:fs";
-          import { isDeepStrictEqual } from "node:util";
-          const path = ".github/actions/load-infisical-secrets/profiles.json";
-          const before = JSON.parse(execFileSync("git", ["show", `${process.env.PROFILE_BASE}:${path}`], { encoding: "utf8" }));
-          const after = JSON.parse(readFileSync(path, "utf8"));
-          delete before["cloudflare-r2"];
-          delete after["cloudflare-r2"];
-          delete before["cloudflare-pages"];
-          delete after["cloudflare-pages"];
-          process.exit(isDeepStrictEqual(before, after) ? 0 : 1);
-          NODE
-                    then deploy_api=true; deploy_maps=true; deploy_webhooks=true; fi ;;
-                  .github/actions/deploy-maps/*) deploy_maps=true ;;
-                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc|tsconfig.base.json|.github/actions/deploy-*/*|.github/actions/neon-migrations/*|.github/actions/load-infisical-secrets/*) deploy_api=true; deploy_maps=true; deploy_webhooks=true ;;
-                  apps/api/*) deploy_api=true ;;
-                  apps/workers/maps/*) deploy_maps=true ;;
-                  apps/workers/webhooks/*) deploy_webhooks=true ;;
-                  packages/api-internal-ingress/*) deploy_api=true; deploy_webhooks=true ;;
-                  packages/maps-contracts/*) deploy_api=true; deploy_maps=true ;;
-                  packages/microservices-auth-schemas/*) deploy_api=true; deploy_maps=true ;;
-                esac
-              done < <(git diff --name-only "$base" "$GITHUB_SHA") ;;
-            *) echo "Unsupported deployment scope." >&2; exit 1 ;;
-          esac
-          [[ "$deploy_api" == true ]] && deploy_maps=true
-          printf 'environment=%s\ndeploy-api=%s\ndeploy-maps=%s\ndeploy-webhooks=%s\n' \
-            "$environment" "$deploy_api" "$deploy_maps" "$deploy_webhooks" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/setup-ruby-workspace
+      - id: scope
+        uses: ./.github/actions/resolve-deployment
+        with: { scope: "${{ inputs.scope }}" }
 
   validate:
     needs: prepare
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { ref: "${{ github.sha }}", persist-credentials: false }
-      - if: github.event_name == 'workflow_dispatch'
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with: { version: 11.4.0, run_install: false }
-      - if: github.event_name == 'workflow_dispatch'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with: { node-version: 24, cache: pnpm }
-      - if: github.event_name == 'workflow_dispatch'
-        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with: { tofu_version: 1.12.6, tofu_wrapper: false }
+      - uses: ./.github/actions/setup-mapshot-fonts
       - name: Run manual repository gate
-        if: github.event_name == 'workflow_dispatch'
-        run: pnpm install --frozen-lockfile && pnpm check
+        run: pnpm check
 
-  deploy:
+  infrastructure:
     needs: [prepare, validate]
+    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    environment: ${{ needs.prepare.outputs.environment }}
-    concurrency:
-      group: deploy-${{ needs.prepare.outputs.environment }}
-      cancel-in-progress: false
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+      deployment: false
     permissions:
       contents: read
-      deployments: read
       id-token: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with: { ref: "${{ github.sha }}", fetch-depth: 0, persist-credentials: false }
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with: { version: 11.4.0, run_install: false }
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with: { node-version: 24, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
       - name: Build shared application packages
-        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-webhooks == 'true'
+        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
         run: pnpm build:packages
-
-      - name: Verify production staging evidence
-        if: needs.prepare.outputs.environment == 'production' && (needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-webhooks == 'true')
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DEPLOY_API: ${{ needs.prepare.outputs.deploy-api }}
-          DEPLOY_MAPS: ${{ needs.prepare.outputs.deploy-maps }}
-          DEPLOY_WEBHOOKS: ${{ needs.prepare.outputs.deploy-webhooks }}
-        run: |
-          set -euo pipefail
-          staging_sha="$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=staging&per_page=100" | node -e '
-            let text="";process.stdin.on("data",c=>text+=c).on("end",()=>{const list=JSON.parse(text),{execFileSync}=require("node:child_process");for(const d of list){try{const s=JSON.parse(execFileSync("gh",["api",`repos/${process.env.GITHUB_REPOSITORY}/deployments/${d.id}/statuses?per_page=20`],{encoding:"utf8",env:process.env}));if(s.some(x=>x.state==="success")){process.stdout.write(d.sha);return}}catch{}}process.exit(1)});')"
-          git merge-base --is-ancestor "$staging_sha" "$GITHUB_SHA"
-          paths=(package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json)
-          [[ "$DEPLOY_API" == true ]] && paths+=(apps/api packages/api-internal-ingress packages/microservices-auth-schemas)
-          [[ "$DEPLOY_MAPS" == true ]] && paths+=(apps/workers/maps packages/maps-contracts packages/microservices-auth-schemas)
-          [[ "$DEPLOY_WEBHOOKS" == true ]] && paths+=(apps/workers/webhooks packages/api-internal-ingress)
-          git diff --quiet "$staging_sha" "$GITHUB_SHA" -- "${paths[@]}" || { echo "Production source lacks matching successful staging evidence." >&2; exit 1; }
-
-      - name: Load bootstrap credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply generated folders
-        uses: ./.github/actions/infisical-generated-folders
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Apply Cloudflare API tokens
-        uses: ./.github/actions/cloudflare-api-tokens
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load Pages infrastructure credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply landing Pages configuration
-        uses: ./.github/actions/cloudflare-pages
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Clear Pages infrastructure credential
-        shell: bash
-        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
-      - name: Load R2 infrastructure credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply private R2 image storage
-        uses: ./.github/actions/cloudflare-r2
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Clear R2 infrastructure credential
-        shell: bash
-        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
-      - name: Apply generated authentication secrets
-        uses: ./.github/actions/auth-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load Neon project credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: neon-projects, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Neon projects
-        uses: ./.github/actions/neon-projects
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load Neon API-key credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: neon-api-keys, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Load Neon project context
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: neon-project-context, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Neon project API keys
-        uses: ./.github/actions/neon-api-keys
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load Neon database-access credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: neon-database-access, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Neon database access
-        uses: ./.github/actions/neon-database-access
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Clear Neon account issuer
-        shell: bash
-        run: |
-          for name in NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_API_KEY TF_VAR_neon_project_id; do
-            echo "$name=" >> "$GITHUB_ENV"
-          done
-      - name: Load Upstash credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: upstash-redis, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Upstash
-        uses: ./.github/actions/upstash-redis
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Load AI Gateway credentials
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply AI Gateway
-        uses: ./.github/actions/cloudflare-ai-gateways
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Authenticate Google Cloud
-        uses: ./.github/actions/authenticate-google-cloud
-        with: { environment: "${{ needs.prepare.outputs.environment }}", workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
-      - name: Apply Google Maps Platform
-        uses: ./.github/actions/google-cloud-maps-platform
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-
-      - name: Load production DNS credentials
-        if: needs.prepare.outputs.environment == 'production'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: production, profile: cloudflare-zone-dns, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply production DNS
-        if: needs.prepare.outputs.environment == 'production'
-        uses: ./.github/actions/cloudflare-zone-dns
-        with: { operation: apply }
-      - name: Load production zone credentials
-        if: needs.prepare.outputs.environment == 'production'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: production, profile: cloudflare-zone-configuration, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply production zone configuration
-        if: needs.prepare.outputs.environment == 'production'
-        uses: ./.github/actions/cloudflare-zone-configuration
-        with: { operation: apply }
-
+      - uses: ./.github/actions/reconcile-infrastructure
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}", google-workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
       - name: Validate Maps runtime secret before application deployment
         if: needs.prepare.outputs.deploy-maps == 'true'
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ needs.prepare.outputs.environment }}", profile: maps-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Clear preflight Maps runtime secret
-        if: needs.prepare.outputs.deploy-maps == 'true'
-        shell: bash
+        if: always() && needs.prepare.outputs.deploy-maps == 'true'
+        shell: ruby {0}
         run: |
-          echo "GEOAPIFY_API_KEY=" >> "$GITHUB_ENV"
-          echo "GOOGLE_PLACES_API_KEY=" >> "$GITHUB_ENV"
+          File.open(ENV.fetch("GITHUB_ENV"), "a") do |file|
+            %w[GOOGLE_PLACES_API_KEY STATIC_MAP_LOCATION_SIGNING_KEY_BASE64URL].each { |name| file.puts "#{name}=" }
+          end
 
-      - name: Load API migration values
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: api-deployment, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Clear API deployment credential during migration
-        if: needs.prepare.outputs.deploy-api == 'true'
-        shell: bash
-        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
-      - name: Load API runtime
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: api-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Resolve Cloudflare account ID
-        if: needs.prepare.outputs.deploy-api == 'true'
-        run: echo "CLOUDFLARE_ACCOUNT_ID=$(jq -er .cloudflare.account_id infrastructure/platforms.json)" >> "$GITHUB_ENV"
+  mapshot:
+    needs: [prepare, infrastructure]
+    if: always() && !cancelled() && needs.infrastructure.result == 'success' && needs.prepare.outputs.deploy-mapshot == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/mapshot-release.yml
+    with:
+      environment: ${{ needs.prepare.outputs.environment }}
+      revision: ${{ github.sha }}
+      promote: ${{ needs.prepare.outputs.promote-mapshot == 'true' }}
+
+  deploy:
+    needs: [prepare, infrastructure, mapshot]
+    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: ${{ needs.prepare.outputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - name: Build shared application packages
+        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
+        run: pnpm build:packages
       - name: Validate and apply migrations
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/neon-migrations
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
-      - name: Load Queues credentials for consumer retirement
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Detach retired job derivation Queue consumer
-        if: needs.prepare.outputs.deploy-api == 'true'
-        shell: bash
-        working-directory: apps/api
-        env:
-          INPUT_ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
-        run: |
-          set -euo pipefail
-          queue_name="cataqui-api-derive-job-data-$INPUT_ENVIRONMENT"
-          worker_name="$(jq -er --arg environment "$INPUT_ENVIRONMENT" '.env[$environment].name' wrangler.jsonc)"
-          consumer_attached="$(QUEUE_NAME="$queue_name" WORKER_NAME="$worker_name" node --input-type=module <<'NODE'
-          const { CLOUDFLARE_ACCOUNT_ID: accountId, CLOUDFLARE_API_TOKEN: token, QUEUE_NAME: queueName, WORKER_NAME: workerName } = process.env;
-          const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/queues?name=${encodeURIComponent(queueName)}`;
-          const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-          if (!response.ok) throw new Error(`Queue lookup failed with HTTP ${response.status}`);
-          const body = await response.json();
-          if (body.success !== true || !Array.isArray(body.result)) throw new Error("Invalid Queue lookup response");
-          const queues = body.result.filter((queue) => queue.queue_name === queueName);
-          if (queues.length > 1) throw new Error("Duplicate named Queues found");
-          const consumers = queues[0]?.consumers ?? [];
-          if (!Array.isArray(consumers)) throw new Error("Invalid Queue consumer list");
-          const attached = consumers.some((consumer) => consumer.type === "worker" &&
-            (consumer.script === workerName || consumer.service === workerName || consumer.script_name === workerName));
-          process.stdout.write(attached ? "true" : "false");
-          NODE
-          )"
-          if [[ "$consumer_attached" == true ]]; then
-            pnpm exec wrangler queues consumer remove "$queue_name" "$worker_name" --config wrangler.jsonc --env "$INPUT_ENVIRONMENT"
-          fi
-      - name: Load Maps deployment credential
-        if: needs.prepare.outputs.deploy-maps == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: maps-deployment, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Load Maps runtime
-        if: needs.prepare.outputs.deploy-maps == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: maps-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Validate and apply Auth migrations
+        if: needs.prepare.outputs.deploy-auth == 'true'
+        uses: ./.github/actions/neon-migrations
+        with: { environment: "${{ needs.prepare.outputs.environment }}", application: auth, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Deploy Auth
+        if: needs.prepare.outputs.deploy-auth == 'true'
+        uses: ./.github/actions/deploy-auth
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy Maps
         if: needs.prepare.outputs.deploy-maps == 'true'
         uses: ./.github/actions/deploy-maps
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
-      - name: Clear Maps deployment credentials
-        if: needs.prepare.outputs.deploy-maps == 'true'
-        shell: bash
-        run: |
-          echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
-          echo "GEOAPIFY_API_KEY=" >> "$GITHUB_ENV"
-          echo "GOOGLE_PLACES_API_KEY=" >> "$GITHUB_ENV"
-      - name: Load API deployment credential
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: api-deployment, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy API
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/deploy-api
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
-      - name: Load Queues credentials
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: cloudflare-queues, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Apply Queues
-        if: needs.prepare.outputs.deploy-api == 'true'
-        uses: ./.github/actions/cloudflare-queues
-        with: { environment: "${{ needs.prepare.outputs.environment }}", operation: apply }
-      - name: Clear API deployment credential
-        if: needs.prepare.outputs.deploy-api == 'true'
-        shell: bash
-        run: echo "CLOUDFLARE_API_TOKEN=" >> "$GITHUB_ENV"
-      - name: Load Webhooks deployment credential
-        if: needs.prepare.outputs.deploy-webhooks == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: webhooks-deployment, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Load Webhooks runtime
-        if: needs.prepare.outputs.deploy-webhooks == 'true'
-        uses: ./.github/actions/load-infisical-secrets
-        with: { environment: "${{ needs.prepare.outputs.environment }}", profile: webhooks-runtime, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Deploy Webhooks
-        if: needs.prepare.outputs.deploy-webhooks == 'true'
-        uses: ./.github/actions/deploy-webhooks
-        with: { environment: "${{ needs.prepare.outputs.environment }}" }
-      - name: Clear deployment credentials
-        if: always()
-        shell: bash
-        run: |
-          for name in CLOUDFLARE_API_TOKEN NEON_ACCOUNT_API_KEY NEON_ACCOUNT_API_KEY_ID NEON_PROJECT_API_KEY NEON_API_KEY NEON_PROJECT_ID TF_VAR_neon_project_id DATABASE_OWNER_DIRECT_URL DATABASE_APP_POOLER_URL AI_GATEWAY_API_TOKEN UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN AUTH_REFRESH_TOKEN_HMAC_KEY_V1_BASE64URL MICROSERVICES_AUTH_JWT_PRIVATE_KEY_V1_PKCS8_BASE64 GOOGLE_PLACES_API_KEY GEOAPIFY_API_KEY META_APP_SECRET WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN INFISICAL_AUTH_JWT GOOGLE_OAUTH_ACCESS_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }

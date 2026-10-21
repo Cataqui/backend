@@ -1,11 +1,12 @@
+import { RemoteError } from "@cataqui/workerhole";
 import { createHash } from "node:crypto";
 import { JobImagesUnavailableError } from "./errors/job-images-unavailable.error";
-import { workerCall } from "../../platform/outbound/worker-call";
-import type { GenerateStaticMapsResult } from "@cataqui/maps-contracts";
+import * as td from "testdouble";
+import type { z } from "zod";
 
-vi.mock("../../platform/outbound/worker-call");
 import { Test } from "@nestjs/testing";
-import { JobStatus, Prisma } from "../../../generated/prisma/client.js";
+
+import { JobStatus, Prisma } from "../../../generated/prisma/client";
 import { AiService } from "../ai/ai.service";
 import { ContactService } from "../contact/contact.service";
 import { LocationService } from "../location/location.service";
@@ -13,130 +14,114 @@ import { JobDataDerivationUnavailableError } from "./errors/job-data-derivation-
 import { JobIdempotencyConflictError } from "./errors/job-idempotency-conflict.error";
 import { JobNotFoundError } from "./errors/job-not-found.error";
 import { JobService } from "./job.service";
+import { ApiWorkerPortal } from "@cataqui/api-workerhole";
 import { JobRepository } from "./repositories/job.repository";
-import { decodeUserJobsCursor, encodeUserJobsCursor } from "./utils/user-jobs-cursor.utils";
+import type { CreateJobInputSchema } from "./schemas/create-job-input.schema";
+import type { JobDerivedDataSchema } from "./schemas/job-derived-data.schema";
+import { decodeProfileJobsCursor, encodeProfileJobsCursor } from "./utils/profile-jobs-cursor.utils";
 
 const dto = {
 	description: "Preciso de ajuda para descarregar caixas amanhã. Pago R$ 150 por dia.",
 	location: { title: "Rua Pardal Branco, 32", latitude: -23.55, longitude: -46.63 },
 	contact: { method: "WHATSAPP" as const, identifier: "+5511999999999" },
-};
+} satisfies z.infer<typeof CreateJobInputSchema>;
 const job = {
 	id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
 	title: "Descarregar caixas",
 	description: dto.description,
 	descriptionSummary: "Trabalho de um dia",
 	payment: "R$ 150 por dia",
-	contact: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", contactMethod: "WHATSAPP" as const },
+	contact: {
+		id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+		contactMethod: "WHATSAPP" as const,
+		identifier: dto.contact.identifier,
+		ownerProfileId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+		createdAt: new Date("2026-09-22T12:00:00Z"),
+	},
 	fuzzyLatitude: new Prisma.Decimal(-23.55),
 	fuzzyLongitude: new Prisma.Decimal(-46.63),
 	locationImageUrl: "https://imagedelivery.net/test/map/format=webp,quality=80",
 	status: JobStatus.ACTIVE,
+	posterProfileId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+	contactId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+	locationTitle: dto.location.title,
 	createdAt: new Date("2026-09-22T12:00:00Z"),
 	updatedAt: new Date("2026-09-22T12:00:00Z"),
-};
+} satisfies Awaited<ReturnType<JobRepository["createJob"]>>;
 const params = {
 	dto: dto,
-	posterUserId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+	posterProfileId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
 	idempotencyKey: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-};
+} satisfies Parameters<JobService["createJob"]>[0];
+
+const derivedJobData = {
+	title: job.title,
+	description_summary: job.descriptionSummary,
+	payment: job.payment,
+} satisfies z.infer<typeof JobDerivedDataSchema>;
+
+const savedContact = {
+	contactId: job.contact.id,
+	method: dto.contact.method,
+	identifier: dto.contact.identifier,
+} satisfies Awaited<ReturnType<ContactService["getOrAddContact"]>>;
+
+const reservation = {
+	id: "request",
+	posterProfileId: params.posterProfileId,
+	idempotencyKey: params.idempotencyKey,
+	requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+	fuzzyLatitude: new Prisma.Decimal(-23.55),
+	fuzzyLongitude: new Prisma.Decimal(-46.63),
+	jobId: null,
+	job: null,
+	createdAt: new Date("2026-09-22T12:00:00Z"),
+} satisfies NonNullable<Awaited<ReturnType<JobRepository["findByIdempotencyKey"]>>>;
+
+afterEach(() => {
+	td.reset();
+});
 
 describe("JobService direct posting", () => {
 	let service: JobService;
-	const repository = {
-		findUserJobs: vi.fn(),
-		findUserJobById: vi.fn(),
-		findByIdempotencyKey: vi.fn(),
-		reservePostRequest: vi.fn(),
-		createJob: vi.fn(),
-		findPublicById: vi.fn(),
-		archiveOwnedJob: vi.fn(),
-		activateOwnedJob: vi.fn(),
-		findActiveJobContact: vi.fn(),
-	};
-	const ai = { generateObject: vi.fn() };
-	const users = { getOrAddContact: vi.fn() };
-	const location = { fuzzCoordinate: vi.fn() };
+	let repository: JobRepository;
+	let ai: AiService;
+	let contacts: ContactService;
+	let location: LocationService;
+	let apiWorkerRpc: ApiWorkerPortal;
+	let getStaticMapLocationUrl: ApiWorkerPortal["getStaticMapLocationUrl"];
 
 	beforeEach(async () => {
-		vi.resetAllMocks();
-		vi.mocked(workerCall).mockResolvedValue({
-			kind: "ready",
-			asset: { id: "a".repeat(64), url: job.locationImageUrl },
-		});
-		repository.findByIdempotencyKey.mockResolvedValue(null);
-		repository.reservePostRequest.mockImplementation(async (input) => ({
-			id: "request",
-			requestHash: input.requestHash,
-			job: null,
-			fuzzyLatitude: new Prisma.Decimal(-23.55),
-			fuzzyLongitude: new Prisma.Decimal(-46.63),
-		}));
-		repository.createJob.mockResolvedValue(job);
-		ai.generateObject.mockResolvedValue({
-			title: job.title,
-			description_summary: job.descriptionSummary,
-			payment: job.payment,
-		});
-		users.getOrAddContact.mockResolvedValue({ contactId: job.contact.id });
-		location.fuzzCoordinate.mockReturnValue(dto.location);
+		repository = td.object<JobRepository>();
+		ai = td.object<AiService>();
+		contacts = td.object<ContactService>();
+		location = td.object<LocationService>();
+		apiWorkerRpc = td.object<ApiWorkerPortal>();
+		td.when(apiWorkerRpc.withOptions(td.matchers.anything())).thenReturn(apiWorkerRpc);
+		getStaticMapLocationUrl = apiWorkerRpc.getStaticMapLocationUrl;
 		const module = await Test.createTestingModule({
 			providers: [
 				JobService,
 				{ provide: JobRepository, useValue: repository },
 				{ provide: AiService, useValue: ai },
-				{ provide: ContactService, useValue: users },
+				{ provide: ContactService, useValue: contacts },
 				{ provide: LocationService, useValue: location },
+				{
+					provide: ApiWorkerPortal,
+					useValue: apiWorkerRpc,
+				},
 			],
 		}).compile();
 		service = module.get(JobService);
 	});
 
 	it("passes only reserved fuzzy coordinates to Maps", async () => {
-		await service.createJob(params);
-		expect(vi.mocked(workerCall)).toHaveBeenCalledExactlyOnceWith({
-			worker: "maps",
-			method: "generateStaticMaps",
-			input: { latitude: -23.55, longitude: -46.63 },
-			signal: expect.any(AbortSignal),
-		});
-	});
-	it("uses a 45-second Maps timeout and persists the returned images", async () => {
-		const timeout = vi.spyOn(AbortSignal, "timeout");
-		try {
-			await service.createJob(params);
-			expect(timeout).toHaveBeenCalledWith(45_000);
-			expect(workerCall).toHaveBeenCalledOnce();
-			expect(repository.createJob).toHaveBeenCalledWith(
-				expect.objectContaining({ locationImageUrl: job.locationImageUrl }),
-			);
-		} finally {
-			timeout.mockRestore();
-		}
-	});
-	it.each([true, false])("does not publish or multiply Maps retries when retryable is %s", async (retryable) => {
-		vi.mocked(workerCall).mockResolvedValue({ kind: "failed", code: "PROVIDER_UNAVAILABLE", retryable: retryable });
-		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
-		expect(workerCall).toHaveBeenCalledOnce();
-		expect(repository.createJob).not.toHaveBeenCalled();
-	});
-	it.each([new Error("transport"), new DOMException("deadline", "TimeoutError")])(
-		"does not publish or repeat an ambiguous or timed-out Maps call: %s",
-		async (error) => {
-			vi.mocked(workerCall).mockRejectedValue(error);
-			await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
-			expect(workerCall).toHaveBeenCalledOnce();
-			expect(repository.createJob).not.toHaveBeenCalled();
-		},
-	);
-
-	it("keeps an unsuccessful posting reservation and creates no public job", async () => {
-		vi.mocked(workerCall).mockRejectedValue(new JobImagesUnavailableError());
-		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
-		expect(repository.createJob).not.toHaveBeenCalled();
-	});
-	it("reuses reserved fuzzy coordinates after a failed posting attempt", async () => {
-		repository.findByIdempotencyKey.mockResolvedValue({
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
 			id: "request",
 			job: null,
 			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
@@ -144,70 +129,427 @@ describe("JobService direct posting", () => {
 			fuzzyLongitude: new Prisma.Decimal(-46.7),
 		});
 		await service.createJob(params);
-		expect(vi.mocked(workerCall)).toHaveBeenCalledExactlyOnceWith({
-			worker: "maps",
-			method: "generateStaticMaps",
-			input: { latitude: -23.6, longitude: -46.7 },
-			signal: expect.any(AbortSignal),
-		});
+		expect(td.explain(getStaticMapLocationUrl).calls.map((call) => call.args)).toEqual([
+			[{ latitude: -23.6, longitude: -46.7 }],
+		]);
 	});
-	it("does not generate maps again for an already completed posting key", async () => {
-		repository.findByIdempotencyKey.mockResolvedValue({
+	it("passes the 45-second Maps deadline to the Worker client", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		const originalTimeout = AbortSignal.timeout;
+		const timeout = td.replace(AbortSignal, "timeout");
+		td.when(timeout(td.matchers.anything())).thenDo((delay: number): AbortSignal => originalTimeout(delay));
+		const signal = new AbortController().signal;
+		td.when(timeout(45_000)).thenReturn(signal);
+		await service.createJob(params);
+		td.verify(apiWorkerRpc.withOptions({ signal: signal }));
+	});
+
+	it("requests location fuzzing between 300 and 500 meters when reserving a job", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenResolve(reservation);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+
+		await service.createJob(params);
+
+		expect(td.explain(location.fuzzCoordinate).calls.map((call) => call.args)).toEqual([
+			[
+				{
+					latitude: dto.location.latitude,
+					longitude: dto.location.longitude,
+					minDistanceMeters: 300,
+					maxDistanceMeters: 500,
+				},
+			],
+		]);
+	});
+
+	it("requests the map reference once per posting attempt", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		await service.createJob(params);
+		expect(td.explain(getStaticMapLocationUrl).callCount).toBe(1);
+	});
+
+	it("persists the returned map reference", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		const mapUrl = "https://maps.cataqui.com/static/v1/signed-posting-reference";
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: mapUrl });
+		await service.createJob(params);
+		expect(td.explain(repository.createJob).calls.map((call) => call.args)).toContainEqual([
+			expect.objectContaining({ locationImageUrl: mapUrl }),
+		]);
+	});
+
+	it.each([
+		new RemoteError({
+			name: "MapsError",
+			message: "Static map URL generation failed.",
+			errorCode: "INTERNAL_ERROR",
+		}),
+		new Error("transport"),
+		new DOMException("deadline", "TimeoutError"),
+	])("returns an unavailable outcome for an ambiguous or timed-out Maps call: %s", async (error) => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReject(error);
+		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
+	});
+
+	it.each([
+		new RemoteError({
+			name: "MapsError",
+			message: "Static map URL generation failed.",
+			errorCode: "INTERNAL_ERROR",
+		}),
+		new Error("transport"),
+		new DOMException("deadline", "TimeoutError"),
+	])("does not repeat an ambiguous or timed-out Maps call: %s", async (error) => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReject(error);
+		await service.createJob(params).catch(() => undefined);
+		expect(td.explain(getStaticMapLocationUrl).callCount).toBe(1);
+	});
+
+	it.each([
+		new RemoteError({
+			name: "MapsError",
+			message: "Static map URL generation failed.",
+			errorCode: "INTERNAL_ERROR",
+		}),
+		new Error("transport"),
+		new DOMException("deadline", "TimeoutError"),
+	])("does not publish after an ambiguous or timed-out Maps call: %s", async (error) => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReject(error);
+		await service.createJob(params).catch(() => undefined);
+
+		expect(td.explain(repository.createJob).callCount).toBe(0);
+	});
+
+	it("returns an unavailable outcome after an unsuccessful posting attempt", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReject(new JobImagesUnavailableError());
+		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobImagesUnavailableError);
+	});
+
+	it("creates no public job after an unsuccessful posting attempt", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReject(new JobImagesUnavailableError());
+		await service.createJob(params).catch(() => undefined);
+		expect(td.explain(repository.createJob).callCount).toBe(0);
+	});
+	it("reuses reserved fuzzy coordinates after a failed posting attempt", async () => {
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			id: "request",
+			job: null,
+			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+			fuzzyLatitude: new Prisma.Decimal(-23.6),
+			fuzzyLongitude: new Prisma.Decimal(-46.7),
+		});
+		await service.createJob(params);
+		expect(td.explain(getStaticMapLocationUrl).calls.map((call) => call.args)).toEqual([
+			[{ latitude: -23.6, longitude: -46.7 }],
+		]);
+	});
+	it("does not request a map URL again for an already completed posting key", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
 			job: job,
 			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
 		});
 		await service.createJob(params);
-		expect(vi.mocked(workerCall)).not.toHaveBeenCalled();
+		expect(td.explain(getStaticMapLocationUrl).callCount).toBe(0);
 	});
-	it("derives job data and prepares the contact while waiting for map readiness", async () => {
-		let resolveMaps: (result: GenerateStaticMapsResult) => void = () => {};
-		const promise = new Promise<GenerateStaticMapsResult>((resolve) => {
+	it("derives job data while waiting for the map URL", async () => {
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		let resolveMaps!: (result: Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>) => void;
+		const maps = new Promise<Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>>((resolve) => {
 			resolveMaps = resolve;
 		});
-		vi.mocked(workerCall).mockReturnValue(promise);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReturn(maps);
 		const pending = service.createJob(params);
-		await vi.waitFor(() => expect(vi.mocked(workerCall)).toHaveBeenCalledOnce());
-		const createdBeforeReady = repository.createJob.mock.calls.length;
-		const contactsStartedBeforeReady = users.getOrAddContact.mock.calls.length;
-		expect(ai.generateObject).toHaveBeenCalledOnce();
-		resolveMaps({ kind: "ready", asset: { id: "a".repeat(64), url: job.locationImageUrl } });
+		await vi.waitUntil(() => td.explain(getStaticMapLocationUrl).callCount === 1);
+		const derivationsBeforeReady = td.explain(ai.generateObject).callCount;
+		resolveMaps({ url: job.locationImageUrl });
+		await pending;
+		expect(derivationsBeforeReady).toBe(1);
+	});
+
+	it("prepares the contact while waiting for the map URL", async () => {
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		let resolveMaps!: (result: Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>) => void;
+		const maps = new Promise<Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>>((resolve) => {
+			resolveMaps = resolve;
+		});
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReturn(maps);
+		const pending = service.createJob(params);
+		await vi.waitUntil(() => td.explain(getStaticMapLocationUrl).callCount === 1);
+		const contactsBeforeReady = td.explain(contacts.getOrAddContact).callCount;
+		resolveMaps({ url: job.locationImageUrl });
+		await pending;
+		expect(contactsBeforeReady).toBe(1);
+	});
+
+	it("waits for the map URL before creating the job", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		let resolveMaps!: (result: Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>) => void;
+		const maps = new Promise<Awaited<ReturnType<ApiWorkerPortal["getStaticMapLocationUrl"]>>>((resolve) => {
+			resolveMaps = resolve;
+		});
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenReturn(maps);
+		const pending = service.createJob(params);
+		await vi.waitUntil(() => td.explain(getStaticMapLocationUrl).callCount === 1);
+		const createdBeforeReady = td.explain(repository.createJob).callCount;
+		resolveMaps({ url: job.locationImageUrl });
 		await pending;
 		expect(createdBeforeReady).toBe(0);
-		expect(contactsStartedBeforeReady).toBe(1);
 	});
 
 	it("waits for contact readiness before creating the job", async () => {
-		let resolveContact: (contact: { contactId: string }) => void = () => {};
-		const contact = new Promise<{ contactId: string }>((resolve) => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		let resolveContact!: (contact: Awaited<ReturnType<ContactService["getOrAddContact"]>>) => void;
+		const contact = new Promise<Awaited<ReturnType<ContactService["getOrAddContact"]>>>((resolve) => {
 			resolveContact = resolve;
 		});
-		users.getOrAddContact.mockReturnValue(contact);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenReturn(contact);
 		const pending = service.createJob(params);
-		await vi.waitFor(() => expect(users.getOrAddContact).toHaveBeenCalledOnce());
-		const createdBeforeReady = repository.createJob.mock.calls.length;
-		resolveContact({ contactId: job.contact.id });
+		await vi.waitUntil(() => td.explain(contacts.getOrAddContact).callCount === 1);
+		const createdBeforeReady = td.explain(repository.createJob).callCount;
+		resolveContact({ contactId: job.contact.id, method: dto.contact.method, identifier: dto.contact.identifier });
 		await pending;
 		expect(createdBeforeReady).toBe(0);
-		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ contactId: job.contact.id }));
+	});
+
+	it("persists the prepared contact after it becomes ready", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		let resolveContact!: (contact: Awaited<ReturnType<ContactService["getOrAddContact"]>>) => void;
+		const contact = new Promise<Awaited<ReturnType<ContactService["getOrAddContact"]>>>((resolve) => {
+			resolveContact = resolve;
+		});
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenReturn(contact);
+		const pending = service.createJob(params);
+		await vi.waitUntil(() => td.explain(contacts.getOrAddContact).callCount === 1);
+		resolveContact({ contactId: job.contact.id, method: dto.contact.method, identifier: dto.contact.identifier });
+		await pending;
+		expect(td.explain(repository.createJob).calls.map((call) => call.args)).toContainEqual([
+			expect.objectContaining({ contactId: job.contact.id }),
+		]);
+	});
+
+	it("returns the contact preparation failure to the caller", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		const error = new Error("Contact unavailable");
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenReject(error);
+		await expect(service.createJob(params)).rejects.toBe(error);
 	});
 
 	it("does not create a job when parallel contact preparation fails", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
 		const error = new Error("Contact unavailable");
-		users.getOrAddContact.mockRejectedValue(error);
-		await expect(service.createJob(params)).rejects.toBe(error);
-		expect(repository.createJob).not.toHaveBeenCalled();
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenReject(error);
+		await service.createJob(params).catch(() => undefined);
+		expect(td.explain(repository.createJob).callCount).toBe(0);
 	});
 
 	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])(
 		"returns the poster's %s job with fuzzy location and real contact",
 		async (status) => {
-			repository.findUserJobById.mockResolvedValue({
+			td.when(repository.findProfileJobById(td.matchers.anything())).thenResolve({
 				...job,
 				status: status,
 				locationTitle: "Rua Pardal Branco, 32",
 				contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
 			});
-			const result = await service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId });
+			const result = await service.getProfileJob({ jobId: job.id, posterProfileId: params.posterProfileId });
 			expect(result).toEqual({
 				jobId: job.id,
 				description: job.description,
@@ -223,40 +565,79 @@ describe("JobService direct posting", () => {
 				createdAt: "2026-09-22T12:00:00.000Z",
 				updatedAt: "2026-09-22T12:00:00.000Z",
 			});
-			expect(repository.findUserJobById).toHaveBeenCalledWith({ jobId: job.id, posterUserId: params.posterUserId });
 		},
 	);
 
+	it.each([JobStatus.ACTIVE, JobStatus.ARCHIVED])("scopes the %s job lookup to its poster", async (status) => {
+		td.when(repository.findProfileJobById(td.matchers.anything())).thenResolve({
+			...job,
+			status: status,
+			locationTitle: "Rua Pardal Branco, 32",
+			contact: { contactMethod: "WHATSAPP", identifier: "+5511999999999" },
+		});
+		await service.getProfileJob({ jobId: job.id, posterProfileId: params.posterProfileId });
+
+		expect(td.explain(repository.findProfileJobById).calls.map((call) => call.args)).toContainEqual([
+			{ jobId: job.id, posterProfileId: params.posterProfileId },
+		]);
+	});
+
 	it("returns the owned job with null contact after its linked contact was removed", async () => {
-		repository.findUserJobById.mockResolvedValue({ ...job, locationTitle: "legacy-location-" + job.id, contact: null });
-		await expect(service.getUserJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
+		td.when(repository.findProfileJobById(td.matchers.anything())).thenResolve({
+			...job,
+			locationTitle: "legacy-location-" + job.id,
+			contact: null,
+		});
+		await expect(
+			service.getProfileJob({ jobId: job.id, posterProfileId: params.posterProfileId }),
+		).resolves.toMatchObject({
 			contact: null,
 			location: { title: "legacy-location-" + job.id },
 		});
 	});
 
 	it.each([
-		{ scenario: "missing", jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", posterUserId: params.posterUserId },
-		{ scenario: "another poster's", jobId: job.id, posterUserId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
-	])("returns the same 404 for a $scenario job", async ({ jobId, posterUserId }) => {
-		repository.findUserJobById.mockResolvedValue(null);
-		await expect(service.getUserJob({ jobId: jobId, posterUserId: posterUserId })).rejects.toThrow(JobNotFoundError);
-		expect(repository.findUserJobById).toHaveBeenCalledWith({ jobId: jobId, posterUserId: posterUserId });
+		{ scenario: "missing", jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", posterProfileId: params.posterProfileId },
+		{ scenario: "another poster's", jobId: job.id, posterProfileId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
+	])("returns the same 404 for a $scenario job", async ({ jobId, posterProfileId }) => {
+		td.when(repository.findProfileJobById(td.matchers.anything())).thenResolve(null);
+		await expect(service.getProfileJob({ jobId: jobId, posterProfileId: posterProfileId })).rejects.toThrow(
+			JobNotFoundError,
+		);
+	});
+
+	it.each([
+		{ scenario: "missing", jobId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", posterProfileId: params.posterProfileId },
+		{ scenario: "another poster's", jobId: job.id, posterProfileId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" },
+	])("scopes a $scenario job lookup to the supplied poster", async ({ jobId, posterProfileId }) => {
+		td.when(repository.findProfileJobById(td.matchers.anything())).thenResolve(null);
+		await service.getProfileJob({ jobId: jobId, posterProfileId: posterProfileId }).catch(() => undefined);
+		expect(td.explain(repository.findProfileJobById).calls.map((call) => call.args)).toContainEqual([
+			{ jobId: jobId, posterProfileId: posterProfileId },
+		]);
 	});
 
 	it("returns an empty page when the poster has no jobs", async () => {
-		repository.findUserJobs.mockResolvedValue([]);
-		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve([]);
+		const result = await service.getProfileJobs({ posterProfileId: params.posterProfileId });
 		expect(result).toMatchObject({ data: [], pagination: { hasMore: false, nextCursor: null } });
-		expect(repository.findUserJobs).toHaveBeenCalledWith({
-			posterUserId: params.posterUserId,
-			cursor: undefined,
-			limit: 21,
-		});
+	});
+
+	it("limits the initial owned job query to one page and its lookahead", async () => {
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve([]);
+		await service.getProfileJobs({ posterProfileId: params.posterProfileId });
+
+		expect(td.explain(repository.findProfileJobs).calls.map((call) => call.args)).toContainEqual([
+			{
+				posterProfileId: params.posterProfileId,
+				cursor: undefined,
+				limit: 21,
+			},
+		]);
 	});
 
 	it("returns active and archived posts with their list fields", async () => {
-		repository.findUserJobs.mockResolvedValue([
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve([
 			job,
 			{
 				...job,
@@ -264,7 +645,7 @@ describe("JobService direct posting", () => {
 				status: JobStatus.ARCHIVED,
 			},
 		]);
-		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		const result = await service.getProfileJobs({ posterProfileId: params.posterProfileId });
 		expect(result.data).toEqual([
 			{
 				jobId: job.id,
@@ -293,84 +674,193 @@ describe("JobService direct posting", () => {
 		]);
 	});
 
-	it("returns an archived job for its poster and keeps its public detail available", async () => {
-		repository.archiveOwnedJob.mockResolvedValue({ ...job, status: JobStatus.ARCHIVED });
-		repository.findPublicById.mockResolvedValue({ ...job, status: JobStatus.ARCHIVED });
-		await expect(service.archiveJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
-			status: "ARCHIVED",
-		});
+	it("returns the archived job to its poster", async () => {
+		td.when(repository.archiveOwnedJob(td.matchers.anything())).thenResolve({ ...job, status: JobStatus.ARCHIVED });
+		await expect(service.archiveJob({ jobId: job.id, posterProfileId: params.posterProfileId })).resolves.toMatchObject(
+			{
+				status: "ARCHIVED",
+			},
+		);
+	});
+
+	it("keeps archived public job detail available", async () => {
+		td.when(repository.archiveOwnedJob(td.matchers.anything())).thenResolve({ ...job, status: JobStatus.ARCHIVED });
+		td.when(repository.findPublicById(td.matchers.anything())).thenResolve({ ...job, status: JobStatus.ARCHIVED });
+		await service.archiveJob({ jobId: job.id, posterProfileId: params.posterProfileId });
 		await expect(service.getPublicJob({ jobId: job.id })).resolves.toMatchObject({ status: "ARCHIVED" });
 	});
 
 	it("returns 404 when a different poster archives a job", async () => {
-		repository.archiveOwnedJob.mockResolvedValue(null);
-		await expect(service.archiveJob({ jobId: job.id, posterUserId: "other" })).rejects.toThrow(JobNotFoundError);
+		td.when(repository.archiveOwnedJob(td.matchers.anything())).thenResolve(null);
+		await expect(service.archiveJob({ jobId: job.id, posterProfileId: "other" })).rejects.toThrow(JobNotFoundError);
 	});
 
 	it("returns an active job with its original creation time after activation", async () => {
-		repository.activateOwnedJob.mockResolvedValue({ ...job, status: JobStatus.ACTIVE });
-		await expect(service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })).resolves.toMatchObject({
+		td.when(repository.activateOwnedJob(td.matchers.anything())).thenResolve({ ...job, status: JobStatus.ACTIVE });
+		await expect(
+			service.activateJob({ jobId: job.id, posterProfileId: params.posterProfileId }),
+		).resolves.toMatchObject({
 			status: JobStatus.ACTIVE,
 			createdAt: "2026-09-22T12:00:00.000Z",
 		});
-		expect(repository.activateOwnedJob).toHaveBeenCalledWith({ jobId: job.id, posterUserId: params.posterUserId });
 	});
 
-	it("returns the same 404 for a missing or unowned job during activation", async () => {
-		repository.activateOwnedJob.mockResolvedValue(null);
-		await expect(service.activateJob({ jobId: job.id, posterUserId: params.posterUserId })).rejects.toThrow(
+	it("scopes job activation to its poster", async () => {
+		td.when(repository.activateOwnedJob(td.matchers.anything())).thenResolve({ ...job, status: JobStatus.ACTIVE });
+		await service.activateJob({ jobId: job.id, posterProfileId: params.posterProfileId });
+		expect(td.explain(repository.activateOwnedJob).calls.map((call) => call.args)).toContainEqual([
+			{ jobId: job.id, posterProfileId: params.posterProfileId },
+		]);
+	});
+
+	it("returns 404 for a missing job during activation", async () => {
+		td.when(repository.activateOwnedJob(td.matchers.anything())).thenResolve(null);
+		await expect(service.activateJob({ jobId: job.id, posterProfileId: params.posterProfileId })).rejects.toThrow(
 			JobNotFoundError,
 		);
-		await expect(service.activateJob({ jobId: job.id, posterUserId: "other" })).rejects.toThrow(JobNotFoundError);
+	});
+
+	it("returns 404 for an unowned job during activation", async () => {
+		td.when(repository.activateOwnedJob(td.matchers.anything())).thenResolve(null);
+		await expect(service.activateJob({ jobId: job.id, posterProfileId: "other" })).rejects.toThrow(JobNotFoundError);
 	});
 
 	it("refuses contact lookup for an archived job even when another active job shares its contact", async () => {
-		repository.findActiveJobContact.mockResolvedValue(null);
+		td.when(repository.findActiveJobContact(td.matchers.anything())).thenResolve(null);
 		await expect(service.getJobContact({ jobId: job.id, contactId: job.contact.id })).rejects.toThrow(JobNotFoundError);
-		expect(repository.findActiveJobContact).toHaveBeenCalledWith({ jobId: job.id, contactId: job.contact.id });
+	});
+
+	it("scopes contact lookup to both the job and contact", async () => {
+		td.when(repository.findActiveJobContact(td.matchers.anything())).thenResolve(null);
+		await service.getJobContact({ jobId: job.id, contactId: job.contact.id }).catch(() => undefined);
+		expect(td.explain(repository.findActiveJobContact).calls.map((call) => call.args)).toContainEqual([
+			{ jobId: job.id, contactId: job.contact.id },
+		]);
 	});
 
 	it("returns contact details for an active job's matching contact", async () => {
-		repository.findActiveJobContact.mockResolvedValue({ contactMethod: "WHATSAPP", identifier: "+5511999999999" });
+		td.when(repository.findActiveJobContact(td.matchers.anything())).thenResolve({
+			contactMethod: "WHATSAPP",
+			identifier: "+5511999999999",
+		});
 		await expect(service.getJobContact({ jobId: job.id, contactId: job.contact.id })).resolves.toEqual({
 			method: "WHATSAPP",
 			identifier: "+5511999999999",
 		});
 	});
 
-	it("returns 20 jobs and a cursor after the last visible job when another page exists", async () => {
+	it("returns 20 jobs when another page exists", async () => {
 		const jobs = Array.from({ length: 21 }, (_, index) => ({
 			...job,
 			id: `bbbbbbbb-bbbb-4bbb-8bbb-${index.toString(16).padStart(12, "0")}`,
 		}));
-		repository.findUserJobs.mockResolvedValue(jobs);
-		const result = await service.getUserJobs({ posterUserId: params.posterUserId });
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve(jobs);
+		const result = await service.getProfileJobs({ posterProfileId: params.posterProfileId });
 		expect(result.data).toHaveLength(20);
+	});
+
+	it("reports that another owned job page exists", async () => {
+		const jobs = Array.from({ length: 21 }, (_, index) => ({
+			...job,
+			id: `bbbbbbbb-bbbb-4bbb-8bbb-${index.toString(16).padStart(12, "0")}`,
+		}));
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve(jobs);
+		const result = await service.getProfileJobs({ posterProfileId: params.posterProfileId });
+
 		expect(result.pagination.hasMore).toBe(true);
-		expect(decodeUserJobsCursor({ cursor: result.pagination.nextCursor! })).toEqual({
+	});
+
+	it("encodes the last visible job in the next page cursor", async () => {
+		const jobs = Array.from({ length: 21 }, (_, index) => ({
+			...job,
+			id: `bbbbbbbb-bbbb-4bbb-8bbb-${index.toString(16).padStart(12, "0")}`,
+		}));
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve(jobs);
+		const result = await service.getProfileJobs({ posterProfileId: params.posterProfileId });
+
+		expect(decodeProfileJobsCursor({ cursor: result.pagination.nextCursor! })).toEqual({
 			version: 1,
 			createdAt: "2026-09-22T12:00:00.000Z",
 			jobId: jobs[19]?.id,
 		});
 	});
 
-	it("decodes a cursor before querying and rejects malformed cursors", async () => {
-		repository.findUserJobs.mockResolvedValue([]);
-		const cursor = encodeUserJobsCursor({ createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id });
-		await service.getUserJobs({ posterUserId: params.posterUserId, cursor: cursor });
-		expect(repository.findUserJobs).toHaveBeenCalledWith({
-			posterUserId: params.posterUserId,
-			cursor: { version: 1, createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id },
-			limit: 21,
-		});
-		await expect(service.getUserJobs({ posterUserId: params.posterUserId, cursor: "invalid" })).rejects.toThrow();
+	it("decodes an owned job cursor before querying", async () => {
+		td.when(repository.findProfileJobs(td.matchers.anything())).thenResolve([]);
+		const cursor = encodeProfileJobsCursor({ createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id });
+		await service.getProfileJobs({ posterProfileId: params.posterProfileId, cursor: cursor });
+		expect(td.explain(repository.findProfileJobs).calls.map((call) => call.args)).toContainEqual([
+			{
+				posterProfileId: params.posterProfileId,
+				cursor: { version: 1, createdAt: "2026-09-22T12:00:00.000Z", jobId: job.id },
+				limit: 21,
+			},
+		]);
 	});
 
-	it("creates one active post after deriving title, summary, and payment", async () => {
+	it("rejects malformed owned job cursors", async () => {
+		await expect(
+			service.getProfileJobs({ posterProfileId: params.posterProfileId, cursor: "invalid" }),
+		).rejects.toThrow();
+	});
+
+	it("returns the created active post with derived payment", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
 		const result = await service.createJob(params);
 		expect(result).toMatchObject({ jobId: job.id, payment: job.payment, status: "ACTIVE" });
-		expect(ai.generateObject).toHaveBeenCalledOnce();
-		expect(repository.createJob).toHaveBeenCalledWith(
+	});
+
+	it("derives job data once before creating the active post", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		await service.createJob(params);
+
+		expect(td.explain(ai.generateObject).callCount).toBe(1);
+	});
+
+	it("persists the derived payment, description, selected location, reservation and map reference", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve(derivedJobData);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenResolve({
+			...reservation,
+			id: "request",
+			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
+			job: null,
+			fuzzyLatitude: new Prisma.Decimal(-23.55),
+			fuzzyLongitude: new Prisma.Decimal(-46.63),
+		});
+		await service.createJob(params);
+
+		expect(td.explain(repository.createJob).calls.map((call) => call.args)).toContainEqual([
 			expect.objectContaining({
 				payment: job.payment,
 				description: dto.description,
@@ -378,12 +868,16 @@ describe("JobService direct posting", () => {
 				postRequestId: "request",
 				locationImageUrl: job.locationImageUrl,
 			}),
-		);
+		]);
 	});
 
 	it("rejects an idempotent retry whose selected location title changed", async () => {
-		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
-		repository.findByIdempotencyKey.mockResolvedValue({ job: job, requestHash: requestHash });
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: job,
+			requestHash: requestHash,
+		});
 		await expect(
 			service.createJob({
 				...params,
@@ -393,69 +887,267 @@ describe("JobService direct posting", () => {
 	});
 
 	it("persists null when the description does not state compensation", async () => {
-		ai.generateObject.mockResolvedValue({
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve({
 			title: job.title,
 			description_summary: job.descriptionSummary,
 			payment: null,
 		});
-		repository.createJob.mockResolvedValue({ ...job, payment: null });
+		td.when(repository.createJob(td.matchers.anything())).thenResolve({ ...job, payment: null });
+		await service.createJob({
+			...params,
+			dto: { ...dto, description: "Preciso de ajuda para descarregar caixas amanhã." },
+		});
+		expect(td.explain(repository.createJob).calls.map((call) => call.args)).toContainEqual([
+			expect.objectContaining({ payment: null }),
+		]);
+	});
+
+	it("returns null payment when the description does not state compensation", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+			payment: null,
+		});
+		td.when(repository.createJob(td.matchers.anything())).thenResolve({ ...job, payment: null });
 		const result = await service.createJob({
 			...params,
 			dto: { ...dto, description: "Preciso de ajuda para descarregar caixas amanhã." },
 		});
-		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ payment: null }));
+
 		expect(result.payment).toBeNull();
 	});
 
 	it("normalizes whitespace-only derived payment to null before writing the job", async () => {
-		ai.generateObject.mockResolvedValue({
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve({
 			title: job.title,
 			description_summary: job.descriptionSummary,
 			payment: "   ",
 		});
 		await service.createJob(params);
-		expect(repository.createJob).toHaveBeenCalledWith(expect.objectContaining({ payment: null }));
+		expect(td.explain(repository.createJob).calls.map((call) => call.args)).toContainEqual([
+			expect.objectContaining({ payment: null }),
+		]);
 	});
 
-	it("rejects a missing payment field before writing the job", async () => {
-		ai.generateObject.mockResolvedValue({ title: job.title, description_summary: job.descriptionSummary });
+	it("rejects a missing derived payment field", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+		});
 		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobDataDerivationUnavailableError);
-		expect(repository.createJob).not.toHaveBeenCalled();
 	});
 
-	it("returns the original post on an identical retry without deriving again", async () => {
-		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
-		repository.findByIdempotencyKey.mockResolvedValue({ job: job, requestHash: requestHash });
+	it("does not write a job when its derived payment field is missing", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenResolve({
+			title: job.title,
+			description_summary: job.descriptionSummary,
+		});
+		await service.createJob(params).catch(() => undefined);
+		expect(td.explain(repository.createJob).callCount).toBe(0);
+	});
+
+	it("returns the original post on an identical retry", async () => {
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: job,
+			requestHash: requestHash,
+		});
 		expect((await service.createJob(params)).jobId).toBe(job.id);
-		expect(ai.generateObject).not.toHaveBeenCalled();
-		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+
+	it("does not derive again on an identical completed posting retry", async () => {
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: job,
+			requestHash: requestHash,
+		});
+		await service.createJob(params);
+
+		expect(td.explain(ai.generateObject).callCount).toBe(0);
+	});
+
+	it("does not write another job on an identical completed posting retry", async () => {
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: job,
+			requestHash: requestHash,
+		});
+		await service.createJob(params);
+
+		expect(td.explain(repository.createJob).callCount).toBe(0);
 	});
 
 	it("rejects a reused key with different post content", async () => {
-		repository.findByIdempotencyKey.mockResolvedValue({ job: job, requestHash: "0".repeat(64) });
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: job,
+			requestHash: "0".repeat(64),
+		});
 		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobIdempotencyConflictError);
 	});
 
-	it("leaves no job when derivation fails", async () => {
-		ai.generateObject.mockRejectedValue(new Error("gateway unavailable"));
+	it("returns an unavailable outcome when derivation fails", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenReject(
+			new Error("gateway unavailable"),
+		);
 		await expect(service.createJob(params)).rejects.toBeInstanceOf(JobDataDerivationUnavailableError);
-		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+
+	it("leaves no job when derivation fails", async () => {
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenDo(
+			async (
+				input: Parameters<JobRepository["reservePostRequest"]>[0],
+			): ReturnType<JobRepository["reservePostRequest"]> => ({
+				...reservation,
+				requestHash: input.requestHash,
+			}),
+		);
+		td.when(getStaticMapLocationUrl(td.matchers.anything())).thenResolve({ url: job.locationImageUrl });
+		td.when(contacts.getOrAddContact(td.matchers.anything())).thenResolve(savedContact);
+		td.when(repository.createJob(td.matchers.anything())).thenResolve(job);
+		td.when(ai.generateObject<typeof JobDerivedDataSchema>(td.matchers.anything())).thenReject(
+			new Error("gateway unavailable"),
+		);
+		await service.createJob(params).catch(() => undefined);
+		expect(td.explain(repository.createJob).callCount).toBe(0);
 	});
 
 	it("returns the original null-payment post on an identical retry", async () => {
-		const requestHash = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(dto)).digest("hex");
-		repository.findByIdempotencyKey.mockResolvedValue({ job: { ...job, payment: null }, requestHash: requestHash });
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: { ...job, payment: null },
+			requestHash: requestHash,
+		});
 		expect((await service.createJob(params)).payment).toBeNull();
-		expect(ai.generateObject).not.toHaveBeenCalled();
-		expect(repository.createJob).not.toHaveBeenCalled();
+	});
+
+	it("does not derive again on an identical null-payment posting retry", async () => {
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: { ...job, payment: null },
+			requestHash: requestHash,
+		});
+		await service.createJob(params);
+
+		expect(td.explain(ai.generateObject).callCount).toBe(0);
+	});
+
+	it("does not write another job on an identical null-payment posting retry", async () => {
+		const requestHash = createHash("sha256").update(JSON.stringify(dto)).digest("hex");
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve({
+			...reservation,
+			job: { ...job, payment: null },
+			requestHash: requestHash,
+		});
+		await service.createJob(params);
+
+		expect(td.explain(repository.createJob).callCount).toBe(0);
 	});
 
 	it("returns a concurrently completed reservation without generating another map", async () => {
-		repository.reservePostRequest.mockResolvedValue({
+		td.when(repository.findByIdempotencyKey(td.matchers.anything())).thenResolve(null);
+		td.when(location.fuzzCoordinate(td.matchers.anything())).thenReturn(dto.location);
+		td.when(repository.reservePostRequest(td.matchers.anything())).thenResolve({
+			...reservation,
 			job: job,
 			requestHash: createHash("sha256").update(JSON.stringify(dto)).digest("hex"),
 		});
 		await service.createJob(params);
-		expect(vi.mocked(workerCall)).not.toHaveBeenCalled();
+		expect(td.explain(getStaticMapLocationUrl).callCount).toBe(0);
+	});
+	it("returns the stored signed URL when reading a saved job", async () => {
+		td.when(repository.findPublicById(td.matchers.anything())).thenResolve(job);
+		const result = await service.getPublicJob({ jobId: job.id });
+		expect(result.location.imageUrl).toBe(job.locationImageUrl);
+	});
+
+	it("does not call Maps when reading a saved job", async () => {
+		td.when(repository.findPublicById(td.matchers.anything())).thenResolve(job);
+		await service.getPublicJob({ jobId: job.id });
+
+		expect(td.explain(getStaticMapLocationUrl).callCount).toBe(0);
 	});
 });

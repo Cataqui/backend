@@ -25,10 +25,14 @@ describe("PublicJobOutputSchema", () => {
 	});
 	it("accepts an archived public job", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, status: "ARCHIVED" }).success).toBe(true);
+	});
+	it("rejects an unsupported public job status", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, status: "CLOSED" }).success).toBe(false);
 	});
-	it("rejects structured payment and obsolete job type", () => {
+	it("rejects structured payment", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, payment: { type: "FIXED" } }).success).toBe(false);
+	});
+	it("rejects an obsolete job type", () => {
 		expect(PublicJobOutputSchema.safeParse({ ...job, type: "INDIVIDUAL" }).success).toBe(false);
 	});
 });
