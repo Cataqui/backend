@@ -64,11 +64,29 @@ module Cataqui
                   save.call
                   return nil
                 end
-                part_number = transfer.fetch("parts").length + 1
-                part_etag = @_destination.copy_part(key: target, source_bucket: @_source_bucket, source_key: asset.fetch("key"), offset: offset, length: [part_bytes, asset.fetch("bytes") - offset].min, upload_id: transfer.fetch("uploadId"), part_number: part_number, timeout: timeout, signal: signal)
-                transfer.fetch("parts").push({ "partNumber" => part_number, "etag" => part_etag })
-                save.call
-                offset += part_bytes
+                # Four server-side requests overlap provider latency while the
+                # owning thread alone persists the contiguous resume position.
+                workers = (offset...asset.fetch("bytes")).step(part_bytes).take(4).map do |part_offset|
+                  Thread.new do
+                    part_number = (part_offset / part_bytes) + 1
+                    part_etag = @_destination.copy_part(key: target, source_bucket: @_source_bucket, source_key: asset.fetch("key"), offset: part_offset, length: [part_bytes, asset.fetch("bytes") - part_offset].min, upload_id: transfer.fetch("uploadId"), part_number: part_number, timeout: timeout, signal: signal)
+                    { "partNumber" => part_number, "etag" => part_etag }
+                  rescue StandardError => error
+                    error
+                  end
+                end
+                begin
+                  workers.each do |worker|
+                    part = worker.value
+                    raise part if part.is_a?(Exception)
+
+                    transfer.fetch("parts").push(part)
+                    save.call
+                  end
+                ensure
+                  workers.each(&:join)
+                end
+                offset = transfer.fetch("parts").length * part_bytes
               end
               _verify_source(key: asset.fetch("key"), bytes: asset.fetch("bytes"), etag: asset.fetch("etag"), timeout: timeout, signal: signal)
               digest = Digest::MD5.new

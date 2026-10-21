@@ -2,6 +2,8 @@
 
 require_relative "../../test/test_helper"
 require_relative "mapshot-copy"
+require_relative "../source/import/source-import.error"
+require "timeout"
 
 class MapshotCopyTest < Minitest::Test
   class Domain
@@ -71,7 +73,7 @@ class MapshotCopyTest < Minitest::Test
 
     def copy_part(key:, source_bucket:, source_key:, upload_id:, part_number:, offset:, length:, **)
       @parts.push({ key: key, source_bucket: source_bucket, source_key: source_key, upload_id: upload_id, part_number: part_number, offset: offset, length: length })
-      raise "temporary copy failure" if @part_error == @parts.length
+      raise "temporary copy failure" if @part_error == part_number
 
       @part_etag || Digest::MD5.hexdigest(offset.to_s)
     end
@@ -167,9 +169,10 @@ class MapshotCopyTest < Minitest::Test
   def test_large_planet_uses_bounded_server_side_parts_and_no_download
     _large
     refute_nil _copy
-    assert_equal([64 * 1024 * 1024, 1024 * 1024], @storage.parts.map { |part| part.fetch(:length) })
-    assert_equal([0, 64 * 1024 * 1024], @storage.parts.map { |part| part.fetch(:offset) })
-    assert_equal([1, 2], @storage.parts.map { |part| part.fetch(:part_number) })
+    parts = @storage.parts.sort_by { |part| part.fetch(:part_number) }
+    assert_equal([64 * 1024 * 1024, 1024 * 1024], parts.map { |part| part.fetch(:length) })
+    assert_equal([0, 64 * 1024 * 1024], parts.map { |part| part.fetch(:offset) })
+    assert_equal([1, 2], parts.map { |part| part.fetch(:part_number) })
     assert(@storage.parts.all? { |part| part.fetch(:source_bucket) == "staging" })
     assert_empty(@storage.reads.select { |read| read.fetch(:key) == @storage.asset.fetch("key") })
     assert_equal 2, @storage.heads.count(@storage.asset.fetch("key"))
@@ -189,8 +192,88 @@ class MapshotCopyTest < Minitest::Test
     _large
     @storage.part_error = 2
     assert_raises(RuntimeError) { _copy }
+    assert_equal([1], @storage.documents.fetch("source/slots/b/copy.json").fetch("value").fetch("transfer").fetch("parts").map { |part| part.fetch("partNumber") })
+    @storage.part_error = nil
     refute_nil _copy
-    assert_equal([0, 64 * 1024 * 1024, 64 * 1024 * 1024], @storage.parts.map { |part| part.fetch(:offset) })
+    assert_equal([0, 64 * 1024 * 1024, 64 * 1024 * 1024], @storage.parts.map { |part| part.fetch(:offset) }.sort)
+  end
+
+  #: () -> void
+  def test_parallel_copy_bounds_requests_drains_failure_and_resumes_contiguous_receipts
+    @source.fetch("release").fetch("pmtiles")["bytes"] = (4 * 64 * 1024 * 1024) + 1
+    _inventory
+    started = Queue.new
+    release = Queue.new
+    original = @storage.method(:copy_part)
+    @storage.part_error = 2
+    @storage.define_singleton_method(:copy_part) do |**input|
+      started.push(input.fetch(:part_number))
+      release.pop
+      original.call(**input)
+    end
+    worker = Thread.new do
+      _copy
+    rescue StandardError => error
+      error
+    end
+    begin
+      requests = Timeout.timeout(5) { Array.new(4) { started.pop } }
+      assert_equal [1, 2, 3, 4], requests.sort
+      assert started.empty?, "The fifth part must wait for the current batch."
+      assert worker.alive?
+      4.times { release.push(true) }
+      failure = Timeout.timeout(5) { worker.value }
+      assert_instance_of RuntimeError, failure
+      assert_equal "temporary copy failure", failure.message
+      assert_equal [1, 2, 3, 4], @storage.parts.map { |part| part.fetch(:part_number) }.sort
+      assert_empty @storage.completions
+      receipts = @storage.documents.fetch("source/slots/b/copy.json").fetch("value").fetch("transfer").fetch("parts")
+      assert_equal([1], receipts.map { |part| part.fetch("partNumber") })
+      @storage.part_error = nil
+      @storage.define_singleton_method(:copy_part) { |**input| original.call(**input) }
+      refute_nil _copy
+      assert_equal [1, 2, 2, 3, 3, 4, 4, 5], @storage.parts.map { |part| part.fetch(:part_number) }.sort
+      assert_equal([1, 2, 3, 4, 5], @storage.completions.last.fetch(:parts).map { |part| part.fetch("partNumber") })
+    ensure
+      4.times { release.push(true) }
+      worker.join
+    end
+  end
+
+  #: () -> void
+  def test_cancellation_stops_and_drains_every_parallel_request_before_returning
+    @source.fetch("release").fetch("pmtiles")["bytes"] = 4 * 64 * 1024 * 1024
+    _inventory
+    started = Queue.new
+    finished = Queue.new
+    blocked = Queue.new
+    signal = Cataqui::Mapshot::SourceImportSignal.new
+    @storage.define_singleton_method(:copy_part) do |signal:, part_number:, **|
+      signal.with_timeout(seconds: 10) do
+        started.push(part_number)
+        blocked.pop
+      end
+    ensure
+      finished.push(part_number)
+    end
+    worker = Thread.new do
+      _copy(signal: signal)
+    rescue StandardError => error
+      error
+    end
+    begin
+      assert_equal [1, 2, 3, 4], Timeout.timeout(5) { Array.new(4) { started.pop } }.sort
+      signal.abort!
+      failure = Timeout.timeout(5) { worker.value }
+      assert_instance_of Cataqui::Mapshot::SourceImportError, failure
+      assert_equal "ABORTED", failure.code
+      assert_equal [1, 2, 3, 4], Array.new(4) { finished.pop }.sort
+      assert_empty @storage.completions
+      assert_empty @storage.documents.fetch("source/slots/b/copy.json").fetch("value").fetch("transfer").fetch("parts")
+    ensure
+      signal.abort!
+      worker.join
+    end
   end
 
   def test_expiration_before_first_part_retains_upload_for_resume
