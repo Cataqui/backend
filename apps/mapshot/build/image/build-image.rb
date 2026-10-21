@@ -63,6 +63,7 @@ class MapshotImageBuild
         sha256: source.fetch("prepared").fetch("sha256"), root: indexes
       )
       File.write(File.join(indexes, "source.json"), JSON.generate(source))
+      File.chmod(0o644, File.join(indexes, "source.json"))
       File.open(dockerfile, "a") do |file|
         file.puts('COPY --chown=root:root ["apps/mapshot/generated/source-indexes/image/source.json", "/app/data/indexes/source.json"]')
       end
