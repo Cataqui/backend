@@ -92,7 +92,7 @@ After the selected environment's Auth service is healthy, configure its Meta app
 
 Use `WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN` from that environment's `/generated/auth/runtime` folder when Meta verifies the callback. The selected Meta app must match Auth's `META_APP_SECRET`. Keep the `messages` subscription enabled, send a Meta test webhook, and confirm successful delivery in both Meta and Auth's request trace. Keep token values out of screenshots and logs.
 
-Real incoming WhatsApp messages require a published Meta app. Test webhook delivery alone does not verify the live user login flow; publishing is a separate launch action.
+Before accepting live WhatsApp messages, set the app's privacy-policy URL to the existing [Cataquí privacy policy](https://cataqui.com/privacy-policy/), complete Meta's publication requirements, and publish the app. Confirm that Meta reports live mode, then verify an incoming WhatsApp login. Test webhook delivery alone does not verify the live user login flow.
 
 ## Troubleshooting
 

@@ -208,22 +208,12 @@ class MapshotRelease
         raise "Invalid Worker artifact paths."
       end
       _command(command: "tar", args: ["-xzf", archive, "-C", worker], cwd: directory, timeout: 10 * 60)
-      if File.directory?(File.join(worker, ".cloudflare/output"))
-        _command(
-          command: "node", args: [File.join(@_application_root, "worker/node_modules/cf/bin/cf"),
-                                   "deploy", "--prebuilt", "--mode", @_input.fetch("environment"),
-                                   "--provision=false", "--containers-rollout=immediate"],
-          cwd: worker, timeout: 10 * 60
-        )
-      else
-        # Successful deployments retained before native cf adoption still need
-        # their original descriptor until normal retention replaces them.
-        _command(
-          command: "pnpm", args: ["exec", "wrangler", "deploy", "--config", File.join(worker, "wrangler.jsonc"),
-                                 "--strict", "--containers-rollout=immediate"],
-          cwd: @_application_root, timeout: 10 * 60
-        )
-      end
+      _command(
+        command: "node", args: [File.join(@_application_root, "worker/node_modules/cf/bin/cf"),
+                                 "deploy", "--prebuilt", "--mode", @_input.fetch("environment"),
+                                 "--provision=false", "--containers-rollout=immediate"],
+        cwd: worker, timeout: 10 * 60
+      )
       _wait_for_rollout(image: deployment.fetch("image"))
     end
     _probe
