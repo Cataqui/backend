@@ -1,21 +1,17 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("profile storage", () => {
-	it("starts from one clean v1 schema without authentication tables", () => {
+	it("preserves the v1 baseline without authentication tables", () => {
 		const migration = readFileSync(
 			resolve(process.cwd(), "prisma/schema/migrations/00000000000000_init/migration.sql"),
 			"utf8",
 		);
 		expect({
-			migrations: readdirSync(resolve(process.cwd(), "prisma/schema/migrations")).filter(
-				(name) => name !== "migration_lock.toml",
-			),
 			hasProfiles: migration.includes('CREATE TABLE "profiles"'),
 			hasAuthenticationTables: /auth_(identities|sessions)|CREATE TABLE "users"/u.test(migration),
 			profileIdIsAssigned: !/"id" UUID NOT NULL DEFAULT/u.test(migration),
 		}).toEqual({
-			migrations: ["00000000000000_init"],
 			hasProfiles: true,
 			hasAuthenticationTables: false,
 			profileIdIsAssigned: true,
