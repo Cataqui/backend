@@ -1,6 +1,8 @@
-resource "cloudflare_ai_gateway" "derive_job_data" {
+resource "cloudflare_ai_gateway" "application" {
+  for_each = local.gateways
+
   account_id                 = local.cloudflare_account_id
-  id                         = local.derive_job_data_gateway.id
+  id                         = each.value
   authentication             = true
   cache_invalidate_on_update = true
   cache_ttl                  = 0
@@ -19,7 +21,7 @@ resource "cloudflare_ai_gateway" "derive_job_data" {
     enabled = true
     rules = [{
       enabled    = true
-      limit      = local.derive_job_data_gateway.spend_limit
+      limit      = local.spend_limit
       limit_type = "cost"
       technique  = "sliding"
       window     = 2592000

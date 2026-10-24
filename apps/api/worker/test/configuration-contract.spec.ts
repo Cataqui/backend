@@ -79,7 +79,7 @@ it.each([
 			ENVIRONMENT: { type: "text", value: scenario.mode },
 			SLEEP_AFTER_MS: { type: "json", value: scenario.sleep },
 			CORS_ORIGINS: { type: "text", value: scenario.origins },
-			DERIVE_JOB_DATA_AI_GATEWAY_ID: { type: "text", value: `cataqui-derive-job-data-${scenario.mode}` },
+			AI_GATEWAY_ID: { type: "text", value: `cataqui-api-${scenario.mode}` },
 		},
 	});
 });

@@ -1,0 +1,46 @@
+{
+	"name": "@cataqui/ai-worker",
+	"version": "1.0.0",
+	"description": "Cataquí generic AI operations Worker",
+	"private": true,
+	"license": "BUSL-1.1",
+	"type": "module",
+	"scripts": {
+		"build": "cf build --mode development",
+		"build:staging": "cf build --mode staging",
+		"build:production": "cf build --mode production",
+		"cf:dev": "node --env-file-if-exists=.env node_modules/cf/bin/cf dev --mode development",
+		"cf:types": "cf workers types --include-runtime=false",
+		"clean": "ruby -rfileutils -e 'FileUtils.rm_rf(ARGV)' -- coverage dist generated .cloudflare .worker-build",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"test:watch": "vitest",
+		"typecheck": "pnpm cf:types && tsc --noEmit",
+		"compile": "tsc -p tsconfig.build.json"
+	},
+	"dependencies": {
+		"@cataqui/response": "workspace:*",
+		"@hono/tsyringe": "catalog:",
+		"hono": "catalog:",
+		"reflect-metadata": "catalog:",
+		"tsyringe": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@cloudflare/config": "catalog:",
+		"@cloudflare/workers-types": "catalog:",
+		"@types/node": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"cf": "catalog:",
+		"testdouble": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	},
+	"imports": {
+		"#ai/*": {
+			"types": "./src/*.ts",
+			"default": "./.worker-build/src/*.js"
+		}
+	}
+}

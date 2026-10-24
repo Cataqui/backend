@@ -48,7 +48,7 @@ module Bootstrap
   def self.validate_manifest(manifest:)
     _require_exact_keys(value: manifest, expected_keys: %w[cloudflare google_cloud infisical github neon upstash], path: "manifest")
     _require_exact_keys(value: manifest["cloudflare"], expected_keys: %w[ai_gateways pages r2 hyperdrive], path: "manifest.cloudflare")
-    _require_exact_keys(value: manifest.dig("cloudflare", "ai_gateways"), expected_keys: %w[derive_job_data_staging derive_job_data_production], path: "manifest.cloudflare.ai_gateways")
+    _require_exact_keys(value: manifest.dig("cloudflare", "ai_gateways"), expected_keys: %w[api_staging api_production ai_staging ai_production], path: "manifest.cloudflare.ai_gateways")
     _require_exact_keys(value: manifest.dig("cloudflare", "pages"), expected_keys: %w[landing_staging landing_production], path: "manifest.cloudflare.pages")
     ENVIRONMENTS.each do |environment|
       project = manifest.dig("cloudflare", "pages", "landing_#{environment}")
@@ -122,7 +122,9 @@ module Bootstrap
     _require_string(value: manifest.dig("neon", "databases", "cataqui", "runtime_role"), path: "neon.databases.cataqui.runtime_role", pattern: /\A[a-z][a-z0-9_]*\z/)
     ENVIRONMENTS.each do |environment|
       _require_string(value: manifest.dig("neon", "api_keys", "project_access", "cataqui_#{environment}", "name"), path: "neon.api_keys.project_access.cataqui_#{environment}.name", pattern: LOWERCASE_NAME_PATTERN)
-      _require_string(value: manifest.dig("cloudflare", "ai_gateways", "derive_job_data_#{environment}"), path: "cloudflare.ai_gateways.derive_job_data_#{environment}", pattern: LOWERCASE_NAME_PATTERN)
+      %w[api ai].each do |application|
+        _require_string(value: manifest.dig("cloudflare", "ai_gateways", "#{application}_#{environment}"), path: "cloudflare.ai_gateways.#{application}_#{environment}", pattern: LOWERCASE_NAME_PATTERN)
+      end
       _require_string(value: manifest.dig("neon", "projects", "cataqui_#{environment}", "name"), path: "neon.projects.cataqui_#{environment}.name", pattern: LOWERCASE_NAME_PATTERN)
       _require_string(value: manifest.dig("upstash", "redis", "databases", "cataqui_api_#{environment}", "name"), path: "upstash.redis.databases.cataqui_api_#{environment}.name", pattern: LOWERCASE_NAME_PATTERN)
       _require_string(value: manifest.dig("google_cloud", "projects", "cataqui_#{environment}", "name"), path: "google_cloud.projects.cataqui_#{environment}.name", pattern: LOWERCASE_NAME_PATTERN)

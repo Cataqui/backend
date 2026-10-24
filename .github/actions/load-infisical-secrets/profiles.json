@@ -129,6 +129,12 @@
 		"environment_aliases": {},
 		"authenticate_infisical_provider": false
 	},
+	"ai-deployment": {
+		"secret_path": "/generated/ai/deployment",
+		"required_secrets": ["CLOUDFLARE_API_TOKEN"],
+		"environment_aliases": {},
+		"authenticate_infisical_provider": false
+	},
 	"maps-deployment": {
 		"secret_path": "/generated/maps/deployment",
 		"required_secrets": ["CLOUDFLARE_API_TOKEN"],

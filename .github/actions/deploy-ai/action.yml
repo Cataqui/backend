@@ -1,0 +1,82 @@
+name: Deploy AI Worker
+description: Publish the AI Worker, check health, and restore the previous deployment on failure.
+
+inputs:
+  infisical-identity-id:
+    description: Environment-scoped Infisical deployment identity supplied by the workflow.
+    required: true
+  environment:
+    description: Deployment environment; staging or production.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Load AI deployment credentials
+      uses: ./.github/actions/load-infisical-secrets
+      with:
+        environment: ${{ inputs.environment }}
+        profile: ai-deployment
+        infisical-identity-id: ${{ inputs.infisical-identity-id }}
+    - name: Build AI for the deployment environment
+      shell: ruby {0}
+      working-directory: apps/workers/ai
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: exec "pnpm", "exec", "cf", "build", "--mode", ENV.fetch("INPUT_ENVIRONMENT")
+    - name: Get current Worker deployment
+      id: current-deployment
+      shell: ruby {0}
+      working-directory: apps/workers/ai
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "open3"
+        require "rbconfig"
+        versions, status = Open3.capture2(
+          RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/get-current-worker-deployment.rb")
+        )
+        exit(status.exitstatus || 1) unless status.success?
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "versions=#{versions.strip}" }
+    - name: Deploy AI
+      id: deploy
+      shell: ruby {0}
+      working-directory: apps/workers/ai
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        require "json"
+        build = JSON.parse(File.read(".cloudflare/output/v0/config.json", encoding: "UTF-8"))
+        exec({ "CLOUDFLARE_ACCOUNT_ID" => build.fetch("accountId") },
+             "pnpm", "exec", "cf", "deploy", "--prebuilt", "--mode", ENV.fetch("INPUT_ENVIRONMENT"),
+             "--provision=false", "--tag", ENV.fetch("GITHUB_SHA"),
+             "--message", "Deploy #{ENV.fetch('GITHUB_SHA')}")
+    - name: Verify AI health
+      id: health
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-ai-health.rb")
+    - name: Restore previous AI deployment
+      id: restore
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions != '[]'
+      shell: ruby {0}
+      working-directory: apps/workers/ai
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        PREVIOUS_VERSIONS: ${{ steps.current-deployment.outputs.versions }}
+      run: load File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/scripts/cloudflare/restore-worker-deployment.rb")
+    - name: Check AI health after restoration
+      if: failure() && steps.restore.outcome == 'success'
+      shell: ruby {0}
+      env:
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+      run: load File.join(ENV.fetch("GITHUB_ACTION_PATH"), "check-ai-health.rb")
+    - name: Report unavailable first-deployment rollback
+      if: failure() && steps.current-deployment.outcome == 'success' && (steps.deploy.outcome == 'failure' || steps.health.outcome == 'failure') && steps.current-deployment.outputs.versions == '[]'
+      shell: ruby {0}
+      run: warn "AI deployment failed; no previous Worker deployment exists to restore. Correct the candidate and retry."
+    - name: Clear AI deployment credential
+      if: always()
+      shell: ruby {0}
+      run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts "CLOUDFLARE_API_TOKEN=" }

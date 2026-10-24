@@ -94,8 +94,10 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		});
 		expect(manifest.cloudflare.r2.buckets.opentofu_state).toBe("cataqui-backend-opentofu-state");
 		expect(manifest.cloudflare.ai_gateways).toEqual({
-			derive_job_data_staging: "cataqui-derive-job-data-staging",
-			derive_job_data_production: "cataqui-derive-job-data-production",
+			api_staging: "cataqui-api-staging",
+			api_production: "cataqui-api-production",
+			ai_staging: "cataqui-ai-worker-staging",
+			ai_production: "cataqui-ai-worker-production",
 		});
 		expect(manifest.google_cloud.projects).toEqual({
 			cataqui_staging: { name: "cataqui-staging", id: "cataqui-staging-mre5wge" },
@@ -111,7 +113,7 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		const rootHcl = _getRootHcl();
 		expect(rootHcl).toMatch(/jsondecode\(file\("\$\{path\.module\}\/\.\.\/\.\.\/\.\.\/platforms\.json"\)\)/);
 		expect(rootHcl).toMatch(/jsondecode\(file\("\$\{path\.module\}\/\.\.\/\.\.\/\.\.\/manifest\.json"\)\)/);
-		expect(rootHcl).toMatch(/local\.manifest\.cloudflare\.ai_gateways\.derive_job_data_(?:staging|production)/);
+		expect(rootHcl).toMatch(/for_each\s*=\s*local\.gateways/);
 		expect(rootHcl).toMatch(/account_id\s*=\s*local\.cloudflare_account_id/);
 		expect(rootHcl).not.toMatch(/(?:cloudflare_account_id|infisical_project_id)\s*=\s*"/);
 	});
@@ -136,14 +138,13 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		expect(_getRootHcl()).not.toMatch(/\boutput\s+"/);
 	});
 
-	it("should use an API-owned token with task-specific gateway IDs", () => {
+	it("should use an API-owned token and an app-owned gateway ID", () => {
 		const applicationConfiguration = _getApplicationConfiguration();
 
 		expect(applicationConfiguration).toContain("AI_GATEWAY_API_TOKEN");
 		expect(applicationConfiguration).toContain("aiGatewayApiToken");
-		expect(applicationConfiguration).not.toMatch(
-			/(?:^|[^A-Z_])(?:CLOUDFLARE_AI_GATEWAY_ID|DERIVE_JOB_DATA_AI_GATEWAY_API_TOKEN)(?:[^A-Z_]|$)|\b(?:cloudflareAiGatewayId|deriveJobDataAiGatewayApiToken|aiApiToken)\b/m,
-		);
+		expect(applicationConfiguration).toContain("AI_GATEWAY_ID");
+		expect(applicationConfiguration).toContain("aiGatewayId");
 	});
 
 	it("should configure the owned gateway for each application environment", async () => {
@@ -151,10 +152,21 @@ describe("cloudflare AI gateways OpenTofu contract", () => {
 		for (const mode of ["development", "staging", "production"] as const) {
 			const configuration = await loadCloudflareConfiguration({ application: "apps/api/worker", mode: mode });
 			const expected =
-				mode === "development"
-					? "cataqui-derive-job-data-development"
-					: manifest.cloudflare.ai_gateways[`derive_job_data_${mode}`];
-			expect(configuration.worker?.env?.DERIVE_JOB_DATA_AI_GATEWAY_ID).toEqual({ type: "text", value: expected });
+				mode === "development" ? "cataqui-api-development" : manifest.cloudflare.ai_gateways[`api_${mode}`];
+			expect(configuration.worker?.env?.AI_GATEWAY_ID).toEqual({ type: "text", value: expected });
 		}
 	});
+
+	it.each(["staging", "production"] as const)(
+		"connects the AI binding to the manifest-owned gateway in %s",
+		async (mode) => {
+			const manifest = JSON.parse(_readInfrastructureFile("manifest.json"));
+			const configuration = await loadCloudflareConfiguration({ application: "apps/workers/ai", mode: mode });
+			expect(configuration.worker?.env?.AI).toEqual({ type: "ai" });
+			expect(configuration.worker?.env?.AI_GATEWAY_ID).toEqual({
+				type: "text",
+				value: manifest.cloudflare.ai_gateways[`ai_${mode}`],
+			});
+		},
+	);
 });

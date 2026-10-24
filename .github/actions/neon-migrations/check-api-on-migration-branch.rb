@@ -18,12 +18,12 @@ Signal.trap('INT') { exit(130) }
 runtime = {
   'ENVIRONMENT' => environment,
   'DATABASE_APP_POOLER_URL' => branch_url,
-  'DERIVE_JOB_DATA_AI_GATEWAY_ID' => "cataqui-derive-job-data-#{environment}",
+  'AI_GATEWAY_ID' => "cataqui-api-#{environment}",
   'CORS_ORIGINS' => environment == 'production' ? 'https://cataqui.com' : 'https://staging.cataqui.com'
 }
 names = %w[
   ENVIRONMENT CLOUDFLARE_ACCOUNT_ID DATABASE_APP_POOLER_URL CORS_ORIGINS
-  AI_GATEWAY_API_TOKEN DERIVE_JOB_DATA_AI_GATEWAY_ID
+  AI_GATEWAY_API_TOKEN AI_GATEWAY_ID
   UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN
 ]
 

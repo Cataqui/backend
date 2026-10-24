@@ -1,8 +1,10 @@
 {
 	"cloudflare": {
 		"ai_gateways": {
-			"derive_job_data_staging": "cataqui-derive-job-data-staging",
-			"derive_job_data_production": "cataqui-derive-job-data-production"
+			"api_staging": "cataqui-api-staging",
+			"api_production": "cataqui-api-production",
+			"ai_staging": "cataqui-ai-worker-staging",
+			"ai_production": "cataqui-ai-worker-production"
 		},
 		"r2": {
 			"buckets": {
