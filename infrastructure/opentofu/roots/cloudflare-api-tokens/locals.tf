@@ -214,6 +214,11 @@ locals {
   }
 
   worker_deployment_tokens = {
+    ai = {
+      account_permissions = ["workers_scripts_read", "workers_scripts_write", "account_settings_read"]
+      zone_permissions    = ["zone_read", "workers_routes_read", "workers_routes_write"]
+      folder_path         = "/generated/ai/deployment"
+    }
     api = {
       account_permissions = [
         "workers_scripts_read",

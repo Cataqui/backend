@@ -11,7 +11,7 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, infrastructure, api, maps, mapshot, auth]
+        options: [all, infrastructure, ai, api, maps, mapshot, auth]
 
 permissions:
   contents: read
@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       environment: ${{ steps.scope.outputs.environment }}
+      deploy-ai: ${{ steps.scope.outputs.deploy-ai }}
       deploy-api: ${{ steps.scope.outputs.deploy-api }}
       deploy-maps: ${{ steps.scope.outputs.deploy-maps }}
       deploy-mapshot: ${{ steps.scope.outputs.deploy-mapshot }}
@@ -74,7 +75,7 @@ jobs:
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
       - name: Build shared application packages
-        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
+        if: needs.prepare.outputs.deploy-ai == 'true' || needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
         run: pnpm build:packages
       - uses: ./.github/actions/reconcile-infrastructure
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}", google-workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
@@ -90,6 +91,49 @@ jobs:
             %w[GOOGLE_PLACES_API_KEY STATIC_MAP_LOCATION_SIGNING_KEY_BASE64URL].each { |name| file.puts "#{name}=" }
           end
 
+  auth:
+    needs: [prepare, infrastructure]
+    if: always() && !cancelled() && needs.infrastructure.result == 'success' && needs.prepare.outputs.deploy-auth == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: ${{ needs.prepare.outputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - name: Build shared application packages
+        run: pnpm --filter "@cataqui/auth-worker^..." build
+      - name: Validate and apply Auth migrations
+        uses: ./.github/actions/neon-migrations
+        with: { environment: "${{ needs.prepare.outputs.environment }}", application: auth, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+      - name: Deploy Auth
+        uses: ./.github/actions/deploy-auth
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+
+  ai:
+    needs: [prepare, infrastructure, auth]
+    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.auth.result == 'success' || needs.auth.result == 'skipped') && needs.prepare.outputs.deploy-ai == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ needs.prepare.outputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
+      - name: Build shared application packages
+        run: pnpm --filter "@cataqui/ai-worker^..." build
+      - name: Deploy AI
+        uses: ./.github/actions/deploy-ai
+        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+
   mapshot:
     needs: [prepare, infrastructure]
     if: always() && !cancelled() && needs.infrastructure.result == 'success' && needs.prepare.outputs.deploy-mapshot == 'true'
@@ -103,8 +147,8 @@ jobs:
       promote: ${{ needs.prepare.outputs.promote-mapshot == 'true' }}
 
   deploy:
-    needs: [prepare, infrastructure, mapshot]
-    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped')
+    needs: [prepare, infrastructure, mapshot, auth]
+    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     environment: ${{ needs.prepare.outputs.environment }}
@@ -117,19 +161,11 @@ jobs:
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
       - name: Build shared application packages
-        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
+        if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true'
         run: pnpm build:packages
       - name: Validate and apply migrations
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/neon-migrations
-        with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Validate and apply Auth migrations
-        if: needs.prepare.outputs.deploy-auth == 'true'
-        uses: ./.github/actions/neon-migrations
-        with: { environment: "${{ needs.prepare.outputs.environment }}", application: auth, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
-      - name: Deploy Auth
-        if: needs.prepare.outputs.deploy-auth == 'true'
-        uses: ./.github/actions/deploy-auth
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Deploy Maps
         if: needs.prepare.outputs.deploy-maps == 'true'

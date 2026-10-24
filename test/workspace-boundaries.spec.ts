@@ -245,6 +245,7 @@ describe("backend workspace boundaries", () => {
 		);
 
 		expect(workspaceDependencies).toEqual({
+			"@cataqui/ai-worker": [["@cataqui/response", "workspace:*"]],
 			"@cataqui/api": [
 				["@cataqui/api-workerhole", "workspace:*"],
 				["@cataqui/auth-schemas", "workspace:*"],

@@ -1,0 +1,9 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"emitDecoratorMetadata": true,
+		"types": ["@cloudflare/workers-types", "vitest/globals", "node"]
+	},
+	"files": ["./.cloudflare/types/index.d.ts"],
+	"include": ["./src/**/*.ts", "./test/**/*.ts", "./vitest.config.ts", "./cloudflare.config.ts", "./wrangler.config.ts"]
+}

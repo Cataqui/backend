@@ -77,7 +77,7 @@ const _config = defineConfig({
 						production: "https://cataqui.com",
 					}[environment],
 				),
-				DERIVE_JOB_DATA_AI_GATEWAY_ID: bindings.text(`cataqui-derive-job-data-${environment}`),
+				AI_GATEWAY_ID: bindings.text(`cataqui-api-${environment}`),
 				CLOUDFLARE_ACCOUNT_ID: bindings.text(_accountId),
 				DATABASE_APP_POOLER_URL: bindings.secret(),
 				AI_GATEWAY_API_TOKEN: bindings.secret(),

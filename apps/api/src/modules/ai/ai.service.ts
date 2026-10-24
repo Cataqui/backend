@@ -26,7 +26,7 @@ export class AiService {
 			baseURL: `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/v1`,
 			headers: {
 				Authorization: `Bearer ${config.aiGatewayApiToken}`,
-				"cf-aig-gateway-id": config.deriveJobDataAiGatewayId,
+				"cf-aig-gateway-id": config.aiGatewayId,
 				"cf-aig-skip-cache": "true",
 				"cf-aig-collect-log": "true",
 				"cf-aig-collect-log-payload": runtime.environment === "production" ? "false" : "true",

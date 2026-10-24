@@ -73,7 +73,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl).not.toMatch(/(?:folder_path|name)\s*=.*(?:plan|apply)/);
 		expect(rootHcl).toMatch(/ai_gateway_runtime_tokens\s*=\s*{\s*api\s*=\s*{/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-ai-gateway-\$\{var\.environment\}"/);
-		expect(rootHcl).toMatch(/worker_deployment_tokens\s*=\s*{\s*api\s*=\s*{/);
+		expect(rootHcl).toMatch(/worker_deployment_tokens\s*=\s*{/);
 		expect(rootHcl).toMatch(/name\s*=\s*"cataqui-\$\{each\.key\}-workers-deployment-\$\{var\.environment\}"/);
 	});
 
@@ -139,6 +139,7 @@ describe("Cloudflare API tokens OpenTofu contract", () => {
 		expect(rootHcl).toContain("folder_path      = each.value.folder_path");
 		for (const path of [
 			"/generated/api/deployment",
+			"/generated/ai/deployment",
 			"/generated/maps/deployment",
 			"/generated/mapshot/deployment",
 			"/generated/auth/deployment",
