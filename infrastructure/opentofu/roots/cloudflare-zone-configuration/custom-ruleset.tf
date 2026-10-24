@@ -76,7 +76,7 @@ resource "cloudflare_ruleset" "custom" {
       }
       description = "Keep APIs and webhooks free of browser-only checks"
       enabled     = true
-      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"auth.cataqui.com\" \"staging.auth.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\"}"
+      expression  = "http.host in {\"api.cataqui.com\" \"staging.api.cataqui.com\" \"auth.cataqui.com\" \"staging.auth.cataqui.com\" \"maps.cataqui.com\" \"staging.maps.cataqui.com\" \"ai.cataqui.com\" \"staging.ai.cataqui.com\"}"
       logging = {
         enabled = true
       }

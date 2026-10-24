@@ -1,0 +1,6 @@
+model AccountMetadata {
+  accountId           String  @id @map("account_id") @db.Uuid
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
+
+  @@map("account_metadata")
+}

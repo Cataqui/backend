@@ -11,6 +11,7 @@ import { AuthenticationModule } from "./modules/authentication/authentication.mo
 import { ContactModule } from "./modules/contact/contact.module";
 import { FeedModule } from "./modules/feed/feed.module";
 import { HealthModule } from "./modules/health/health.module";
+import { MeModule } from "./modules/me/me.module";
 import { JobModule } from "./modules/job/job.module";
 import { ProfileGuard } from "./modules/profile/profile.guard";
 import { ProfileModule } from "./modules/profile/profile.module";
@@ -22,6 +23,7 @@ import { ProfileModule } from "./modules/profile/profile.module";
 		PrismaModule,
 		RedisModule,
 		HealthModule,
+		MeModule,
 		JobModule,
 		FeedModule,
 		AuthenticationModule,
