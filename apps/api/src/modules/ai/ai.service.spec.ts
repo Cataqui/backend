@@ -44,7 +44,7 @@ afterEach(() => td.reset());
 const mockConfig = {
 	cloudflareAccountId: "test-account",
 	aiGatewayApiToken: "test-token",
-	deriveJobDataAiGatewayId: "test-gateway",
+	aiGatewayId: "test-gateway",
 };
 
 async function _createService(
@@ -83,12 +83,12 @@ describe("AiService", () => {
 		expect(service).toBeDefined();
 	});
 
-	it("should use the REST endpoint for Gemini 3.5 Flash Lite and select the task gateway", async () => {
+	it("should use the REST endpoint for Gemini 3.5 Flash Lite and select the API gateway", async () => {
 		await _createService({
 			config: {
 				cloudflareAccountId: "test-account",
 				aiGatewayApiToken: "test-token",
-				deriveJobDataAiGatewayId: "test-gateway",
+				aiGatewayId: "cataqui-api-staging",
 			},
 		});
 
@@ -97,7 +97,7 @@ describe("AiService", () => {
 				baseURL: "https://api.cloudflare.com/client/v4/accounts/test-account/ai/v1",
 				headers: {
 					Authorization: "Bearer test-token",
-					"cf-aig-gateway-id": "test-gateway",
+					"cf-aig-gateway-id": "cataqui-api-staging",
 					"cf-aig-collect-log": "true",
 					"cf-aig-collect-log-payload": "true",
 					"cf-aig-skip-cache": "true",

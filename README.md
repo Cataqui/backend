@@ -169,6 +169,9 @@ pnpm --filter @cataqui/maps-worker cf:dev
 
 # Provider webhook ingress
 pnpm --filter @cataqui/auth-worker cf:dev
+
+# AI Worker development
+pnpm --filter @cataqui/ai-worker cf:dev
 ```
 
 Use Auth OpenAPI for WhatsApp login and session operations. API and Maps accept the same opaque access token. Each app loads its own local environment; Auth's database and Redis credentials are independent of API's. API clients enter through the API Worker; a direct NestJS process is useful for health checks and isolated tests.
@@ -245,6 +248,7 @@ Each application owns a local `.env` and a committed `.env.example`. API and Map
 | --- | --- |
 | API | [`apps/api/.env.example`](apps/api/.env.example) |
 | Auth | [`apps/workers/auth/.env.example`](apps/workers/auth/.env.example) |
+| AI | [`apps/workers/ai/.env.example`](apps/workers/ai/.env.example); no local runtime secrets currently required |
 | Maps | [`apps/workers/maps/.env.example`](apps/workers/maps/.env.example) |
 | Mapshot | [`apps/mapshot/.env.example`](apps/mapshot/.env.example); no local runtime secrets currently required |
 

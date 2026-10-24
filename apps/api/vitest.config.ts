@@ -13,7 +13,7 @@ export default defineConfig({
 			CORS_ORIGINS: "http://localhost:3000",
 			CLOUDFLARE_ACCOUNT_ID: "test-account-id",
 			AI_GATEWAY_API_TOKEN: "test-api-token",
-			DERIVE_JOB_DATA_AI_GATEWAY_ID: "test-gateway-id",
+			AI_GATEWAY_ID: "test-gateway-id",
 			UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
 			UPSTASH_REDIS_REST_TOKEN: "test-token",
 		},

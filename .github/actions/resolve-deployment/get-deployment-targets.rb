@@ -10,7 +10,7 @@ when "refs/heads/staging" then "staging"
 when "refs/heads/main" then "production"
 else abort "Deployments require staging or main."
 end
-targets = { "api" => false, "maps" => false, "mapshot" => false, "auth" => false }
+targets = { "ai" => false, "api" => false, "maps" => false, "mapshot" => false, "auth" => false }
 scope = ENV.fetch("DEPLOYMENT_SCOPE")
 case scope
 when "all"
@@ -46,11 +46,14 @@ when "automatic"
       rescue JSON::ParserError, SystemCallError
         targets.transform_values! { true }
       end
+    when /\A\.github\/actions\/deploy-ai\//, /\Aapps\/workers\/ai\//
+      targets["ai"] = true
     when /\A\.github\/actions\/deploy-maps\//, /\Aapps\/workers\/maps\//
       targets["maps"] = true
     when "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json",
          "Gemfile", "Gemfile.lock", "Rakefile", ".ruby-version", ".rubocop.yml",
          /\Apackages\/(?:async|workerhole)\//, /\Apackages\/validation\//,
+         /\Apackages\/response\//, /\A\.github\/scripts\/cloudflare\//,
          /\A\.github\/actions\/.*\.(?:ts|rb)\z/,
          /\A\.github\/actions\/(?:setup-node-workspace|setup-ruby-workspace|resolve-deployment|deploy-[^\/]+|neon-migrations|load-infisical-secrets)\//
       targets.transform_values! { true }
@@ -74,11 +77,12 @@ else
 end
 targets["api"] = true if targets.fetch("maps")
 targets["maps"] = true if targets.fetch("auth")
+targets["ai"] = true if targets.fetch("auth")
 targets["api"] = true if targets.fetch("auth")
 targets["maps"] = true if targets.fetch("api")
 targets["mapshot"] = true if %w[api maps auth].any? { |name| targets.fetch(name) }
 File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
   output.puts "deploy-mapshot=#{targets.fetch("mapshot")}"
   output.puts "environment=#{environment}"
-  %w[api maps auth].each { |name| output.puts "deploy-#{name}=#{targets.fetch(name)}" }
+  %w[ai api maps auth].each { |name| output.puts "deploy-#{name}=#{targets.fetch(name)}" }
 end

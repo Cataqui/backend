@@ -48,8 +48,8 @@ run "staging_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.application_deployment_cloudflare_api_token)
-    ) == 10
-    error_message = "Staging must deliver five infrastructure, one API runtime, and four application deployment tokens."
+    ) == 11
+    error_message = "Staging must deliver five infrastructure, one API runtime, and five application deployment tokens."
   }
 
   assert {
@@ -74,7 +74,8 @@ run "staging_token_inventory" {
       cloudflare_api_token.application_deployment["api"].name == "cataqui-api-workers-deployment-staging" &&
       cloudflare_api_token.application_deployment["maps"].name == "cataqui-maps-workers-deployment-staging" &&
       cloudflare_api_token.application_deployment["mapshot"].name == "cataqui-mapshot-workers-deployment-staging" &&
-      cloudflare_api_token.application_deployment["auth"].name == "cataqui-auth-workers-deployment-staging"
+      cloudflare_api_token.application_deployment["auth"].name == "cataqui-auth-workers-deployment-staging" &&
+      cloudflare_api_token.application_deployment["ai"].name == "cataqui-ai-workers-deployment-staging"
     )
     error_message = "Staging must create one deterministic Workers deployment token per application."
   }
@@ -97,8 +98,8 @@ run "production_token_inventory" {
       length(infisical_secret.infrastructure_cloudflare_api_token) +
       length(infisical_secret.ai_gateway_api_token) +
       length(infisical_secret.application_deployment_cloudflare_api_token)
-    ) == 12
-    error_message = "Production must deliver seven infrastructure, one API runtime, and four application deployment tokens."
+    ) == 13
+    error_message = "Production must deliver seven infrastructure, one API runtime, and five application deployment tokens."
   }
 
   assert {
@@ -109,7 +110,8 @@ run "production_token_inventory" {
       cloudflare_api_token.application_deployment["api"].name == "cataqui-api-workers-deployment-production" &&
       cloudflare_api_token.application_deployment["maps"].name == "cataqui-maps-workers-deployment-production" &&
       cloudflare_api_token.application_deployment["mapshot"].name == "cataqui-mapshot-workers-deployment-production" &&
-      cloudflare_api_token.application_deployment["auth"].name == "cataqui-auth-workers-deployment-production"
+      cloudflare_api_token.application_deployment["auth"].name == "cataqui-auth-workers-deployment-production" &&
+      cloudflare_api_token.application_deployment["ai"].name == "cataqui-ai-workers-deployment-production"
     )
     error_message = "Production zone and service-owned runtime tokens must use deterministic names."
   }
@@ -237,6 +239,33 @@ run "maps_deployment_only_publishes_the_public_worker" {
       infisical_secret.application_deployment_cloudflare_api_token["maps"].folder_path == "/generated/maps/deployment"
     )
     error_message = "Maps deployment must resolve exact account-scoped permissions and deliver its credential only to the matching environment's Maps deployment folder."
+  }
+}
+
+run "ai_deployment_credential" {
+  command = plan
+
+  variables {
+    environment = "staging"
+  }
+
+  assert {
+    condition = (
+      tolist(local.worker_deployment_tokens.ai.account_permissions) == tolist([
+        "workers_scripts_read", "workers_scripts_write", "account_settings_read"
+      ]) &&
+      tolist(local.worker_deployment_tokens.ai.zone_permissions) == tolist([
+        "zone_read", "workers_routes_read", "workers_routes_write"
+      ]) &&
+      length(cloudflare_api_token.application_deployment["ai"].policies) == 2 &&
+      length(cloudflare_api_token.application_deployment["ai"].policies[0].permission_groups) == 3 &&
+      length(cloudflare_api_token.application_deployment["ai"].policies[1].permission_groups) == 3 &&
+      infisical_secret.application_deployment_cloudflare_api_token["ai"].env_slug == "staging" &&
+      infisical_secret.application_deployment_cloudflare_api_token["ai"].folder_path == "/generated/ai/deployment" &&
+      infisical_secret.application_deployment_cloudflare_api_token["ai"].name == "CLOUDFLARE_API_TOKEN" &&
+      infisical_secret.application_deployment_cloudflare_api_token["ai"].value_wo_version == 1
+    )
+    error_message = "AI must receive only Worker deployment permissions and an environment-scoped deployment credential, without runtime or provider permissions."
   }
 }
 
@@ -379,7 +408,7 @@ run "mapshot_private_deployment_credential" {
 
   assert {
     condition = (
-      toset(keys(cloudflare_api_token.application_deployment)) == toset(["api", "maps", "mapshot", "auth"]) &&
+      toset(keys(cloudflare_api_token.application_deployment)) == toset(["ai", "api", "maps", "mapshot", "auth"]) &&
       tolist(local.worker_deployment_tokens.mapshot.account_permissions) == tolist([
         "workers_scripts_read",
         "workers_scripts_write",

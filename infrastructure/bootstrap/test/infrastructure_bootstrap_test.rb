@@ -101,8 +101,10 @@ class InfrastructureBootstrapTest < Minitest::Test
       "mapshot_production" => "cataqui-mapshot-production"
     }, @manifest.dig("cloudflare", "r2", "buckets"))
     assert_equal({
-      "derive_job_data_staging" => "cataqui-derive-job-data-staging",
-      "derive_job_data_production" => "cataqui-derive-job-data-production"
+      "api_staging" => "cataqui-api-staging",
+      "api_production" => "cataqui-api-production",
+      "ai_staging" => "cataqui-ai-worker-staging",
+      "ai_production" => "cataqui-ai-worker-production"
     }, @manifest.dig("cloudflare", "ai_gateways"))
     assert_equal "cataqui-backend-opentofu-state-staging", Bootstrap.get_r2_token_name(manifest: @manifest, environment: "staging")
     assert_equal "cataqui-backend-opentofu-state-production", Bootstrap.get_r2_token_name(manifest: @manifest, environment: "production")
@@ -144,6 +146,14 @@ class InfrastructureBootstrapTest < Minitest::Test
       "cataqui" => { "name" => "cataqui", "owner_role" => "db_owner", "runtime_role" => "db_user" },
       "auth" => { "name" => "auth", "owner_role" => "auth_owner", "runtime_role" => "auth_user" }
     }, @manifest.dig("neon", "databases"))
+  end
+
+  def test_rejects_invalid_app_gateway_identifiers
+    %w[api_staging api_production ai_staging ai_production].each do |key|
+      invalid = Marshal.load(Marshal.dump(@manifest))
+      invalid["cloudflare"]["ai_gateways"][key] = "invalid gateway"
+      _assert_error("cloudflare.ai_gateways.#{key}") { Bootstrap.validate_manifest(manifest: invalid) }
+    end
   end
 
   %w[staging production].each do |environment|

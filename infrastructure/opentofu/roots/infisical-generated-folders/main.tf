@@ -97,6 +97,28 @@ resource "infisical_secret_folder" "cloudflare_opentofu_root" {
   depends_on = [infisical_secret_folder.opentofu]
 }
 
+resource "infisical_secret_folder" "ai" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "ai"
+  folder_path      = "/generated"
+  description      = "Generated values scoped to the AI Worker."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.generated]
+}
+
+resource "infisical_secret_folder" "ai_deployment" {
+  project_id       = local.infisical_project_id
+  environment_slug = var.environment
+  name             = "deployment"
+  folder_path      = "/generated/ai"
+  description      = "Generated privileged values consumed only by AI deployment tooling."
+  force_delete     = false
+
+  depends_on = [infisical_secret_folder.ai]
+}
+
 resource "infisical_secret_folder" "maps" {
   project_id       = local.infisical_project_id
   environment_slug = var.environment

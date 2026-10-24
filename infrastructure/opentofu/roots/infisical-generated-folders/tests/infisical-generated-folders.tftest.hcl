@@ -31,6 +31,12 @@ run "generated_folder_contract" {
 
   assert {
     condition = (
+      infisical_secret_folder.ai.folder_path == "/generated" &&
+      infisical_secret_folder.ai.name == "ai" &&
+      !infisical_secret_folder.ai.force_delete &&
+      infisical_secret_folder.ai_deployment.folder_path == "/generated/ai" &&
+      infisical_secret_folder.ai_deployment.name == "deployment" &&
+      !infisical_secret_folder.ai_deployment.force_delete &&
       infisical_secret_folder.api.folder_path == "/generated" &&
       infisical_secret_folder.api.name == "api" &&
       !infisical_secret_folder.api.force_delete &&
@@ -65,7 +71,7 @@ run "generated_folder_contract" {
       infisical_secret_folder.auth_deployment.name == "deployment" &&
       !infisical_secret_folder.auth_deployment.force_delete
     )
-    error_message = "Every application must have protected deployment and runtime credential folders."
+    error_message = "Applications must have protected folders for their current deployment and runtime credential needs."
   }
 
   assert {
@@ -95,6 +101,8 @@ run "production_folder_environment" {
   assert {
     condition = (
       infisical_secret_folder.generated.environment_slug == "production" &&
+      infisical_secret_folder.ai.environment_slug == "production" &&
+      infisical_secret_folder.ai_deployment.environment_slug == "production" &&
       infisical_secret_folder.api.environment_slug == "production" &&
       infisical_secret_folder.maps_runtime.environment_slug == "production" &&
       infisical_secret_folder.mapshot.environment_slug == "production" &&

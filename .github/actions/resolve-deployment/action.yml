@@ -5,6 +5,9 @@ inputs:
     description: Requested application scope or automatic
     required: true
 outputs:
+  deploy-ai:
+    description: Resolved deploy-ai.
+    value: ${{ steps.targets.outputs.deploy-ai }}
   environment:
     description: Resolved environment.
     value: ${{ steps.targets.outputs.environment }}
@@ -38,12 +41,13 @@ runs:
       shell: ruby {0}
       env:
         INPUT_ENVIRONMENT: ${{ steps.targets.outputs.environment }}
+        DEPLOY_MAPSHOT: ${{ steps.targets.outputs.deploy-mapshot }}
         GH_TOKEN: ${{ github.token }}
       run: |
         require "json"
         require "open3"
         promote_mapshot = false
-        if ENV.fetch("INPUT_ENVIRONMENT") == "production" && ENV.fetch("GITHUB_EVENT_NAME") == "push"
+        if ENV.fetch("DEPLOY_MAPSHOT") == "true" && ENV.fetch("INPUT_ENVIRONMENT") == "production" && ENV.fetch("GITHUB_EVENT_NAME") == "push"
           repository = ENV.fetch("GITHUB_REPOSITORY")
           sha = ENV.fetch("GITHUB_SHA")
           response, status = Open3.capture2("gh", "api", "repos/#{repository}/commits/#{sha}/pulls?per_page=100")
