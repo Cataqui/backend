@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { neonConfig, Pool } from "@neondatabase/serverless";
 import { AccountAdmission } from "../../../../generated/prisma/enums";
 import { PrismaService } from "../../../core/prisma/prisma.service";
+import { AccountService } from "../account.service";
+import { AccountInviteAlreadySetError } from "../errors/account-invite-already-set.error";
 import { AccountRepository } from "./account.repository";
 
 // Opt in with a disposable local PostgreSQL server and Neon WebSocket proxy.
@@ -52,6 +54,14 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 					"utf8",
 				),
 			);
+			for (const migration of ["20261029185000_add_not_requested_admission", "20261029190000_add_invites"]) {
+				await database.query(
+					readFileSync(
+						new URL(`../../../../prisma/schema/migrations/${migration}/migration.sql`, import.meta.url),
+						"utf8",
+					),
+				);
+			}
 			prisma = new PrismaService({
 				appPoolerUrl: connection.toString(),
 				minimumPoolConnections: 1,
@@ -74,8 +84,18 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 		it("preserves existing IDs and onboarding progress while waitlisting all migrated accounts", async () => {
 			const accounts = await prisma.account.findMany({ where: { id: { in: migratedIds } } });
 			expect(migratedIds.map((id) => accounts.find((account) => account.id === id))).toEqual([
-				{ id: migratedIds[0], admission: AccountAdmission.WAITLISTED, onboardingCompleted: false },
-				{ id: migratedIds[1], admission: AccountAdmission.WAITLISTED, onboardingCompleted: true },
+				{
+					id: migratedIds[0],
+					admission: AccountAdmission.WAITLISTED,
+					onboardingCompleted: false,
+					fromInviteId: null,
+				},
+				{
+					id: migratedIds[1],
+					admission: AccountAdmission.WAITLISTED,
+					onboardingCompleted: true,
+					fromInviteId: null,
+				},
 			]);
 		});
 
@@ -85,7 +105,12 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 				Array.from({ length: 12 }, () => repository.getOrCreate({ accountId: accountId })),
 			);
 			const rows = await prisma.account.findMany({ where: { id: accountId } });
-			const expected = { id: accountId, admission: AccountAdmission.WAITLISTED, onboardingCompleted: false };
+			const expected = {
+				id: accountId,
+				admission: AccountAdmission.NOT_REQUESTED,
+				onboardingCompleted: false,
+				fromInviteId: null,
+			};
 			expect({ results: results, rows: rows }).toEqual({
 				results: Array.from({ length: 12 }, () => expected),
 				rows: [expected],
@@ -97,8 +122,9 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 			await repository.completeOnboarding({ accountId: accountId });
 			expect(await repository.getOrCreate({ accountId: accountId })).toEqual({
 				id: accountId,
-				admission: AccountAdmission.WAITLISTED,
+				admission: AccountAdmission.NOT_REQUESTED,
 				onboardingCompleted: true,
+				fromInviteId: null,
 			});
 		});
 
@@ -112,9 +138,69 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 					id: accountId,
 					admission: admission,
 					onboardingCompleted: true,
+					fromInviteId: null,
 				});
 			},
 		);
+
+		it.each([false, true])(
+			"rejects replacing established attribution, including the same code: %s",
+			async (sameCode) => {
+				const accountId = randomUUID();
+				const original = await prisma.invite.create({
+					data: { code: randomUUID().toUpperCase(), referrerName: "Original" },
+				});
+				const replacement = sameCode
+					? original
+					: await prisma.invite.create({ data: { code: randomUUID().toUpperCase(), referrerName: "Replacement" } });
+				await prisma.account.create({
+					data: { id: accountId, admission: AccountAdmission.ADMITTED, onboardingCompleted: true },
+				});
+				const service = new AccountService(repository);
+				await service.setFromInvite({ accountId: accountId, inviteId: original.id });
+				const result = await service
+					.setFromInvite({ accountId: accountId, inviteId: replacement.id })
+					.catch((error: unknown): unknown => error);
+				expect({
+					rejected: result instanceof AccountInviteAlreadySetError,
+					account: await prisma.account.findUniqueOrThrow({ where: { id: accountId } }),
+				}).toEqual({
+					rejected: true,
+					account: {
+						id: accountId,
+						admission: AccountAdmission.ADMITTED,
+						onboardingCompleted: true,
+						fromInviteId: original.id,
+					},
+				});
+			},
+		);
+
+		it("allows only one concurrent invite assignment through the ordinary account service", async () => {
+			const accountId = randomUUID();
+			await repository.getOrCreate({ accountId: accountId });
+			const codes = await Promise.all(
+				["First", "Second"].map((referrerName) =>
+					prisma.invite.create({ data: { code: randomUUID().toUpperCase(), referrerName: referrerName } }),
+				),
+			);
+			const service = new AccountService(repository);
+			const results = await Promise.allSettled(
+				codes.map((code) => service.setFromInvite({ accountId: accountId, inviteId: code.id })),
+			);
+			const winner = results.findIndex((result) => result.status === "fulfilled");
+			expect({
+				successes: results.filter((result) => result.status === "fulfilled").length,
+				conflicts: results.filter(
+					(result) => result.status === "rejected" && result.reason instanceof AccountInviteAlreadySetError,
+				).length,
+				attribution: (await prisma.account.findUniqueOrThrow({ where: { id: accountId } })).fromInviteId,
+			}).toEqual({
+				successes: 1,
+				conflicts: 1,
+				attribution: codes[winner]!.id,
+			});
+		});
 
 		it("keeps onboarding completion isolated between accounts", async () => {
 			const completedId = randomUUID();
@@ -122,8 +208,9 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 			await repository.completeOnboarding({ accountId: completedId });
 			expect(await repository.getOrCreate({ accountId: otherId })).toEqual({
 				id: otherId,
-				admission: AccountAdmission.WAITLISTED,
+				admission: AccountAdmission.NOT_REQUESTED,
 				onboardingCompleted: false,
+				fromInviteId: null,
 			});
 		});
 	},

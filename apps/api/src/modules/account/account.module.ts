@@ -3,5 +3,5 @@ import { AccountService } from "./account.service";
 import { AccountController } from "./account.controller";
 import { AccountRepository } from "./repositories/account.repository";
 
-@Module({ controllers: [AccountController], providers: [AccountService, AccountRepository] })
+@Module({ controllers: [AccountController], providers: [AccountService, AccountRepository], exports: [AccountService] })
 export class AccountModule {}

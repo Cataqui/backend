@@ -15,6 +15,7 @@ import { AccountModule } from "./modules/account/account.module";
 import { JobModule } from "./modules/job/job.module";
 import { ProfileGuard } from "./modules/profile/profile.guard";
 import { ProfileModule } from "./modules/profile/profile.module";
+import { WaitlistModule } from "./modules/waitlist/waitlist.module";
 
 @Module({
 	imports: [
@@ -24,6 +25,7 @@ import { ProfileModule } from "./modules/profile/profile.module";
 		RedisModule,
 		HealthModule,
 		AccountModule,
+		WaitlistModule,
 		JobModule,
 		FeedModule,
 		AuthenticationModule,

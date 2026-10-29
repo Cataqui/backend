@@ -16,12 +16,22 @@ describe("AccountRepository", () => {
 	});
 
 	it.each(Object.values(AccountAdmission))("preserves existing account fields with admission %s", async (admission) => {
-		const account = { id: "account", admission: admission, onboardingCompleted: true } satisfies Account;
+		const account = {
+			id: "account",
+			admission: admission,
+			onboardingCompleted: true,
+			fromInviteId: null,
+		} satisfies Account;
 		td.when(prisma.account.upsert(td.matchers.anything())).thenResolve(account);
 		const result = await repository.getOrCreate({ accountId: "account" });
-		expect({ result: result, calls: td.explain(prisma.account.upsert).calls.map((call) => call.args) }).toEqual({
+		expect({
+			result: result,
+			calls: td.explain(prisma.account.upsert).calls.map((call) => call.args),
+			extraReads: td.explain(prisma.account.findUniqueOrThrow).callCount,
+		}).toEqual({
 			result: account,
 			calls: [[{ where: { id: "account" }, create: { id: "account" }, update: { id: "account" } }]],
+			extraReads: 0,
 		});
 	});
 
@@ -40,6 +50,26 @@ describe("AccountRepository", () => {
 					},
 				],
 			],
+		});
+	});
+	it("updates only admission without touching attribution or onboarding", async () => {
+		const result = await repository.updateAdmission({ accountId: "account", admission: AccountAdmission.ADMITTED });
+		expect({ result: result, writes: td.explain(prisma.account.update).calls.map((call) => call.args) }).toEqual({
+			result: undefined,
+			writes: [[{ where: { id: "account" }, data: { admission: AccountAdmission.ADMITTED } }]],
+		});
+	});
+	it.each([0, 1])("reports whether an unset invite was assigned with affected count %s", async (count) => {
+		td.when(prisma.account.updateMany(td.matchers.anything())).thenResolve({ count: count });
+		const result = await repository.setFromInviteIfEmpty({ accountId: "account", inviteId: "invite" });
+		expect({
+			result: result,
+			writes: td.explain(prisma.account.updateMany).calls.map((call) => call.args),
+			reads: td.explain(prisma.account.findUniqueOrThrow).callCount,
+		}).toEqual({
+			result: count === 1,
+			writes: [[{ where: { id: "account", fromInviteId: null }, data: { fromInviteId: "invite" } }]],
+			reads: 0,
 		});
 	});
 

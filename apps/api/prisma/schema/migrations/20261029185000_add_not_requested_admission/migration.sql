@@ -1,0 +1,1 @@
+ALTER TYPE "AccountAdmission" ADD VALUE 'NOT_REQUESTED';

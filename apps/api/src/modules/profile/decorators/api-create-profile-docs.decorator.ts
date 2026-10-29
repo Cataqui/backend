@@ -1,7 +1,7 @@
+import { createSuccessResponseSchema } from "@cataqui/response";
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
-import { createSuccessResponseSchema } from "@cataqui/response";
 import { ProfileOutputSchema } from "../schemas/profile-output.schema";
 
 export function ApiCreateProfileDocs(): MethodDecorator & ClassDecorator {
@@ -11,8 +11,7 @@ export function ApiCreateProfileDocs(): MethodDecorator & ClassDecorator {
 		ApiBearerAuth(),
 		ApiOperation({
 			summary: "Create your profile",
-			description:
-				"Completes onboarding for the authenticated account with a name and initialContacts, which may be empty. Repeating the same normalized name and contact selection returns the existing profile. A different creation payload conflicts",
+			description: "Creates the authenticated account's profile",
 		}),
 		ApiResponse({ status: HttpStatus.CREATED, description: "Profile created.", standardSchema: responseSchema }),
 		ApiResponse({

@@ -2,6 +2,11 @@ import fc from "fast-check";
 import { CreateProfileInputSchema } from "./create-profile-input.schema";
 
 describe("CreateProfileInputSchema", () => {
+	it("rejects invite codes because redemption belongs to the waitlist operation", () => {
+		expect(CreateProfileInputSchema.safeParse({ name: "Maria", initialContacts: [], inviteCode: "CODE" }).success).toBe(
+			false,
+		);
+	});
 	it("trims the onboarding name and contact identifier at ingress", () => {
 		expect(
 			CreateProfileInputSchema.parse({

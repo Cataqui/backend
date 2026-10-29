@@ -1,0 +1,10 @@
+model Invite {
+  id               String    @id @default(uuid()) @db.Uuid
+  code             String    @unique @db.VarChar(64)
+  referrerName     String    @map("referrer_name")
+  enabled          Boolean   @default(true)
+  maxUses          Int?      @map("max_uses")
+  referredAccounts Account[] @relation("FromInvite")
+
+  @@map("invites")
+}

@@ -66,7 +66,12 @@ describe("Current account", () => {
 	it.each(Object.values(AccountAdmission))(
 		"returns the full account with admission %s without requiring a profile",
 		async (admission) => {
-			const account = { id: session.accountId, admission: admission, onboardingCompleted: false } satisfies Account;
+			const account = {
+				id: session.accountId,
+				admission: admission,
+				onboardingCompleted: false,
+				fromInviteId: "private-attribution",
+			} satisfies Account;
 			td.when(repository.getOrCreate({ accountId: session.accountId })).thenResolve(account);
 			const response = await app.inject({ method: "GET", url: "/v1/account", headers: headers });
 			expect({
@@ -77,7 +82,12 @@ describe("Current account", () => {
 			}).toEqual({
 				status: 200,
 				cache: "no-store",
-				body: { data: account, requestId: expect.any(String), timestamp: expect.any(String), endpoint: "/v1/account" },
+				body: {
+					data: { id: account.id, admission: account.admission, onboardingCompleted: account.onboardingCompleted },
+					requestId: expect.any(String),
+					timestamp: expect.any(String),
+					endpoint: "/v1/account",
+				},
 				profileChecks: 0,
 			});
 		},
@@ -127,6 +137,7 @@ describe("Current account", () => {
 		const otherId = "00000000-0000-4000-8000-000000000003";
 		const otherAccount = {
 			id: otherId,
+			fromInviteId: null,
 			admission: AccountAdmission.WAITLISTED,
 			onboardingCompleted: false,
 		} satisfies Account;
@@ -142,7 +153,11 @@ describe("Current account", () => {
 			data: response.json<{ data: unknown }>().data,
 			calls: td.explain(repository.getOrCreate).calls.map((call) => call.args),
 		}).toEqual({
-			data: otherAccount,
+			data: {
+				id: otherAccount.id,
+				admission: otherAccount.admission,
+				onboardingCompleted: otherAccount.onboardingCompleted,
+			},
 			calls: [[{ accountId: otherId }]],
 		});
 	});
