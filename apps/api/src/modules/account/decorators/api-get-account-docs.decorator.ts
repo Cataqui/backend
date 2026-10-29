@@ -2,20 +2,20 @@ import { createSuccessResponseSchema } from "@cataqui/response";
 import { applyDecorators, HttpStatus, SerializeOptions } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
-import { AccountMetadataOutputSchema } from "../schemas/account-metadata-output.schema";
+import { AccountOutputSchema } from "../schemas/account-output.schema";
 
-export function ApiGetMeMetadataDocs(): MethodDecorator & ClassDecorator {
-	const responseSchema = createSuccessResponseSchema({ dataSchema: AccountMetadataOutputSchema });
+export function ApiGetAccountDocs(): MethodDecorator & ClassDecorator {
+	const responseSchema = createSuccessResponseSchema({ dataSchema: AccountOutputSchema });
 	return applyDecorators(
 		SerializeOptions({ schema: responseSchema }),
 		ApiBearerAuth(),
 		ApiOperation({
-			summary: "Get current user metadata",
-			description: "Returns the authenticated user's private metadata. A profile is not require",
+			summary: "Get current account",
+			description: "Returns the authenticated account, creating it if needed.",
 		}),
 		ApiResponse({
 			status: HttpStatus.OK,
-			description: "Current user metadata returned.",
+			description: "Current account returned.",
 			standardSchema: responseSchema,
 		}),
 		ApiResponse({

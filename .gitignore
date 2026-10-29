@@ -50,3 +50,6 @@ override.tf.json
 
 # Biome
 .biome/
+
+# Temporary Docs
+NEXT_DEPLOYEMENT.md

@@ -1,0 +1,7 @@
+model Account {
+  id                  String           @id @db.Uuid
+  onboardingCompleted Boolean          @default(false) @map("onboarding_completed")
+  admission           AccountAdmission @default(WAITLISTED)
+
+  @@map("accounts")
+}
