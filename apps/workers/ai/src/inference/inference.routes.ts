@@ -7,16 +7,18 @@ import { UnauthenticatedError } from "../auth/errors/unauthenticated.error";
 import { BodyTooLargeError } from "../errors/body-too-large.error";
 import { InvalidInputError } from "../errors/invalid-input.error";
 import type { AiContext } from "../http/context";
-import { NameMeaningLimitError } from "./errors/name-meaning-limit.error";
+import { NameAnalysisLimitError } from "./errors/name-analysis-limit.error";
+import { analyzeNameDocs } from "./inference.openapi";
 import { InferenceService } from "./inference.service";
-import { NameMeaningHeadersInputSchema } from "./name-meaning-headers-input.schema";
-import { NameMeaningInputSchema } from "./name-meaning-input.schema";
-import { NameMeaningResponseOutputSchema } from "./name-meaning-response-output.schema";
+import { NameAnalysisHeadersInputSchema } from "./name-analysis-headers-input.schema";
+import { NameAnalysisInputSchema } from "./name-analysis-input.schema";
+import { NameAnalysisResponseOutputSchema } from "./name-analysis-response-output.schema";
 
 export const inferenceRoutes = new Hono<AiContext>();
 
 inferenceRoutes.post(
-	"/name-meaning",
+	"/name-analysis",
+	analyzeNameDocs,
 	bodyLimit({
 		maxSize: 4096,
 		onError: () => {
@@ -37,8 +39,8 @@ inferenceRoutes.post(
 			throw new InvalidInputError({ violations: [{ path: ["body"], message: "Expected a valid JSON body." }] });
 		}
 
-		const input = NameMeaningInputSchema.safeParse(body);
-		const headers = NameMeaningHeadersInputSchema.safeParse({
+		const input = NameAnalysisInputSchema.safeParse(body);
+		const headers = NameAnalysisHeadersInputSchema.safeParse({
 			"accept-language": context.req.header("Accept-Language"),
 		});
 
@@ -59,22 +61,22 @@ inferenceRoutes.post(
 
 		if (!input.success || !headers.success) throw new InvalidInputError({ violations: violations });
 
-		const limit = await context.env.NAME_MEANING_RATE_LIMITER.limit({
+		const limit = await context.env.NAME_ANALYSIS_RATE_LIMITER.limit({
 			key: `${context.env.ENVIRONMENT}:${accountId}`,
 		});
 
-		if (!limit.success) throw new NameMeaningLimitError();
+		if (!limit.success) throw new NameAnalysisLimitError();
 
 		const inferenceService = context.var.resolve(InferenceService);
 
-		const data = await inferenceService.getNameMeaning({
+		const data = await inferenceService.analyseName({
 			name: input.data.name,
 			language: headers.data["accept-language"],
 			signal: context.req.raw.signal,
 		});
 
 		return context.json(
-			NameMeaningResponseOutputSchema.encode({
+			NameAnalysisResponseOutputSchema.encode({
 				data: data,
 				requestId: context.get("requestId"),
 				timestamp: new Date().toISOString(),

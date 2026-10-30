@@ -36,7 +36,7 @@ const _config = defineConfig({
 				AI: bindings.ai(),
 				AI_GATEWAY_ID: bindings.text(`cataqui-ai-worker-${environment}`),
 				AUTH: bindings.worker({ worker: authWorker, exportName: "AuthEntrypoint" }),
-				NAME_MEANING_RATE_LIMITER: bindings.rateLimit({ namespace: "30001", simple: RateLimitConfig.nameMeaning }),
+				NAME_ANALYSIS_RATE_LIMITER: bindings.rateLimit({ namespace: "30001", simple: RateLimitConfig.nameAnalysis }),
 			},
 		};
 	},

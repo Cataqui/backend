@@ -1,13 +1,15 @@
 import "reflect-metadata";
 import { tsyringe } from "@hono/tsyringe";
 import { Hono } from "hono";
+import { openAPIRouteHandler } from "hono-openapi";
+import { aiOpenApiOptions } from "./http/openapi";
 import { requestId } from "hono/request-id";
 import type { DependencyContainer } from "tsyringe";
 import { registerDependencies } from "#ai/dependencies";
 import { RateLimitConfig } from "#ai/inference/rate-limit.config";
 import { AppError } from "#ai/errors/app.error";
 import { InvalidInputError } from "#ai/errors/invalid-input.error";
-import { NameMeaningLimitError } from "#ai/inference/errors/name-meaning-limit.error";
+import { NameAnalysisLimitError } from "#ai/inference/errors/name-analysis-limit.error";
 import { inferenceRoutes } from "#ai/inference/inference.routes";
 import { healthRoutes } from "#ai/health/health.routes";
 import { AiErrorResponseOutputSchema } from "#ai/http/ai-error-response-output.schema";
@@ -37,6 +39,14 @@ app.use("*", async (context, next) => {
 
 app.route("/v1/health", healthRoutes);
 app.route("/v1/inference", inferenceRoutes);
+app.get(
+	"/openapi.json",
+	(context, next) => {
+		if (context.env?.ENVIRONMENT !== "development") throw new RouteNotFoundError();
+		return next();
+	},
+	openAPIRouteHandler(app, aiOpenApiOptions),
+);
 
 app.notFound(() => {
 	throw new RouteNotFoundError();
@@ -44,8 +54,8 @@ app.notFound(() => {
 
 app.onError((error, context) => {
 	const presentedError = error instanceof AppError ? error : new InternalError();
-	if (presentedError instanceof NameMeaningLimitError) {
-		context.header("Retry-After", String(RateLimitConfig.nameMeaning.period));
+	if (presentedError instanceof NameAnalysisLimitError) {
+		context.header("Retry-After", String(RateLimitConfig.nameAnalysis.period));
 	}
 	if (presentedError.status === 500) {
 		console.error({

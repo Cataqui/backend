@@ -5,7 +5,7 @@ import { InferenceRepository } from "./inference.repository";
 afterEach(() => td.reset());
 
 it.each([
-	{ content: '{"meaning":"wisdom"}', finishReason: "stop" },
+	{ content: '{"givenName":"Sophia","meaning":"wisdom"}', finishReason: "stop" },
 	{ content: "partial", finishReason: "length" },
 	{ content: null, finishReason: "content_filter" },
 ] as const)("maps the first completion to the owned result: $finishReason", async (expected) => {
@@ -14,7 +14,7 @@ it.each([
 		AI_GATEWAY_ID: "cataqui-ai-worker-staging",
 		AI: td.object<AiWorkerEnv["AI"]>(),
 		AUTH: td.object<AiWorkerEnv["AUTH"]>(),
-		NAME_MEANING_RATE_LIMITER: td.object<AiWorkerEnv["NAME_MEANING_RATE_LIMITER"]>(),
+		NAME_ANALYSIS_RATE_LIMITER: td.object<AiWorkerEnv["NAME_ANALYSIS_RATE_LIMITER"]>(),
 	} satisfies AiWorkerEnv;
 	const response = {
 		id: "completion-id",
@@ -45,6 +45,6 @@ it.each([
 	).thenResolve(response);
 	const repository = new InferenceRepository(env);
 	await expect(
-		repository.inferNameMeaning({ name: "Arthur", language: "en", signal: new AbortController().signal }),
+		repository.inferNameAnalysis({ name: "Arthur", language: "en", signal: new AbortController().signal }),
 	).resolves.toEqual(expected);
 });

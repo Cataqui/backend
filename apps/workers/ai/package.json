@@ -22,6 +22,7 @@
 		"@cataqui/response": "workspace:*",
 		"@hono/tsyringe": "catalog:",
 		"hono": "catalog:",
+		"hono-openapi": "catalog:",
 		"reflect-metadata": "catalog:",
 		"tsyringe": "catalog:",
 		"zod": "catalog:"

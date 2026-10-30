@@ -1,3 +1,0 @@
-import { z } from "zod";
-
-export const NameMeaningInputSchema = z.strictObject({ name: z.string().trim().min(1).max(100) });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const NameMeaningHeadersInputSchema = z.object({
+export const NameAnalysisHeadersInputSchema = z.object({
 	"accept-language": z.string({ error: "Expected a valid language tag." }).transform((value, context) => {
 		let language: string | undefined;
 		try {

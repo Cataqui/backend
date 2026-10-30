@@ -31,7 +31,7 @@ it("preserves request correlation on health responses", async () => {
 	expect(response.headers.get("x-request-id")).toBe("health-request");
 });
 
-it.each(["/unknown", "/openapi.json"])("returns the owned error envelope for %s", async (path) => {
+it.each(["/unknown", "/v1/inference/name-meaning"])("returns the owned error envelope for %s", async (path) => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-10-24T12:00:00.000Z"));
 	const response = await worker.request(path, { headers: { "x-request-id": "missing-route" } });

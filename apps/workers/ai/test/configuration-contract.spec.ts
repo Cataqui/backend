@@ -29,7 +29,7 @@ describe("AI runtime configuration", () => {
 			AI: { type: "ai" },
 			AI_GATEWAY_ID: { type: "text", value: `cataqui-ai-worker-${environment}` },
 			AUTH: { type: "worker", worker: `cataqui-auth-${environment}`, exportName: "AuthEntrypoint" },
-			NAME_MEANING_RATE_LIMITER: { type: "rate-limit", namespace: "30001", simple: { limit: 10, period: 60 } },
+			NAME_ANALYSIS_RATE_LIMITER: { type: "rate-limit", namespace: "30001", simple: { limit: 10, period: 60 } },
 		});
 		expect(worker.exports ?? {}).toEqual({});
 		expect(worker.triggers ?? []).toEqual([]);
@@ -44,7 +44,7 @@ describe("AI runtime configuration", () => {
 			AI: { type: "ai" },
 			AI_GATEWAY_ID: { type: "text", value: "cataqui-ai-worker-development" },
 			AUTH: { type: "worker", worker: "cataqui-auth-development", exportName: "AuthEntrypoint" },
-			NAME_MEANING_RATE_LIMITER: { type: "rate-limit", namespace: "30001", simple: { limit: 10, period: 60 } },
+			NAME_ANALYSIS_RATE_LIMITER: { type: "rate-limit", namespace: "30001", simple: { limit: 10, period: 60 } },
 		});
 	});
 

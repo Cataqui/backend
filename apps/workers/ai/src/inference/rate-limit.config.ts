@@ -1,5 +1,5 @@
 export const RateLimitConfig = {
-	nameMeaning: {
+	nameAnalysis: {
 		limit: 10,
 		period: 60,
 	},
