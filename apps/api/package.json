@@ -72,7 +72,7 @@
 		"@vitest/coverage-v8": "catalog:",
 		"dotenv": "catalog:",
 		"fast-check": "catalog:",
-		"fastify": "5.12.5",
+		"fastify": "5.12.6",
 		"prisma": "catalog:",
 		"tsx": "^4.23.9",
 		"typescript": "catalog:",
