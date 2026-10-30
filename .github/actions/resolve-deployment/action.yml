@@ -5,6 +5,9 @@ inputs:
     description: Requested application scope or automatic
     required: true
 outputs:
+  deploy-infrastructure:
+    description: Whether infrastructure configuration or provisioning changed.
+    value: ${{ steps.targets.outputs.deploy-infrastructure }}
   deploy-ai:
     description: Resolved deploy-ai.
     value: ${{ steps.targets.outputs.deploy-ai }}

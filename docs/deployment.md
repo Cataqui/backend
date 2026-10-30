@@ -13,7 +13,7 @@ Use this runbook to deploy, verify, and recover staging and production releases 
 
 ## Normal deployment
 
-Merge application changes into `staging` and wait for its CI, deployment, health checks, and Mapshot render probe to succeed. Verify the affected user flow before promotion.
+Merge application changes into `staging` and wait for CI and the affected applications' deployments and health checks to succeed. A Mapshot release also requires its render probe to succeed. Verify the affected user flow before promotion.
 
 Open a release PR from `staging` to `main` and merge it with a **merge commit**. This preserves staging ancestry and keeps subsequent release diffs limited to new changes. Wait for production CI and deployment to finish, then verify the affected user flow there.
 

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type { z } from "zod";
 import { AccountAdmission } from "../../../generated/prisma/enums";
+import { AccountAlreadyAdmittedError } from "./errors/account-already-admitted.error";
 import type { SkipWaitlistInputSchema } from "./schemas/skip-waitlist-input.schema";
 import { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
 
@@ -11,6 +12,9 @@ export class WaitlistService {
 	async join(params: { accountId: string }): Promise<void> {
 		await this._unitOfWork.execute(async ({ accountService }): Promise<void> => {
 			const account = await accountService.get({ accountId: params.accountId });
+			const isAdmitted = account.admission === AccountAdmission.ADMITTED;
+			if (isAdmitted) throw new AccountAlreadyAdmittedError();
+
 			const hasNotRequestedAccess = account.admission === AccountAdmission.NOT_REQUESTED;
 
 			if (!hasNotRequestedAccess) return;

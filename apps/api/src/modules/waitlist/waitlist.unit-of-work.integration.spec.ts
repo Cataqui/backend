@@ -10,6 +10,7 @@ import { ProfileCreationConflictError } from "../profile/errors/profile-creation
 import { InviteUnavailableError } from "../invite/errors/invite-unavailable.error";
 import { WaitlistService } from "./waitlist.service";
 import { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
+import { AccountAlreadyAdmittedError } from "./errors/account-already-admitted.error";
 
 // Opt in only with a disposable PostgreSQL/PostGIS server and Neon WebSocket proxy.
 const databaseUrl = process.env["WAITLIST_TEST_DATABASE_URL"];
@@ -129,6 +130,29 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 				profiles: 0,
 			});
 		});
+		it.each([false, true])(
+			"rejects joining an admitted account and preserves attribution when referred is %s",
+			async (referred) => {
+				const id = randomUUID();
+				const invite = await prisma.invite.create({
+					data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
+				});
+				const account = await prisma.account.create({
+					data: {
+						id: id,
+						admission: AccountAdmission.ADMITTED,
+						onboardingCompleted: true,
+						fromInviteId: referred ? invite.id : null,
+					},
+				});
+				const result = await service.join({ accountId: id }).catch((error: unknown): unknown => error);
+				expect({
+					result: result,
+					account: await prisma.account.findUnique({ where: { id: id } }),
+					uses: await prisma.account.count({ where: { fromInviteId: invite.id } }),
+				}).toEqual({ result: expect.any(AccountAlreadyAdmittedError), account: account, uses: referred ? 1 : 0 });
+			},
+		);
 		it("allows only one account to use the final invite slot", async () => {
 			const invite = await prisma.invite.create({
 				data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
@@ -170,15 +194,27 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 			const invite = await prisma.invite.create({
 				data: { code: randomUUID().toUpperCase(), referrerName: "Partner" },
 			});
-			await Promise.all([
+			const results = await Promise.allSettled([
 				...Array.from({ length: 8 }, () => service.join({ accountId: id })),
 				service.skip({ accountId: id, input: { inviteCode: invite.code } }),
 			]);
-			expect(await prisma.account.findUnique({ where: { id: id } })).toEqual({
-				id: id,
-				admission: AccountAdmission.ADMITTED,
-				onboardingCompleted: false,
-				fromInviteId: invite.id,
+			expect({
+				joins: results
+					.slice(0, 8)
+					.every((result) => result.status === "fulfilled" || result.reason instanceof AccountAlreadyAdmittedError),
+				skip: results[8]?.status,
+				account: await prisma.account.findUnique({ where: { id: id } }),
+				uses: await prisma.account.count({ where: { fromInviteId: invite.id } }),
+			}).toEqual({
+				joins: true,
+				skip: "fulfilled",
+				account: {
+					id: id,
+					admission: AccountAdmission.ADMITTED,
+					onboardingCompleted: false,
+					fromInviteId: invite.id,
+				},
+				uses: 1,
 			});
 		});
 		it("retries skipping the waitlist after code disabling, exhaustion and profile creation", async () => {

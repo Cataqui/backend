@@ -12,6 +12,7 @@ else abort "Deployments require staging or main."
 end
 targets = { "ai" => false, "api" => false, "maps" => false, "mapshot" => false, "auth" => false }
 scope = ENV.fetch("DEPLOYMENT_SCOPE")
+infrastructure = scope != "automatic"
 case scope
 when "all"
   targets.transform_values! { true }
@@ -40,49 +41,53 @@ when "automatic"
               targets[application] = true unless before[profile] == after[profile]
             end
           end
+          infrastructure = (before.keys | after.keys).any? do |profile|
+            !profile.match?(/\A(?:ai|api|maps|mapshot|auth)-(?:runtime|deployment)\z/) && before[profile] != after[profile]
+          end || infrastructure
         else
           targets.transform_values! { true }
+          infrastructure = true
         end
       rescue JSON::ParserError, SystemCallError
         targets.transform_values! { true }
+        infrastructure = true
       end
     when /\A\.github\/actions\/deploy-ai\//, /\Aapps\/workers\/ai\//
       targets["ai"] = true
     when /\A\.github\/actions\/deploy-maps\//, /\Aapps\/workers\/maps\//
       targets["maps"] = true
+    when /\A\.github\/actions\/deploy-mapshot\//, /\Aapps\/mapshot\//, /\A\.github\/workflows\/mapshot-.*\.yml\z/
+      targets["mapshot"] = true
+    when /\A\.github\/actions\/deploy-auth\//, /\Aapps\/workers\/auth\//
+      targets["auth"] = true
+    when /\A\.github\/actions\/deploy-api\//, /\Aapps\/api\//
+      targets["api"] = true
     when "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json",
          "Gemfile", "Gemfile.lock", "Rakefile", ".ruby-version", ".rubocop.yml",
-         /\Apackages\/(?:async|workerhole)\//, /\Apackages\/validation\//,
-         /\Apackages\/response\//, /\A\.github\/scripts\/cloudflare\//,
-         /\A\.github\/actions\/.*\.(?:ts|rb)\z/,
-         /\A\.github\/actions\/(?:setup-node-workspace|setup-ruby-workspace|resolve-deployment|deploy-[^\/]+|neon-migrations|load-infisical-secrets)\//
+         /\A\.github\/scripts\/cloudflare\//,
+         /\Apatches\//,
+         /\A\.github\/actions\/(?:setup-node-workspace|setup-ruby-workspace|neon-migrations|load-infisical-secrets)\//
       targets.transform_values! { true }
-    when /\Aapps\/api\//
-      targets["api"] = true
-    when /\Aapps\/mapshot\//, /\A\.github\/workflows\/mapshot-.*\.yml\z/
-      targets["mapshot"] = true
-    when /\Aapps\/workers\/auth\//
-      targets["auth"] = true
-    when /\Apackages\/auth-schemas\//
-      targets["api"] = true
-      targets["maps"] = true
-      targets["auth"] = true
-    when /\Apackages\/places\//
-      targets["maps"] = true
-      targets["mapshot"] = true
+    when /\Ainfrastructure\//, /\A\.github\/actions\/(?!resolve-deployment\/)/
+      infrastructure = true
+    when /\Apackages\/[^\/]+\//
+      package_directory = path.split("/").first(2).join("/")
+      dependents_json, dependents_status = Open3.capture2("pnpm", "--filter", "...{./#{package_directory}}", "list", "--depth", "-1", "--json")
+      exit dependents_status.exitstatus unless dependents_status.success?
+      JSON.parse(dependents_json).each do |workspace|
+        relative_path = workspace.fetch("path").delete_prefix("#{Dir.pwd}/")
+        application = relative_path.match(/\Aapps\/(?:workers\/)?([^\/]+)/)&.captures&.first
+        targets[application] = true if targets.key?(application)
+      end
     end
   end
 else
   abort "Unsupported deployment scope."
 end
-targets["api"] = true if targets.fetch("maps")
-targets["maps"] = true if targets.fetch("auth")
-targets["ai"] = true if targets.fetch("auth")
-targets["api"] = true if targets.fetch("auth")
-targets["maps"] = true if targets.fetch("api")
-targets["mapshot"] = true if %w[api maps auth].any? { |name| targets.fetch(name) }
 File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
+  output.puts "deploy-infrastructure=#{infrastructure}"
   output.puts "deploy-mapshot=#{targets.fetch("mapshot")}"
   output.puts "environment=#{environment}"
   %w[ai api maps auth].each { |name| output.puts "deploy-#{name}=#{targets.fetch(name)}" }
 end
+puts "Deployment targets (#{environment}): #{targets.select { |_name, selected| selected }.keys.join(', ')}; infrastructure=#{infrastructure}"

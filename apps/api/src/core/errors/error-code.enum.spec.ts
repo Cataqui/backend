@@ -26,6 +26,7 @@ describe("ErrorCode", () => {
 			"PROFILE_NOT_FOUND",
 			"INVITE_UNAVAILABLE",
 			"ACCOUNT_INVITE_ALREADY_SET",
+			"ACCOUNT_ALREADY_ADMITTED",
 		] as const;
 
 		for (const value of expectedValues) {
@@ -42,6 +43,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(25);
+		expect(Object.keys(ErrorCode)).toHaveLength(26);
 	});
 });

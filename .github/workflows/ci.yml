@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Ruby automation
         uses: ./.github/actions/setup-ruby-workspace
@@ -33,7 +34,15 @@ jobs:
       - name: Set up Node workspace
         uses: ./.github/actions/setup-node-workspace
 
+      - name: Select affected workspaces and infrastructure
+        id: scope
+        shell: ruby {0}
+        env:
+          BEFORE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: load ".github/scripts/ci/get-validation-scope.rb"
+
       - name: Set up OpenTofu
+        if: steps.scope.outputs.infrastructure == 'true'
         uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: 1.12.6
@@ -43,19 +52,34 @@ jobs:
         run: pnpm lint:check
 
       - name: Validate OpenTofu roots
+        if: steps.scope.outputs.infrastructure == 'true'
         run: pnpm check:opentofu
 
-      - name: Type-check every workspace
-        run: pnpm typecheck
-
       - name: Set up Mapshot font tooling
+        if: steps.scope.outputs.mapshot == 'true'
         uses: ./.github/actions/setup-mapshot-fonts
 
-      - name: Run coverage gates
-        run: pnpm test:cov
+      - name: Build shared contracts for workspace and binding types
+        run: pnpm build:contracts
 
-      - name: Build applications and packages
-        run: pnpm build
+      - name: Type-check affected workspaces
+        env:
+          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
+        run: ruby .github/scripts/ci/validate-workspaces.rb typecheck
+
+      - name: Run repository coverage gates
+        if: steps.scope.outputs.repository == 'true'
+        run: pnpm test:repo:cov
+
+      - name: Run affected workspace coverage gates
+        env:
+          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
+        run: ruby .github/scripts/ci/validate-workspaces.rb test:cov
+
+      - name: Build affected applications and packages
+        env:
+          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
+        run: ruby .github/scripts/ci/validate-workspaces.rb build
 
   deploy:
     name: Deploy validated commit

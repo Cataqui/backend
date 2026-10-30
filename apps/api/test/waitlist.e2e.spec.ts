@@ -88,31 +88,64 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 			transactions: 0,
 		});
 	});
-	it.each(Object.values(AccountAdmission))("joins without a profile or response body from %s", async (admission) => {
-		td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
-			id: session.accountId,
-			admission: admission,
-			fromInviteId: null,
-			onboardingCompleted: false,
-		});
-		const response = await app.inject({ method: "POST", url: "/v1/waitlist/join", headers: headers });
-		expect({
-			status: response.statusCode,
-			cache: response.headers["cache-control"],
-			body: response.body,
-			writes: td.explain(accountRepository.updateAdmission).calls.map((call) => call.args),
-			profileLookups: td.explain(profileRepository.findById).callCount,
-		}).toEqual({
-			status: 204,
-			cache: "no-store",
-			body: "",
-			writes:
-				admission === AccountAdmission.NOT_REQUESTED
-					? [[{ accountId: session.accountId, admission: AccountAdmission.WAITLISTED }]]
-					: [],
-			profileLookups: 0,
-		});
-	});
+	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+		"joins without a profile or response body from %s",
+		async (admission) => {
+			td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
+				id: session.accountId,
+				admission: admission,
+				fromInviteId: null,
+				onboardingCompleted: false,
+			});
+			const response = await app.inject({ method: "POST", url: "/v1/waitlist/join", headers: headers });
+			expect({
+				status: response.statusCode,
+				cache: response.headers["cache-control"],
+				body: response.body,
+				writes: td.explain(accountRepository.updateAdmission).calls.map((call) => call.args),
+				profileLookups: td.explain(profileRepository.findById).callCount,
+			}).toEqual({
+				status: 204,
+				cache: "no-store",
+				body: "",
+				writes:
+					admission === AccountAdmission.NOT_REQUESTED
+						? [[{ accountId: session.accountId, admission: AccountAdmission.WAITLISTED }]]
+						: [],
+				profileLookups: 0,
+			});
+		},
+	);
+	it.each([null, "recorded-invite"])(
+		"rejects joining an admitted account with attribution %s",
+		async (fromInviteId) => {
+			td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
+				id: session.accountId,
+				admission: AccountAdmission.ADMITTED,
+				fromInviteId: fromInviteId,
+				onboardingCompleted: true,
+			});
+			const response = await app.inject({ method: "POST", url: "/v1/waitlist/join", headers: headers });
+			expect({
+				status: response.statusCode,
+				body: response.json(),
+				writes: td.explain(accountRepository.updateAdmission).callCount,
+				attributionWrites: td.explain(accountRepository.setFromInviteIfEmpty).callCount,
+			}).toEqual({
+				status: 409,
+				body: {
+					status: 409,
+					errorCode: "ACCOUNT_ALREADY_ADMITTED",
+					message: "The account is already admitted and cannot join the waitlist.",
+					requestId: expect.any(String),
+					timestamp: expect.any(String),
+					endpoint: "/v1/waitlist/join",
+				},
+				writes: 0,
+				attributionWrites: 0,
+			});
+		},
+	);
 	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
 		"normalizes a code and admits only the authenticated account from %s with no response body",
 		async (admission) => {
@@ -355,7 +388,11 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 		}).toMatchObject({
 			join: {
 				security: [{ bearer: [] }],
-				responses: { "204": { description: expect.any(String) }, default: expect.any(Object) },
+				responses: {
+					"204": { description: expect.any(String) },
+					"409": { description: expect.stringContaining("ACCOUNT_ALREADY_ADMITTED"), content: expect.any(Object) },
+					default: expect.any(Object),
+				},
 			},
 			skip: {
 				security: [{ bearer: [] }],

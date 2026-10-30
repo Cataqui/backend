@@ -5,6 +5,7 @@ import { InviteUnavailableError } from "../invite/errors/invite-unavailable.erro
 import type { InviteService } from "../invite/invite.service";
 import { WaitlistService } from "./waitlist.service";
 import type { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
+import { AccountAlreadyAdmittedError } from "./errors/account-already-admitted.error";
 
 afterEach(() => td.reset());
 
@@ -24,27 +25,49 @@ describe("WaitlistService", () => {
 		service = new WaitlistService(unitOfWork);
 	});
 
-	it.each(Object.values(AccountAdmission))("joins without downgrading admission %s", async (admission) => {
-		td.when(accountService.get({ accountId: "account" })).thenResolve({
-			id: "account",
-			admission: admission,
-			fromInviteId: null,
-			onboardingCompleted: false,
-		});
-		const result = await service.join({ accountId: "account" });
-		expect({
-			result: result,
-			writes: td.explain(accountService.updateAdmission).calls.map((call) => call.args),
-			codes: td.explain(inviteService.lockAvailableByCode).callCount,
-		}).toEqual({
-			result: undefined,
-			writes:
-				admission === AccountAdmission.NOT_REQUESTED
-					? [[{ accountId: "account", admission: AccountAdmission.WAITLISTED }]]
-					: [],
-			codes: 0,
-		});
-	});
+	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+		"joins idempotently from %s",
+		async (admission) => {
+			td.when(accountService.get({ accountId: "account" })).thenResolve({
+				id: "account",
+				admission: admission,
+				fromInviteId: null,
+				onboardingCompleted: false,
+			});
+			const result = await service.join({ accountId: "account" });
+			expect({
+				result: result,
+				writes: td.explain(accountService.updateAdmission).calls.map((call) => call.args),
+				codes: td.explain(inviteService.lockAvailableByCode).callCount,
+			}).toEqual({
+				result: undefined,
+				writes:
+					admission === AccountAdmission.NOT_REQUESTED
+						? [[{ accountId: "account", admission: AccountAdmission.WAITLISTED }]]
+						: [],
+				codes: 0,
+			});
+		},
+	);
+
+	it.each([null, "recorded-invite"])(
+		"rejects joining an admitted account with attribution %s without writes",
+		async (fromInviteId) => {
+			td.when(accountService.get({ accountId: "account" })).thenResolve({
+				id: "account",
+				admission: AccountAdmission.ADMITTED,
+				fromInviteId: fromInviteId,
+				onboardingCompleted: true,
+			});
+			const result = await service.join({ accountId: "account" }).catch((error: unknown): unknown => error);
+			expect({
+				result: result,
+				writes: td.explain(accountService.updateAdmission).callCount,
+				attributionWrites: td.explain(accountService.setFromInvite).callCount,
+				codes: td.explain(inviteService.lockAvailableByCode).callCount,
+			}).toEqual({ result: expect.any(AccountAlreadyAdmittedError), writes: 0, attributionWrites: 0, codes: 0 });
+		},
+	);
 
 	it.each([null, "recorded-invite"])(
 		"succeeds immediately for admitted accounts with attribution %s",

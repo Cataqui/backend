@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       environment: ${{ steps.scope.outputs.environment }}
+      deploy-infrastructure: ${{ steps.scope.outputs.deploy-infrastructure }}
       deploy-ai: ${{ steps.scope.outputs.deploy-ai }}
       deploy-api: ${{ steps.scope.outputs.deploy-api }}
       deploy-maps: ${{ steps.scope.outputs.deploy-maps }}
@@ -38,6 +39,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { ref: "${{ github.sha }}", fetch-depth: 0, persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
+      - uses: ./.github/actions/setup-node-workspace
       - id: scope
         uses: ./.github/actions/resolve-deployment
         with: { scope: "${{ inputs.scope }}" }
@@ -60,7 +62,7 @@ jobs:
 
   infrastructure:
     needs: [prepare, validate]
-    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped')
+    if: always() && !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.deploy-infrastructure == 'true' && (needs.validate.result == 'success' || needs.validate.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     environment:
@@ -92,8 +94,8 @@ jobs:
           end
 
   auth:
-    needs: [prepare, infrastructure]
-    if: always() && !cancelled() && needs.infrastructure.result == 'success' && needs.prepare.outputs.deploy-auth == 'true'
+    needs: [prepare, validate, infrastructure]
+    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && needs.prepare.outputs.deploy-auth == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     environment: ${{ needs.prepare.outputs.environment }}
@@ -115,8 +117,8 @@ jobs:
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
 
   ai:
-    needs: [prepare, infrastructure, auth]
-    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.auth.result == 'success' || needs.auth.result == 'skipped') && needs.prepare.outputs.deploy-ai == 'true'
+    needs: [prepare, validate, infrastructure, auth]
+    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped') && needs.prepare.outputs.deploy-ai == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: ${{ needs.prepare.outputs.environment }}
@@ -135,8 +137,8 @@ jobs:
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
 
   mapshot:
-    needs: [prepare, infrastructure]
-    if: always() && !cancelled() && needs.infrastructure.result == 'success' && needs.prepare.outputs.deploy-mapshot == 'true'
+    needs: [prepare, validate, infrastructure]
+    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && needs.prepare.outputs.deploy-mapshot == 'true'
     permissions:
       contents: read
       id-token: write
@@ -147,8 +149,8 @@ jobs:
       promote: ${{ needs.prepare.outputs.promote-mapshot == 'true' }}
 
   deploy:
-    needs: [prepare, infrastructure, mapshot, auth]
-    if: always() && !cancelled() && needs.infrastructure.result == 'success' && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped')
+    needs: [prepare, validate, infrastructure, mapshot, auth]
+    if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     environment: ${{ needs.prepare.outputs.environment }}

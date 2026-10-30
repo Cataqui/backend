@@ -7,11 +7,18 @@ export function ApiJoinWaitlistDocs(): MethodDecorator & ClassDecorator {
 		ApiBearerAuth(),
 		ApiOperation({
 			summary: "Join the waitlist",
-			description: "Requests access for the authenticated account. ",
+			description:
+				"Requests access for the authenticated account. Accounts that are already admitted cannot join the waitlist.",
 		}),
 		ApiResponse({
 			status: HttpStatus.NO_CONTENT,
-			description: "The account joined the waitlist, was already waitlisted, or is already admitted. No response body.",
+			description: "The account joined the waitlist or was already waitlisted. No response body.",
+		}),
+		ApiResponse({
+			status: HttpStatus.CONFLICT,
+			description:
+				"The account is already admitted (ACCOUNT_ALREADY_ADMITTED). Access is already granted; do not retry joining the waitlist.",
+			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: "default",
