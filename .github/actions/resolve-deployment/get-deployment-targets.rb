@@ -27,6 +27,8 @@ when "automatic"
   exit status.exitstatus unless status.success?
   changed_paths.each_line(chomp: true) do |path|
     next if path.end_with?(".md") || path.start_with?(".agents/skills/")
+    validation_only = path.match?(%r{(?:\A|/)(?:test|tests)/|\.(?:spec|test)\.[cm]?[jt]sx?\z|_test\.rb\z|\.snap\z|(?:\A|/)vitest[^/]*\.ts\z})
+    next if validation_only
 
     case path
     when ".github/actions/load-infisical-secrets/profiles.json"
@@ -63,7 +65,7 @@ when "automatic"
     when /\A\.github\/actions\/deploy-api\//, /\Aapps\/api\//
       targets["api"] = true
     when "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json",
-         "Gemfile", "Gemfile.lock", "Rakefile", ".ruby-version", ".rubocop.yml",
+         "Gemfile", "Gemfile.lock", ".ruby-version",
          /\A\.github\/scripts\/cloudflare\//,
          /\Apatches\//,
          /\A\.github\/actions\/(?:setup-node-workspace|setup-ruby-workspace|neon-migrations|load-infisical-secrets)\//

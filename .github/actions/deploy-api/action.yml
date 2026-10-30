@@ -24,9 +24,6 @@ runs:
         environment: ${{ inputs.environment }}
         profile: api-runtime
         infisical-identity-id: ${{ inputs.infisical-identity-id }}
-    - name: Build the API RPC contracts and their dependencies
-      shell: bash
-      run: pnpm --filter '@cataqui/api...' --if-present run build:contracts
     - name: Build API Worker for the deployment environment
       shell: ruby {0}
       working-directory: apps/api/worker

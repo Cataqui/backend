@@ -143,7 +143,7 @@ describe("backend workspace boundaries", () => {
 		const workspaceSource = readFileSync(resolve(repositoryRoot, "pnpm-workspace.yaml"), "utf8");
 
 		expect(workspaceSource).toMatch(
-			/^packages:\n {2}- '\.github\/actions\/deploy-mapshot'\n {2}- 'apps\/api'\n {2}- 'apps\/mapshot'\n {2}- 'apps\/\*\/worker'\n {2}- 'apps\/\*\/workerhole'\n {2}- 'apps\/workers\/\*'\n {2}- 'packages\/\*'\n(?! {2}-)/m,
+			/^packages:\n {2}- 'apps\/api'\n {2}- 'apps\/mapshot'\n {2}- 'apps\/\*\/worker'\n {2}- 'apps\/\*\/workerhole'\n {2}- 'apps\/workers\/\*'\n {2}- 'packages\/\*'\n(?! {2}-)/m,
 		);
 	});
 

@@ -366,6 +366,9 @@ if $PROGRAM_NAME == __FILE__
         deadline_at: (Time.now.to_f * 1000).to_i + (310 * 60 * 1000)
       ).run
     end
+    if ENV["GITHUB_OUTPUT"]
+      File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "source-ready=#{result == 'ready'}" }
+    end
     puts(result == "checkpoint" ? "Mapshot phase checkpoint saved." : "Mapshot dataset is ready.") unless result == "complete"
   rescue StandardError
     warn "Mapshot release failed. Rerun the pinned release to resume preparation or recover its retained deployment."

@@ -1,0 +1,19 @@
+name: Set up OpenTofu
+description: Install the pinned CLI and reuse checksum-verified provider downloads across roots.
+runs:
+  using: composite
+  steps:
+    - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      with: { tofu_version: 1.12.6, tofu_wrapper: false, cache: true }
+    - name: Configure provider download cache
+      shell: ruby {0}
+      run: |
+        require "fileutils"
+        directory = File.join(ENV.fetch("RUNNER_TEMP"), "opentofu-providers")
+        FileUtils.mkdir_p(directory)
+        File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts "TF_PLUGIN_CACHE_DIR=#{directory}" }
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/opentofu-providers
+        key: tofu-providers-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infrastructure/**/.terraform.lock.hcl') }}
+        restore-keys: tofu-providers-${{ runner.os }}-${{ runner.arch }}-

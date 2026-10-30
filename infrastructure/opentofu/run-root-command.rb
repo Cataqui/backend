@@ -8,9 +8,14 @@ end.sort
 abort "No OpenTofu roots were found." if root_names.empty?
 
 root_names.each do |name|
-  arguments = ["-chdir=#{File.join(roots_directory, name)}", command]
-  arguments << "-backend=false" if command == "init"
-  puts "OpenTofu #{command}: #{name}"
+  directory = File.join(roots_directory, name)
+  # Native plan/apply tests already validate configuration. Roots without tests
+  # still need validation: `tofu test` alone accepts an untested, invalid root.
+  has_tests = Dir.glob(File.join(directory, "{*,tests/*}.{tftest,tofutest}.{hcl,json}")).any?
+  root_command = command == "test" && !has_tests ? "validate" : command
+  arguments = ["-chdir=#{directory}", root_command]
+  arguments.concat(["-backend=false", "-lockfile=readonly"]) if command == "init"
+  puts "OpenTofu #{root_command}: #{name}"
   $stdout.flush
   success = system("tofu", *arguments)
   abort "Could not start OpenTofu." if success.nil?

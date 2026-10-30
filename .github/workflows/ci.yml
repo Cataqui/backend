@@ -43,10 +43,7 @@ jobs:
 
       - name: Set up OpenTofu
         if: steps.scope.outputs.infrastructure == 'true'
-        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-        with:
-          tofu_version: 1.12.6
-          tofu_wrapper: false
+        uses: ./.github/actions/setup-opentofu
 
       - name: Check formatting and linting
         run: pnpm lint:check
@@ -55,11 +52,19 @@ jobs:
         if: steps.scope.outputs.infrastructure == 'true'
         run: pnpm check:opentofu
 
+      - name: Check renderer dependency advisories and licenses before deployment
+        if: steps.scope.outputs.renderer == 'true'
+        uses: EmbarkStudios/cargo-deny-action@c3bbe7e4e3f7baeee1a3dd9aec0a3b2aded580fb # v2.1.1
+        with:
+          manifest-path: apps/mapshot/renderer/Cargo.toml
+          arguments: --locked
+
       - name: Set up Mapshot font tooling
         if: steps.scope.outputs.mapshot == 'true'
         uses: ./.github/actions/setup-mapshot-fonts
 
       - name: Build shared contracts for workspace and binding types
+        if: steps.scope.outputs.workspaces != '[]' || steps.scope.outputs.repository == 'true'
         run: pnpm build:contracts
 
       - name: Type-check affected workspaces
@@ -67,9 +72,13 @@ jobs:
           VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
         run: ruby .github/scripts/ci/validate-workspaces.rb typecheck
 
-      - name: Run repository coverage gates
+      - name: Check repository architecture and deployment configuration contracts
         if: steps.scope.outputs.repository == 'true'
-        run: pnpm test:repo:cov
+        run: pnpm exec vitest run --config vitest.config.ts
+
+      - name: Run infrastructure bootstrap coverage gates
+        if: steps.scope.outputs.bootstrap == 'true'
+        run: bundle exec rake -C infrastructure/bootstrap coverage
 
       - name: Run affected workspace coverage gates
         env:
@@ -78,8 +87,13 @@ jobs:
 
       - name: Build affected applications and packages
         env:
-          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
+          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.build-workspaces }}
         run: ruby .github/scripts/ci/validate-workspaces.rb build
+
+      - name: Check affected compiled Workers in their real runtime
+        env:
+          VALIDATION_WORKSPACES: ${{ steps.scope.outputs.workspaces }}
+        run: ruby .github/scripts/ci/validate-workspaces.rb test:runtime
 
   deploy:
     name: Deploy validated commit

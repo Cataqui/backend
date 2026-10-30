@@ -10,10 +10,6 @@ inputs:
   operation:
     description: Operation; plan or apply.
     required: true
-outputs:
-  has-changes:
-    description: Whether the saved plan contains changes.
-    value: ${{ steps.plan.outputs.has-changes }}
 runs:
   using: composite
   steps:
@@ -57,11 +53,10 @@ runs:
         INPUT_ROOT: ${{ inputs.root }}
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        exec "tofu", "init", "-reconfigure", "-input=false",
+        exec "tofu", "init", "-reconfigure", "-input=false", "-lockfile=readonly",
           "-backend-config=../../backends/r2.s3.tfbackend",
           "-backend-config=../../environments/#{ENV.fetch('INPUT_ENVIRONMENT')}/#{ENV.fetch('INPUT_ROOT')}.s3.tfbackend"
     - name: Create saved plan
-      id: plan
       shell: ruby {0}
       working-directory: ${{ github.workspace }}/infrastructure/opentofu/roots/${{ inputs.root }}
       env:
@@ -80,7 +75,6 @@ runs:
           system RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "summarize-failure.rb"), plan_log, "plan"
           exit status
         end
-        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "has-changes=#{status == 2}" }
     - name: Check Pages build before domain activation
       if: inputs.operation == 'apply' && inputs.root == 'cloudflare-pages'
       shell: ruby {0}
@@ -90,7 +84,7 @@ runs:
         INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |
         require "rbconfig"
-        exec RbConfig.ruby, File.join(ENV.fetch("GITHUB_WORKSPACE"), ".github/actions/cloudflare-pages/verify-deployment.rb"), File.join(ENV.fetch("RUNNER_TEMP"), "#{ENV.fetch('INPUT_ROOT')}.tfplan")
+        exec RbConfig.ruby, File.join(ENV.fetch("GITHUB_ACTION_PATH"), "verify-pages-deployment.rb"), File.join(ENV.fetch("RUNNER_TEMP"), "#{ENV.fetch('INPUT_ROOT')}.tfplan")
     - name: Apply saved plan
       id: apply
       if: inputs.operation == 'apply'

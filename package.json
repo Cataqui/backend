@@ -18,8 +18,8 @@
 		"build:mapshot": "pnpm --filter \"@cataqui/mapshot-worker...\" run build",
 		"build:packages": "pnpm --filter \"./packages/*\" run build",
 		"build:auth": "pnpm --filter \"@cataqui/auth-worker...\" run build",
-		"check": "pnpm check:opentofu && pnpm lint:check && pnpm typecheck && pnpm test:cov && pnpm build",
-		"check:opentofu": "pnpm opentofu:fmt:check && pnpm opentofu:init && pnpm opentofu:validate && pnpm opentofu:test",
+		"check": "pnpm check:opentofu && pnpm lint:check && pnpm typecheck && pnpm test:cov && pnpm build && pnpm test:runtime",
+		"check:opentofu": "pnpm opentofu:fmt:check && pnpm opentofu:init && pnpm opentofu:test",
 		"clean": "pnpm -r --if-present run clean",
 		"commitlint": "commitlint --edit",
 		"format": "biome check --write .",
@@ -42,6 +42,7 @@
 		"test:mapshot": "pnpm build:contracts && pnpm --filter @cataqui/mapshot --filter @cataqui/mapshot-worker run test",
 		"test:repo": "vitest run --config vitest.config.ts && bundle exec rake -C infrastructure/bootstrap test",
 		"test:repo:cov": "vitest run --config vitest.config.ts --coverage && bundle exec rake -C infrastructure/bootstrap coverage",
+		"test:runtime": "pnpm -r --workspace-concurrency=1 --if-present run test:runtime",
 		"test:auth": "pnpm build:packages && pnpm --filter @cataqui/auth-worker run test",
 		"typecheck": "pnpm build:contracts && pnpm -r --if-present run typecheck",
 		"build:contracts": "pnpm build:packages && pnpm --recursive --if-present run build:contracts"

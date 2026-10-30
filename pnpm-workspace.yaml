@@ -1,5 +1,4 @@
 packages:
-  - '.github/actions/deploy-mapshot'
   - 'apps/api'
   - 'apps/mapshot'
   - 'apps/*/worker'

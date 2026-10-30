@@ -11,6 +11,9 @@ exit status.exitstatus unless status.success?
 paths = paths.split("\0").reject { |path| path.end_with?(".md") || path.start_with?(".agents/skills/") }
 full_validation = paths.any? { |path| !path.start_with?("apps/", "packages/", "infrastructure/") }
 infrastructure = full_validation || paths.any? { |path| path.start_with?("infrastructure/") }
+renderer = full_validation || paths.any? do |path|
+  %w[Cargo.toml Cargo.lock deny.toml rust-toolchain.toml].include?(File.basename(path))
+end
 workspaces_json, status = Open3.capture2("pnpm", "-r", "list", "--depth", "-1", "--json")
 exit status.exitstatus unless status.success?
 workspaces = JSON.parse(workspaces_json).reject { |workspace| workspace.fetch("path") == Dir.pwd }
@@ -50,11 +53,21 @@ unless full_validation
   end
 end
 names = selected.map { |workspace| workspace.fetch("name") }
+# The preceding build:contracts gate already builds shared packages and application portals.
+application_builds = selected.reject do |workspace|
+  relative_path = workspace.fetch("path").delete_prefix("#{Dir.pwd}/")
+  manifest = JSON.parse(File.read(File.join(workspace.fetch("path"), "package.json")))
+  relative_path.start_with?("packages/") || manifest.fetch("scripts", {}).key?("build:contracts")
+end.map { |workspace| workspace.fetch("name") }
 mapshot = selected.any? { |workspace| workspace.fetch("path").start_with?("#{Dir.pwd}/apps/mapshot") }
 File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
   output.puts "workspaces=#{JSON.generate(names)}"
+  output.puts "build-workspaces=#{JSON.generate(application_builds)}"
   output.puts "infrastructure=#{infrastructure}"
-  output.puts "repository=#{full_validation || infrastructure}"
+  output.puts "renderer=#{renderer}"
+  # Repository contracts inspect application imports and bindings as well as infrastructure.
+  output.puts "repository=#{!paths.empty?}"
+  output.puts "bootstrap=#{full_validation || infrastructure}"
   output.puts "mapshot=#{mapshot}"
 end
 puts "Validation workspaces: #{names.join(', ')}"

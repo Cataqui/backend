@@ -13,30 +13,12 @@ concurrency:
   cancel-in-progress: false
   queue: max
 jobs:
-  resolve:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    outputs:
-      revision: ${{ steps.refs.outputs.revision }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: '${{ inputs.revision }}', persist-credentials: false }
-      - uses: ./.github/actions/setup-ruby-workspace
-      - id: refs
-        shell: ruby {0}
-        env:
-          REQUESTED_ENVIRONMENT: ${{ inputs.environment }}
-          REQUESTED_REVISION: ${{ inputs.revision }}
-        run: |
-          abort "Unsupported release environment." unless %w[staging production].include?(ENV.fetch("REQUESTED_ENVIRONMENT"))
-          revision = ENV.fetch("REQUESTED_REVISION")
-          abort "Release revision must be a full commit SHA." unless revision.match?(/\A[a-f0-9]{40}\z/)
-          File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |file| file.puts "revision=#{revision}" }
   release-transfer:
     permissions:
       contents: read
       id-token: write
-    needs: resolve
+    outputs:
+      source-ready: ${{ steps.transfer.outputs.source-ready }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     environment:
@@ -44,15 +26,16 @@ jobs:
       deployment: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+        with: { ref: "${{ inputs.revision }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/deploy-mapshot
+        id: transfer
         with:
           infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
           environment: ${{ inputs.environment }}
-          revision: ${{ needs.resolve.outputs.revision }}
+          revision: ${{ inputs.revision }}
           operation: transfer
           refresh: ${{ inputs.refresh }}
           promote: ${{ inputs.promote }}
@@ -60,7 +43,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [resolve, release-transfer]
+    needs: release-transfer
+    if: needs.release-transfer.outputs.source-ready != 'true'
+    outputs:
+      source-ready: ${{ steps.verify.outputs.source-ready }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     environment:
@@ -68,15 +54,16 @@ jobs:
       deployment: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+        with: { ref: "${{ inputs.revision }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/deploy-mapshot
+        id: verify
         with:
           infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
           environment: ${{ inputs.environment }}
-          revision: ${{ needs.resolve.outputs.revision }}
+          revision: ${{ inputs.revision }}
           operation: verify
           refresh: ${{ inputs.refresh }}
           promote: ${{ inputs.promote }}
@@ -84,7 +71,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [resolve, release-verify]
+    needs: [release-transfer, release-verify]
+    if: needs.release-transfer.outputs.source-ready != 'true' && needs.release-verify.outputs.source-ready != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     environment:
@@ -92,15 +80,15 @@ jobs:
       deployment: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+        with: { ref: "${{ inputs.revision }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/deploy-mapshot
         with:
           infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
           environment: ${{ inputs.environment }}
-          revision: ${{ needs.resolve.outputs.revision }}
+          revision: ${{ inputs.revision }}
           operation: prepare
           refresh: ${{ inputs.refresh }}
           promote: ${{ inputs.promote }}
@@ -108,7 +96,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [resolve, release-prepare]
+    needs: [release-transfer, release-verify, release-prepare]
+    if: always() && !cancelled() && needs.release-transfer.result == 'success' && (needs.release-verify.result == 'success' || needs.release-verify.result == 'skipped') && (needs.release-prepare.result == 'success' || needs.release-prepare.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     environment:
@@ -116,15 +105,15 @@ jobs:
       deployment: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: "${{ needs.resolve.outputs.revision }}", persist-credentials: false }
+        with: { ref: "${{ inputs.revision }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/deploy-mapshot
         with:
           infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
           environment: ${{ inputs.environment }}
-          revision: ${{ needs.resolve.outputs.revision }}
+          revision: ${{ inputs.revision }}
           operation: deploy
           refresh: ${{ inputs.refresh }}
           promote: ${{ inputs.promote }}
@@ -132,8 +121,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [resolve, release-deploy]
-    if: always() && needs.resolve.result == 'success' && (needs.release-deploy.result == 'failure' || needs.release-deploy.result == 'cancelled')
+    needs: release-deploy
+    if: always() && (needs.release-deploy.result == 'failure' || needs.release-deploy.result == 'cancelled')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment:
@@ -141,13 +130,13 @@ jobs:
       deployment: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { ref: '${{ needs.resolve.outputs.revision }}', persist-credentials: false }
+        with: { ref: '${{ inputs.revision }}', persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/deploy-mapshot
         with:
           infisical-identity-id: ${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}
           environment: ${{ inputs.environment }}
-          revision: ${{ needs.resolve.outputs.revision }}
+          revision: ${{ inputs.revision }}
           operation: recover

@@ -35,11 +35,8 @@ jobs:
         run: |
           expected = { "staging" => "refs/heads/staging", "production" => "refs/heads/main" }
           abort "Select staging on staging or production on main." unless expected.fetch(ENV.fetch("INPUT_ENVIRONMENT"), nil) == ENV.fetch("GITHUB_REF")
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with: { node-version: 24 }
       - name: Set up OpenTofu
-        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-        with: { tofu_version: 1.12.6, tofu_wrapper: false }
+        uses: ./.github/actions/setup-opentofu
       - name: Load state backend credentials
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
@@ -47,8 +44,8 @@ jobs:
         uses: ./.github/actions/load-infisical-secrets
         with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
       - name: Plan Pages without applying
-        uses: ./.github/actions/cloudflare-pages
-        with: { environment: "${{ inputs.environment }}", operation: plan }
+        uses: ./.github/actions/opentofu-root
+        with: { root: cloudflare-pages, environment: "${{ inputs.environment }}", operation: plan }
       - name: Clear credentials
         if: always()
         shell: ruby {0}

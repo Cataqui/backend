@@ -139,8 +139,6 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
 
-  .github/actions/deploy-mapshot: {}
-
   apps/api:
     dependencies:
       '@cataqui/api-workerhole':

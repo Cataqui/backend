@@ -12,23 +12,22 @@ runs:
   using: composite
   steps:
     - name: Set up OpenTofu
-      uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-      with: { tofu_version: 1.12.6, tofu_wrapper: false }
+      uses: ./.github/actions/setup-opentofu
     - name: Load bootstrap credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: opentofu-bootstrap, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply generated folders
-      uses: ./.github/actions/infisical-generated-folders
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: infisical-generated-folders, environment: "${{ inputs.environment }}", operation: apply }
     - name: Apply Cloudflare API tokens
-      uses: ./.github/actions/cloudflare-api-tokens
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-api-tokens, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Pages infrastructure credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: cloudflare-pages, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply landing Pages configuration
-      uses: ./.github/actions/cloudflare-pages
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-pages, environment: "${{ inputs.environment }}", operation: apply }
     - name: Clear Pages infrastructure credential
       shell: ruby {0}
       run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
@@ -36,20 +35,20 @@ runs:
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: cloudflare-r2, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply private R2 image storage
-      uses: ./.github/actions/cloudflare-r2
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-r2, environment: "${{ inputs.environment }}", operation: apply }
     - name: Clear R2 infrastructure credential
       shell: ruby {0}
       run: File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_API_TOKEN=") }
     - name: Apply generated authentication secrets
-      uses: ./.github/actions/auth-secrets
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: auth-secrets, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon project credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: neon-projects, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon projects
-      uses: ./.github/actions/neon-projects
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: neon-projects, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon API-key credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: neon-api-keys, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
@@ -57,20 +56,21 @@ runs:
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: neon-project-context, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon project API keys
-      uses: ./.github/actions/neon-api-keys
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: neon-api-keys, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Neon database-access credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: neon-database-access, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Neon database access
-      uses: ./.github/actions/neon-database-access
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      env: { PGOPTIONS: '-c createrole_self_grant=set,inherit' }
+      with: { root: neon-database-access, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load Hyperdrive infrastructure credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: cloudflare-hyperdrive, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Auth database connection pool
-      uses: ./.github/actions/cloudflare-hyperdrive
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-hyperdrive, environment: "${{ inputs.environment }}", operation: apply }
     - name: Clear Hyperdrive origin credentials
       if: always()
       shell: ruby {0}
@@ -90,20 +90,20 @@ runs:
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: upstash-redis, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply Upstash
-      uses: ./.github/actions/upstash-redis
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: upstash-redis, environment: "${{ inputs.environment }}", operation: apply }
     - name: Load AI Gateway credentials
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: "${{ inputs.environment }}", profile: cloudflare-ai-gateways, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply AI Gateway
-      uses: ./.github/actions/cloudflare-ai-gateways
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-ai-gateways, environment: "${{ inputs.environment }}", operation: apply }
     - name: Authenticate Google Cloud
       uses: ./.github/actions/authenticate-google-cloud
       with: { environment: "${{ inputs.environment }}", workload-identity-provider: "${{ inputs.google-workload-identity-provider }}" }
     - name: Apply Google Maps Platform
-      uses: ./.github/actions/google-cloud-maps-platform
-      with: { environment: "${{ inputs.environment }}", operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: google-cloud-maps-platform, environment: "${{ inputs.environment }}", operation: apply }
 
     - name: Load production DNS credentials
       if: inputs.environment == 'production'
@@ -111,13 +111,13 @@ runs:
       with: { environment: production, profile: cloudflare-zone-dns, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply production DNS
       if: inputs.environment == 'production'
-      uses: ./.github/actions/cloudflare-zone-dns
-      with: { operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-zone-dns, environment: production, operation: apply }
     - name: Load production zone credentials
       if: inputs.environment == 'production'
       uses: ./.github/actions/load-infisical-secrets
       with: { environment: production, profile: cloudflare-zone-configuration, infisical-identity-id: "${{ inputs.infisical-identity-id }}" }
     - name: Apply production zone configuration
       if: inputs.environment == 'production'
-      uses: ./.github/actions/cloudflare-zone-configuration
-      with: { operation: apply }
+      uses: ./.github/actions/opentofu-root
+      with: { root: cloudflare-zone-configuration, environment: production, operation: apply }

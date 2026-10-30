@@ -19,6 +19,10 @@ inputs:
   promote:
     description: Adopt staging data after its PR merges into main.
     default: 'false'
+outputs:
+  source-ready:
+    description: Whether this phase finished preparing the pinned source.
+    value: ${{ steps.release.outputs.source-ready }}
 runs:
   using: composite
   steps:
@@ -49,11 +53,15 @@ runs:
         require "json"
         account_id = JSON.parse(File.read("infrastructure/platforms.json", encoding: "UTF-8")).fetch("cloudflare").fetch("account_id")
         File.open(ENV.fetch("GITHUB_ENV"), "a") { |file| file.puts("CLOUDFLARE_ACCOUNT_ID=#{account_id}") }
+    - name: Build Mapshot tool dependencies
+      shell: bash
+      run: pnpm --filter '@cataqui/mapshot^...' build
     - name: Build Mapshot data and image tooling
       shell: ruby {0}
       working-directory: apps/mapshot
       run: exec "pnpm", "tools:build"
     - name: Run Mapshot ${{ inputs.operation }}
+      id: release
       shell: ruby {0}
       working-directory: .github/actions/deploy-mapshot
       env:

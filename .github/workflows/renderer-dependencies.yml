@@ -1,22 +1,6 @@
 name: Renderer dependencies
 
 on:
-  pull_request:
-    branches: [staging, main]
-    paths:
-      - '**/Cargo.toml'
-      - '**/Cargo.lock'
-      - '**/deny.toml'
-      - '**/rust-toolchain.toml'
-      - '.github/workflows/renderer-dependencies.yml'
-  push:
-    branches: [staging, main]
-    paths:
-      - '**/Cargo.toml'
-      - '**/Cargo.lock'
-      - '**/deny.toml'
-      - '**/rust-toolchain.toml'
-      - '.github/workflows/renderer-dependencies.yml'
   schedule:
     - cron: '17 12 * * *'
   workflow_dispatch:

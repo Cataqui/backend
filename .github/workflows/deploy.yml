@@ -39,7 +39,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { ref: "${{ github.sha }}", fetch-depth: 0, persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
-      - uses: ./.github/actions/setup-node-workspace
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 24 }
+      - name: Enable pnpm for workspace dependency selection
+        run: corepack enable
       - id: scope
         uses: ./.github/actions/resolve-deployment
         with: { scope: "${{ inputs.scope }}" }
@@ -54,9 +57,13 @@ jobs:
         with: { ref: "${{ github.sha }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-        with: { tofu_version: 1.12.6, tofu_wrapper: false }
+      - uses: ./.github/actions/setup-opentofu
       - uses: ./.github/actions/setup-mapshot-fonts
+      - name: Check renderer dependency advisories and licenses
+        uses: EmbarkStudios/cargo-deny-action@c3bbe7e4e3f7baeee1a3dd9aec0a3b2aded580fb # v2.1.1
+        with:
+          manifest-path: apps/mapshot/renderer/Cargo.toml
+          arguments: --locked
       - name: Run manual repository gate
         run: pnpm check
 
@@ -76,9 +83,7 @@ jobs:
         with: { ref: "${{ github.sha }}", persist-credentials: false }
       - uses: ./.github/actions/setup-ruby-workspace
       - uses: ./.github/actions/setup-node-workspace
-      - name: Build shared application packages
-        if: needs.prepare.outputs.deploy-ai == 'true' || needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true' || needs.prepare.outputs.deploy-auth == 'true'
-        run: pnpm build:packages
+        with: { generate-clients: 'false' }
       - uses: ./.github/actions/reconcile-infrastructure
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}", google-workload-identity-provider: "${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}" }
       - name: Validate Maps runtime secret before application deployment
@@ -98,7 +103,9 @@ jobs:
     if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && needs.prepare.outputs.deploy-auth == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    environment: ${{ needs.prepare.outputs.environment }}
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+      deployment: false
     permissions:
       contents: read
       id-token: write
@@ -121,7 +128,9 @@ jobs:
     if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped') && needs.prepare.outputs.deploy-ai == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    environment: ${{ needs.prepare.outputs.environment }}
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+      deployment: false
     permissions:
       contents: read
       id-token: write
@@ -153,7 +162,9 @@ jobs:
     if: always() && !cancelled() && needs.prepare.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped') && (needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') && (needs.mapshot.result == 'success' || needs.mapshot.result == 'skipped') && (needs.auth.result == 'success' || needs.auth.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    environment: ${{ needs.prepare.outputs.environment }}
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+      deployment: false
     permissions:
       contents: read
       id-token: write
@@ -164,7 +175,15 @@ jobs:
       - uses: ./.github/actions/setup-node-workspace
       - name: Build shared application packages
         if: needs.prepare.outputs.deploy-api == 'true' || needs.prepare.outputs.deploy-maps == 'true'
-        run: pnpm build:packages
+        shell: ruby {0}
+        env:
+          DEPLOY_API: ${{ needs.prepare.outputs.deploy-api }}
+          DEPLOY_MAPS: ${{ needs.prepare.outputs.deploy-maps }}
+        run: |
+          filters = []
+          filters.concat(["--filter", "@cataqui/api-worker^..."]) if ENV.fetch("DEPLOY_API") == "true"
+          filters.concat(["--filter", "@cataqui/maps-worker^..."]) if ENV.fetch("DEPLOY_MAPS") == "true"
+          exec "pnpm", *filters, "build"
       - name: Validate and apply migrations
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/neon-migrations
@@ -177,3 +196,30 @@ jobs:
         if: needs.prepare.outputs.deploy-api == 'true'
         uses: ./.github/actions/deploy-api
         with: { environment: "${{ needs.prepare.outputs.environment }}", infisical-identity-id: "${{ vars.INFISICAL_OPENTOFU_IDENTITY_ID }}" }
+
+  release-complete:
+    name: Verify complete release
+    needs: [prepare, validate, infrastructure, auth, ai, mapshot, deploy]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: ${{ needs.prepare.outputs.environment }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: ./.github/actions/setup-ruby-workspace
+      - name: Require every selected release job to succeed
+        shell: ruby {0}
+        env:
+          RELEASE_JOBS: ${{ toJSON(needs) }}
+        run: |
+          require "json"
+          failed = JSON.parse(ENV.fetch("RELEASE_JOBS")).reject do |_name, job|
+            %w[success skipped].include?(job.fetch("result"))
+          end
+          abort "Release did not complete: #{failed.keys.join(', ')}." unless failed.empty?
+          File.open(ENV.fetch("GITHUB_STEP_SUMMARY"), "a") do |summary|
+            summary.puts "Every selected application and infrastructure job completed successfully."
+          end
