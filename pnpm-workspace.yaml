@@ -64,6 +64,8 @@ minimumReleaseAgeExclude:
   - '@cloudflare/workerd-linux-64@1.20261019.1'
   - '@cloudflare/workerd-linux-arm64@1.20261019.1'
   - '@cloudflare/workerd-windows-64@1.20261019.1'
+  # Renovate security update: hono@4.13.11
+  - hono@4.13.11
 # Some upstream minimums still permit vulnerable transitive versions.
 # Keep patched versions pinned until their parents require the fixed releases.
 overrides:
