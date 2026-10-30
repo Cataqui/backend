@@ -64,6 +64,8 @@ minimumReleaseAgeExclude:
   - '@cloudflare/workerd-linux-64@1.20261019.1'
   - '@cloudflare/workerd-linux-arm64@1.20261019.1'
   - '@cloudflare/workerd-windows-64@1.20261019.1'
+  # Renovate security update: @hono/node-server@2.1.3
+  - "@hono/node-server@2.1.3"
 # Some upstream minimums still permit vulnerable transitive versions.
 # Keep patched versions pinned until their parents require the fixed releases.
 overrides:
@@ -72,7 +74,7 @@ overrides:
   'js-yaml@<5': 4.3.2
   # These vendors pin earlier patch releases. Remove each override when its parent adopts the fix.
   'neon@4.4.0>diff': 5.2.2
-  'neon@4.4.0>@hono/node-server': 2.0.10
+  'neon@4.4.0>@hono/node-server': 2.1.3
   'miniflare@5.20260930.0-alpha>sharp': 0.35.5
   # Remove when Magicast requires the patched source-map-js release itself.
   'magicast@0.5.5>source-map-js': 1.2.2

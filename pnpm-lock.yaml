@@ -88,7 +88,7 @@ overrides:
   fast-uri@<4: 3.1.8
   js-yaml@<5: 4.3.2
   neon@4.4.0>diff: 5.2.2
-  neon@4.4.0>@hono/node-server: 2.0.10
+  neon@4.4.0>@hono/node-server: 2.1.3
   miniflare@5.20260930.0-alpha>sharp: 0.35.5
   magicast@0.5.5>source-map-js: 1.2.2
 
@@ -1716,8 +1716,8 @@ packages:
   '@fastify/static@10.1.3':
     resolution: {integrity: sha512-W6jqajYS974XjPjB5hQWoxPM8NKM4+p8YmQT6G5IbCa4uhdWSVadZUv75siy1wEA/3ty8RYdpBydfWeu9AqAqQ==}
 
-  '@hono/node-server@2.0.10':
-    resolution: {integrity: sha512-ZcnNVhKTmyDJeg0UlnZjvM73JBsTAuhrH/J4fjwGOw59PwOW51r4J+p6CsKZWXdKSme4MFqU62CZMOsdDrU4CA==}
+  '@hono/node-server@2.1.3':
+    resolution: {integrity: sha512-TA//nWMqPhbfdfneACk6t5a9eqbS9lABEPyKn0/xZTah3H3U2XaVg85rJFl0/Fyit0I552YDHgXGVSf3GwqbUw==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -6227,7 +6227,7 @@ snapshots:
       fastq: 1.20.3
       glob: 13.0.6
 
-  '@hono/node-server@2.0.10(hono@4.13.7)':
+  '@hono/node-server@2.1.3(hono@4.13.7)':
     dependencies:
       hono: 4.13.7
 
@@ -8587,7 +8587,7 @@ snapshots:
     dependencies:
       '@clack/core': 0.4.2
       '@clack/prompts': 0.10.1
-      '@hono/node-server': 2.0.10(hono@4.13.7)
+      '@hono/node-server': 2.1.3(hono@4.13.7)
       '@neon/config': 1.0.2
       '@neon/config-runtime': 1.0.2(supports-color@10.2.2)
       '@neon/sdk': 2.2.0
