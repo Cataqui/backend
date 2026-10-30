@@ -157,7 +157,7 @@ describe("Main (e2e)", () => {
 		});
 
 		it.each(["/docs", "/docs-json", "/docs-yaml", "/docs/swagger-ui.css"])(
-			"serves %s without a session outside production",
+			"serves %s without a session in development",
 			async (url) => {
 				const app = await _buildApp();
 
@@ -186,13 +186,17 @@ describe("Main (e2e)", () => {
 			}
 		});
 
-		it.each(["/docs", "/docs-json", "/docs-yaml", "/docs/swagger-ui.css"])(
-			"does not register %s in production",
-			async (url) => {
-				const app = await _buildApp({ environment: "production" });
+		it.each(["staging", "production"] as const)(
+			"does not register documentation in %s even with a session",
+			async (environment) => {
+				const app = await _buildApp({ environment: environment });
 				try {
-					const response = await app.inject({ method: "GET", url: url });
-					expect(response.statusCode).toBe(404);
+					for (const url of ["/docs", "/docs-json", "/docs-yaml", "/docs/swagger-ui.css"]) {
+						for (const headers of [{}, authenticatedHeaders]) {
+							const response = await app.inject({ method: "GET", url: url, headers: headers });
+							expect(response.statusCode).toBe(404);
+						}
+					}
 				} finally {
 					await app.close();
 				}

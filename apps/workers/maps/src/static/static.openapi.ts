@@ -1,5 +1,8 @@
+import type { z } from "zod";
+import { MapsErrorCode } from "../errors/maps-error-code.enum";
+import { MapsErrorResponseOutputSchema } from "../http/maps-error-response-output.schema";
 import { describeRoute, type DescribeRouteOptions } from "hono-openapi";
-import { mapsErrorResponse } from "../http/error.openapi";
+import { mapsErrorResponse, mapsInternalErrorExample } from "../http/error.openapi";
 const _staticHeaders = {
 	"Cache-Control": {
 		description:
@@ -13,9 +16,31 @@ const _staticHeaders = {
 	"X-Content-Type-Options": { description: "nosniff", schema: { type: "string" } },
 } as const;
 const _staticResponses = {
-	default: mapsErrorResponse,
+	default: {
+		...mapsErrorResponse,
+		content: {
+			"application/json": {
+				...mapsErrorResponse.content["application/json"],
+				example: { ...mapsInternalErrorExample, endpoint: "/static/v1/example.webp" } satisfies z.output<
+					typeof MapsErrorResponseOutputSchema
+				>,
+			},
+		},
+	},
 	"404": {
 		...mapsErrorResponse,
+		content: {
+			"application/json": {
+				...mapsErrorResponse.content["application/json"],
+				example: {
+					...mapsInternalErrorExample,
+					status: 404,
+					errorCode: MapsErrorCode.IMAGE_NOT_FOUND,
+					message: "The static image was not found.",
+					endpoint: "/static/v1/example.webp",
+				} satisfies z.output<typeof MapsErrorResponseOutputSchema>,
+			},
+		},
 		description: "Signed image reference is invalid or belongs to another environment. Obtain a new image URL.",
 	},
 	"200": {
@@ -27,6 +52,18 @@ const _staticResponses = {
 	"304": { description: "The available representation matches If-None-Match; no body.", headers: _staticHeaders },
 	"405": {
 		...mapsErrorResponse,
+		content: {
+			"application/json": {
+				...mapsErrorResponse.content["application/json"],
+				example: {
+					...mapsInternalErrorExample,
+					status: 405,
+					errorCode: MapsErrorCode.METHOD_NOT_ALLOWED,
+					message: "Static images support GET and HEAD requests.",
+					endpoint: "/static/v1/example.webp",
+				} satisfies z.output<typeof MapsErrorResponseOutputSchema>,
+			},
+		},
 		description: "Use GET for the image or HEAD for its response metadata.",
 		headers: { Allow: { schema: { type: "string", enum: ["GET, HEAD"] } } },
 	},

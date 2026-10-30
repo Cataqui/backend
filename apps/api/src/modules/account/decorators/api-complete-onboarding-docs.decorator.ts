@@ -1,3 +1,5 @@
+import type { z } from "zod";
+import { apiInternalErrorExample } from "../../../core/errors/api-error.examples";
 import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { ApiErrorResponseOutputSchema } from "../../../core/errors/api-error-response-output.schema";
@@ -14,6 +16,9 @@ export function ApiCompleteOnboardingDocs(): MethodDecorator & ClassDecorator {
 		ApiResponse({
 			status: "default",
 			description: "Application error. Inspect status, errorCode, and any validation violations.",
+			example: { ...apiInternalErrorExample, endpoint: "/v1/account/complete-onboarding" } satisfies z.output<
+				typeof ApiErrorResponseOutputSchema
+			>,
 			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 	);

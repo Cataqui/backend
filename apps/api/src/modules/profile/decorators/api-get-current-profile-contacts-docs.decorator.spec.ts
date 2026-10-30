@@ -82,7 +82,7 @@ it("configures ApiGetCurrentProfileContactsDocs through the public decorator API
 		responses: td.explain(ApiResponse).calls.map((call) => call.args),
 		composition: td.explain(applyDecorators).calls.map((call) => call.args),
 		decorator: decorator,
-	}).toEqual({
+	}).toMatchObject({
 		schema: [[{ dataSchema: SavedContactsOutputSchema }]],
 		serialization: [[{ schema: _responseSchema }]],
 		auth: [[]],

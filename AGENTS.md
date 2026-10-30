@@ -37,6 +37,14 @@ Before changing a file, check its directory and parent directories for nested `A
 
 ## Documentation
 
+- Give JSON operations a representative request-body example when applicable and a success example for each response shape. Use named examples for meaningful outcomes such as pending versus completed or populated versus empty; omit payload examples for empty and binary responses. Include provider webhook payloads, but do not create OpenAPI documentation for private RPC solely to add examples.
+- Keep complete operation payload examples beside the owning transport documentation. Keep reusable field examples in schema metadata. Extract feature-owned example files only for substantial fixtures or actual reuse; do not introduce a repository-wide example registry or duplicate schema definitions.
+- Check every authored request example with `satisfies z.input<typeof InputSchema>` and every response example with `satisfies z.output<typeof OutputSchema>`, including values inside named examples and schema metadata. Use existing inferred contracts when no runtime schema exists. Never use assertions, `any`, or unchecked wrappers to bypass example typing. Shape mistakes must fail the existing typecheck; formats, refinements, status/code consistency, and scenario realism remain author and reviewer responsibilities. Do not add example-specific CI checks or runtime startup validation.
+- Use synthetic, coherent example data and named error-code members. Reuse application-owned error examples, specializing the endpoint, HTTP status, code, message, and violations for operation-specific corrective actions. Never use real credentials, personal data, private identifiers, or provider diagnostics in examples.
+
+- Keep API specifications and documentation private. Serve OpenAPI documents, Swagger UI, and equivalent documentation endpoints only in explicit local development mode; staging, production, and missing or unsupported environments must not expose them anonymously. Do not deploy development configurations as public documentation hosts.
+- Preserve authoritative schemas, route metadata, and local specification generation. Any future hosted documentation must require team authorization; an ordinary Cataquí account or user session does not grant documentation access. Do not enable hosted documentation without implementing that access boundary.
+
 - Do not add TSDoc documentation comments; this repository is private.
 
 - Keep READMEs focused on general project context, purpose, high-level architecture, prerequisites, setup, and basic development commands.

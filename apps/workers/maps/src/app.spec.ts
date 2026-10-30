@@ -116,7 +116,27 @@ it.each([undefined, "", "unsafe request id", "a_b.c-123", "x".repeat(256)])(
 	},
 );
 
-it("exposes the current HTTP contracts through OpenAPI", async () => {
+it.each(["staging", "production", undefined] as const)(
+	"does not expose OpenAPI in %s even with a valid user credential",
+	async (mode) => {
+		if (mode === undefined) Reflect.deleteProperty(_environment, "ENVIRONMENT");
+		if (mode !== undefined) _environment.ENVIRONMENT = mode;
+		const accessToken = "a".repeat(43);
+		td.when(_authService.getAuthenticatedAccountIdOrNull({ accessToken: accessToken })).thenResolve(
+			"00000000-0000-4000-8000-000000000001",
+		);
+		for (const headers of [{}, { Authorization: `Bearer ${accessToken}` }]) {
+			const response = await _fetch(
+				new Request("https://maps.cataqui.com/openapi.json", { headers: headers }),
+				_environment,
+			);
+			expect(response.status).toBe(404);
+			expect(await response.json()).toMatchObject({ status: 404, errorCode: MapsErrorCode.ROUTE_NOT_FOUND });
+		}
+	},
+);
+
+it("exposes the current HTTP contracts through OpenAPI in development", async () => {
 	const response = await _fetch(new Request("https://maps.cataqui.com/openapi.json"), _environment);
 	const document = await response.json();
 	expect({ status: response.status, body: document }).toMatchObject({

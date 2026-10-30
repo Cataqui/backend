@@ -52,7 +52,14 @@ app.use("*", async (context, next) => {
 	}
 });
 
-app.get("/openapi.json", openAPIRouteHandler(app, mapsOpenApiOptions));
+app.get(
+	"/openapi.json",
+	(context, next) => {
+		if (context.env?.ENVIRONMENT !== "development") throw new RouteNotFoundError();
+		return next();
+	},
+	openAPIRouteHandler(app, mapsOpenApiOptions),
+);
 
 app.route("/v1/health", healthRoutes);
 app.route("/places", placesRoutes);

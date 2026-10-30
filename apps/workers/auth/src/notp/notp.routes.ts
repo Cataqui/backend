@@ -11,8 +11,8 @@ import { createNotpIntentDocs, exchangeNotpIntentDocs } from "./notp.openapi";
 export const notpRoutes = new Hono<AuthContext>()
 	.post(
 		"/intents",
-		createNotpIntentDocs,
 		validator("json", CreateNotpIntentInputSchema, validationHook),
+		createNotpIntentDocs,
 		async (context) => {
 			const body = context.req.valid("json");
 			return context.json(
@@ -23,8 +23,8 @@ export const notpRoutes = new Hono<AuthContext>()
 	)
 	.post(
 		"/intents/exchange",
-		exchangeNotpIntentDocs,
 		validator("json", ExchangeNotpIntentInputSchema, validationHook),
+		exchangeNotpIntentDocs,
 		async (context) => {
 			const body = context.req.valid("json");
 			const result = await context.var

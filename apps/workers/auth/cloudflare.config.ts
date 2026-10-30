@@ -30,6 +30,7 @@ const _config = defineConfig({
 				production: ["auth.cataqui.com"],
 			}[environment],
 			env: {
+				ENVIRONMENT: bindings.text(environment),
 				DB: bindings.hyperdrive({ id: hyperdriveId }),
 				WHATSAPP_NOTP_PHONE_NUMBER_ID: bindings.text(
 					{

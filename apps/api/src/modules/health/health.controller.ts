@@ -46,10 +46,22 @@ export class HealthController {
 		status: HttpStatus.OK,
 		standardSchema: HealthCheckOutputSchema,
 		description: "All services are healthy",
+		example: {
+			status: HealthCheckStatus.OK,
+			details: { database: { status: HealthIndicatorStatus.UP }, redis: { status: HealthIndicatorStatus.UP } },
+		} satisfies z.output<typeof HealthCheckOutputSchema>,
 	})
 	@ApiResponse({
 		status: HttpStatus.SERVICE_UNAVAILABLE,
 		description: "One or more services are unhealthy",
+		standardSchema: HealthCheckOutputSchema,
+		example: {
+			status: HealthCheckStatus.ERROR,
+			details: {
+				database: { status: HealthIndicatorStatus.DOWN, message: "Database connection failed" },
+				redis: { status: HealthIndicatorStatus.UP },
+			},
+		} satisfies z.output<typeof HealthCheckOutputSchema>,
 	})
 	@SerializeOptions({ schema: HealthCheckOutputSchema })
 	async check(@Res({ passthrough: true }) reply: FastifyReply): Promise<z.infer<typeof HealthCheckOutputSchema>> {

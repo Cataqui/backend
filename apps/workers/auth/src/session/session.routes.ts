@@ -14,7 +14,7 @@ export const sessionRoutes = new Hono<AuthContext>()
 
 		return context.json(successResponse(context, session));
 	})
-	.post("/refresh", refreshSessionDocs, validator("json", RefreshTokenInputSchema, validationHook), async (context) => {
+	.post("/refresh", validator("json", RefreshTokenInputSchema, validationHook), refreshSessionDocs, async (context) => {
 		const body = context.req.valid("json");
 
 		return context.json(
@@ -24,7 +24,7 @@ export const sessionRoutes = new Hono<AuthContext>()
 			),
 		);
 	})
-	.post("/logout", logoutSessionDocs, validator("json", RefreshTokenInputSchema, validationHook), async (context) => {
+	.post("/logout", validator("json", RefreshTokenInputSchema, validationHook), logoutSessionDocs, async (context) => {
 		const body = context.req.valid("json");
 		await context.var.resolve(SessionService).logout({ refreshToken: body.refreshToken });
 		return context.body(null, 204);

@@ -939,6 +939,8 @@ A feature is not complete until its test suite proves every line and every state
 
 ## 9. API Documentation
 
+- Keep complete operation examples in the owning docs decorator. Attach typed examples with Nest Swagger's request, parameter, and response decorators while preserving Standard Schema inference from ingress schemas and response contracts. Never replace an inferred schema with handwritten fields merely to add examples. Use schema metadata only for reusable value examples and share error fixtures within the application.
+
 Every public NestJS API endpoint must have Swagger documentation.
 
 Each public controller endpoint must have a dedicated docs decorator or clearly separated docs helper.

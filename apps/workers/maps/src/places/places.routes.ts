@@ -36,7 +36,6 @@ placesRoutes.use(
 
 placesRoutes.query(
 	"/search",
-	searchPlacesDocs,
 	validator(
 		"json",
 		PlaceSearchInputSchema,
@@ -63,6 +62,7 @@ placesRoutes.query(
 		},
 		{ options: { io: "input" } },
 	),
+	searchPlacesDocs,
 	async (context) => {
 		const input = context.req.valid("json");
 
@@ -81,7 +81,6 @@ placesRoutes.query(
 
 placesRoutes.query(
 	"/details",
-	getPlaceDetailsDocs,
 	validator(
 		"json",
 		PlaceDetailsInputSchema,
@@ -90,6 +89,7 @@ placesRoutes.query(
 			fallbackPath: "body",
 		}),
 	),
+	getPlaceDetailsDocs,
 	async (context) => {
 		const input = context.req.valid("json");
 

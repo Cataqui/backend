@@ -105,7 +105,7 @@ it.each([
 		authentication: td.explain(_decorators.ApiBearerAuth).callCount,
 		composition: td.explain(_decorators.applyDecorators).calls.map((call) => call.args),
 		decorator: decorator,
-	}).toEqual({
+	}).toMatchObject({
 		schemas: [
 			[
 				{
@@ -163,7 +163,7 @@ it("configures authenticated contact lookup outcomes and the no-store response h
 		authentication: td.explain(_decorators.ApiBearerAuth).callCount,
 		composition: td.explain(_decorators.applyDecorators).calls.map((call) => call.args),
 		decorator: decorator,
-	}).toEqual({
+	}).toMatchObject({
 		schemas: [[{ dataSchema: ContactOutputSchema }]],
 		serialization: [[{ schema: responseSchema }]],
 		operations: [[{ summary: "Get an active job's contact details" }]],

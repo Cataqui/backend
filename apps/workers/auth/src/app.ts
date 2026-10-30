@@ -60,7 +60,14 @@ app.route("/v1/sessions", sessionRoutes);
 app.route("/v1/notp", notpRoutes);
 app.route("/v1/health", healthRoutes);
 app.route("/webhooks/whatsapp", whatsappRoutes);
-app.get("/openapi.json", openAPIRouteHandler(app, authOpenApiOptions));
+app.get(
+	"/openapi.json",
+	(context, next) => {
+		if (context.env?.ENVIRONMENT !== "development") throw new RouteNotFoundError();
+		return next();
+	},
+	openAPIRouteHandler(app, authOpenApiOptions),
+);
 app.notFound(() => {
 	throw new RouteNotFoundError();
 });

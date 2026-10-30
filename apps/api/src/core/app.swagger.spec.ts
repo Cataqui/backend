@@ -13,7 +13,7 @@ vi.mock("zod-openapi", async () => {
 	return { createSchema: td.func<typeof createSchema>() };
 });
 
-function _application(environment: string): INestApplication {
+function _application(environment: string | undefined): INestApplication {
 	const app = td.object<INestApplication>();
 	td.when(app.get(runtimeConfig.KEY)).thenReturn({ environment: environment });
 	return app;
@@ -53,19 +53,22 @@ function _setup(): {
 describe("AppSwagger", () => {
 	afterEach(() => vi.unstubAllEnvs());
 
-	it("keeps documentation disabled using application configuration after the process environment changes", () => {
-		vi.stubEnv("ENVIRONMENT", "development");
-		const app = _application("production");
-		const createDocument = td.replace(SwaggerModule, "createDocument");
-		const mount = td.replace(SwaggerModule, "setup");
-		const result = AppSwagger.setup(app);
-		expect({
-			result: result,
-			configurationCalls: td.explain(app.get).calls.map((call) => call.args),
-			documentCalls: td.explain(createDocument).callCount,
-			mountCalls: td.explain(mount).callCount,
-		}).toEqual({ result: undefined, configurationCalls: [[runtimeConfig.KEY]], documentCalls: 0, mountCalls: 0 });
-	});
+	it.each(["staging", "production", undefined])(
+		"keeps documentation disabled for %s using application configuration",
+		(environment) => {
+			vi.stubEnv("ENVIRONMENT", "development");
+			const app = _application(environment);
+			const createDocument = td.replace(SwaggerModule, "createDocument");
+			const mount = td.replace(SwaggerModule, "setup");
+			const result = AppSwagger.setup(app);
+			expect({
+				result: result,
+				configurationCalls: td.explain(app.get).calls.map((call) => call.args),
+				documentCalls: td.explain(createDocument).callCount,
+				mountCalls: td.explain(mount).callCount,
+			}).toEqual({ result: undefined, configurationCalls: [[runtimeConfig.KEY]], documentCalls: 0, mountCalls: 0 });
+		},
+	);
 
 	it("registers the API documentation configuration and mounts the returned document", () => {
 		vi.stubEnv("ENVIRONMENT", "production");

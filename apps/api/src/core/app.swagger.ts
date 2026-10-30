@@ -5,7 +5,7 @@ import { createSchema } from "zod-openapi";
 import { runtimeConfig, type RuntimeConfig } from "./config/runtime.config";
 
 function setup(app: INestApplication): OpenAPIObject | undefined {
-	if (app.get<RuntimeConfig>(runtimeConfig.KEY).environment === "production") return undefined;
+	if (app.get<RuntimeConfig>(runtimeConfig.KEY).environment !== "development") return undefined;
 
 	const document = SwaggerModule.createDocument(
 		app,

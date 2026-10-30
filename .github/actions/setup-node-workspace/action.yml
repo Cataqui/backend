@@ -1,5 +1,5 @@
 name: Set up Node workspace
-description: Install the repository Node.js and pnpm toolchain and frozen dependencies.
+description: Install the Node.js and pnpm toolchain, frozen dependencies, and generated application clients.
 runs:
   using: composite
   steps:
@@ -12,3 +12,6 @@ runs:
       with: { node-version: 24, cache: pnpm }
     - shell: bash
       run: pnpm install --frozen-lockfile
+    - name: Generate application database clients before binding type inference
+      shell: bash
+      run: pnpm -r --if-present run prisma:generate

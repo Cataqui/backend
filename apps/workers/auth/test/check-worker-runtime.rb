@@ -32,6 +32,7 @@ File.open(".wrangler/runtime-check.log", "w") do |log|
         sleep 0.2
       end
     end
+    abort "Compiled Worker development OpenAPI response failed." unless Net::HTTP.get_response(base + "/openapi.json").code == "200"
     verification_uri = base + "/webhooks/whatsapp"
     verification_uri.query = URI.encode_www_form(
       "hub.mode" => "subscribe", "hub.verify_token" => "local-verification", "hub.challenge" => "verified"

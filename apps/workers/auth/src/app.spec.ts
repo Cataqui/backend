@@ -127,6 +127,7 @@ const accessToken = "a".repeat(43);
 
 function _environment(): AuthWorkerEnv {
 	return Object.assign(td.object<AuthWorkerEnv>(), {
+		ENVIRONMENT: "development" as const,
 		META_APP_SECRET: "test-app-secret",
 		WHATSAPP_AUTH_WEBHOOK_VERIFY_TOKEN: "test-verify-token",
 		WHATSAPP_NOTP_PHONE_NUMBER_ID: "1211194405413752",
@@ -153,6 +154,22 @@ beforeEach(() => {
 });
 
 describe("Auth HTTP application", () => {
+	it.each(["staging", "production", undefined] as const)(
+		"does not expose OpenAPI in %s even with a valid user credential",
+		async (mode) => {
+			const environment = _environment();
+			if (mode === undefined) Reflect.deleteProperty(environment, "ENVIRONMENT");
+			if (mode !== undefined) environment.ENVIRONMENT = mode;
+			td.when(sessionService.getActiveSessionFromAccessTokenOrNull({ accessToken: accessToken })).thenResolve(
+				authenticatedSession,
+			);
+			for (const headers of [{}, { Authorization: `Bearer ${accessToken}` }]) {
+				const response = await app.request("/openapi.json", { headers: headers }, environment);
+				expect(response.status).toBe(404);
+				expect(await response.json()).toMatchObject({ status: 404, errorCode: AppErrorCode.ROUTE_NOT_FOUND });
+			}
+		},
+	);
 	it("serves liveness without constructing storage services", async () => {
 		const response = await app.request("/v1/health/live", {}, _environment());
 

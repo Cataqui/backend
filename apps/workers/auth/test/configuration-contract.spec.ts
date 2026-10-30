@@ -33,7 +33,7 @@ describe("Auth runtime configuration", () => {
 					name: "cataqui-auth-development",
 					workersDev: true,
 					domains: [],
-					env: { DB: { type: "hyperdrive", id: "local" } },
+					env: { DB: { type: "hyperdrive", id: "local" }, ENVIRONMENT: { type: "text", value: "development" } },
 				},
 			},
 		});
@@ -84,6 +84,7 @@ describe("Auth runtime configuration", () => {
 					domains: [isProduction ? "auth.cataqui.com" : "staging.auth.cataqui.com"],
 					triggers: [{ type: "scheduled", schedule: "17 3 * * *" }],
 					env: {
+						ENVIRONMENT: { type: "text", value: environment },
 						WHATSAPP_NOTP_PHONE_NUMBER_ID: {
 							type: "text",
 							value: isProduction ? "1203689159488121" : "1211194405413752",

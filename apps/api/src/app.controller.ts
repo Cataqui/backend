@@ -15,6 +15,11 @@ export class AppController {
 	@ApiResponse({
 		status: 200,
 		description: "Returns server status and environment info",
+		example: {
+			status: "ok",
+			message: "Cataquí API server is running...",
+			environment: "development",
+		} satisfies ReturnType<AppController["root"]>,
 	})
 	root(): { status: string; message: string; environment: RuntimeConfig["environment"] } {
 		return {
