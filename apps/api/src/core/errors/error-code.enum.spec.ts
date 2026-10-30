@@ -24,7 +24,6 @@ describe("ErrorCode", () => {
 			"PROFILE_REQUIRED",
 			"PROFILE_CREATION_CONFLICT",
 			"PROFILE_NOT_FOUND",
-			"WAITLIST_REQUIRED",
 			"INVITE_UNAVAILABLE",
 			"ACCOUNT_INVITE_ALREADY_SET",
 		] as const;
@@ -43,6 +42,6 @@ describe("ErrorCode", () => {
 	});
 
 	it("should expose every supported error code", () => {
-		expect(Object.keys(ErrorCode)).toHaveLength(26);
+		expect(Object.keys(ErrorCode)).toHaveLength(25);
 	});
 });

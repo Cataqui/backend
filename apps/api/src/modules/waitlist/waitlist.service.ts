@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { z } from "zod";
 import { AccountAdmission } from "../../../generated/prisma/enums";
-import { WaitlistRequiredError } from "./errors/waitlist-required.error";
 import type { SkipWaitlistInputSchema } from "./schemas/skip-waitlist-input.schema";
 import { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
 
@@ -26,9 +25,6 @@ export class WaitlistService {
 
 			const isAdmitted = account.admission === AccountAdmission.ADMITTED;
 			if (isAdmitted) return;
-
-			const isWaitlisted = account.admission === AccountAdmission.WAITLISTED;
-			if (!isWaitlisted) throw new WaitlistRequiredError();
 
 			const invite = await inviteService.lockAvailableByCode({ code: params.input.inviteCode });
 

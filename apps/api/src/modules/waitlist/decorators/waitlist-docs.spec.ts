@@ -4,7 +4,7 @@ import { ApiSkipWaitlistDocs } from "./api-skip-waitlist-docs.decorator";
 
 it.each([
 	{ decorator: ApiJoinWaitlistDocs, statuses: ["204", "default"] },
-	{ decorator: ApiSkipWaitlistDocs, statuses: ["204", "403", "409", "422", "default"] },
+	{ decorator: ApiSkipWaitlistDocs, statuses: ["204", "409", "422", "default"] },
 ])("documents the authenticated outcomes of $decorator", ({ decorator, statuses }) => {
 	class Controller {
 		method(): void {}

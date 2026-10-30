@@ -8,7 +8,6 @@ import { ProfileService } from "../profile/profile.service";
 import { ProfileRepository } from "../profile/repositories/profile.repository";
 import { ProfileCreationConflictError } from "../profile/errors/profile-creation-conflict.error";
 import { InviteUnavailableError } from "../invite/errors/invite-unavailable.error";
-import { WaitlistRequiredError } from "./errors/waitlist-required.error";
 import { WaitlistService } from "./waitlist.service";
 import { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
 
@@ -135,7 +134,12 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 				data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
 			});
 			const ids = Array.from({ length: 8 }, () => randomUUID());
-			await Promise.all(ids.map((id) => service.join({ accountId: id })));
+			await prisma.account.createMany({
+				data: ids.map((id, index) => ({
+					id: id,
+					admission: index % 2 === 0 ? AccountAdmission.NOT_REQUESTED : AccountAdmission.WAITLISTED,
+				})),
+			});
 			const results = await Promise.allSettled(
 				ids.map((id) => service.skip({ accountId: id, input: { inviteCode: invite.code } })),
 			);
@@ -166,7 +170,6 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 			const invite = await prisma.invite.create({
 				data: { code: randomUUID().toUpperCase(), referrerName: "Partner" },
 			});
-			await service.join({ accountId: id });
 			await Promise.all([
 				...Array.from({ length: 8 }, () => service.join({ accountId: id })),
 				service.skip({ accountId: id, input: { inviteCode: invite.code } }),
@@ -254,83 +257,105 @@ describe.skipIf(databaseUrl === undefined || proxyAddress === undefined)(
 				uses: 1,
 			});
 		});
-		it("requires joining before using a code to skip the waitlist", async () => {
-			const id = randomUUID();
-			const invite = await prisma.invite.create({
-				data: { code: randomUUID().toUpperCase(), referrerName: "Partner" },
-			});
-			await prisma.account.create({ data: { id: id, admission: AccountAdmission.NOT_REQUESTED } });
-			await expect(service.skip({ accountId: id, input: { inviteCode: invite.code } })).rejects.toThrow(
-				WaitlistRequiredError,
-			);
-		});
-		it.each(["unknown", "disabled", "exhausted"])(
-			"leaves waitlist status and attribution unchanged for %s codes",
-			async (state) => {
+		it.each([null, AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+			"admits directly with a valid invite from account state %s",
+			async (admission) => {
 				const id = randomUUID();
-				await service.join({ accountId: id });
 				const invite = await prisma.invite.create({
-					data: {
-						code: randomUUID().toUpperCase(),
-						referrerName: "Partner",
-						enabled: state !== "disabled",
-						maxUses: state === "exhausted" ? 1 : null,
-					},
+					data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
 				});
-				if (state === "exhausted") {
-					const firstId = randomUUID();
-					await service.join({ accountId: firstId });
-					await service.skip({ accountId: firstId, input: { inviteCode: invite.code } });
+				if (admission !== null) {
+					await prisma.account.create({ data: { id: id, admission: admission, onboardingCompleted: true } });
 				}
-				const result = await service
-					.skip({
-						accountId: id,
-						input: { inviteCode: state === "unknown" ? randomUUID().toUpperCase() : invite.code },
-					})
-					.catch((error: unknown): unknown => error);
+				const result = await service.skip({ accountId: id, input: { inviteCode: invite.code } });
 				expect({
-					rejected: result instanceof InviteUnavailableError,
-					account: await prisma.account.findUnique({ where: { id: id } }),
+					result: result,
+					account: await prisma.account.findUniqueOrThrow({ where: { id: id } }),
+					uses: await prisma.account.count({ where: { fromInviteId: invite.id } }),
+					profile: await prisma.profile.findUnique({ where: { id: id } }),
 				}).toEqual({
-					rejected: true,
+					result: undefined,
 					account: {
 						id: id,
-						admission: AccountAdmission.WAITLISTED,
-						onboardingCompleted: false,
-						fromInviteId: null,
+						admission: AccountAdmission.ADMITTED,
+						onboardingCompleted: admission !== null,
+						fromInviteId: invite.id,
 					},
+					uses: 1,
+					profile: null,
 				});
 			},
 		);
-		it("rolls back admission, attribution and usage together when the operation fails", async () => {
+		it.each(
+			[null, AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED].flatMap((admission) =>
+				["unknown", "disabled", "exhausted"].map((state) => ({ admission: admission, state: state })),
+			),
+		)("preserves account state $admission and capacity for $state invites", async ({ admission, state }) => {
 			const id = randomUUID();
-			const failure = new Error("later operation failed");
+			if (admission !== null) {
+				await prisma.account.create({ data: { id: id, admission: admission, onboardingCompleted: true } });
+			}
 			const invite = await prisma.invite.create({
-				data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
+				data: { code: randomUUID().toUpperCase(), referrerName: "Partner", enabled: state !== "disabled", maxUses: 1 },
 			});
-			await service.join({ accountId: id });
-			const result = await unitOfWork
-				.execute(async ({ accountService, inviteService }): Promise<void> => {
-					await accountService.get({ accountId: id });
-					const code = await inviteService.lockAvailableByCode({ code: invite.code });
-					await accountService.setFromInvite({ accountId: id, inviteId: code!.id });
-					await accountService.updateAdmission({
-						accountId: id,
-						admission: AccountAdmission.ADMITTED,
-					});
-					throw failure;
+			if (state === "exhausted") {
+				await prisma.account.create({
+					data: { id: randomUUID(), admission: AccountAdmission.ADMITTED, fromInviteId: invite.id },
+				});
+			}
+			const result = await service
+				.skip({
+					accountId: id,
+					input: { inviteCode: state === "unknown" ? randomUUID().toUpperCase() : invite.code },
 				})
 				.catch((error: unknown): unknown => error);
 			expect({
-				result: result,
+				rejected: result instanceof InviteUnavailableError,
 				account: await prisma.account.findUnique({ where: { id: id } }),
 				uses: await prisma.account.count({ where: { fromInviteId: invite.id } }),
 			}).toEqual({
-				result: failure,
-				account: { id: id, admission: AccountAdmission.WAITLISTED, onboardingCompleted: false, fromInviteId: null },
-				uses: 0,
+				rejected: true,
+				account:
+					admission === null ? null : { id: id, admission: admission, onboardingCompleted: true, fromInviteId: null },
+				uses: state === "exhausted" ? 1 : 0,
 			});
 		});
+
+		it.each([null, AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+			"rolls back account creation, admission, attribution and usage from %s on failure",
+			async (admission) => {
+				const id = randomUUID();
+				const failure = new Error("later operation failed");
+				const invite = await prisma.invite.create({
+					data: { code: randomUUID().toUpperCase(), referrerName: "Partner", maxUses: 1 },
+				});
+				if (admission !== null) await prisma.account.create({ data: { id: id, admission: admission } });
+				const result = await unitOfWork
+					.execute(async ({ accountService, inviteService }): Promise<void> => {
+						await accountService.get({ accountId: id });
+						const code = await inviteService.lockAvailableByCode({ code: invite.code });
+						await accountService.setFromInvite({ accountId: id, inviteId: code!.id });
+						await accountService.updateAdmission({
+							accountId: id,
+							admission: AccountAdmission.ADMITTED,
+						});
+						throw failure;
+					})
+					.catch((error: unknown): unknown => error);
+				expect({
+					result: result,
+					account: await prisma.account.findUnique({ where: { id: id } }),
+					uses: await prisma.account.count({ where: { fromInviteId: invite.id } }),
+				}).toEqual({
+					result: failure,
+					account:
+						admission === null
+							? null
+							: { id: id, admission: admission, onboardingCompleted: false, fromInviteId: null },
+					uses: 0,
+				});
+			},
+		);
 		it("rolls back referral assignment when the following admission write fails", async () => {
 			const id = randomUUID();
 			const failure = new Error("admission update failed");

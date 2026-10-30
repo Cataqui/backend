@@ -113,53 +113,61 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 			profileLookups: 0,
 		});
 	});
-	it("normalizes a code and admits only the authenticated account with no response body", async () => {
-		td.when(accountRepository.setFromInviteIfEmpty({ accountId: session.accountId, inviteId: "invite" })).thenResolve(
-			true,
-		);
-		td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
-			id: session.accountId,
-			admission: AccountAdmission.WAITLISTED,
-			fromInviteId: null,
-			onboardingCompleted: false,
-		});
-		td.when(inviteRepository.findAndLockByCode({ code: "RYAN-2026" })).thenResolve({
-			id: "invite",
-			enabled: true,
-			maxUses: 1,
-			uses: 0,
-		});
-		const response = await app.inject({
-			method: "POST",
-			url: "/v1/waitlist/skip",
-			headers: headers,
-			payload: { inviteCode: " ryan-2026 " },
-		});
-		expect({
-			status: response.statusCode,
-			body: response.body,
-			cache: response.headers["cache-control"],
-			writes: td.explain(accountRepository.updateAdmission).calls.map((call) => call.args),
-			attributionWrites: td.explain(accountRepository.setFromInviteIfEmpty).calls.map((call) => call.args),
-		}).toEqual({
-			status: 204,
-			body: "",
-			cache: "no-store",
-			writes: [[{ accountId: session.accountId, admission: AccountAdmission.ADMITTED }]],
-			attributionWrites: [[{ accountId: session.accountId, inviteId: "invite" }]],
-		});
-	});
-	it.each([
-		{ admission: AccountAdmission.NOT_REQUESTED, status: 403, code: "WAITLIST_REQUIRED" },
-		{ admission: AccountAdmission.WAITLISTED, status: 422, code: "INVITE_UNAVAILABLE" },
-	])("returns $code from $admission", async ({ admission, status, code }) => {
+	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+		"normalizes a code and admits only the authenticated account from %s with no response body",
+		async (admission) => {
+			td.when(accountRepository.setFromInviteIfEmpty({ accountId: session.accountId, inviteId: "invite" })).thenResolve(
+				true,
+			);
+			td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
+				id: session.accountId,
+				admission: admission,
+				fromInviteId: null,
+				onboardingCompleted: false,
+			});
+			td.when(inviteRepository.findAndLockByCode({ code: "RYAN-2026" })).thenResolve({
+				id: "invite",
+				enabled: true,
+				maxUses: 1,
+				uses: 0,
+			});
+			const response = await app.inject({
+				method: "POST",
+				url: "/v1/waitlist/skip",
+				headers: headers,
+				payload: { inviteCode: " ryan-2026 " },
+			});
+			expect({
+				status: response.statusCode,
+				body: response.body,
+				cache: response.headers["cache-control"],
+				writes: td.explain(accountRepository.updateAdmission).calls.map((call) => call.args),
+				attributionWrites: td.explain(accountRepository.setFromInviteIfEmpty).calls.map((call) => call.args),
+			}).toEqual({
+				status: 204,
+				body: "",
+				cache: "no-store",
+				writes: [[{ accountId: session.accountId, admission: AccountAdmission.ADMITTED }]],
+				attributionWrites: [[{ accountId: session.accountId, inviteId: "invite" }]],
+			});
+		},
+	);
+	it.each(
+		[AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED].flatMap((admission) =>
+			["unknown", "disabled", "exhausted"].map((state) => ({ admission: admission, state: state })),
+		),
+	)("returns INVITE_UNAVAILABLE for $state invites from $admission", async ({ admission, state }) => {
 		td.when(accountRepository.getOrCreate({ accountId: session.accountId })).thenResolve({
 			id: session.accountId,
 			admission: admission,
 			fromInviteId: null,
 			onboardingCompleted: false,
 		});
-		td.when(inviteRepository.findAndLockByCode({ code: "CODE" })).thenResolve(null);
+		td.when(inviteRepository.findAndLockByCode({ code: "CODE" })).thenResolve(
+			state === "unknown"
+				? null
+				: { id: "invite", enabled: state !== "disabled", maxUses: 1, uses: state === "exhausted" ? 1 : 0 },
+		);
 		const response = await app.inject({
 			method: "POST",
 			url: "/v1/waitlist/skip",
@@ -170,8 +178,10 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 			status: response.statusCode,
 			code: response.json<{ errorCode: string }>().errorCode,
 			writes: td.explain(accountRepository.updateAdmission).callCount,
-		}).toEqual({ status: status, code: code, writes: 0 });
+			attributionWrites: td.explain(accountRepository.setFromInviteIfEmpty).callCount,
+		}).toEqual({ status: 422, code: "INVITE_UNAVAILABLE", writes: 0, attributionWrites: 0 });
 	});
+
 	it.each([null, "recorded-invite"])(
 		"returns bodyless success for admitted accounts with attribution %s",
 		async (fromInviteId) => {
@@ -339,6 +349,7 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 			input: document.components?.schemas?.["SkipWaitlistInput"],
 			profileInput: document.components?.schemas?.["CreateProfileInput"],
 			profileForbidden: document.paths["/v1/profiles"]?.post?.responses?.["403"],
+			skipForbidden: document.paths["/v1/waitlist/skip"]?.post?.responses?.["403"],
 			formerRoute: document.paths["/v1/waitlist/redeem"],
 			formerInput: document.components?.schemas?.["RedeemInviteCodeInput"],
 		}).toMatchObject({
@@ -350,7 +361,6 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 				security: [{ bearer: [] }],
 				responses: {
 					"204": { description: expect.any(String) },
-					"403": { description: expect.stringContaining("WAITLIST_REQUIRED") },
 					"409": { description: expect.stringContaining("ACCOUNT_INVITE_ALREADY_SET") },
 					"422": { description: expect.stringContaining("INVITE_UNAVAILABLE") },
 					default: expect.any(Object),
@@ -365,6 +375,7 @@ describe("Waitlist and independent profile HTTP contracts", () => {
 				required: ["name", "initialContacts"],
 			},
 			profileForbidden: undefined,
+			skipForbidden: undefined,
 			formerRoute: undefined,
 			formerInput: undefined,
 		});

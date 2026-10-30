@@ -8,17 +8,11 @@ export function ApiSkipWaitlistDocs(): MethodDecorator & ClassDecorator {
 		ApiOperation({
 			summary: "Skip the waitlist",
 			description:
-				"Admits a waitlisted account using an invite code and records its referral. Already admitted accounts succeed without changing attribution or consuming invite capacity, regardless of the supplied code.",
+				"Admits an account using an invite code and records its referral. Joining the waitlist first is not required. Already admitted accounts succeed without changing attribution or consuming invite capacity, regardless of the supplied code.",
 		}),
 		ApiResponse({
 			status: HttpStatus.NO_CONTENT,
 			description: "The account was admitted or already had access. No response body.",
-		}),
-		ApiResponse({
-			status: HttpStatus.FORBIDDEN,
-			description:
-				"Join the waitlist before using an invite code if access has not been requested (WAITLIST_REQUIRED).",
-			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({
 			status: HttpStatus.CONFLICT,
@@ -29,7 +23,7 @@ export function ApiSkipWaitlistDocs(): MethodDecorator & ClassDecorator {
 		ApiResponse({
 			status: HttpStatus.UNPROCESSABLE_ENTITY,
 			description:
-				"For waitlisted accounts, the code is unknown, disabled, or exhausted (INVITE_UNAVAILABLE). Try another code; admission and attribution were not changed.",
+				"For accounts that are not admitted, the code is unknown, disabled, or exhausted (INVITE_UNAVAILABLE). Try another code; admission and attribution were not changed.",
 			standardSchema: ApiErrorResponseOutputSchema,
 		}),
 		ApiResponse({

@@ -2,7 +2,6 @@ import * as td from "testdouble";
 import { AccountAdmission } from "../../../generated/prisma/enums";
 import type { AccountService } from "../account/account.service";
 import { InviteUnavailableError } from "../invite/errors/invite-unavailable.error";
-import { WaitlistRequiredError } from "./errors/waitlist-required.error";
 import type { InviteService } from "../invite/invite.service";
 import { WaitlistService } from "./waitlist.service";
 import type { WaitlistUnitOfWork } from "./waitlist.unit-of-work";
@@ -47,23 +46,6 @@ describe("WaitlistService", () => {
 		});
 	});
 
-	it("requires joining before attempting to skip the waitlist", async () => {
-		td.when(accountService.get({ accountId: "account" })).thenResolve({
-			id: "account",
-			admission: AccountAdmission.NOT_REQUESTED,
-			fromInviteId: null,
-			onboardingCompleted: false,
-		});
-		const result = await service
-			.skip({ accountId: "account", input: { inviteCode: "CODE" } })
-			.catch((error: unknown): unknown => error);
-		expect({
-			rejected: result instanceof WaitlistRequiredError,
-			codeReads: td.explain(inviteService.lockAvailableByCode).callCount,
-			writes: td.explain(accountService.updateAdmission).callCount,
-		}).toEqual({ rejected: true, codeReads: 0, writes: 0 });
-	});
-
 	it.each([null, "recorded-invite"])(
 		"succeeds immediately for admitted accounts with attribution %s",
 		async (fromInviteId) => {
@@ -83,64 +65,70 @@ describe("WaitlistService", () => {
 		},
 	);
 
-	it("propagates unavailable invite codes without admitting the account", async () => {
-		td.when(accountService.get({ accountId: "account" })).thenResolve({
-			id: "account",
-			admission: AccountAdmission.WAITLISTED,
-			fromInviteId: null,
-			onboardingCompleted: false,
-		});
-		const failure = new InviteUnavailableError();
-		td.when(inviteService.lockAvailableByCode({ code: "CODE" })).thenReject(failure);
-		const result = await service
-			.skip({ accountId: "account", input: { inviteCode: "CODE" } })
-			.catch((error: unknown): unknown => error);
-		expect({
-			result: result,
-			writes: td.explain(accountService.updateAdmission).callCount,
-			attributionWrites: td.explain(accountService.setFromInvite).callCount,
-		}).toEqual({ result: failure, writes: 0, attributionWrites: 0 });
-	});
+	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+		"propagates unavailable invites without admitting an account from %s",
+		async (admission) => {
+			td.when(accountService.get({ accountId: "account" })).thenResolve({
+				id: "account",
+				admission: admission,
+				fromInviteId: null,
+				onboardingCompleted: false,
+			});
+			const failure = new InviteUnavailableError();
+			td.when(inviteService.lockAvailableByCode({ code: "CODE" })).thenReject(failure);
+			const result = await service
+				.skip({ accountId: "account", input: { inviteCode: "CODE" } })
+				.catch((error: unknown): unknown => error);
+			expect({
+				result: result,
+				writes: td.explain(accountService.updateAdmission).callCount,
+				attributionWrites: td.explain(accountService.setFromInvite).callCount,
+			}).toEqual({ result: failure, writes: 0, attributionWrites: 0 });
+		},
+	);
 
-	it("admits and attributes an available code after locking the account", async () => {
-		const sequence: string[] = [];
-		td.when(accountService.get({ accountId: "account" })).thenDo(
-			async (): Promise<Awaited<ReturnType<AccountService["get"]>>> => {
-				sequence.push("account locked");
-				return {
-					id: "account",
-					admission: AccountAdmission.WAITLISTED,
-					fromInviteId: null,
-					onboardingCompleted: false,
-				};
-			},
-		);
-		td.when(inviteService.lockAvailableByCode({ code: "CODE" })).thenDo(
-			async (): Promise<Awaited<ReturnType<InviteService["lockAvailableByCode"]>>> => {
-				sequence.push("code locked and counted");
-				return { id: "invite" };
-			},
-		);
-		td.when(accountService.setFromInvite(td.matchers.anything())).thenDo(async (): Promise<void> => {
-			await Promise.resolve();
-			sequence.push("attribution saved");
-		});
-		td.when(accountService.updateAdmission(td.matchers.anything())).thenDo(async (): Promise<void> => {
-			sequence.push("admission saved");
-		});
-		const result = await service.skip({ accountId: "account", input: { inviteCode: "CODE" } });
-		expect({
-			result: result,
-			sequence: sequence,
-			writes: td.explain(accountService.updateAdmission).calls.map((call) => call.args),
-			attributionWrites: td.explain(accountService.setFromInvite).calls.map((call) => call.args),
-		}).toEqual({
-			result: undefined,
-			sequence: ["account locked", "code locked and counted", "attribution saved", "admission saved"],
-			writes: [[{ accountId: "account", admission: AccountAdmission.ADMITTED }]],
-			attributionWrites: [[{ accountId: "account", inviteId: "invite" }]],
-		});
-	});
+	it.each([AccountAdmission.NOT_REQUESTED, AccountAdmission.WAITLISTED])(
+		"admits and attributes an available code from %s after locking the account",
+		async (admission) => {
+			const sequence: string[] = [];
+			td.when(accountService.get({ accountId: "account" })).thenDo(
+				async (): Promise<Awaited<ReturnType<AccountService["get"]>>> => {
+					sequence.push("account locked");
+					return {
+						id: "account",
+						admission: admission,
+						fromInviteId: null,
+						onboardingCompleted: false,
+					};
+				},
+			);
+			td.when(inviteService.lockAvailableByCode({ code: "CODE" })).thenDo(
+				async (): Promise<Awaited<ReturnType<InviteService["lockAvailableByCode"]>>> => {
+					sequence.push("code locked and counted");
+					return { id: "invite" };
+				},
+			);
+			td.when(accountService.setFromInvite(td.matchers.anything())).thenDo(async (): Promise<void> => {
+				await Promise.resolve();
+				sequence.push("attribution saved");
+			});
+			td.when(accountService.updateAdmission(td.matchers.anything())).thenDo(async (): Promise<void> => {
+				sequence.push("admission saved");
+			});
+			const result = await service.skip({ accountId: "account", input: { inviteCode: "CODE" } });
+			expect({
+				result: result,
+				sequence: sequence,
+				writes: td.explain(accountService.updateAdmission).calls.map((call) => call.args),
+				attributionWrites: td.explain(accountService.setFromInvite).calls.map((call) => call.args),
+			}).toEqual({
+				result: undefined,
+				sequence: ["account locked", "code locked and counted", "attribution saved", "admission saved"],
+				writes: [[{ accountId: "account", admission: AccountAdmission.ADMITTED }]],
+				attributionWrites: [[{ accountId: "account", inviteId: "invite" }]],
+			});
+		},
+	);
 
 	it.each(["join", "skip"] as const)("propagates Unit of Work failures from %s", async (operation) => {
 		const failure = new Error("transaction failed");
